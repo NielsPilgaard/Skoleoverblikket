@@ -7,14 +7,21 @@ import { MD_ALLOWED_TAGS } from './allowed'
 // CommonMark collapses a lone "\n" to a space.
 const REMARK_PLUGINS = [remarkBreaks]
 
-// CommonMark treats any run of 2+ newlines as a single paragraph break —
+// CommonMark treats any run of 2+ blank lines as a single paragraph break —
 // typing three blank lines to space content out looks identical to typing
-// one. Splice a zero-width space onto each blank line in the run so
-// remark-parse no longer sees it as blank (keeping the whole run inside one
-// paragraph); remarkBreaks then turns every individual "\n" into its own
-// <br>, so the visual gap matches the newline count staff actually typed.
+// one. Splice a zero-width space onto each *extra* blank line (keeping them
+// inside one paragraph so remarkBreaks turns each "\n" into its own <br>,
+// matching the newline count staff actually typed) — but only from the
+// second blank line on. The first blank line in a run is left untouched so
+// it still ends the preceding block normally: a ZWS makes a line non-blank,
+// and CommonMark lazily continues a list into the next line once it no
+// longer sees a blank line, which would swallow a following paragraph into
+// the list's last item (and inherit its indentation) instead of splitting.
 function preserveBlankLineRuns(markdown: string): string {
-  return markdown.replace(/\n{2,}/g, (run) => run.split('\n').join('\n​'))
+  return markdown.replace(/\n{3,}/g, (run) => {
+    const lines = run.split('\n')
+    return `\n${lines.slice(1).join('\n​')}`
+  })
 }
 
 // Tailwind's Preflight resets ul/ol to list-style:none and strips their
