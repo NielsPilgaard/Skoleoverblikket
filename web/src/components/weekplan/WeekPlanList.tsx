@@ -95,12 +95,12 @@ export function WeekPlanList({ generelt, slots, isHolidayWeek, holidayTitle }: W
                         <span className="text-sm font-medium text-gray-900">{s.courseName}</span>
                       </div>
                       {s.beskrivelse && (
-                        <div className="mt-1 text-xs text-gray-600 ml-18 prose prose-xs max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
+                        <div className="mt-1 text-xs text-gray-600 ml-16 prose prose-xs max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
                           <Markdown>{s.beskrivelse}</Markdown>
                         </div>
                       )}
                       {s.lektier && (
-                        <div className="mt-1 text-xs text-blue-700 ml-18 prose prose-xs max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
+                        <div className="mt-1 text-xs text-blue-700 ml-16 prose prose-xs max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
                           <span className="font-medium">Lektier: </span>
                           <Markdown>{s.lektier}</Markdown>
                         </div>

@@ -202,16 +202,19 @@ export default function UgeplanPrintPage() {
           </div>
         )}
 
-        {/* Compact header repeated above the table — lands on page 2 when
-            Generelt forced a page break, harmless single line otherwise. */}
-        <div className="print-header print-header-repeat">
-          <div>
-            <h1 className="print-title">{className ? `${className} – Ugeplan` : 'Ugeplan'}</h1>
-            <p className="print-subtitle">
-              Uge {isoWeek}, {isoYear}
-            </p>
+        {/* Compact header repeated above the table — only when Generelt forced a
+            page break, so it lands on page 2. Without Generelt it would just be a
+            duplicate title/week on page 1. */}
+        {hasGenerelt && (
+          <div className="print-header print-header-repeat">
+            <div>
+              <h1 className="print-title">{className ? `${className} – Ugeplan` : 'Ugeplan'}</h1>
+              <p className="print-subtitle">
+                Uge {isoWeek}, {isoYear}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {slots.length === 0 ? (
           <p className="print-empty">

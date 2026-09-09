@@ -470,11 +470,12 @@ function GenereltEditor({
   const [text, setText] = useState(value ?? '')
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
 
-  // A save that resolves after the user has kept typing must not have its
-  // (older) result pushed back into the textarea. While a save is in flight we
-  // stop syncing the incoming `value`, and once it resolves we only adopt a
-  // server value that isn't just the stale echo of what we already saved.
+  // True from the moment a blur queues a save until that save settles. While set
+  // we stop syncing the incoming `value` into the textarea, so a refetch that
+  // lands mid-save can't push a stale server value over what the user is typing.
   const pendingSaveRef = useRef(false)
+  // Only advanced once a PUT has actually confirmed a value. If a save fails,
+  // this keeps the last server-confirmed text so an unchanged retry still fires.
   const lastSavedRef = useRef(value ?? '')
 
   useEffect(() => {
@@ -490,30 +491,19 @@ function GenereltEditor({
     query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
   })
 
+  // Serialize saves: each blur chains onto the previous save's promise so two
+  // overlapping PUTs can never let an older response land after a newer one and
+  // overwrite the newer `generelt`. A monotonic counter identifies the newest
+  // save so only its result updates cache/status.
+  const saveChainRef = useRef<Promise<unknown>>(Promise.resolve())
+  const saveSeqRef = useRef(0)
+
   // Was the value this save submitted still the current editor text when it
   // resolved? If the user has since typed on, an earlier save landing must not
   // overwrite the newer local edit or stamp its outcome onto it.
   const isCurrentEdit = (submitted: string | null | undefined) => (submitted ?? '') === (text || '')
 
-  const mutation = useMutation({
-    ...putApiV1ClassesByClassIdUgeplanGenereltMutation(),
-    onSuccess: (result, variables) => {
-      pendingSaveRef.current = false
-      if (!isCurrentEdit(variables.body?.generelt)) {
-        return
-      }
-      qc.setQueryData(ugeplanQueryKey, (old: WeekPlanDto | undefined) =>
-        old ? { ...old, generelt: result.generelt ?? null } : old
-      )
-      setSaveStatus('saved')
-    },
-    onError: (_err, variables) => {
-      pendingSaveRef.current = false
-      if (isCurrentEdit(variables.body?.generelt)) {
-        setSaveStatus('error')
-      }
-    },
-  })
+  const { mutationFn } = putApiV1ClassesByClassIdUgeplanGenereltMutation()
 
   function handleChange(next: string) {
     setText(next)
@@ -523,14 +513,45 @@ function GenereltEditor({
   function handleBlur() {
     const normalized = text || null
     if (normalized === (lastSavedRef.current || null)) return
+
+    const submitted = text
+    const seq = ++saveSeqRef.current
     pendingSaveRef.current = true
-    lastSavedRef.current = text
     setSaveStatus('saving')
-    mutation.mutate({
-      path: { classId },
-      query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
-      body: { generelt: normalized },
-    })
+
+    saveChainRef.current = saveChainRef.current
+      .catch(() => {})
+      .then(async () => {
+        // A newer blur superseded this one before it started — skip the request.
+        if (seq !== saveSeqRef.current) return
+        try {
+          const result = await mutationFn!(
+            {
+              path: { classId },
+              query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
+              body: { generelt: normalized },
+            },
+            undefined as never
+          )
+          lastSavedRef.current = submitted
+          if (seq === saveSeqRef.current) {
+            pendingSaveRef.current = false
+            if (isCurrentEdit(normalized)) {
+              qc.setQueryData(ugeplanQueryKey, (old: WeekPlanDto | undefined) =>
+                old ? { ...old, generelt: result.generelt ?? null } : old
+              )
+              setSaveStatus('saved')
+            }
+          }
+        } catch {
+          if (seq === saveSeqRef.current) {
+            pendingSaveRef.current = false
+            if (isCurrentEdit(normalized)) {
+              setSaveStatus('error')
+            }
+          }
+        }
+      })
   }
 
   return (

@@ -146,6 +146,12 @@ public sealed class FileUploadService(
 			{
 				await storage.DeleteAsync(file.StorageKey, cancellationToken);
 			}
+			catch (OperationCanceledException)
+			{
+				// A cancelled request must abort — not fall through to the caller
+				// removing DB rows for files whose storage objects still exist.
+				throw;
+			}
 			catch (Exception ex)
 			{
 				warnings.Add($"Filen '{file.FileName}' kunne ikke slettes fra lageret: {ex.Message}");

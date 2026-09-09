@@ -42,7 +42,7 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 	public record UpdateSfoGenereltRequest(
 		[Required] int IsoYear,
 		[Required] int IsoWeek,
-		[StringLength(8000)] string? Generelt);
+		[property: StringLength(8000)] string? Generelt);
 
 	public record GenereltDto(string? Generelt);
 

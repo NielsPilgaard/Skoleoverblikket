@@ -75,6 +75,9 @@ function SfoGenereltEditor({
   // server value that isn't just the stale echo of what we already saved.
   const pendingSaveRef = useRef(false)
   const lastSavedRef = useRef(value ?? '')
+  // The value confirmed by the server before the in-flight save, so onError can
+  // undo handleBlur's optimistic advance of lastSavedRef.
+  const prevSavedRef = useRef(value ?? '')
 
   useEffect(() => {
     if (pendingSaveRef.current) return
@@ -83,6 +86,7 @@ function SfoGenereltEditor({
     // has since edited further — that edit is the newer state.
     if (incoming === lastSavedRef.current && text !== incoming) return
     lastSavedRef.current = incoming
+    prevSavedRef.current = incoming
     setText(incoming)
   }, [value, text])
 
@@ -95,6 +99,7 @@ function SfoGenereltEditor({
     ...putApiV1SfoUgeplanGenereltMutation(),
     onSuccess: (_data, variables) => {
       pendingSaveRef.current = false
+      prevSavedRef.current = lastSavedRef.current
       void qc.invalidateQueries({
         queryKey: getApiV1SfoUgeplanQueryKey({ query: { isoYear, isoWeek } }),
       })
@@ -104,6 +109,10 @@ function SfoGenereltEditor({
     },
     onError: (_err, variables) => {
       pendingSaveRef.current = false
+      // handleBlur optimistically moved lastSavedRef to the value it just tried
+      // to save. That save failed, so roll it back to the last confirmed value —
+      // otherwise an unchanged retry blur short-circuits and never re-fires.
+      lastSavedRef.current = prevSavedRef.current
       if (isCurrentEdit(variables.body?.generelt ?? null)) {
         setSaveStatus('error')
       }
@@ -119,6 +128,7 @@ function SfoGenereltEditor({
     const normalized = text || null
     if (normalized === (lastSavedRef.current || null)) return
     pendingSaveRef.current = true
+    prevSavedRef.current = lastSavedRef.current
     lastSavedRef.current = text
     setSaveStatus('saving')
     mutation.mutate({ body: { isoYear, isoWeek, generelt: normalized } })

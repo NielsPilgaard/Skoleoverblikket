@@ -25,6 +25,11 @@ public static class ElmahIoStartupExtensions
 			options.ApiKey = apiKey;
 			options.LogId = logId;
 		});
+		// ExceptionHandlerMiddleware logs every unhandled exception at Error level, and
+		// UseElmahIo() already reports those same exceptions. Drop this category from the
+		// elmah.io logger provider so we don't get a duplicate entry per unhandled exception.
+		builder.Logging.AddFilter<ElmahIoLoggerProvider>(
+			"Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware", LogLevel.None);
 		builder.Logging.AddFilter<ElmahIoLoggerProvider>(null, LogLevel.Error);
 
 		return builder;

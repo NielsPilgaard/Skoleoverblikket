@@ -64,7 +64,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 
 	public record AddFileToSlotRequest(Guid SchoolFileId);
 
-	public record UpdateGenereltRequest([StringLength(8000)] string? Generelt);
+	public record UpdateGenereltRequest([property: StringLength(8000)] string? Generelt);
 
 	public record GenereltDto(string? Generelt);
 
