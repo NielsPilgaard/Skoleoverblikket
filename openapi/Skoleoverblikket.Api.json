@@ -11294,6 +11294,8 @@
             "format": "int32"
           },
           "generelt": {
+            "maxLength": 8000,
+            "minLength": 0,
             "type": "string",
             "nullable": true
           }
@@ -12695,6 +12697,8 @@
         "type": "object",
         "properties": {
           "generelt": {
+            "maxLength": 8000,
+            "minLength": 0,
             "type": "string",
             "nullable": true
           }
