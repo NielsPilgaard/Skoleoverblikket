@@ -20,6 +20,13 @@ public static class ElmahIoStartupExtensions
 			options.OnFilter = (error) => error.Severity != "Error" && error.Severity != "Fatal";
 		});
 
+		builder.Logging.AddElmahIo(options =>
+		{
+			options.ApiKey = apiKey;
+			options.LogId = logId;
+		});
+		builder.Logging.AddFilter<ElmahIoLoggerProvider>(null, LogLevel.Error);
+
 		return builder;
 	}
 
