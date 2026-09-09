@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Modal } from '../components/Modal'
 import { MarkdownTextarea, type SaveStatus } from '../components/markdown/MarkdownTextarea'
 import { Markdown } from '../components/markdown/Markdown'
+import { WeekPlanList } from '../components/weekplan/WeekPlanList'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -565,6 +566,7 @@ export default function WeekPlanPage() {
   const [isoWeek, setIsoWeek] = useState(() => getISOWeek(new Date()))
   const [editingSchemaSlotId, setEditingSchemaSlotId] = useState<string | null>(null)
   const [vikarSchemaSlotId, setVikarSchemaSlotId] = useState<string | null>(null)
+  const [showParentPreview, setShowParentPreview] = useState(false)
 
   function prevWeek() {
     if (isoWeek === 1) {
@@ -949,6 +951,33 @@ export default function WeekPlanPage() {
               Klasser.
             </div>
           )}
+
+        {/* Parent-view preview */}
+        {!isLoading && weekPlanData && (
+          <div className="border-t border-gray-200 px-4 lg:px-6 py-3">
+            <button
+              type="button"
+              onClick={() => setShowParentPreview((v) => !v)}
+              className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              data-testid="parent-preview-toggle"
+            >
+              <span className={`transition-transform ${showParentPreview ? 'rotate-90' : ''}`}>
+                ▶
+              </span>
+              Se som forældre ser det
+            </button>
+            {showParentPreview && (
+              <div className="mt-3 max-w-2xl" data-testid="parent-preview">
+                <WeekPlanList
+                  generelt={weekPlanData.generelt}
+                  slots={weekPlanData.slots}
+                  isHolidayWeek={weekPlanData.isHolidayWeek}
+                  holidayTitle={weekPlanData.holidayTitle}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Edit modal */}
