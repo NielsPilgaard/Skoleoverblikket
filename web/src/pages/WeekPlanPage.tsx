@@ -751,28 +751,28 @@ export default function WeekPlanPage() {
         </div>
       </div>
 
-      {/* Generelt for ugen */}
-      {classId && (
-        <GenereltEditor
-          classId={classId}
-          isoYear={isoYear}
-          isoWeek={isoWeek}
-          schemaId={schemaId}
-          value={weekPlanData?.generelt ?? null}
-        />
-      )}
-
-      {/* Holiday banner */}
-      {weekPlanData?.isHolidayWeek && (
-        <div className="shrink-0 bg-blue-50 border-b border-blue-200 px-4 lg:px-6 py-2">
-          <span className="text-blue-700 text-sm font-medium">
-            Feriuge — {weekPlanData.holidayTitle}
-          </span>
-        </div>
-      )}
-
       {/* Grid area */}
       <div className="flex-1 overflow-y-auto">
+        {/* Generelt for ugen */}
+        {classId && (
+          <GenereltEditor
+            classId={classId}
+            isoYear={isoYear}
+            isoWeek={isoWeek}
+            schemaId={schemaId}
+            value={weekPlanData?.generelt ?? null}
+          />
+        )}
+
+        {/* Holiday banner */}
+        {weekPlanData?.isHolidayWeek && (
+          <div className="shrink-0 bg-blue-50 border-b border-blue-200 px-4 lg:px-6 py-2">
+            <span className="text-blue-700 text-sm font-medium">
+              Feriuge — {weekPlanData.holidayTitle}
+            </span>
+          </div>
+        )}
+
         {isLoading && (
           <div className="p-8 text-center text-gray-400 text-sm animate-pulse">
             Henter ugeplan...

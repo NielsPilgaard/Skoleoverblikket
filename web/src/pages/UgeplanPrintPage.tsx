@@ -148,7 +148,6 @@ export default function UgeplanPrintPage() {
         .print-td-time { text-align: right; background: #f9fafb; white-space: nowrap; width: 52px; }
         .print-td-time .print-td-inner { padding: 4px 6px 4px 4px; }
         .print-time { display: block; font-weight: 600; font-size: 11px; color: #374151; }
-        .print-time-end { display: block; font-size: 10px; color: #9ca3af; }
         .print-cell { display: flex; flex-direction: column; gap: 1px; }
         .print-course { font-weight: 600; color: #111827; font-size: 11px; }
         .print-swap { font-size: 10px; color: #6b7280; font-style: italic; }
@@ -235,8 +234,7 @@ export default function UgeplanPrintPage() {
                 <tr key={ts.startTime}>
                   <td className="print-td print-td-time">
                     <div className="print-td-inner">
-                      <span className="print-time">{ts.startTime}</span>
-                      <span className="print-time-end">{ts.endTime}</span>
+                      <span className="print-time">{ts.startTime.slice(0, 5)}</span>
                     </div>
                   </td>
                   {WEEKDAY_KEYS.map((day) => {

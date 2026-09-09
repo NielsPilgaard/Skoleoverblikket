@@ -4,6 +4,7 @@ import { WEEKDAY_KEYS, weekdayLabel } from '../../lib/weekdays'
 
 export interface WeekPlanListSlot {
   id: string
+  schemaSlotId: string
   weekday: string
   startTime: string
   courseName: string
@@ -83,7 +84,10 @@ export function WeekPlanList({ generelt, slots, isHolidayWeek, holidayTitle }: W
               {isOpen && (
                 <div className="p-2 space-y-1.5 bg-white">
                   {daySlots.map((s) => (
-                    <div key={s.id} className="bg-white border border-gray-100 rounded-lg px-3 py-2">
+                    <div
+                      key={s.schemaSlotId}
+                      className="bg-white border border-gray-100 rounded-lg px-3 py-2"
+                    >
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-400 w-16 shrink-0">
                           {s.startTime.slice(0, 5)}

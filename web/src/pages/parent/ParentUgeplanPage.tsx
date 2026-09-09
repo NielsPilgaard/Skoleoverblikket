@@ -29,6 +29,7 @@ function getISOWeeksInYear(year: number): number {
 
 interface Slot {
   id: string
+  schemaSlotId: string
   weekday: string
   timeSlotLabel: string
   startTime: string
