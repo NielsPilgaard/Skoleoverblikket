@@ -78,6 +78,7 @@ export default function UgeplanPrintPage() {
 
   const slots = (weekPlan?.slots ?? []) as SlotRow[]
   const generelt = (weekPlan as { generelt?: string | null } | undefined)?.generelt
+  const hasGenerelt = Boolean(generelt?.trim())
 
   // Build time axis from unique startTime values
   const timeAxis = [
@@ -196,7 +197,7 @@ export default function UgeplanPrintPage() {
           <p className="print-date">Udskrevet {new Date().toLocaleDateString('da-DK')}</p>
         </div>
 
-        {generelt && (
+        {hasGenerelt && (
           <div className="print-generelt print-generelt-page">
             <Markdown>{generelt}</Markdown>
           </div>

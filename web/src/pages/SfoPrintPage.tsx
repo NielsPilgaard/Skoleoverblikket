@@ -43,6 +43,7 @@ export default function SfoPrintPage() {
 
   const shifts: SfoWeekPlanShiftDto[] = (weekPlan?.shifts ?? []) as SfoWeekPlanShiftDto[]
   const generelt = (weekPlan as { generelt?: string | null } | undefined)?.generelt
+  const hasGenerelt = Boolean(generelt?.trim())
 
   useEffect(() => {
     if (!isLoading) {
@@ -143,7 +144,7 @@ export default function SfoPrintPage() {
       .print-generelt ul, .print-generelt ol { margin: 2px 0; padding-left: 18px; }
       .print-generelt-page { break-after: page; page-break-after: always; }
     `}</style>
-      <div className={`print-page${generelt ? ' has-generelt' : ''}`}>
+      <div className={`print-page${hasGenerelt ? ' has-generelt' : ''}`}>
         <div className="print-header">
           <div>
             <h1 className="print-title">SFO Ugeplan</h1>
@@ -154,7 +155,7 @@ export default function SfoPrintPage() {
           <p className="print-date">Udskrevet {new Date().toLocaleDateString('da-DK')}</p>
         </div>
 
-        {generelt && (
+        {hasGenerelt && (
           <div className="print-generelt print-generelt-page">
             <Markdown>{generelt}</Markdown>
           </div>
