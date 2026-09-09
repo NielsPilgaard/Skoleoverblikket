@@ -1,20 +1,10 @@
 import { useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-
-const MD_ALLOWED: string[] = ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br']
 import { useQuery } from '@tanstack/react-query'
 import { getApiV1ClassesByClassIdUgeplanOptions } from '../../api/generated/@tanstack/react-query.gen'
 import { getApiV1ParentsMe } from '../../api/generated/sdk.gen'
 import type { ParentMeDto } from '../../api/client'
 import { usePageTitle } from '../../hooks/usePageTitle'
-
-const WEEKDAYS_DA: Record<string, string> = {
-  Monday: 'Mandag',
-  Tuesday: 'Tirsdag',
-  Wednesday: 'Onsdag',
-  Thursday: 'Torsdag',
-  Friday: 'Fredag',
-}
+import { WeekPlanList } from '../../components/weekplan/WeekPlanList'
 
 function getISOWeek(date: Date): number {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
@@ -39,6 +29,7 @@ function getISOWeeksInYear(year: number): number {
 
 interface Slot {
   id: string
+  schemaSlotId: string
   weekday: string
   timeSlotLabel: string
   startTime: string
@@ -66,73 +57,24 @@ function ClassWeekPlan({
   if (isError) return <div className="text-sm text-red-500">Fejl ved hentning af ugeplan.</div>
 
   const plan = data as
-    | { isHolidayWeek?: boolean; holidayTitle?: string | null; slots?: Slot[] }
+    | {
+        isHolidayWeek?: boolean
+        holidayTitle?: string | null
+        slots?: Slot[]
+        generelt?: string | null
+      }
     | undefined
   if (!plan) return null
-
-  if (plan.isHolidayWeek) {
-    return (
-      <div>
-        <h2 className="text-base font-semibold text-gray-900 mb-2">{className}</h2>
-        <div className="p-3 bg-blue-50 text-blue-700 text-sm rounded-lg">
-          {plan.holidayTitle ?? 'Ferie'}
-        </div>
-      </div>
-    )
-  }
-
-  const slots = plan.slots ?? []
-  const byDay = slots.reduce<Record<string, Slot[]>>((acc, s) => {
-    const day = s.weekday ?? 'Monday'
-    if (!acc[day]) acc[day] = []
-    acc[day].push(s)
-    return acc
-  }, {})
-
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
   return (
     <div>
       <h2 className="text-base font-semibold text-gray-900 mb-3">{className}</h2>
-      <div className="space-y-3">
-        {days.map((day) => {
-          const daySlots = byDay[day] ?? []
-          if (daySlots.length === 0) return null
-          return (
-            <div key={day}>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                {WEEKDAYS_DA[day] ?? day}
-              </h3>
-              <div className="space-y-1.5">
-                {daySlots.map((s) => (
-                  <div key={s.id} className="bg-white border border-gray-100 rounded-lg px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 w-16 shrink-0">{s.startTime}</span>
-                      <span className="text-sm font-medium text-gray-900">{s.courseName}</span>
-                    </div>
-                    {s.beskrivelse && (
-                      <div className="mt-1 text-xs text-gray-600 ml-18 prose prose-xs max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
-                        <ReactMarkdown allowedElements={MD_ALLOWED} unwrapDisallowed>
-                          {s.beskrivelse}
-                        </ReactMarkdown>
-                      </div>
-                    )}
-                    {s.lektier && (
-                      <div className="mt-1 text-xs text-amber-700 ml-18 prose prose-xs max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
-                        <span className="font-medium">Lektier: </span>
-                        <ReactMarkdown allowedElements={MD_ALLOWED} unwrapDisallowed>
-                          {s.lektier}
-                        </ReactMarkdown>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
-        })}
-        {slots.length === 0 && <p className="text-sm text-gray-400">Ingen lektioner denne uge.</p>}
-      </div>
+      <WeekPlanList
+        generelt={plan.generelt}
+        slots={plan.slots ?? []}
+        isHolidayWeek={plan.isHolidayWeek}
+        holidayTitle={plan.holidayTitle}
+      />
     </div>
   )
 }

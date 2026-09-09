@@ -23,6 +23,8 @@
   <ItemGroup>
     <PackageReference Include="AWSSDK.S3" Version="4.0.22.1" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="Elmah.Io.AspNetCore" Version="5.3.88" />
+    <PackageReference Include="Elmah.Io.Extensions.Logging" Version="5.4.75" />
     <PackageReference Include="MailKit" Version="4.16.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.7" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.7" />

@@ -24,6 +24,10 @@
 #   Stripe_ModulePriceIds_BoardModule_Monthly   — Stripe Price ID, BoardModule, monthly
 #   Stripe_ModulePriceIds_BoardModule_Yearly    — Stripe Price ID, BoardModule, yearly
 #
+# Optional error logging (elmah.io) — omit both to disable:
+#   ElmahIo_ApiKey               — elmah.io API key
+#   ElmahIo_LogId                — elmah.io log ID (GUID)
+#
 # Optional overrides:
 #   API_IMAGE                — defaults to ghcr.io/nielspilgaard/skoleoverblikket-api:latest
 #   WEB_IMAGE                — defaults to ghcr.io/nielspilgaard/skoleoverblikket-web:latest
@@ -119,6 +123,8 @@ services:
       Stripe__ModulePriceIds__ParentModule__Yearly: ${Stripe_ModulePriceIds_ParentModule_Yearly}
       Stripe__ModulePriceIds__BoardModule__Monthly: ${Stripe_ModulePriceIds_BoardModule_Monthly}
       Stripe__ModulePriceIds__BoardModule__Yearly: ${Stripe_ModulePriceIds_BoardModule_Yearly}
+      ElmahIo__ApiKey: ${ElmahIo_ApiKey:-}
+      ElmahIo__LogId: ${ElmahIo_LogId:-}
     healthcheck:
       test:
         [

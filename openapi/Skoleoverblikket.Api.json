@@ -5357,6 +5357,54 @@
         }
       }
     },
+    "/api/v1/sfo/ugeplan/generelt": {
+      "put": {
+        "tags": [
+          "SfoWeekPlan"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoGenereltRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoGenereltRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoGenereltRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SfoWeekPlanController_GenereltDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SfoWeekPlanController_GenereltDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SfoWeekPlanController_GenereltDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/sfo/ugeplan/shifts": {
       "put": {
         "tags": [
@@ -7697,6 +7745,81 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WeekPlanController_WeekPlanSlotDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/classes/{classId}/ugeplan/generelt": {
+      "put": {
+        "tags": [
+          "WeekPlan"
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "isoYear",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "isoWeek",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeekPlanController_UpdateGenereltRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeekPlanController_UpdateGenereltRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeekPlanController_UpdateGenereltRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekPlanController_GenereltDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekPlanController_GenereltDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekPlanController_GenereltDto"
                 }
               }
             }
@@ -11050,6 +11173,16 @@
         },
         "additionalProperties": false
       },
+      "SfoWeekPlanController_GenereltDto": {
+        "type": "object",
+        "properties": {
+          "generelt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SfoWeekPlanController_SfoStaffRefDto": {
         "required": [
           "id",
@@ -11092,6 +11225,10 @@
             "items": {
               "$ref": "#/components/schemas/SfoWeekPlanController_SfoWeekPlanShiftDto"
             }
+          },
+          "generelt": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -11135,6 +11272,30 @@
             }
           },
           "beskrivelse": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SfoWeekPlanController_UpdateSfoGenereltRequest": {
+        "required": [
+          "isoWeek",
+          "isoYear"
+        ],
+        "type": "object",
+        "properties": {
+          "isoYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isoWeek": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "generelt": {
+            "maxLength": 8000,
+            "minLength": 0,
             "type": "string",
             "nullable": true
           }
@@ -12506,6 +12667,16 @@
         },
         "additionalProperties": false
       },
+      "WeekPlanController_GenereltDto": {
+        "type": "object",
+        "properties": {
+          "generelt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "WeekPlanController_HolidayDayDto": {
         "required": [
           "title",
@@ -12518,6 +12689,18 @@
           },
           "title": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WeekPlanController_UpdateGenereltRequest": {
+        "type": "object",
+        "properties": {
+          "generelt": {
+            "maxLength": 8000,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -12608,6 +12791,10 @@
             "items": {
               "$ref": "#/components/schemas/WeekPlanController_WeekPlanSlotDto"
             }
+          },
+          "generelt": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

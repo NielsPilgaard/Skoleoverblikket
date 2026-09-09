@@ -14,6 +14,7 @@ public static class ServicesExtensions
 		services.AddScoped<BoardMemberInvitationService>();
 		services.AddScoped<ExcelReportBuilder>();
 		services.AddScoped<SubscriptionService>();
+		services.AddScoped<FileUploadService>();
 		services.AddScoped<INotificationService, NotificationService>();
 		services.AddSingleton<UvmTimetableService>();
 

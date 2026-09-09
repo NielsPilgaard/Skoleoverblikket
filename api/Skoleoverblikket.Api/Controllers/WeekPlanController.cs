@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -52,7 +53,8 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 		string? HolidayTitle,
 		IReadOnlyList<HolidayDayDto> HolidayDays,
 		IReadOnlyList<BreakTimeSlotDto> BreakSlots,
-		IReadOnlyList<WeekPlanSlotDto> Slots);
+		IReadOnlyList<WeekPlanSlotDto> Slots,
+		string? Generelt);
 
 	public record UpsertWeekPlanSlotRequest(
 		Guid SchemaSlotId,
@@ -61,6 +63,10 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 		Guid? FagSwapCourseId);
 
 	public record AddFileToSlotRequest(Guid SchoolFileId);
+
+	public record UpdateGenereltRequest([property: StringLength(8000)] string? Generelt);
+
+	public record GenereltDto(string? Generelt);
 
 	[HttpGet]
 	public async Task<ActionResult<WeekPlanDto>> GetWeekPlan(
@@ -119,9 +125,13 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 
 		if (activeSchema is null)
 		{
+			var weekPlanNoSchema = await db.WeekPlans
+				.AsNoTracking()
+				.FirstOrDefaultAsync(w => w.ClassId == classId && w.IsoYear == isoYear.Value && w.IsoWeek == isoWeek.Value, cancellationToken);
+
 			return Ok(new WeekPlanDto(
-				Guid.Empty, classId, isoYear.Value, isoWeek.Value,
-				weekStart, weekEnd, isHolidayWeek, holidayTitle, holidayDays, [], []));
+				weekPlanNoSchema?.Id ?? Guid.Empty, classId, isoYear.Value, isoWeek.Value,
+				weekStart, weekEnd, isHolidayWeek, holidayTitle, holidayDays, [], [], weekPlanNoSchema?.Generelt));
 		}
 
 		var schemaSlots = await db.SchemaSlots
@@ -200,7 +210,8 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			HolidayTitle: holidayTitle,
 			HolidayDays: holidayDays,
 			BreakSlots: breakSlots,
-			Slots: slotDtos));
+			Slots: slotDtos,
+			Generelt: weekPlan?.Generelt));
 	}
 
 	[HttpPut("slots")]
@@ -333,6 +344,70 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			SubstituteAideName: slot.SubstituteAide?.Name,
 			WeekPlanId: weekPlan.Id
 		));
+	}
+
+	[HttpPut("generelt")]
+	public async Task<ActionResult<GenereltDto>> UpdateGenerelt(
+		Guid classId,
+		[FromQuery] int? isoYear,
+		[FromQuery] int? isoWeek,
+		[FromBody] UpdateGenereltRequest req,
+		CancellationToken cancellationToken)
+	{
+		if (isoYear is null || isoWeek is null)
+		{
+			return Problem("isoYear og isoWeek er påkrævet", statusCode: 400);
+		}
+
+		if (!IsoWeekValidation.IsValid(isoYear.Value, isoWeek.Value))
+		{
+			return Problem("Ugyldigt årstal eller ugenummer", statusCode: 400);
+		}
+
+		var klass = await db.Classes.FirstOrDefaultAsync(c => c.Id == classId, cancellationToken);
+		if (klass is null)
+		{
+			return NotFound();
+		}
+
+		var authResult = await authz.AuthorizeAsync(User, (classId, Guid.Empty), Policies.EditWeekPlan);
+		if (!authResult.Succeeded)
+		{
+			return Forbid();
+		}
+
+		var weekPlan = await db.WeekPlans
+			.FirstOrDefaultAsync(w => w.ClassId == classId && w.IsoYear == isoYear.Value && w.IsoWeek == isoWeek.Value, cancellationToken);
+
+		if (weekPlan is null)
+		{
+			weekPlan = new WeekPlan
+			{
+				Id = Guid.NewGuid(),
+				TenantId = tenant.TenantId,
+				ClassId = classId,
+				IsoYear = isoYear.Value,
+				IsoWeek = isoWeek.Value,
+			};
+			db.WeekPlans.Add(weekPlan);
+
+			try
+			{
+				await db.SaveChangesAsync(cancellationToken);
+			}
+			catch (DbUpdateException)
+			{
+				// A concurrent request created the same class/week WeekPlan; reload and reuse it.
+				db.ChangeTracker.Clear();
+				weekPlan = await db.WeekPlans
+					.FirstAsync(w => w.ClassId == classId && w.IsoYear == isoYear.Value && w.IsoWeek == isoWeek.Value, cancellationToken);
+			}
+		}
+
+		weekPlan.Generelt = req.Generelt;
+		await db.SaveChangesAsync(cancellationToken);
+
+		return Ok(new GenereltDto(weekPlan.Generelt));
 	}
 
 	[HttpPost("slots/{slotId:guid}/files")]

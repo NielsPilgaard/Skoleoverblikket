@@ -7,6 +7,7 @@ import {
   getApiV1ClassesOptions,
 } from '../api/generated/@tanstack/react-query.gen'
 import { getISOWeek, getISOWeekYear } from '../utils/isoWeek'
+import { Markdown } from '../components/markdown/Markdown'
 
 const WEEKDAYS = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag']
 const WEEKDAY_KEYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
@@ -76,6 +77,8 @@ export default function UgeplanPrintPage() {
   }
 
   const slots = (weekPlan?.slots ?? []) as SlotRow[]
+  const generelt = (weekPlan as { generelt?: string | null } | undefined)?.generelt
+  const hasGenerelt = Boolean(generelt?.trim())
 
   // Build time axis from unique startTime values
   const timeAxis = [
@@ -118,6 +121,12 @@ export default function UgeplanPrintPage() {
           padding-bottom: 8px;
           border-bottom: 2px solid #2563eb;
         }
+        .print-header-repeat {
+          margin-bottom: 8px;
+          padding-bottom: 5px;
+          border-bottom: 1px solid #d1d5db;
+        }
+        .print-header-repeat .print-title { font-size: 13px; }
         .print-title { font-size: 16px; font-weight: 700; color: #111827; margin: 0; }
         .print-subtitle { font-size: 11px; color: #6b7280; margin: 1px 0 0; }
         .print-date { font-size: 11px; color: #9ca3af; margin: 0; }
@@ -139,12 +148,19 @@ export default function UgeplanPrintPage() {
         .print-td-time { text-align: right; background: #f9fafb; white-space: nowrap; width: 52px; }
         .print-td-time .print-td-inner { padding: 4px 6px 4px 4px; }
         .print-time { display: block; font-weight: 600; font-size: 11px; color: #374151; }
-        .print-time-end { display: block; font-size: 10px; color: #9ca3af; }
         .print-cell { display: flex; flex-direction: column; gap: 1px; }
         .print-course { font-weight: 600; color: #111827; font-size: 11px; }
         .print-swap { font-size: 10px; color: #6b7280; font-style: italic; }
-        .print-beskrivelse { font-size: 10px; color: #374151; white-space: pre-wrap; }
-        .print-lektier { font-size: 10px; color: #2563eb; white-space: pre-wrap; }
+        .print-beskrivelse { font-size: 10px; color: #374151; }
+        .print-lektier { font-size: 10px; color: #2563eb; }
+        .print-generelt { font-size: 11px; color: #374151; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; margin-bottom: 10px; }
+        .print-generelt p { margin: 0 0 4px; }
+        .print-generelt p:last-child { margin-bottom: 0; }
+        .print-generelt ul, .print-generelt ol { margin: 2px 0; padding-left: 18px; }
+        .print-beskrivelse p, .print-lektier p { margin: 0; }
+        .print-beskrivelse ul, .print-beskrivelse ol,
+        .print-lektier ul, .print-lektier ol { margin: 1px 0; padding-left: 14px; }
+        .print-generelt-page { break-after: page; page-break-after: always; }
         .print-empty { text-align: center; color: #9ca3af; margin-top: 32px; font-size: 13px; }
         .no-print-bar {
           position: fixed; top: 0; right: 0; left: 0;
@@ -180,6 +196,26 @@ export default function UgeplanPrintPage() {
           <p className="print-date">Udskrevet {new Date().toLocaleDateString('da-DK')}</p>
         </div>
 
+        {hasGenerelt && (
+          <div className="print-generelt print-generelt-page">
+            <Markdown>{generelt}</Markdown>
+          </div>
+        )}
+
+        {/* Compact header repeated above the table — only when Generelt forced a
+            page break, so it lands on page 2. Without Generelt it would just be a
+            duplicate title/week on page 1. */}
+        {hasGenerelt && (
+          <div className="print-header print-header-repeat">
+            <div>
+              <h1 className="print-title">{className ? `${className} – Ugeplan` : 'Ugeplan'}</h1>
+              <p className="print-subtitle">
+                Uge {isoWeek}, {isoYear}
+              </p>
+            </div>
+          </div>
+        )}
+
         {slots.length === 0 ? (
           <p className="print-empty">
             Ingen lektioner for uge {isoWeek}, {isoYear}
@@ -201,8 +237,7 @@ export default function UgeplanPrintPage() {
                 <tr key={ts.startTime}>
                   <td className="print-td print-td-time">
                     <div className="print-td-inner">
-                      <span className="print-time">{ts.startTime}</span>
-                      <span className="print-time-end">{ts.endTime}</span>
+                      <span className="print-time">{ts.startTime.slice(0, 5)}</span>
                     </div>
                   </td>
                   {WEEKDAY_KEYS.map((day) => {
@@ -218,10 +253,15 @@ export default function UgeplanPrintPage() {
                                   <span className="print-swap">↔ {slot.originalCourseName}</span>
                                 )}
                               {slot.beskrivelse && (
-                                <span className="print-beskrivelse">{slot.beskrivelse}</span>
+                                <div className="print-beskrivelse">
+                                  <Markdown>{slot.beskrivelse}</Markdown>
+                                </div>
                               )}
                               {slot.lektier && (
-                                <span className="print-lektier">Lektier: {slot.lektier}</span>
+                                <div className="print-lektier">
+                                  <strong>Lektier:</strong>
+                                  <Markdown>{slot.lektier}</Markdown>
+                                </div>
                               )}
                             </div>
                           ))}

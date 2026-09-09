@@ -1940,3 +1940,28 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260902141356_AddWeekPlanGenerelt') THEN
+    ALTER TABLE "WeekPlans" ADD "Generelt" character varying(8000);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260902141356_AddWeekPlanGenerelt') THEN
+    ALTER TABLE "SfoWeekPlans" ADD "Generelt" character varying(8000);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260902141356_AddWeekPlanGenerelt') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260902141356_AddWeekPlanGenerelt', '10.0.7');
+    END IF;
+END $EF$;
+COMMIT;
+

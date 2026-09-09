@@ -2,11 +2,12 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Skoleoverblikket.Api.Data;
+using Skoleoverblikket.Api.Storage;
 
 namespace Skoleoverblikket.Api.Models;
 
 /// <summary>Fil — a file uploaded by staff or admin, optionally linked to a course.</summary>
-public sealed class SchoolFile : ITenantScoped, IEntityTypeConfiguration<SchoolFile>
+public sealed class SchoolFile : ITenantScoped, IStoredFile, IEntityTypeConfiguration<SchoolFile>
 {
 	public Guid Id { get; set; }
 	public Guid TenantId { get; set; }

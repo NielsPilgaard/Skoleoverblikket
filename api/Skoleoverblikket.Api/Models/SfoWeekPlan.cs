@@ -11,6 +11,10 @@ public sealed class SfoWeekPlan : ITenantScoped, IEntityTypeConfiguration<SfoWee
 	public Guid TenantId { get; set; }
 	public int IsoYear { get; set; }
 	public int IsoWeek { get; set; }
+
+	[StringLength(8000)]
+	public string? Generelt { get; set; }
+
 	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 	public ICollection<SfoWeekPlanShift> Shifts { get; set; } = [];
 

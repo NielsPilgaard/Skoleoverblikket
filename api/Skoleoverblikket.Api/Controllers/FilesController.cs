@@ -1,16 +1,11 @@
 using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
+using Skoleoverblikket.Api.Auth;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Models;
-using Skoleoverblikket.Api.Storage;
-using Skoleoverblikket.Api.Auth;
+using Skoleoverblikket.Api.Services;
 using Skoleoverblikket.Api.Tenancy;
 
 namespace Skoleoverblikket.Api.Controllers;
@@ -21,17 +16,8 @@ namespace Skoleoverblikket.Api.Controllers;
 public sealed class FilesController(
 	AppDbContext db,
 	ITenantContext tenant,
-	IObjectStorage storage,
-	IHttpContextAccessor http,
-	IOptions<S3Options> s3Options) : ControllerBase
+	FileUploadService uploads) : ControllerBase
 {
-	// 100 GB for Basis tier
-	private const long QuotaBytes = 100L * 1024 * 1024 * 1024;
-	private const long MaxFileSizeBytes = 500L * 1024 * 1024; // 500 MB per file
-	private static readonly TimeSpan PresignExpiry = TimeSpan.FromMinutes(60);
-
-	private static IReadOnlyDictionary<string, string> ExtensionMimeTypes => FileExtensions.MimeTypes;
-
 	public record FileDto(
 		Guid Id,
 		string FileName,
@@ -149,7 +135,7 @@ public sealed class FilesController(
 		[FromBody] PresignRequest req,
 		CancellationToken cancellationToken)
 	{
-		if (req.FileSizeBytes > MaxFileSizeBytes)
+		if (req.FileSizeBytes > FileUploadService.MaxFileSizeBytes)
 		{
 			return ValidationProblem(new ValidationProblemDetails
 			{
@@ -157,10 +143,8 @@ public sealed class FilesController(
 			});
 		}
 
-		var ext = Path.GetExtension(req.FileName).ToLowerInvariant();
-
-		var usedBytes = await db.SchoolFiles.SumAsync(f => (long?)f.SizeBytes ?? 0, cancellationToken);
-		if (usedBytes + req.FileSizeBytes > QuotaBytes)
+		var usedBytes = await uploads.GetUsedBytesAsync<SchoolFile>(cancellationToken);
+		if (FileUploadService.WouldExceedQuota(usedBytes, req.FileSizeBytes))
 		{
 			return ValidationProblem(new ValidationProblemDetails
 			{
@@ -193,15 +177,12 @@ public sealed class FilesController(
 		}
 
 		var fileId = Guid.NewGuid();
-		var contentType = ExtensionMimeTypes.GetValueOrDefault(ext, "application/octet-stream");
+		var ext = FileUploadService.ExtensionOf(req.FileName);
+		var contentType = FileUploadService.ResolveContentType(req.FileName);
 		var key = $"files/{tenant.TenantId}/{fileId}{ext}";
 
-		var (uploadUrl, publicUrl) = await storage.GeneratePresignedUploadUrlAsync(
-			key, contentType, req.FileSizeBytes, PresignExpiry, cancellationToken);
-
-		var uploaderName = http.HttpContext?.User.FindFirstValue("name")
-			?? http.HttpContext?.User.FindFirstValue("preferred_username")
-			?? "Ukendt";
+		var (uploadUrl, publicUrl) = await uploads.GeneratePresignedUploadAsync(
+			key, contentType, req.FileSizeBytes, cancellationToken);
 
 		var tokenPayload = new ConfirmTokenPayload(
 			fileId,
@@ -213,10 +194,10 @@ public sealed class FilesController(
 			publicUrl,
 			req.CourseId,
 			req.FolderId,
-			uploaderName,
-			DateTimeOffset.UtcNow.Add(PresignExpiry).ToUnixTimeSeconds());
+			uploads.ResolveUploaderName(),
+			FileUploadService.PresignExpiresAt());
 
-		var confirmToken = SignToken(tokenPayload, GetSigningKey());
+		var confirmToken = uploads.SignToken(tokenPayload);
 
 		return Ok(new PresignResponse(fileId, uploadUrl, confirmToken, contentType));
 	}
@@ -228,8 +209,7 @@ public sealed class FilesController(
 		[FromBody] ConfirmRequest req,
 		CancellationToken cancellationToken)
 	{
-		var signingKey = GetSigningKey();
-		if (!TryVerifyToken(req.ConfirmToken, signingKey, out var payload) || payload is null)
+		if (!uploads.TryVerifyToken<ConfirmTokenPayload>(req.ConfirmToken, out var payload) || payload is null)
 		{
 			return BadRequest(new ProblemDetails { Title = "Ugyldigt bekræftelsestoken." });
 		}
@@ -306,7 +286,7 @@ public sealed class FilesController(
 		db.SchoolFiles.Remove(file);
 		await db.SaveChangesAsync(cancellationToken);
 
-		await storage.DeleteAsync(file.StorageKey, cancellationToken);
+		await uploads.DeleteFromStorageAsync(file.StorageKey, cancellationToken);
 		return NoContent();
 	}
 
@@ -403,49 +383,19 @@ public sealed class FilesController(
 			return NotFound();
 		}
 
-		var warnings = new List<string>();
-
-		var allFolderIds = await CollectDescendantFolderIdsAsync(id, cancellationToken);
-		allFolderIds.Add(id);
+		var allFolderIds = await uploads.CollectFolderAndDescendantIdsAsync<SchoolFileFolder>(id, cancellationToken);
 
 		var files = await db.SchoolFiles
 			.Where(f => f.FolderId != null && allFolderIds.Contains(f.FolderId.Value))
 			.ToListAsync(cancellationToken);
 
-		foreach (var file in files)
-		{
-			try
-			{
-				await storage.DeleteAsync(file.StorageKey, cancellationToken);
-			}
-			catch (Exception ex)
-			{
-				warnings.Add($"Filen '{file.FileName}' kunne ikke slettes fra lageret: {ex.Message}");
-			}
-		}
+		var warnings = await uploads.DeleteFilesFromStorageAsync(files, cancellationToken);
 
 		db.SchoolFiles.RemoveRange(files);
 		db.SchoolFileFolders.Remove(folder);
 		await db.SaveChangesAsync(cancellationToken);
 
 		return Ok(new DeleteFolderResponse(warnings));
-	}
-
-	private async Task<List<Guid>> CollectDescendantFolderIdsAsync(Guid parentId, CancellationToken cancellationToken)
-	{
-		var result = new List<Guid>();
-		var children = await db.SchoolFileFolders
-			.Where(f => f.ParentId == parentId)
-			.Select(f => f.Id)
-			.ToListAsync(cancellationToken);
-
-		foreach (var childId in children)
-		{
-			result.Add(childId);
-			result.AddRange(await CollectDescendantFolderIdsAsync(childId, cancellationToken));
-		}
-
-		return result;
 	}
 
 	private record ConfirmTokenPayload(
@@ -460,49 +410,6 @@ public sealed class FilesController(
 		Guid? FolderId,
 		string UploadedBy,
 		long ExpiresAt);
-
-	private string GetSigningKey() => s3Options.Value.PresignedUploadSigningKey;
-
-	private static string SignToken(ConfirmTokenPayload payload, string signingKey)
-	{
-		var json = JsonSerializer.Serialize(payload);
-		var jsonBytes = Encoding.UTF8.GetBytes(json);
-		var keyBytes = Encoding.UTF8.GetBytes(signingKey);
-
-		var sig = HMACSHA256.HashData(keyBytes, jsonBytes);
-
-		return Convert.ToBase64String(jsonBytes) + "." + Convert.ToBase64String(sig);
-	}
-
-	private static bool TryVerifyToken(string token, string signingKey, out ConfirmTokenPayload? payload)
-	{
-		payload = null;
-		var parts = token.Split('.');
-		if (parts.Length != 2)
-		{
-			return false;
-		}
-
-		try
-		{
-			var jsonBytes = Convert.FromBase64String(parts[0]);
-			var sig = Convert.FromBase64String(parts[1]);
-			var keyBytes = Encoding.UTF8.GetBytes(signingKey);
-
-			var expected = HMACSHA256.HashData(keyBytes, jsonBytes);
-			if (!CryptographicOperations.FixedTimeEquals(sig, expected))
-			{
-				return false;
-			}
-
-			payload = JsonSerializer.Deserialize<ConfirmTokenPayload>(jsonBytes);
-			return payload is not null;
-		}
-		catch
-		{
-			return false;
-		}
-	}
 
 	private static FileDto ToDto(SchoolFile f) =>
 		new(f.Id, f.FileName, f.ContentType, f.SizeBytes, f.Url,

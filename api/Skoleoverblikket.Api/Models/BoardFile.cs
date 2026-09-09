@@ -2,10 +2,11 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Skoleoverblikket.Api.Data;
+using Skoleoverblikket.Api.Storage;
 
 namespace Skoleoverblikket.Api.Models;
 
-public sealed class BoardFile : ITenantScoped, IEntityTypeConfiguration<BoardFile>
+public sealed class BoardFile : ITenantScoped, IStoredFile, IEntityTypeConfiguration<BoardFile>
 {
 	public Guid Id { get; set; }
 	public Guid TenantId { get; set; }

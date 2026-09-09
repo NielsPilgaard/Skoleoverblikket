@@ -4,6 +4,7 @@ using Skoleoverblikket.Api.Auth;
 using Skoleoverblikket.Api.Cache;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Email;
+using Skoleoverblikket.Api.Observability;
 using Skoleoverblikket.Api.OpenApi;
 using Skoleoverblikket.Api.Services;
 using Skoleoverblikket.Api.Storage;
@@ -35,6 +36,8 @@ builder.Services.AddStripe();
 builder.Services.AddDomainServices();
 builder.Services.AddApiRateLimiting();
 
+builder.AddElmahIoErrorLogging();
+
 var app = builder.Build();
 
 app.UseSwaggerInDevelopment();
@@ -43,6 +46,9 @@ app.UseExceptionHandler();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseElmahIoErrorLogging();
+
 app.MapControllers();
 app.MapDefaultEndpoints();
 

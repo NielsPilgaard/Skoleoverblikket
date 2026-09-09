@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Skoleoverblikket.Api.Data;
@@ -12,6 +13,10 @@ public sealed class WeekPlan : ITenantScoped, IEntityTypeConfiguration<WeekPlan>
 	public Class Class { get; set; } = null!;
 	public int IsoYear { get; set; }   // ISO year (distinct from calendar year for weeks 52/53)
 	public int IsoWeek { get; set; }   // 1–53
+
+	[StringLength(8000)]
+	public string? Generelt { get; set; }
+
 	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 	public ICollection<WeekPlanSlot> Slots { get; set; } = [];
 

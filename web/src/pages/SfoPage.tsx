@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import ReactMarkdown from 'react-markdown'
-
-const MD_ALLOWED: string[] = ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br']
 import { Modal } from '../components/Modal'
+import { MarkdownTextarea, type SaveStatus } from '../components/markdown/MarkdownTextarea'
+import { Markdown } from '../components/markdown/Markdown'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -17,6 +16,7 @@ import {
   getApiV1SfoUgeplanOptions,
   getApiV1SfoUgeplanQueryKey,
   putApiV1SfoUgeplanShiftsMutation,
+  putApiV1SfoUgeplanGenereltMutation,
 } from '../api/generated/@tanstack/react-query.gen'
 import type { SfoShiftDto, SfoWeekPlanShiftDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
@@ -55,6 +55,105 @@ const emptyForm = (): ShiftForm => ({
   endTime: '08:00',
   label: '',
 })
+
+function SfoGenereltEditor({
+  isoYear,
+  isoWeek,
+  value,
+}: {
+  isoYear: number
+  isoWeek: number
+  value: string | null | undefined
+}) {
+  const qc = useQueryClient()
+  const [text, setText] = useState(value ?? '')
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+
+  // A save that resolves after the user has kept typing must not have its
+  // (older) result pushed back into the textarea. While a save is in flight we
+  // stop syncing the incoming `value`, and once it resolves we only adopt a
+  // server value that isn't just the stale echo of what we already saved.
+  const pendingSaveRef = useRef(false)
+  const lastSavedRef = useRef(value ?? '')
+  // The value confirmed by the server before the in-flight save, so onError can
+  // undo handleBlur's optimistic advance of lastSavedRef.
+  const prevSavedRef = useRef(value ?? '')
+
+  useEffect(() => {
+    if (pendingSaveRef.current) return
+    const incoming = value ?? ''
+    // Ignore a refetch that only echoes the value we last saved while the user
+    // has since edited further — that edit is the newer state.
+    if (incoming === lastSavedRef.current && text !== incoming) return
+    lastSavedRef.current = incoming
+    prevSavedRef.current = incoming
+    setText(incoming)
+  }, [value, text])
+
+  // Was the value this save submitted still the current editor text when it
+  // resolved? If the user has since typed on, an earlier save landing must not
+  // stamp its outcome onto the newer, unsaved edit.
+  const isCurrentEdit = (submitted: string | null) => (submitted ?? '') === (text || '')
+
+  const mutation = useMutation({
+    ...putApiV1SfoUgeplanGenereltMutation(),
+    onSuccess: (_data, variables) => {
+      pendingSaveRef.current = false
+      prevSavedRef.current = lastSavedRef.current
+      void qc.invalidateQueries({
+        queryKey: getApiV1SfoUgeplanQueryKey({ query: { isoYear, isoWeek } }),
+      })
+      if (isCurrentEdit(variables.body?.generelt ?? null)) {
+        setSaveStatus('saved')
+      }
+    },
+    onError: (_err, variables) => {
+      pendingSaveRef.current = false
+      // handleBlur optimistically moved lastSavedRef to the value it just tried
+      // to save. That save failed, so roll it back to the last confirmed value —
+      // otherwise an unchanged retry blur short-circuits and never re-fires.
+      lastSavedRef.current = prevSavedRef.current
+      if (isCurrentEdit(variables.body?.generelt ?? null)) {
+        setSaveStatus('error')
+      }
+    },
+  })
+
+  function handleChange(next: string) {
+    setText(next)
+    setSaveStatus('idle')
+  }
+
+  function handleBlur() {
+    const normalized = text || null
+    if (normalized === (lastSavedRef.current || null)) return
+    pendingSaveRef.current = true
+    prevSavedRef.current = lastSavedRef.current
+    lastSavedRef.current = text
+    setSaveStatus('saving')
+    mutation.mutate({ body: { isoYear, isoWeek, generelt: normalized } })
+  }
+
+  return (
+    <div className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+      <div className="max-w-5xl mx-auto">
+        <label className="block text-sm font-medium text-gray-700 mb-1">Generelt for ugen</label>
+        <MarkdownTextarea
+          value={text}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          rows={5}
+          maxLength={8000}
+          placeholder="Ture, huskeliste, kommende temaer…"
+          aria-label="Generelt for ugen"
+          data-testid="sfo-generelt-editor"
+          saveStatus={saveStatus}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+        />
+      </div>
+    </div>
+  )
+}
 
 export default function SfoPage() {
   usePageTitle('SFO vagtplan')
@@ -362,6 +461,8 @@ export default function SfoPage() {
         </div>
       </div>
 
+      <SfoGenereltEditor isoYear={isoYear} isoWeek={isoWeek} value={weekPlan?.generelt} />
+
       {/* Grid area */}
       <div className="p-4 sm:p-6 lg:p-8">
         {(shifts ?? []).length === 0 ? (
@@ -465,9 +566,7 @@ export default function SfoPage() {
                         <div className="flex-1 min-w-0 hidden sm:block">
                           {weekShift?.beskrivelse ? (
                             <div className="text-xs text-gray-600 line-clamp-4 prose prose-xs max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
-                              <ReactMarkdown allowedElements={MD_ALLOWED} unwrapDisallowed>
-                                {weekShift.beskrivelse}
-                              </ReactMarkdown>
+                              <Markdown>{weekShift.beskrivelse}</Markdown>
                             </div>
                           ) : (
                             <p className="text-xs text-gray-300 italic">Aktivitet…</p>
@@ -829,13 +928,15 @@ function CellModal({
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
             Aktivitet denne uge
           </p>
-          <textarea
+          <MarkdownTextarea
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={setText}
             onKeyDown={handleKeyDown}
             placeholder="Beskriv aktiviteter for denne vagt…"
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+            maxLength={8000}
+            aria-label="Aktivitet denne uge"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
           <p className="text-xs text-gray-400 mt-1">Ctrl+S for at gemme</p>
         </div>

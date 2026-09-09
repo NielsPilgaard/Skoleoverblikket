@@ -1,12 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react'
-import ReactMarkdown from 'react-markdown'
 import { Modal } from '../components/Modal'
+import { MarkdownTextarea, type SaveStatus } from '../components/markdown/MarkdownTextarea'
+import { Markdown } from '../components/markdown/Markdown'
+import { WeekPlanList } from '../components/weekplan/WeekPlanList'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getApiV1ClassesByClassIdUgeplanOptions,
   getApiV1ClassesByClassIdUgeplanQueryKey,
   putApiV1ClassesByClassIdUgeplanSlotsMutation,
+  putApiV1ClassesByClassIdUgeplanGenereltMutation,
   postApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesMutation,
   deleteApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesByFileIdMutation,
   getApiV1CoursesOptions,
@@ -73,6 +76,7 @@ interface WeekPlanDto {
   holidayDays: HolidayDayDto[]
   breakSlots: BreakTimeSlotDto[]
   slots: WeekPlanSlotDto[]
+  generelt: string | null
 }
 
 interface CourseDto {
@@ -165,7 +169,6 @@ interface EditSlotModalProps {
 }
 
 const AUTOSAVE_PREFIX = 'ugeplan_draft_'
-const MD_ALLOWED: string[] = ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br']
 
 function autosaveKey(schemaSlotId: string) {
   return `${AUTOSAVE_PREFIX}${schemaSlotId}`
@@ -328,24 +331,28 @@ function EditSlotModal({
       <div className="px-6 py-5 space-y-5">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Beskrivelse</label>
-          <textarea
+          <MarkdownTextarea
             autoFocus
             rows={5}
             value={beskrivelse}
-            onChange={(e) => setBeskrivelse(e.target.value)}
+            onChange={setBeskrivelse}
             placeholder="Hvad skal der ske i denne lektion?"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+            maxLength={8000}
+            aria-label="Beskrivelse"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-blue-700 mb-1">Lektier</label>
-          <textarea
+          <MarkdownTextarea
             rows={4}
             value={lektier}
-            onChange={(e) => setLektier(e.target.value)}
+            onChange={setLektier}
             placeholder="Opgaver til næste gang..."
-            className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none bg-blue-50/40"
+            maxLength={8000}
+            aria-label="Lektier"
+            className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-blue-50/40"
           />
         </div>
 
@@ -444,6 +451,128 @@ function EditSlotModal({
   )
 }
 
+// ─── Generelt block ───────────────────────────────────────────────────────────
+
+function GenereltEditor({
+  classId,
+  isoYear,
+  isoWeek,
+  schemaId,
+  value,
+}: {
+  classId: string
+  isoYear: number
+  isoWeek: number
+  schemaId: string | null
+  value: string | null
+}) {
+  const qc = useQueryClient()
+  const [text, setText] = useState(value ?? '')
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+
+  // True from the moment a blur queues a save until that save settles. While set
+  // we stop syncing the incoming `value` into the textarea, so a refetch that
+  // lands mid-save can't push a stale server value over what the user is typing.
+  const pendingSaveRef = useRef(false)
+  // Only advanced once a PUT has actually confirmed a value. If a save fails,
+  // this keeps the last server-confirmed text so an unchanged retry still fires.
+  const lastSavedRef = useRef(value ?? '')
+
+  useEffect(() => {
+    if (pendingSaveRef.current) return
+    const incoming = value ?? ''
+    if (incoming === lastSavedRef.current && text !== incoming) return
+    lastSavedRef.current = incoming
+    setText(incoming)
+  }, [value, text])
+
+  const ugeplanQueryKey = getApiV1ClassesByClassIdUgeplanQueryKey({
+    path: { classId },
+    query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
+  })
+
+  // Serialize saves: each blur chains onto the previous save's promise so two
+  // overlapping PUTs can never let an older response land after a newer one and
+  // overwrite the newer `generelt`. A monotonic counter identifies the newest
+  // save so only its result updates cache/status.
+  const saveChainRef = useRef<Promise<unknown>>(Promise.resolve())
+  const saveSeqRef = useRef(0)
+
+  // Was the value this save submitted still the current editor text when it
+  // resolved? If the user has since typed on, an earlier save landing must not
+  // overwrite the newer local edit or stamp its outcome onto it.
+  const isCurrentEdit = (submitted: string | null | undefined) => (submitted ?? '') === (text || '')
+
+  const { mutationFn } = putApiV1ClassesByClassIdUgeplanGenereltMutation()
+
+  function handleChange(next: string) {
+    setText(next)
+    setSaveStatus('idle')
+  }
+
+  function handleBlur() {
+    const normalized = text || null
+    if (normalized === (lastSavedRef.current || null)) return
+
+    const submitted = text
+    const seq = ++saveSeqRef.current
+    pendingSaveRef.current = true
+    setSaveStatus('saving')
+
+    saveChainRef.current = saveChainRef.current
+      .catch(() => {})
+      .then(async () => {
+        // A newer blur superseded this one before it started — skip the request.
+        if (seq !== saveSeqRef.current) return
+        try {
+          const result = await mutationFn!(
+            {
+              path: { classId },
+              query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
+              body: { generelt: normalized },
+            },
+            undefined as never
+          )
+          lastSavedRef.current = submitted
+          if (seq === saveSeqRef.current) {
+            pendingSaveRef.current = false
+            if (isCurrentEdit(normalized)) {
+              qc.setQueryData(ugeplanQueryKey, (old: WeekPlanDto | undefined) =>
+                old ? { ...old, generelt: result.generelt ?? null } : old
+              )
+              setSaveStatus('saved')
+            }
+          }
+        } catch {
+          if (seq === saveSeqRef.current) {
+            pendingSaveRef.current = false
+            if (isCurrentEdit(normalized)) {
+              setSaveStatus('error')
+            }
+          }
+        }
+      })
+  }
+
+  return (
+    <div className="shrink-0 px-4 lg:px-6 py-3 border-b border-gray-200">
+      <label className="block text-sm font-medium text-gray-700 mb-1">Generelt for ugen</label>
+      <MarkdownTextarea
+        value={text}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        rows={5}
+        maxLength={8000}
+        placeholder="Ture, huskeliste, kommende temaer…"
+        aria-label="Generelt for ugen"
+        data-testid="generelt-editor"
+        saveStatus={saveStatus}
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+      />
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function WeekPlanPage() {
@@ -458,6 +587,7 @@ export default function WeekPlanPage() {
   const [isoWeek, setIsoWeek] = useState(() => getISOWeek(new Date()))
   const [editingSchemaSlotId, setEditingSchemaSlotId] = useState<string | null>(null)
   const [vikarSchemaSlotId, setVikarSchemaSlotId] = useState<string | null>(null)
+  const [showParentPreview, setShowParentPreview] = useState(false)
 
   function prevWeek() {
     if (isoWeek === 1) {
@@ -642,17 +772,28 @@ export default function WeekPlanPage() {
         </div>
       </div>
 
-      {/* Holiday banner */}
-      {weekPlanData?.isHolidayWeek && (
-        <div className="shrink-0 bg-blue-50 border-b border-blue-200 px-4 lg:px-6 py-2">
-          <span className="text-blue-700 text-sm font-medium">
-            Feriuge — {weekPlanData.holidayTitle}
-          </span>
-        </div>
-      )}
-
       {/* Grid area */}
       <div className="flex-1 overflow-y-auto">
+        {/* Generelt for ugen */}
+        {classId && (
+          <GenereltEditor
+            classId={classId}
+            isoYear={isoYear}
+            isoWeek={isoWeek}
+            schemaId={schemaId}
+            value={weekPlanData?.generelt ?? null}
+          />
+        )}
+
+        {/* Holiday banner */}
+        {weekPlanData?.isHolidayWeek && (
+          <div className="shrink-0 bg-blue-50 border-b border-blue-200 px-4 lg:px-6 py-2">
+            <span className="text-blue-700 text-sm font-medium">
+              Feriuge — {weekPlanData.holidayTitle}
+            </span>
+          </div>
+        )}
+
         {isLoading && (
           <div className="p-8 text-center text-gray-400 text-sm animate-pulse">
             Henter ugeplan...
@@ -761,9 +902,7 @@ export default function WeekPlanPage() {
                         {/* Beskrivelse */}
                         {slot.beskrivelse && (
                           <div className="text-xs text-gray-700 line-clamp-3 mt-1 prose prose-xs max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
-                            <ReactMarkdown allowedElements={MD_ALLOWED} unwrapDisallowed>
-                              {slot.beskrivelse}
-                            </ReactMarkdown>
+                            <Markdown>{slot.beskrivelse}</Markdown>
                           </div>
                         )}
 
@@ -783,9 +922,7 @@ export default function WeekPlanPage() {
                               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
                             </svg>
                             <div className="text-xs text-blue-700 line-clamp-2 prose prose-xs max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
-                              <ReactMarkdown allowedElements={MD_ALLOWED} unwrapDisallowed>
-                                {slot.lektier!}
-                              </ReactMarkdown>
+                              <Markdown>{slot.lektier}</Markdown>
                             </div>
                           </div>
                         )}
@@ -835,6 +972,33 @@ export default function WeekPlanPage() {
               Klasser.
             </div>
           )}
+
+        {/* Parent-view preview */}
+        {!isLoading && weekPlanData && (
+          <div className="border-t border-gray-200 px-4 lg:px-6 py-3">
+            <button
+              type="button"
+              onClick={() => setShowParentPreview((v) => !v)}
+              className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              data-testid="parent-preview-toggle"
+            >
+              <span className={`transition-transform ${showParentPreview ? 'rotate-90' : ''}`}>
+                ▶
+              </span>
+              Se som forældre ser det
+            </button>
+            {showParentPreview && (
+              <div className="mt-3 max-w-2xl" data-testid="parent-preview">
+                <WeekPlanList
+                  generelt={weekPlanData.generelt}
+                  slots={weekPlanData.slots}
+                  isHolidayWeek={weekPlanData.isHolidayWeek}
+                  holidayTitle={weekPlanData.holidayTitle}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Edit modal */}

@@ -30,13 +30,21 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 		Guid Id,
 		int IsoYear,
 		int IsoWeek,
-		IReadOnlyList<SfoWeekPlanShiftDto> Shifts);
+		IReadOnlyList<SfoWeekPlanShiftDto> Shifts,
+		string? Generelt);
 
 	public record UpsertSfoWeekPlanShiftRequest(
 		[Required] int IsoYear,
 		[Required] int IsoWeek,
 		[Required] Guid SfoShiftId,
 		[StringLength(4000)] string? Beskrivelse);
+
+	public record UpdateSfoGenereltRequest(
+		[Required] int IsoYear,
+		[Required] int IsoWeek,
+		[property: StringLength(8000)] string? Generelt);
+
+	public record GenereltDto(string? Generelt);
 
 	[HttpGet]
 	public async Task<ActionResult<SfoWeekPlanDto>> Get(
@@ -83,7 +91,30 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 				weekShift?.Beskrivelse);
 		}).ToList();
 
-		return Ok(new SfoWeekPlanDto(weekPlanId, isoYear.Value, isoWeek.Value, shiftDtos));
+		return Ok(new SfoWeekPlanDto(weekPlanId, isoYear.Value, isoWeek.Value, shiftDtos, weekPlan?.Generelt));
+	}
+
+	[HttpPut("generelt")]
+	public async Task<ActionResult<GenereltDto>> UpdateGenerelt(
+		[FromBody] UpdateSfoGenereltRequest request,
+		CancellationToken cancellationToken)
+	{
+		if (!IsoWeekValidation.IsValid(request.IsoYear, request.IsoWeek))
+		{
+			return Problem("Ugyldigt årstal eller ugenummer", statusCode: 400);
+		}
+
+		var weekPlanId = await GetOrCreateWeekPlanId(request.IsoYear, request.IsoWeek, cancellationToken);
+		if (weekPlanId is null)
+		{
+			return Problem("Kunne ikke oprette ugeplan", statusCode: 500);
+		}
+
+		var weekPlan = await db.SfoWeekPlans.FirstAsync(w => w.Id == weekPlanId.Value, cancellationToken);
+		weekPlan.Generelt = request.Generelt;
+		await db.SaveChangesAsync(cancellationToken);
+
+		return Ok(new GenereltDto(weekPlan.Generelt));
 	}
 
 	[HttpPut("shifts")]

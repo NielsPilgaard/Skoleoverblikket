@@ -2,11 +2,12 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Skoleoverblikket.Api.Data;
+using Skoleoverblikket.Api.Storage;
 
 namespace Skoleoverblikket.Api.Models;
 
 /// <summary>Mappe — a folder that organises school files.</summary>
-public sealed class SchoolFileFolder : ITenantScoped, IEntityTypeConfiguration<SchoolFileFolder>
+public sealed class SchoolFileFolder : ITenantScoped, IFileFolder, IEntityTypeConfiguration<SchoolFileFolder>
 {
 	public Guid Id { get; set; }
 	public Guid TenantId { get; set; }

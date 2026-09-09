@@ -87,8 +87,7 @@ function PrintGrid({
             <tr key={ts.startTime}>
               <td className="print-td print-td-time">
                 <div className="print-td-inner">
-                  <span className="print-time">{ts.startTime}</span>
-                  <span className="print-time-end">{ts.endTime}</span>
+                  <span className="print-time">{ts.startTime.slice(0, 5)}</span>
                 </div>
               </td>
               {[1, 2, 3, 4, 5].map((day) => {
@@ -300,11 +299,6 @@ export default function PrintSchemaPage() {
           font-weight: 600;
           font-size: 11px;
           color: #374151;
-        }
-        .print-time-end {
-          display: block;
-          font-size: 10px;
-          color: #9ca3af;
         }
         .print-cell {
           display: flex;
