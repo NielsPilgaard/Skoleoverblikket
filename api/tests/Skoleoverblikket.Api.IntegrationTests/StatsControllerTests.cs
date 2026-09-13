@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Skoleoverblikket.Api.Controllers;
 using Skoleoverblikket.Api.Data;
@@ -192,14 +193,19 @@ public sealed class StatsControllerTests(ApiFactory factory)
 		using var scope = _factory.Services.CreateScope();
 		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-		var thread = new ContactThread
+		var thread = await db.ContactThreads
+			.FirstOrDefaultAsync(t => t.TenantId == tenantId && t.StudentId == studentId);
+		if (thread is null)
 		{
-			Id = Guid.NewGuid(),
-			TenantId = tenantId,
-			StudentId = studentId,
-		};
-		db.ContactThreads.Add(thread);
-		await db.SaveChangesAsync();
+			thread = new ContactThread
+			{
+				Id = Guid.NewGuid(),
+				TenantId = tenantId,
+				StudentId = studentId,
+			};
+			db.ContactThreads.Add(thread);
+			await db.SaveChangesAsync();
+		}
 
 		db.ContactMessages.Add(new ContactMessage
 		{

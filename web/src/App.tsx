@@ -123,10 +123,12 @@ function BoardRoute({ children }: { children: JSX.Element }) {
   return <>{children}</>
 }
 
-/** Staff-only (Teacher/Aide/Vikar) — admins, parents, board members and super admins land elsewhere. */
+/** Staff-only (Teacher/Aide/Vikar) — admins, parents, board members and default-mode super admins land elsewhere. */
 function StaffRoute({ children }: { children: JSX.Element }) {
-  const { isAdmin, isParent, isBoard, isSuperAdmin } = useAuth()
-  if (isAdmin || isParent || isBoard || isSuperAdmin) return <Navigate to="/" replace />
+  const { isAdmin, isParent, isBoard, isSuperAdmin, viewAs } = useAuth()
+  if (isAdmin || isParent || isBoard || (isSuperAdmin && viewAs === 'default')) {
+    return <Navigate to="/" replace />
+  }
   return <>{children}</>
 }
 

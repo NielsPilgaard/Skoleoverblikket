@@ -230,7 +230,7 @@ export default function KlassechatPage() {
 
   function handleSend() {
     const body = messageBody.trim()
-    if (!selectedClassId || !body) {
+    if (!selectedClassId || !body || sendMutation.isPending || uploading) {
       return
     }
     sendMutation.mutate({ classId: selectedClassId, body, attachmentIds: pending.map((a) => a.id) })

@@ -238,9 +238,15 @@ public sealed class ClassChatController(
 
 		var total = await query.CountAsync(cancellationToken);
 
+		var skip = (long)(page - 1) * pageSize;
+		if (skip > total)
+		{
+			skip = total;
+		}
+
 		var messages = await query
 			.OrderBy(m => m.SentAt)
-			.Skip((page - 1) * pageSize)
+			.Skip((int)skip)
 			.Take(pageSize)
 			.Select(m => new
 			{
@@ -544,6 +550,12 @@ public sealed class ClassChatController(
 		if (existing is not null)
 		{
 			return Ok(new ClassChatAttachmentDto(existing.Id, existing.FileName, existing.ContentType, existing.SizeBytes, existing.Url));
+		}
+
+		var uploadVerified = await uploads.VerifyUploadedObjectAsync(payload.StorageKey, payload.SizeBytes, cancellationToken);
+		if (!uploadVerified)
+		{
+			return BadRequest(new ProblemDetails { Title = "Filen kunne ikke bekræftes i lagerplads. Prøv at uploade igen." });
 		}
 
 		var attachment = new ClassChatAttachment
