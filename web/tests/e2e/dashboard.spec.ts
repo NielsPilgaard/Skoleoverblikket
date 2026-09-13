@@ -1,8 +1,30 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 // The shared storageState authenticates as an admin, so these cover the admin
 // dashboard. Staff-side coverage (landing on /mig/oversigt) lives in the API
 // integration tests, which can act as a non-admin staff principal directly.
+
+// page.request does not carry the Keycloak bearer token. Use page.evaluate so the
+// fetch runs inside the browser where window.__keycloak (exposed in dev mode) holds it.
+// Same pattern as invitation.spec.ts.
+async function apiFetch(
+  page: Page,
+  input: { url: string; method: string; body?: unknown },
+): Promise<{ ok: boolean; status: number; body: unknown }> {
+  return page.evaluate(async ({ url, method, body }) => {
+    const kc = (window as unknown as { __keycloak: { token: string; updateToken: (n: number) => Promise<boolean> } })
+      .__keycloak
+    await kc.updateToken(30)
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${kc.token}` },
+      body: body ? JSON.stringify(body) : undefined,
+    })
+    const text = await res.text()
+    return { ok: res.ok, status: res.status, body: text ? JSON.parse(text) : null }
+  }, input)
+}
+
 test.describe('Admin dashboard — quick actions and alerts', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/dashboard')
@@ -21,20 +43,51 @@ test.describe('Admin dashboard — quick actions and alerts', () => {
     await expect(page).toHaveURL(/\/medarbejdere$/)
   })
 
-  test('alerts render as tiles only when something needs attention', async ({ page }) => {
-    // Tiles are omitted at zero rather than rendered empty, so an untouched
-    // tenant shows no alerts block at all.
-    const alerts = page.getByTestId('dashboard-alerts')
+  test('an open vacation window renders as an alert tile', async ({ page }) => {
+    const title = `E2E ferieindmelding ${Date.now()}`
+    const today = new Date()
+    const iso = (d: Date) => d.toISOString().slice(0, 10)
+    const deadline = new Date(today)
+    deadline.setDate(deadline.getDate() + 7)
+    const start = new Date(today)
+    start.setDate(start.getDate() + 30)
+    const end = new Date(today)
+    end.setDate(end.getDate() + 37)
 
-    if ((await alerts.count()) === 0) {
-      await expect(alerts).toHaveCount(0)
-      return
+    const created = await apiFetch(page, {
+      url: '/api/v1/vacation-registration',
+      method: 'POST',
+      body: {
+        title,
+        registrationDeadline: iso(deadline),
+        careStartDate: iso(start),
+        careEndDate: iso(end),
+        granularity: 'Weeks',
+        isOpen: true,
+      },
+    })
+    expect(created.ok, `Create vacation window failed: ${created.status}`).toBeTruthy()
+
+    try {
+      await page.goto('/dashboard')
+      const tile = page.getByTestId('alert-vacation-window')
+      await expect(tile).toBeVisible({ timeout: 15_000 })
+      await expect(tile).toContainText(title)
+    } finally {
+      const windows = await apiFetch(page, { url: '/api/v1/vacation-registration', method: 'GET' })
+      const match = (windows.body as { id: string; title: string }[] | null)?.find((w) => w.title === title)
+      if (match) {
+        await apiFetch(page, { url: `/api/v1/vacation-registration/${match.id}`, method: 'DELETE' })
+      }
     }
+  })
 
-    await expect(alerts).toBeVisible()
-    const tiles = alerts.getByRole('link')
-    await expect(tiles.first()).toBeVisible()
-    expect(await tiles.count()).toBeGreaterThan(0)
+  test('vacation window alert tile is absent when no window is open', async ({ page }) => {
+    const windows = await apiFetch(page, { url: '/api/v1/vacation-registration', method: 'GET' })
+    const openWindows = (windows.body as { id: string; isOpen: boolean }[] | null)?.filter((w) => w.isOpen) ?? []
+    test.skip(openWindows.length > 0, 'Tenant currently has an open vacation window — not a clean baseline')
+
+    await expect(page.getByTestId('alert-vacation-window')).toHaveCount(0)
   })
 
   test('sidebar Oversigt link points at the admin dashboard', async ({ page }) => {
