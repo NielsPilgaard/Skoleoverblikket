@@ -5,6 +5,7 @@ import {
   getApiV1SchoolsOnboardingStatusOptions,
 } from '../api/generated/@tanstack/react-query.gen'
 import type { StaffRole, OnboardingStatusDto } from '../api/client'
+import type { StatsControllerDashboardStats } from '../api/generated/types.gen'
 import { usePageTitle } from '../hooks/usePageTitle'
 
 function OnboardingCard({ status }: { status: OnboardingStatusDto }) {
@@ -75,6 +76,220 @@ function OnboardingCard({ status }: { status: OnboardingStatusDto }) {
         >
           Fortsæt opsætning
         </Link>
+      </div>
+    </div>
+  )
+}
+
+function AlertTile({
+  to,
+  label,
+  detail,
+  testId,
+}: {
+  to: string
+  label: string
+  detail: string
+  testId: string
+}) {
+  return (
+    <Link
+      to={to}
+      data-testid={testId}
+      className="flex items-start gap-3 bg-amber-50 rounded-xl border border-amber-200 px-5 py-4 hover:bg-amber-100/70 transition-colors"
+    >
+      <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-100 text-amber-700 shrink-0">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-amber-900">{label}</span>
+        <span className="block text-sm text-amber-700">{detail}</span>
+      </span>
+    </Link>
+  )
+}
+
+/**
+ * Attention alerts — each tile is omitted entirely when its count is zero,
+ * so a school with nothing outstanding sees no section at all.
+ */
+function AlertsSection({ data }: { data: StatsControllerDashboardStats }) {
+  const pendingAbsence = data.pendingAbsenceCount ?? 0
+  const vacationWindow = data.openVacationWindow
+  const unreadMessages = data.unreadMessageCount ?? 0
+  const unreadKontaktbog = data.unreadKontaktbogCount ?? 0
+
+  const hasAny =
+    pendingAbsence > 0 || !!vacationWindow || unreadMessages > 0 || unreadKontaktbog > 0
+
+  if (!hasAny) return null
+
+  const deadline = vacationWindow
+    ? new Intl.DateTimeFormat('da-DK', {
+        day: 'numeric',
+        month: 'long',
+      }).format(new Date(vacationWindow.registrationDeadline))
+    : null
+
+  return (
+    <div className="space-y-3" data-testid="dashboard-alerts">
+      <h2 className="text-sm font-semibold text-gray-700">Kræver din opmærksomhed</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {pendingAbsence > 0 && (
+          <AlertTile
+            to="/fravaer"
+            testId="alert-pending-absence"
+            label="Fravær afventer godkendelse"
+            detail={`${pendingAbsence} ${pendingAbsence === 1 ? 'melding' : 'meldinger'}`}
+          />
+        )}
+        {vacationWindow && (
+          <AlertTile
+            to={`/ferieindmelding/${vacationWindow.windowId}`}
+            testId="alert-vacation-window"
+            label={vacationWindow.title}
+            detail={`Frist ${deadline} · ${vacationWindow.entryCount} svar`}
+          />
+        )}
+        {unreadMessages > 0 && (
+          <AlertTile
+            to="/beskeder"
+            testId="alert-unread-messages"
+            label="Ulæste beskeder"
+            detail={`${unreadMessages} ${unreadMessages === 1 ? 'besked' : 'beskeder'}`}
+          />
+        )}
+        {unreadKontaktbog > 0 && (
+          <AlertTile
+            to="/kontaktbog"
+            testId="alert-unread-kontaktbog"
+            label="Ulæste i kontaktbogen"
+            detail={`${unreadKontaktbog} ${unreadKontaktbog === 1 ? 'besked' : 'beskeder'}`}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+const quickActions = [
+  {
+    to: '/klasser',
+    label: 'Klasser',
+    hint: 'Opret skema',
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      </svg>
+    ),
+  },
+  {
+    to: '/medarbejdere',
+    label: 'Medarbejdere',
+    hint: 'Tilføj og rediger',
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+    ),
+  },
+  {
+    to: '/kalender',
+    label: 'Kalender',
+    hint: 'Ferier og events',
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="3" y="4" width="18" height="18" rx="2" />
+        <line x1="16" y1="2" x2="16" y2="6" />
+        <line x1="8" y1="2" x2="8" y2="6" />
+        <line x1="3" y1="10" x2="21" y2="10" />
+      </svg>
+    ),
+  },
+  {
+    to: '/import',
+    label: 'Importer data',
+    hint: 'Elever og forældre',
+    icon: (
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
+      </svg>
+    ),
+  },
+]
+
+function QuickActionsGrid() {
+  return (
+    <div className="space-y-3" data-testid="dashboard-quick-actions">
+      <h2 className="text-sm font-semibold text-gray-700">Genveje</h2>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {quickActions.map((action) => (
+          <Link
+            key={action.to}
+            to={action.to}
+            className="flex flex-col gap-2 bg-white rounded-xl border border-gray-200 px-5 py-4 hover:border-brand-300 hover:bg-brand-50/40 transition-colors"
+          >
+            <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-50 text-brand-600">
+              {action.icon}
+            </span>
+            <span className="text-sm font-medium text-gray-800">{action.label}</span>
+            <span className="text-sm text-gray-500">{action.hint}</span>
+          </Link>
+        ))}
       </div>
     </div>
   )
@@ -163,6 +378,12 @@ export default function DashboardPage() {
       {/* Onboarding progress */}
       {onboarding && <OnboardingCard status={onboarding} />}
 
+      {/* Attention alerts — hidden entirely when nothing needs action */}
+      {!isLoading && data && <AlertsSection data={data} />}
+
+      {/* Quick actions — always shown, not data-dependent */}
+      <QuickActionsGrid />
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
@@ -223,10 +444,10 @@ export default function DashboardPage() {
                 <tbody className="divide-y divide-gray-50">
                   {[...(data?.hoursPerStaff ?? [])]
                     .sort((a, b) =>
-                      new Intl.Collator('da', { numeric: true, sensitivity: 'base' }).compare(
-                        a.staffName ?? '',
-                        b.staffName ?? ''
-                      )
+                      new Intl.Collator('da', {
+                        numeric: true,
+                        sensitivity: 'base',
+                      }).compare(a.staffName ?? '', b.staffName ?? '')
                     )
                     .map((s) => (
                       <tr key={s.staffId} className="hover:bg-gray-50 transition-colors">
@@ -289,10 +510,10 @@ export default function DashboardPage() {
                 <tbody className="divide-y divide-gray-50">
                   {[...(data?.unassignedClasses ?? [])]
                     .sort((a, b) =>
-                      new Intl.Collator('da', { numeric: true, sensitivity: 'base' }).compare(
-                        a.className ?? '',
-                        b.className ?? ''
-                      )
+                      new Intl.Collator('da', {
+                        numeric: true,
+                        sensitivity: 'base',
+                      }).compare(a.className ?? '', b.className ?? '')
                     )
                     .map((c) => (
                       <tr key={c.classId} className="hover:bg-gray-50 transition-colors">

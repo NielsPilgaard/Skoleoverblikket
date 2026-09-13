@@ -23,6 +23,7 @@ const PrivatlivspolitikPage = lazy(() => import('./pages/PrivatlivspolitikPage')
 // Lazy load all other pages
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const MySchedulePage = lazy(() => import('./pages/MySchedulePage'))
+const StaffDashboardPage = lazy(() => import('./pages/StaffDashboardPage'))
 const ClassesPage = lazy(() => import('./pages/ClassesPage'))
 const SchemaBuilderPage = lazy(() => import('./pages/SchemaBuilderPage'))
 const StaffPage = lazy(() => import('./pages/StaffPage'))
@@ -61,6 +62,7 @@ const ParentDirectoryPage = lazy(() => import('./pages/ParentDirectoryPage'))
 const ParentFravaerPage = lazy(() => import('./pages/parent/ParentFravaerPage'))
 const FravaerPage = lazy(() => import('./pages/FravaerPage'))
 const NotificationPreferencesPage = lazy(() => import('./pages/NotificationPreferencesPage'))
+const KlassechatPage = lazy(() => import('./pages/KlassechatPage'))
 const KontaktbogPage = lazy(() => import('./pages/KontaktbogPage'))
 const ParentKontaktbogPage = lazy(() => import('./pages/parent/ParentKontaktbogPage'))
 const BeskederPage = lazy(() => import('./pages/BeskederPage'))
@@ -89,20 +91,22 @@ function HomeRedirect() {
     if (isSuperAdmin && viewAs === 'default') return <Navigate to="/backoffice" replace />
     if (isParent) return <Navigate to="/foraeldrevisning/skema" replace />
     if (isBoard) return <Navigate to="/bestyrelse/oversigt" replace />
-    return <Navigate to={isAdmin ? '/dashboard' : '/mig/skema'} replace />
+    return <Navigate to={isAdmin ? '/dashboard' : '/mig/oversigt'} replace />
   }
   return <LandingPage />
 }
 
 function AdminRoute({ children }: { children: JSX.Element }) {
   const { isAdmin } = useAuth()
-  if (!isAdmin) return <Navigate to="/mig/skema" replace />
+  if (!isAdmin) return <Navigate to="/mig/oversigt" replace />
   return <>{children}</>
 }
 
 function ParentRoute({ children }: { children: JSX.Element }) {
   const { isParent } = useAuth()
-  if (!isParent) return <Navigate to="/mig/skema" replace />
+  // Route through HomeRedirect — the caller may be staff or admin, and each
+  // resolves to a different landing page.
+  if (!isParent) return <Navigate to="/" replace />
   return <>{children}</>
 }
 
@@ -114,7 +118,17 @@ function SuperAdminRoute({ children }: { children: JSX.Element }) {
 
 function BoardRoute({ children }: { children: JSX.Element }) {
   const { isBoard } = useAuth()
-  if (!isBoard) return <Navigate to="/mig/skema" replace />
+  // Route through HomeRedirect — see ParentRoute.
+  if (!isBoard) return <Navigate to="/" replace />
+  return <>{children}</>
+}
+
+/** Staff-only (Teacher/Aide/Vikar) — admins, parents, board members and default-mode super admins land elsewhere. */
+function StaffRoute({ children }: { children: JSX.Element }) {
+  const { isAdmin, isParent, isBoard, isSuperAdmin, viewAs } = useAuth()
+  if (isAdmin || isParent || isBoard || (isSuperAdmin && viewAs === 'default')) {
+    return <Navigate to="/" replace />
+  }
   return <>{children}</>
 }
 
@@ -172,6 +186,14 @@ export default function App() {
                       <AdminRoute>
                         <DashboardPage />
                       </AdminRoute>
+                    }
+                  />
+                  <Route
+                    path="mig/oversigt"
+                    element={
+                      <StaffRoute>
+                        <StaffDashboardPage />
+                      </StaffRoute>
                     }
                   />
                   <Route path="mig/skema" element={<MySchedulePage />} />
@@ -308,6 +330,7 @@ export default function App() {
                     }
                   />
                   <Route path="fravaer" element={<FravaerPage />} />
+                  <Route path="klassechat" element={<KlassechatPage />} />
                   <Route path="kontaktbog" element={<KontaktbogPage />} />
                   <Route
                     path="foraeldrevisning/kontaktbog"

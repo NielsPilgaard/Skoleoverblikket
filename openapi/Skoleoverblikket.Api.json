@@ -1354,6 +1354,309 @@
         }
       }
     },
+    "/api/v1/class-chats": {
+      "get": {
+        "tags": [
+          "ClassChat"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClassChatController_ClassChatThreadDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClassChatController_ClassChatThreadDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClassChatController_ClassChatThreadDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/class-chats/{classId}/messages": {
+      "get": {
+        "tags": [
+          "ClassChat"
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 30
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_PagedResult`1"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_PagedResult`1"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_PagedResult`1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ClassChat"
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_PostMessageRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_PostMessageRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_PostMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_ClassChatMessageDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_ClassChatMessageDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_ClassChatMessageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/class-chats/{classId}/messages/{messageId}": {
+      "delete": {
+        "tags": [
+          "ClassChat"
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/class-chats/{classId}/attachments/presign": {
+      "post": {
+        "tags": [
+          "ClassChat"
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_PresignAttachmentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_PresignAttachmentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_PresignAttachmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_PresignAttachmentResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_PresignAttachmentResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_PresignAttachmentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/class-chats/{classId}/attachments/confirm": {
+      "post": {
+        "tags": [
+          "ClassChat"
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_ConfirmAttachmentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_ConfirmAttachmentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_ConfirmAttachmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_ClassChatAttachmentDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_ClassChatAttachmentDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_ClassChatAttachmentDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/classes": {
       "get": {
         "tags": [
@@ -6030,6 +6333,35 @@
         }
       }
     },
+    "/api/v1/stats/my-dashboard": {
+      "get": {
+        "tags": [
+          "Stats"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsController_MyDashboardStats"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsController_MyDashboardStats"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsController_MyDashboardStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stripe/webhook": {
       "post": {
         "tags": [
@@ -8545,6 +8877,228 @@
         ],
         "type": "string"
       },
+      "ClassChatController_ClassChatAttachmentDto": {
+        "required": [
+          "contentType",
+          "fileName",
+          "id",
+          "sizeBytes",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_ClassChatMessageDto": {
+        "required": [
+          "body",
+          "canDelete",
+          "id",
+          "senderId",
+          "senderName",
+          "senderType",
+          "sentAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "senderType": {
+            "$ref": "#/components/schemas/SenderType"
+          },
+          "senderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "senderName": {
+            "type": "string"
+          },
+          "senderAvatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "canDelete": {
+            "type": "boolean"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassChatController_ClassChatAttachmentDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_ClassChatThreadDto": {
+        "required": [
+          "classId",
+          "className",
+          "messageCount"
+        ],
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "gradeLevel": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lastMessageBody": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastMessageSenderName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastMessageSentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "messageCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_ConfirmAttachmentRequest": {
+        "required": [
+          "confirmToken"
+        ],
+        "type": "object",
+        "properties": {
+          "confirmToken": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_PagedResult`1": {
+        "required": [
+          "page",
+          "pageSize",
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassChatController_ClassChatMessageDto"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_PostMessageRequest": {
+        "required": [
+          "body"
+        ],
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "attachmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_PresignAttachmentRequest": {
+        "required": [
+          "fileName",
+          "fileSizeBytes"
+        ],
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string"
+          },
+          "fileSizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_PresignAttachmentResponse": {
+        "required": [
+          "attachmentId",
+          "confirmToken",
+          "contentType",
+          "uploadUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "attachmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uploadUrl": {
+            "type": "string"
+          },
+          "confirmToken": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "ClassPermissionsController_ClassPermissionDto": {
         "required": [
           "grantedAt",
@@ -10229,7 +10783,8 @@
           "AbsenceConfirmed",
           "AbsenceDismissed",
           "VacationRegistrationOpened",
-          "GroupMessage"
+          "GroupMessage",
+          "ClassChatMessage"
         ],
         "type": "string"
       },
@@ -11692,6 +12247,7 @@
         "required": [
           "classCount",
           "courseCount",
+          "pendingAbsenceCount",
           "roomCount",
           "schemasComplete",
           "schemasTotal",
@@ -11740,6 +12296,23 @@
             "items": {
               "$ref": "#/components/schemas/StatsController_UnassignedClass"
             }
+          },
+          "pendingAbsenceCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "openVacationWindow": {
+            "$ref": "#/components/schemas/StatsController_OpenVacationWindowDto"
+          },
+          "unreadMessageCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "unreadKontaktbogCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -11797,6 +12370,90 @@
           "hours": {
             "type": "number",
             "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StatsController_MyDashboardStats": {
+        "type": "object",
+        "properties": {
+          "todaySchedule": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatsController_TodayLektion"
+            }
+          },
+          "unreadMessageCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "unreadKontaktbogCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "StatsController_OpenVacationWindowDto": {
+        "required": [
+          "entryCount",
+          "registrationDeadline",
+          "title",
+          "windowId"
+        ],
+        "type": "object",
+        "properties": {
+          "windowId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "registrationDeadline": {
+            "type": "string",
+            "format": "date"
+          },
+          "entryCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StatsController_TodayLektion": {
+        "required": [
+          "className",
+          "courseName",
+          "endTime",
+          "slotId",
+          "startTime"
+        ],
+        "type": "object",
+        "properties": {
+          "slotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "courseName": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "roomName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -12956,6 +13613,9 @@
     },
     {
       "name": "Calendar"
+    },
+    {
+      "name": "ClassChat"
     },
     {
       "name": "Classes"

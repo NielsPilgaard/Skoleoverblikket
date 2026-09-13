@@ -16,6 +16,12 @@ public interface IObjectStorage
 	Task DeleteAsync(string key, CancellationToken cancellationToken = default);
 
 	/// <summary>
+	/// Returns the size in bytes of the object at <paramref name="key"/>, or null if it does not exist.
+	/// Used to verify a presigned client upload actually landed before trusting its metadata.
+	/// </summary>
+	Task<long?> GetObjectSizeAsync(string key, CancellationToken cancellationToken = default);
+
+	/// <summary>
 	/// Derives the storage key from a public URL previously returned by UploadPublicAsync.
 	/// Returns null if the URL does not belong to this storage backend.
 	/// </summary>

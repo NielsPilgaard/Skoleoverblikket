@@ -1965,3 +1965,80 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260909155347_Add_ClassChat') THEN
+    CREATE TABLE "ClassChatMessages" (
+        "Id" uuid NOT NULL,
+        "TenantId" uuid NOT NULL,
+        "ClassId" uuid NOT NULL,
+        "SenderType" integer NOT NULL,
+        "SenderId" uuid NOT NULL,
+        "Body" character varying(4000) NOT NULL,
+        "SentAt" timestamp with time zone NOT NULL,
+        "DeletedAt" timestamp with time zone,
+        CONSTRAINT "PK_ClassChatMessages" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_ClassChatMessages_Classes_ClassId" FOREIGN KEY ("ClassId") REFERENCES "Classes" ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260909155347_Add_ClassChat') THEN
+    CREATE TABLE "ClassChatAttachments" (
+        "Id" uuid NOT NULL,
+        "TenantId" uuid NOT NULL,
+        "MessageId" uuid,
+        "ClassId" uuid NOT NULL,
+        "FileName" character varying(500) NOT NULL,
+        "ContentType" character varying(200) NOT NULL,
+        "SizeBytes" bigint NOT NULL,
+        "StorageKey" character varying(1000) NOT NULL,
+        "Url" character varying(2000) NOT NULL,
+        "UploadedAt" timestamp with time zone NOT NULL DEFAULT (now()),
+        CONSTRAINT "PK_ClassChatAttachments" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_ClassChatAttachments_ClassChatMessages_MessageId" FOREIGN KEY ("MessageId") REFERENCES "ClassChatMessages" ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260909155347_Add_ClassChat') THEN
+    CREATE INDEX "IX_ClassChatAttachments_MessageId" ON "ClassChatAttachments" ("MessageId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260909155347_Add_ClassChat') THEN
+    CREATE INDEX "IX_ClassChatAttachments_TenantId_ClassId_MessageId" ON "ClassChatAttachments" ("TenantId", "ClassId", "MessageId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260909155347_Add_ClassChat') THEN
+    CREATE INDEX "IX_ClassChatMessages_ClassId" ON "ClassChatMessages" ("ClassId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260909155347_Add_ClassChat') THEN
+    CREATE INDEX "IX_ClassChatMessages_TenantId_ClassId_SentAt" ON "ClassChatMessages" ("TenantId", "ClassId", "SentAt");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260909155347_Add_ClassChat') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260909155347_Add_ClassChat', '10.0.7');
+    END IF;
+END $EF$;
+COMMIT;
+

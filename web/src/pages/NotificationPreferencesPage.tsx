@@ -19,6 +19,7 @@ const ALL_TYPES: NotificationType[] = [
   'AbsenceConfirmed',
   'AbsenceDismissed',
   'VacationRegistrationOpened',
+  'ClassChatMessage',
 ]
 
 const TYPE_LABELS: Record<NotificationType, string> = {
@@ -29,10 +30,26 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   AbsenceConfirmed: 'Fravær bekræftet',
   AbsenceDismissed: 'Fravær afvist',
   VacationRegistrationOpened: 'Ferietilmelding åbnet',
+  ClassChatMessage: 'Ny besked i klassechat',
+}
+
+/**
+ * Mirrors NotificationDefaults on the API: class chat is high-volume, so its email
+ * notifications are opt-in while every other type stays opt-out.
+ */
+const EMAIL_ON_BY_DEFAULT: Record<NotificationType, boolean> = {
+  NewMessage: true,
+  NewContactMessage: true,
+  GroupMessage: true,
+  WeekPlanChanged: true,
+  AbsenceConfirmed: true,
+  AbsenceDismissed: true,
+  VacationRegistrationOpened: true,
+  ClassChatMessage: false,
 }
 
 function buildDefaultPreferences(): PreferenceState[] {
-  return ALL_TYPES.map((type) => ({ type, inApp: true, email: true }))
+  return ALL_TYPES.map((type) => ({ type, inApp: true, email: EMAIL_ON_BY_DEFAULT[type] }))
 }
 
 function mergeWithDefaults(
@@ -41,7 +58,9 @@ function mergeWithDefaults(
   const map = new Map(loaded.map((p) => [p.type, p]))
   return ALL_TYPES.map((type) => {
     const p = map.get(type)
-    return p ? { type, inApp: p.inApp, email: p.email } : { type, inApp: true, email: true }
+    return p
+      ? { type, inApp: p.inApp, email: p.email }
+      : { type, inApp: true, email: EMAIL_ON_BY_DEFAULT[type] }
   })
 }
 

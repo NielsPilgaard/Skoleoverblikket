@@ -169,6 +169,64 @@ export type CalendarControllerUpdateCalendarEntryRequest = {
 
 export type CalendarEntryType = 'Ferie' | 'Lukkedag' | 'Arbejdsdag' | 'Begivenhed';
 
+export type ClassChatControllerClassChatAttachmentDto = {
+    id: string;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    url: string;
+};
+
+export type ClassChatControllerClassChatMessageDto = {
+    id: string;
+    senderType: SenderType;
+    senderId: string;
+    senderName: string;
+    senderAvatarUrl?: string | null;
+    body: string;
+    sentAt: string;
+    canDelete: boolean;
+    attachments?: Array<ClassChatControllerClassChatAttachmentDto>;
+};
+
+export type ClassChatControllerClassChatThreadDto = {
+    classId: string;
+    className: string;
+    gradeLevel?: number | null;
+    lastMessageBody?: string | null;
+    lastMessageSenderName?: string | null;
+    lastMessageSentAt?: string | null;
+    messageCount: number;
+};
+
+export type ClassChatControllerConfirmAttachmentRequest = {
+    confirmToken: string;
+};
+
+export type ClassChatControllerPagedResult1 = {
+    items?: Array<ClassChatControllerClassChatMessageDto>;
+    total: number;
+    page: number;
+    pageSize: number;
+};
+
+export type ClassChatControllerPostMessageRequest = {
+    body: string;
+    attachmentIds?: Array<string> | null;
+};
+
+export type ClassChatControllerPresignAttachmentRequest = {
+    fileName: string;
+    fileSizeBytes: number;
+};
+
+export type ClassChatControllerPresignAttachmentResponse = {
+    attachmentId: string;
+    uploadUrl: string;
+    confirmToken: string;
+    contentType: string;
+};
+
 export type ClassPermissionsControllerClassPermissionDto = {
     staffId: string;
     staffName: string;
@@ -600,7 +658,7 @@ export type NotificationPreferencesControllerUpsertPreferenceItem = {
     email: boolean;
 };
 
-export type NotificationType = 'NewMessage' | 'NewContactMessage' | 'WeekPlanChanged' | 'AbsenceConfirmed' | 'AbsenceDismissed' | 'VacationRegistrationOpened' | 'GroupMessage';
+export type NotificationType = 'NewMessage' | 'NewContactMessage' | 'WeekPlanChanged' | 'AbsenceConfirmed' | 'AbsenceDismissed' | 'VacationRegistrationOpened' | 'GroupMessage' | 'ClassChatMessage';
 
 export type NotificationsControllerNotificationDto = {
     id: string;
@@ -1003,6 +1061,10 @@ export type StatsControllerDashboardStats = {
     hoursPerCourse?: Array<StatsControllerHoursPerCourse>;
     hoursPerStaff?: Array<StatsControllerHoursPerStaff>;
     unassignedClasses?: Array<StatsControllerUnassignedClass>;
+    pendingAbsenceCount: number;
+    openVacationWindow?: StatsControllerOpenVacationWindowDto;
+    unreadMessageCount?: number | null;
+    unreadKontaktbogCount?: number | null;
 };
 
 export type StatsControllerHoursPerCourse = {
@@ -1018,6 +1080,28 @@ export type StatsControllerHoursPerStaff = {
     staffName: string;
     role: StaffRole;
     hours: number;
+};
+
+export type StatsControllerMyDashboardStats = {
+    todaySchedule?: Array<StatsControllerTodayLektion>;
+    unreadMessageCount?: number | null;
+    unreadKontaktbogCount?: number | null;
+};
+
+export type StatsControllerOpenVacationWindowDto = {
+    windowId: string;
+    title: string;
+    registrationDeadline: string;
+    entryCount: number;
+};
+
+export type StatsControllerTodayLektion = {
+    slotId: string;
+    startTime: string;
+    endTime: string;
+    courseName: string;
+    className: string;
+    roomName?: string | null;
 };
 
 export type StatsControllerUnassignedClass = {
@@ -1915,6 +1999,114 @@ export type GetApiV1CalendarExportIcsResponses = {
      */
     200: unknown;
 };
+
+export type GetApiV1ClassChatsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/class-chats';
+};
+
+export type GetApiV1ClassChatsResponses = {
+    /**
+     * OK
+     */
+    200: Array<ClassChatControllerClassChatThreadDto>;
+};
+
+export type GetApiV1ClassChatsResponse = GetApiV1ClassChatsResponses[keyof GetApiV1ClassChatsResponses];
+
+export type GetApiV1ClassChatsByClassIdMessagesData = {
+    body?: never;
+    path: {
+        classId: string;
+    };
+    query?: {
+        page?: number;
+        pageSize?: number;
+    };
+    url: '/api/v1/class-chats/{classId}/messages';
+};
+
+export type GetApiV1ClassChatsByClassIdMessagesResponses = {
+    /**
+     * OK
+     */
+    200: ClassChatControllerPagedResult1;
+};
+
+export type GetApiV1ClassChatsByClassIdMessagesResponse = GetApiV1ClassChatsByClassIdMessagesResponses[keyof GetApiV1ClassChatsByClassIdMessagesResponses];
+
+export type PostApiV1ClassChatsByClassIdMessagesData = {
+    body?: ClassChatControllerPostMessageRequest;
+    path: {
+        classId: string;
+    };
+    query?: never;
+    url: '/api/v1/class-chats/{classId}/messages';
+};
+
+export type PostApiV1ClassChatsByClassIdMessagesResponses = {
+    /**
+     * OK
+     */
+    200: ClassChatControllerClassChatMessageDto;
+};
+
+export type PostApiV1ClassChatsByClassIdMessagesResponse = PostApiV1ClassChatsByClassIdMessagesResponses[keyof PostApiV1ClassChatsByClassIdMessagesResponses];
+
+export type DeleteApiV1ClassChatsByClassIdMessagesByMessageIdData = {
+    body?: never;
+    path: {
+        classId: string;
+        messageId: string;
+    };
+    query?: never;
+    url: '/api/v1/class-chats/{classId}/messages/{messageId}';
+};
+
+export type DeleteApiV1ClassChatsByClassIdMessagesByMessageIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type PostApiV1ClassChatsByClassIdAttachmentsPresignData = {
+    body?: ClassChatControllerPresignAttachmentRequest;
+    path: {
+        classId: string;
+    };
+    query?: never;
+    url: '/api/v1/class-chats/{classId}/attachments/presign';
+};
+
+export type PostApiV1ClassChatsByClassIdAttachmentsPresignResponses = {
+    /**
+     * OK
+     */
+    200: ClassChatControllerPresignAttachmentResponse;
+};
+
+export type PostApiV1ClassChatsByClassIdAttachmentsPresignResponse = PostApiV1ClassChatsByClassIdAttachmentsPresignResponses[keyof PostApiV1ClassChatsByClassIdAttachmentsPresignResponses];
+
+export type PostApiV1ClassChatsByClassIdAttachmentsConfirmData = {
+    body?: ClassChatControllerConfirmAttachmentRequest;
+    path: {
+        classId: string;
+    };
+    query?: never;
+    url: '/api/v1/class-chats/{classId}/attachments/confirm';
+};
+
+export type PostApiV1ClassChatsByClassIdAttachmentsConfirmResponses = {
+    /**
+     * OK
+     */
+    200: ClassChatControllerClassChatAttachmentDto;
+};
+
+export type PostApiV1ClassChatsByClassIdAttachmentsConfirmResponse = PostApiV1ClassChatsByClassIdAttachmentsConfirmResponses[keyof PostApiV1ClassChatsByClassIdAttachmentsConfirmResponses];
 
 export type GetApiV1ClassesData = {
     body?: never;
@@ -3843,6 +4035,22 @@ export type GetApiV1StatsDashboardResponses = {
 };
 
 export type GetApiV1StatsDashboardResponse = GetApiV1StatsDashboardResponses[keyof GetApiV1StatsDashboardResponses];
+
+export type GetApiV1StatsMyDashboardData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/stats/my-dashboard';
+};
+
+export type GetApiV1StatsMyDashboardResponses = {
+    /**
+     * OK
+     */
+    200: StatsControllerMyDashboardStats;
+};
+
+export type GetApiV1StatsMyDashboardResponse = GetApiV1StatsMyDashboardResponses[keyof GetApiV1StatsMyDashboardResponses];
 
 export type PostApiV1StripeWebhookData = {
     body?: never;

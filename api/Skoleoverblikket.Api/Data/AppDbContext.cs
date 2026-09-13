@@ -49,6 +49,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ITenant
 	public DbSet<BoardFile> BoardFiles => Set<BoardFile>();
 	public DbSet<BoardFileFolder> BoardFileFolders => Set<BoardFileFolder>();
 	public DbSet<StaaMaalMedSnapshot> StaaMaalMedSnapshots => Set<StaaMaalMedSnapshot>();
+	public DbSet<ClassChatMessage> ClassChatMessages => Set<ClassChatMessage>();
+	public DbSet<ClassChatAttachment> ClassChatAttachments => Set<ClassChatAttachment>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{

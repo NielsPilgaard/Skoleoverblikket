@@ -132,6 +132,17 @@ After controller/DTO changes, run `/codegen` to regenerate OpenAPI spec + typed 
 - API integration tests (tUnit + Testcontainers): `StatsControllerTests.cs` — extend for new `DashboardStats` fields (module-gated null behavior, pending absence count, open vacation window selection) and new `GetMyDashboard` endpoint (schedule scoped to caller, unread counts).
 - Playwright e2e: admin dashboard shows quick actions + alerts (seed a pending absence/open vacation window, assert tile appears; assert it's absent at zero); staff lands on `/mig/oversigt` after login and sees today's schedule; sidebar `Oversigt` link resolves correctly per role.
 
+## Known gaps
+
+- **Staff-login Playwright e2e not implemented.** `web/tests/e2e/global-setup.ts`
+  seeds only an admin `storageState`, so there is no non-admin staff principal for
+  Playwright to log in as. Asserting that staff land on `/mig/oversigt` after login
+  needs a seeded non-admin Keycloak user plus a second `storageState` — a shared
+  test-harness change beyond this task. Staff routing and access control are covered
+  at the API layer instead (`StatsControllerTests.GetMyDashboard_*`), and the admin
+  dashboard e2e (`web/tests/e2e/dashboard.spec.ts`) covers quick actions, alert tiles
+  and the sidebar `Oversigt` target.
+
 ## Out of scope
 
 - Board dashboard tailoring
