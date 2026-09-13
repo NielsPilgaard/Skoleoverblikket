@@ -61,6 +61,7 @@ const ParentDirectoryPage = lazy(() => import('./pages/ParentDirectoryPage'))
 const ParentFravaerPage = lazy(() => import('./pages/parent/ParentFravaerPage'))
 const FravaerPage = lazy(() => import('./pages/FravaerPage'))
 const NotificationPreferencesPage = lazy(() => import('./pages/NotificationPreferencesPage'))
+const KlassechatPage = lazy(() => import('./pages/KlassechatPage'))
 const KontaktbogPage = lazy(() => import('./pages/KontaktbogPage'))
 const ParentKontaktbogPage = lazy(() => import('./pages/parent/ParentKontaktbogPage'))
 const BeskederPage = lazy(() => import('./pages/BeskederPage'))
@@ -308,6 +309,7 @@ export default function App() {
                     }
                   />
                   <Route path="fravaer" element={<FravaerPage />} />
+                  <Route path="klassechat" element={<KlassechatPage />} />
                   <Route path="kontaktbog" element={<KontaktbogPage />} />
                   <Route
                     path="foraeldrevisning/kontaktbog"

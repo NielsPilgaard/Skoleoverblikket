@@ -605,6 +605,29 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    to: '/klassechat',
+    label: 'Klassechat',
+    parentOnly: true,
+    moduleGated: true,
+    group: 'Kontakt',
+    order: 70.5,
+    icon: (
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M17 8h2a2 2 0 0 1 2 2v10l-3-3h-8a2 2 0 0 1-2-2v-1" />
+        <path d="M14 3H5a2 2 0 0 0-2 2v9l3-3h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z" />
+      </svg>
+    ),
+  },
+  {
     to: '/foraeldrevisning/kontaktbog',
     label: 'Kontaktbog',
     parentOnly: true,
@@ -666,6 +689,28 @@ const navItems: NavItem[] = [
         strokeLinejoin="round"
       >
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+  },
+  {
+    to: '/klassechat',
+    label: 'Klassechat',
+    moduleGated: true,
+    group: 'Kontakt',
+    order: 73.5,
+    icon: (
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M17 8h2a2 2 0 0 1 2 2v10l-3-3h-8a2 2 0 0 1-2-2v-1" />
+        <path d="M14 3H5a2 2 0 0 0-2 2v9l3-3h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z" />
       </svg>
     ),
   },
