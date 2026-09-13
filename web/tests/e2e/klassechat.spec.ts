@@ -70,7 +70,9 @@ test.describe('Klassechat', () => {
     const message = page.getByTestId('klassechat-message').filter({ hasText: body })
     await message.getByTestId('klassechat-delete-message').click()
 
-    await expect(page.getByText(body)).not.toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('klassechat-conversation').getByText(body)).not.toBeVisible({
+      timeout: 15_000,
+    })
   })
 
   test('sending a message with an attachment', async ({ page }) => {
@@ -79,14 +81,19 @@ test.describe('Klassechat', () => {
     await page.getByTestId('klassechat-thread-row').first().click()
     await expect(page.getByTestId('klassechat-composer')).toBeVisible()
 
+    const fileName = `klassechat-e2e-${Date.now()}.txt`
     await page.getByTestId('klassechat-file-input').setInputFiles({
-      name: 'klassechat-e2e.txt',
+      name: fileName,
       mimeType: 'text/plain',
       buffer: Buffer.from('Vedhæftet testfil'),
     })
 
-    // The chip appears only once presign → PUT → confirm has completed.
-    await expect(page.getByText('klassechat-e2e.txt')).toBeVisible({ timeout: 30_000 })
+    // The chip appears only once presign → PUT → confirm has completed. Scoped
+    // to the composer's pending-attachment area, since past test runs leave
+    // messages with a same-named attachment in this shared thread otherwise.
+    await expect(
+      page.getByTestId('klassechat-composer').locator('../..').getByText(fileName)
+    ).toBeVisible({ timeout: 30_000 })
 
     await page.getByTestId('klassechat-composer').fill(body)
     await page.getByTestId('klassechat-send').click()
@@ -94,6 +101,6 @@ test.describe('Klassechat', () => {
     await expect(page.getByText(body)).toBeVisible({ timeout: 15_000 })
 
     const message = page.getByTestId('klassechat-message').filter({ hasText: body })
-    await expect(message.getByRole('link', { name: /klassechat-e2e\.txt/ })).toBeVisible({ timeout: 15_000 })
+    await expect(message.getByRole('link', { name: new RegExp(fileName) })).toBeVisible({ timeout: 15_000 })
   })
 })
