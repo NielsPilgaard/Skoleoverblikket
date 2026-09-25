@@ -9,7 +9,7 @@ using Skoleoverblikket.Api.Models;
 namespace Skoleoverblikket.Api.IntegrationTests;
 
 /// <summary>
-/// Integration tests for KontaktController.
+/// Integration tests for ContactDirectoryController.
 /// Covers the ShareContactInfo consent filtering rules:
 ///   - Admin sees all parents regardless of ShareContactInfo.
 ///   - Staff (non-admin, non-parent) sees only parents with ShareContactInfo=true.
@@ -17,7 +17,7 @@ namespace Skoleoverblikket.Api.IntegrationTests;
 ///   - Parent with no co-class parents that have consent gets an empty list.
 /// </summary>
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
-public sealed class KontaktTests(ApiFactory factory)
+public sealed class ContactDirectoryTests(ApiFactory factory)
 {
 	private readonly ApiFactory _factory = factory;
 	private readonly Guid _tenantId = Guid.NewGuid();
@@ -119,7 +119,7 @@ public sealed class KontaktTests(ApiFactory factory)
 	// ── Tests ─────────────────────────────────────────────────────────────────────
 
 	[Test]
-	public async Task GetKontakt_Admin_SeesAllParents()
+	public async Task GetDirectory_Admin_SeesAllParents()
 	{
 		// Arrange: one parent with consent, one without
 		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(
@@ -131,18 +131,18 @@ public sealed class KontaktTests(ApiFactory factory)
 			"admin-test-nonconsenting-parent", klass.Id, shareContactInfo: false, "Boris Nej");
 
 		// Act
-		var response = await _adminClient.GetAsync("/api/v1/kontakt");
+		var response = await _adminClient.GetAsync("/api/v1/contact-directory");
 
 		// Assert: admin sees both
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var list = await response.Content.ReadFromJsonAsync<List<KontaktController.KontaktParentDto>>();
+		var list = await response.Content.ReadFromJsonAsync<List<ContactDirectoryController.ContactDirectoryParentDto>>();
 		await Assert.That(list).IsNotNull();
 		await Assert.That(list!.Any(p => p.Id == consentingParent.Id)).IsTrue();
 		await Assert.That(list.Any(p => p.Id == nonConsentingParent.Id)).IsTrue();
 	}
 
 	[Test]
-	public async Task GetKontakt_Staff_SeesOnlyConsentingParents()
+	public async Task GetDirectory_Staff_SeesOnlyConsentingParents()
 	{
 		// Arrange: one parent with consent, one without
 		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(
@@ -155,18 +155,18 @@ public sealed class KontaktTests(ApiFactory factory)
 
 		// Act
 		using var staffClient = CreateStaffClient("staff-test-caller");
-		var response = await staffClient.GetAsync("/api/v1/kontakt");
+		var response = await staffClient.GetAsync("/api/v1/contact-directory");
 
 		// Assert: staff sees only the consenting parent
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var list = await response.Content.ReadFromJsonAsync<List<KontaktController.KontaktParentDto>>();
+		var list = await response.Content.ReadFromJsonAsync<List<ContactDirectoryController.ContactDirectoryParentDto>>();
 		await Assert.That(list).IsNotNull();
 		await Assert.That(list!.Any(p => p.Id == consentingParent.Id)).IsTrue();
 		await Assert.That(list.Any(p => p.Id == nonConsentingParent.Id)).IsFalse();
 	}
 
 	[Test]
-	public async Task GetKontakt_Parent_SeesOnlyCoClassConsentingParents()
+	public async Task GetDirectory_Parent_SeesOnlyCoClassConsentingParents()
 	{
 		// Arrange:
 		//   - requesting parent + student in class A
@@ -196,11 +196,11 @@ public sealed class KontaktTests(ApiFactory factory)
 
 		// Act
 		using var parentClient = CreateParentClient("parent-coclass-requester");
-		var response = await parentClient.GetAsync("/api/v1/kontakt");
+		var response = await parentClient.GetAsync("/api/v1/contact-directory");
 
 		// Assert
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var list = await response.Content.ReadFromJsonAsync<List<KontaktController.KontaktParentDto>>();
+		var list = await response.Content.ReadFromJsonAsync<List<ContactDirectoryController.ContactDirectoryParentDto>>();
 		await Assert.That(list).IsNotNull();
 		await Assert.That(list!.Any(p => p.Id == coClassConsenting.Id)).IsTrue();
 		await Assert.That(list.Any(p => p.Id == coClassNonConsenting.Id)).IsFalse();
@@ -208,7 +208,7 @@ public sealed class KontaktTests(ApiFactory factory)
 	}
 
 	[Test]
-	public async Task GetKontakt_Parent_NoCoClassParentsWithConsent_ReturnsEmpty()
+	public async Task GetDirectory_Parent_NoCoClassParentsWithConsent_ReturnsEmpty()
 	{
 		// Arrange: requesting parent in class, one co-class parent but without consent
 		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(
@@ -221,11 +221,11 @@ public sealed class KontaktTests(ApiFactory factory)
 
 		// Act
 		using var parentClient = CreateParentClient("parent-empty-requester");
-		var response = await parentClient.GetAsync("/api/v1/kontakt");
+		var response = await parentClient.GetAsync("/api/v1/contact-directory");
 
 		// Assert: 200 with empty list — no co-class parents have consent
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var list = await response.Content.ReadFromJsonAsync<List<KontaktController.KontaktParentDto>>();
+		var list = await response.Content.ReadFromJsonAsync<List<ContactDirectoryController.ContactDirectoryParentDto>>();
 		await Assert.That(list).IsNotNull();
 		await Assert.That(list!.Count).IsEqualTo(0);
 	}

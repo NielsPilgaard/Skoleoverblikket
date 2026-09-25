@@ -53,7 +53,7 @@ function truncate(text: string, max: number): string {
   return `${text.slice(0, max)}…`
 }
 
-export default function KontaktbogPage() {
+export default function ContactBookPage() {
   usePageTitle('Kontaktbog')
   const qc = useQueryClient()
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)

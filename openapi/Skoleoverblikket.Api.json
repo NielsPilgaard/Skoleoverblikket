@@ -2066,6 +2066,218 @@
         }
       }
     },
+    "/api/v1/compliance-coverage/coverage": {
+      "get": {
+        "tags": [
+          "ComplianceCoverage"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance-coverage/snapshots": {
+      "post": {
+        "tags": [
+          "ComplianceCoverage"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComplianceCoverageController_CreateSnapshotRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComplianceCoverageController_CreateSnapshotRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComplianceCoverageController_CreateSnapshotRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "ComplianceCoverage"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance-coverage/snapshots/{id}": {
+      "get": {
+        "tags": [
+          "ComplianceCoverage"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotDetailDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ComplianceCoverage"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/contact-directory": {
+      "get": {
+        "tags": [
+          "ContactDirectory"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContactDirectoryController_ContactDirectoryParentDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContactDirectoryController_ContactDirectoryParentDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContactDirectoryController_ContactDirectoryParentDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/contact-threads": {
       "get": {
         "tags": [
@@ -3087,44 +3299,6 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportsController_ImportBoardMembersResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/kontakt": {
-      "get": {
-        "tags": [
-          "Kontakt"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/KontaktController_KontaktParentDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/KontaktController_KontaktParentDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/KontaktController_KontaktParentDto"
-                  }
                 }
               }
             }
@@ -5613,7 +5787,7 @@
         }
       }
     },
-    "/api/v1/sfo/ugeplan": {
+    "/api/v1/sfo/week-plan": {
       "get": {
         "tags": [
           "SfoWeekPlan"
@@ -5660,7 +5834,7 @@
         }
       }
     },
-    "/api/v1/sfo/ugeplan/generelt": {
+    "/api/v1/sfo/week-plan/generelt": {
       "put": {
         "tags": [
           "SfoWeekPlan"
@@ -5669,17 +5843,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoGenereltRequest"
+                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoNotesRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoGenereltRequest"
+                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoNotesRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoGenereltRequest"
+                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoNotesRequest"
               }
             }
           }
@@ -5690,17 +5864,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/SfoWeekPlanController_GenereltDto"
+                  "$ref": "#/components/schemas/SfoWeekPlanController_NotesDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SfoWeekPlanController_GenereltDto"
+                  "$ref": "#/components/schemas/SfoWeekPlanController_NotesDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SfoWeekPlanController_GenereltDto"
+                  "$ref": "#/components/schemas/SfoWeekPlanController_NotesDto"
                 }
               }
             }
@@ -5708,7 +5882,7 @@
         }
       }
     },
-    "/api/v1/sfo/ugeplan/shifts": {
+    "/api/v1/sfo/week-plan/shifts": {
       "put": {
         "tags": [
           "SfoWeekPlan"
@@ -6642,180 +6816,6 @@
             }
           }
         },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v1/staa-maal-med/coverage": {
-      "get": {
-        "tags": [
-          "StaaMaalMed"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_CoverageResponseDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_CoverageResponseDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_CoverageResponseDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/staa-maal-med/snapshots": {
-      "post": {
-        "tags": [
-          "StaaMaalMed"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StaaMaalMedController_CreateSnapshotRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StaaMaalMedController_CreateSnapshotRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/StaaMaalMedController_CreateSnapshotRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_SnapshotSummaryDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_SnapshotSummaryDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_SnapshotSummaryDto"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "StaaMaalMed"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StaaMaalMedController_SnapshotSummaryDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StaaMaalMedController_SnapshotSummaryDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StaaMaalMedController_SnapshotSummaryDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/staa-maal-med/snapshots/{id}": {
-      "get": {
-        "tags": [
-          "StaaMaalMed"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_SnapshotDetailDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_SnapshotDetailDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_SnapshotDetailDto"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "StaaMaalMed"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -7937,7 +7937,7 @@
         }
       }
     },
-    "/api/v1/classes/{classId}/ugeplan": {
+    "/api/v1/classes/{classId}/week-plan": {
       "get": {
         "tags": [
           "WeekPlan"
@@ -8001,7 +8001,7 @@
         }
       }
     },
-    "/api/v1/classes/{classId}/ugeplan/slots": {
+    "/api/v1/classes/{classId}/week-plan/slots": {
       "put": {
         "tags": [
           "WeekPlan"
@@ -8084,7 +8084,7 @@
         }
       }
     },
-    "/api/v1/classes/{classId}/ugeplan/generelt": {
+    "/api/v1/classes/{classId}/week-plan/generelt": {
       "put": {
         "tags": [
           "WeekPlan"
@@ -8120,17 +8120,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/WeekPlanController_UpdateGenereltRequest"
+                "$ref": "#/components/schemas/WeekPlanController_UpdateNotesRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/WeekPlanController_UpdateGenereltRequest"
+                "$ref": "#/components/schemas/WeekPlanController_UpdateNotesRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/WeekPlanController_UpdateGenereltRequest"
+                "$ref": "#/components/schemas/WeekPlanController_UpdateNotesRequest"
               }
             }
           }
@@ -8141,17 +8141,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_GenereltDto"
+                  "$ref": "#/components/schemas/WeekPlanController_NotesDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_GenereltDto"
+                  "$ref": "#/components/schemas/WeekPlanController_NotesDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_GenereltDto"
+                  "$ref": "#/components/schemas/WeekPlanController_NotesDto"
                 }
               }
             }
@@ -8159,7 +8159,7 @@
         }
       }
     },
-    "/api/v1/classes/{classId}/ugeplan/slots/{slotId}/files": {
+    "/api/v1/classes/{classId}/week-plan/slots/{slotId}/files": {
       "post": {
         "tags": [
           "WeekPlan"
@@ -8227,7 +8227,7 @@
         }
       }
     },
-    "/api/v1/classes/{classId}/ugeplan/slots/{slotId}/files/{fileId}": {
+    "/api/v1/classes/{classId}/week-plan/slots/{slotId}/files/{fileId}": {
       "delete": {
         "tags": [
           "WeekPlan"
@@ -9239,6 +9239,174 @@
         },
         "additionalProperties": false
       },
+      "ComplianceCoverageController_ClassCoverageDto": {
+        "required": [
+          "classId",
+          "className",
+          "gradeLevel"
+        ],
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "gradeLevel": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComplianceCoverageController_SubjectCoverageDto"
+            }
+          },
+          "unexpectedGradeCategories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComplianceCoverageController_CoverageResponseDto": {
+        "required": [
+          "activeSchemaCount",
+          "classesMissingGradeLevel"
+        ],
+        "type": "object",
+        "properties": {
+          "classes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComplianceCoverageController_ClassCoverageDto"
+            }
+          },
+          "classesMissingGradeLevel": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeSchemaCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComplianceCoverageController_CreateSnapshotRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComplianceCoverageController_SnapshotDetailDto": {
+        "required": [
+          "createdAt",
+          "createdByStaffName",
+          "id",
+          "schoolYear"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "schoolYear": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdByStaffName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComplianceCoverageController_SnapshotSummaryDto": {
+        "required": [
+          "createdAt",
+          "createdByStaffName",
+          "id",
+          "schoolYear"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "schoolYear": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdByStaffName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComplianceCoverageController_SubjectCoverageDto": {
+        "required": [
+          "annualHours",
+          "category",
+          "status",
+          "vejledendeAnnualHours",
+          "vejledendeWeeklyHours",
+          "weeklyHours"
+        ],
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "weeklyHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "vejledendeWeeklyHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "annualHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "vejledendeAnnualHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "ConflictInfo": {
         "required": [
           "endTime",
@@ -9308,6 +9476,76 @@
           "SubstituteDoubleBooked"
         ],
         "type": "string"
+      },
+      "ContactDirectoryController_ContactDirectoryParentDto": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "postalCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "studentNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "students": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContactDirectoryController_ContactDirectoryStudentDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ContactDirectoryController_ContactDirectoryStudentDto": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       },
       "ContactThreadsController_AddMessageRequest": {
         "required": [
@@ -10182,76 +10420,6 @@
             "type": "string"
           },
           "email": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "KontaktController_KontaktParentDto": {
-        "required": [
-          "id",
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "phone": {
-            "type": "string",
-            "nullable": true
-          },
-          "address": {
-            "type": "string",
-            "nullable": true
-          },
-          "postalCode": {
-            "type": "string",
-            "nullable": true
-          },
-          "city": {
-            "type": "string",
-            "nullable": true
-          },
-          "email": {
-            "type": "string",
-            "nullable": true
-          },
-          "avatarUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "studentNames": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "students": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/KontaktController_KontaktStudentDto"
-            }
-          }
-        },
-        "additionalProperties": false
-      },
-      "KontaktController_KontaktStudentDto": {
-        "required": [
-          "id",
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
             "type": "string"
           }
         },
@@ -11728,7 +11896,7 @@
         },
         "additionalProperties": false
       },
-      "SfoWeekPlanController_GenereltDto": {
+      "SfoWeekPlanController_NotesDto": {
         "type": "object",
         "properties": {
           "generelt": {
@@ -11833,7 +12001,7 @@
         },
         "additionalProperties": false
       },
-      "SfoWeekPlanController_UpdateSfoGenereltRequest": {
+      "SfoWeekPlanController_UpdateSfoNotesRequest": {
         "required": [
           "isoWeek",
           "isoYear"
@@ -11880,174 +12048,6 @@
           "beskrivelse": {
             "type": "string",
             "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "StaaMaalMedController_ClassCoverageDto": {
-        "required": [
-          "classId",
-          "className",
-          "gradeLevel"
-        ],
-        "type": "object",
-        "properties": {
-          "classId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "className": {
-            "type": "string"
-          },
-          "gradeLevel": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "subjects": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StaaMaalMedController_SubjectCoverageDto"
-            }
-          },
-          "unexpectedGradeCategories": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "additionalProperties": false
-      },
-      "StaaMaalMedController_CoverageResponseDto": {
-        "required": [
-          "activeSchemaCount",
-          "classesMissingGradeLevel"
-        ],
-        "type": "object",
-        "properties": {
-          "classes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StaaMaalMedController_ClassCoverageDto"
-            }
-          },
-          "classesMissingGradeLevel": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "activeSchemaCount": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "StaaMaalMedController_CreateSnapshotRequest": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "maxLength": 500,
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "StaaMaalMedController_SnapshotDetailDto": {
-        "required": [
-          "createdAt",
-          "createdByStaffName",
-          "id",
-          "schoolYear"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "schoolYear": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdByStaffName": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string",
-            "nullable": true
-          },
-          "data": {
-            "$ref": "#/components/schemas/StaaMaalMedController_CoverageResponseDto"
-          }
-        },
-        "additionalProperties": false
-      },
-      "StaaMaalMedController_SnapshotSummaryDto": {
-        "required": [
-          "createdAt",
-          "createdByStaffName",
-          "id",
-          "schoolYear"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "schoolYear": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdByStaffName": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "StaaMaalMedController_SubjectCoverageDto": {
-        "required": [
-          "annualHours",
-          "category",
-          "status",
-          "vejledendeAnnualHours",
-          "vejledendeWeeklyHours",
-          "weeklyHours"
-        ],
-        "type": "object",
-        "properties": {
-          "category": {
-            "type": "string"
-          },
-          "weeklyHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "vejledendeWeeklyHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "annualHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "vejledendeAnnualHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "status": {
-            "type": "string"
           }
         },
         "additionalProperties": false
@@ -13324,16 +13324,6 @@
         },
         "additionalProperties": false
       },
-      "WeekPlanController_GenereltDto": {
-        "type": "object",
-        "properties": {
-          "generelt": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
       "WeekPlanController_HolidayDayDto": {
         "required": [
           "title",
@@ -13350,7 +13340,17 @@
         },
         "additionalProperties": false
       },
-      "WeekPlanController_UpdateGenereltRequest": {
+      "WeekPlanController_NotesDto": {
+        "type": "object",
+        "properties": {
+          "generelt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WeekPlanController_UpdateNotesRequest": {
         "type": "object",
         "properties": {
           "generelt": {
@@ -13624,6 +13624,12 @@
       "name": "ClassPermissions"
     },
     {
+      "name": "ComplianceCoverage"
+    },
+    {
+      "name": "ContactDirectory"
+    },
+    {
       "name": "ContactThreads"
     },
     {
@@ -13637,9 +13643,6 @@
     },
     {
       "name": "Imports"
-    },
-    {
-      "name": "Kontakt"
     },
     {
       "name": "Messages"
@@ -13697,9 +13700,6 @@
     },
     {
       "name": "Students"
-    },
-    {
-      "name": "StaaMaalMed"
     },
     {
       "name": "SubscriptionModules"

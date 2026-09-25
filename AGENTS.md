@@ -37,7 +37,7 @@ Never bypass this filter. Never trust a slug string as an authorization signal �
 - Vikar overview (`VikarController`) — free/busy staff lookup per time slot and one-click substitute assignment when a teacher or aide is out
 - Parent module (`ParentsController`, `ParentMeController`, `ParentInvitationsController`) — parent portal with schema/calendar/ugeplan views
 - Absence reporting (`AbsenceController`) — parents report absence, staff confirm/dismiss
-- Kontakt directory (`KontaktController`) — role-filtered parent directory with `ShareContactInfo` consent
+- Kontakt directory (`ContactDirectoryController`) — role-filtered parent directory with `ShareContactInfo` consent
 - Kontaktbog (`ContactThreadsController`) — per-child parent↔teacher message threads
 - Beskeder (`MessagesController`) — flat inbox for all tenant users with consent rules
 - Notifications (`NotificationsController`) — in-app + email, per-type opt-out via `NotificationPreference`
@@ -45,7 +45,7 @@ Never bypass this filter. Never trust a slug string as an authorization signal �
 - Class permissions (`ClassPermissionsController`) — per-class edit grants (superadmin vs. restricted mode)
 - File explorer (`FilesController`) — upload files, link to courses, browse by course, OVHCloud object storage
 - Bestyrelse / board module (`BoardMembersController`, `BoardInvitationsController`, `BoardFilesController`) — board member invitations and a board-only file space, separate from staff/parent files
-- Stå mål med / compliance publishing (`StaaMaalMedController`) — lets friskoler publish teaching goals and plans per course/grade to satisfy Friskoleloven §1a public-disclosure requirements
+- Stå mål med / compliance publishing (`ComplianceCoverageController`) — lets friskoler publish teaching goals and plans per course/grade to satisfy Friskoleloven §1a public-disclosure requirements
 - Stats dashboard (`StatsController`) — school-wide overview numbers (classes, staff, schema completeness) for the admin dashboard
 - Reports (`ReportsController`) — Excel export of teacher/staff hours and UVM timetal comparisons
 - CSV import (`ImportsController`) — bulk import of parents/students onto existing classes, admin-only, with per-row warnings
@@ -75,7 +75,7 @@ Never bypass this filter. Never trust a slug string as an authorization signal �
 ### General
 
 - Style and naming conventions (indentation, casing, imports) are enforced by `.editorconfig` and the project linting setup. Do not duplicate those rules here.
-- Danish domain terms: klasse (class), fag (course), lokale (room), lektion (time slot), lærer (teacher), pædagog (aide), vikar (substitute), skema (schema/schedule).
+- Danish domain terms: klasse (class), fag (course), lokale (room), lektion (time slot), lærer (teacher), pædagog (aide), vikar (substitute), skema (schema/schedule). These are the only Danish words allowed in code identifiers (class names, file names, routes). Everything else in code must be English — UI text and URL paths stay Danish, since the product is Danish-language only. See [docs/GLOSSARY.md](docs/GLOSSARY.md) for the full kept-word list and the mapping of incidental Danish names already renamed to English.
 
 ## Testing
 
@@ -113,6 +113,7 @@ Do not report a task as complete until all four pass.
 | [docs/PERSONAS.md](docs/PERSONAS.md) | Hanne/Thomas/Birgitte/Mikkel — the four users every screen must work for |
 | [docs/adr/INDEX.md](docs/adr/INDEX.md) | Concept → ADR lookup for all product/architecture decisions |
 | [docs/SCHEMA_FEATURES.md](docs/SCHEMA_FEATURES.md) | Schema planner detail: time slot inheritance, conflict detection, entities, permissions |
+| [docs/GLOSSARY.md](docs/GLOSSARY.md) | Kept Danish domain vocabulary vs. incidental Danish names renamed to English in code |
 | [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md) | Role model, ClassPermission superadmin/restricted modes, endpoint auth summary |
 | [docs/TESTING.md](docs/TESTING.md) | Test strategy — what layer to write a test in and what to skip |
 | [docs/PRICING.md](docs/PRICING.md) | Billing model — Basis tier, module add-ons, trial, intervals |

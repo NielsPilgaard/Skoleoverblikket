@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getApiV1ClassesOptions } from '../api/generated/@tanstack/react-query.gen'
 import { usePageTitle } from '../hooks/usePageTitle'
 
-export default function BestyrelseSkemaerPage() {
+export default function BoardSchemasPage() {
   usePageTitle('Skemaer')
   const { data: classes, isLoading, error } = useQuery(getApiV1ClassesOptions())
 

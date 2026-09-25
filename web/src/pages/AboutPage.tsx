@@ -2,7 +2,7 @@ import Logo from '../components/Logo'
 import Footer from '../components/Footer'
 import SeoMeta from '../components/SeoMeta'
 
-export default function OmPage() {
+export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900 flex flex-col">
       <SeoMeta

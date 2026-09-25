@@ -11,9 +11,9 @@ using Skoleoverblikket.Api.Tenancy;
 namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/staa-maal-med")]
+[Route("api/v1/compliance-coverage")]
 [Authorize(Roles = $"{Roles.Admin},{Roles.Board}")]
-public sealed class StaaMaalMedController(AppDbContext db, UvmTimetableService timetable, ITenantContext tenant) : ControllerBase
+public sealed class ComplianceCoverageController(AppDbContext db, UvmTimetableService timetable, ITenantContext tenant) : ControllerBase
 {
 	public record SubjectCoverageDto(string Category, double WeeklyHours, double VejledendeWeeklyHours, double AnnualHours, double VejledendeAnnualHours, string Status);
 	public record ClassCoverageDto(Guid ClassId, string ClassName, int GradeLevel, List<SubjectCoverageDto> Subjects, List<string> UnexpectedGradeCategories);

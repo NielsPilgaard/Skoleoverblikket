@@ -44,7 +44,7 @@ function StatusBadge({ status }: { status: AbsenceStatus | undefined }) {
   )
 }
 
-export default function ParentFravaerPage() {
+export default function ParentAbsencePage() {
   usePageTitle('Fravær')
   const qc = useQueryClient()
   const today = todayIso()

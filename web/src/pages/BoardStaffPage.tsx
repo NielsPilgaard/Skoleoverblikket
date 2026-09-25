@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getApiV1StaffOptions } from '../api/generated/@tanstack/react-query.gen'
 import { usePageTitle } from '../hooks/usePageTitle'
 
-export default function BestyrelseMedarbejderePage() {
+export default function BoardStaffPage() {
   usePageTitle('Medarbejdere')
   const { data: staff, isLoading, error } = useQuery(getApiV1StaffOptions())
 

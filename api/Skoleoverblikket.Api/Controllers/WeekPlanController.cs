@@ -11,7 +11,7 @@ using Skoleoverblikket.Api.Tenancy;
 namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/classes/{classId:guid}/ugeplan")]
+[Route("api/v1/classes/{classId:guid}/week-plan")]
 [Authorize]
 public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, IAuthorizationService authz) : ControllerBase
 {
@@ -64,9 +64,9 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 
 	public record AddFileToSlotRequest(Guid SchoolFileId);
 
-	public record UpdateGenereltRequest([property: StringLength(8000)] string? Generelt);
+	public record UpdateNotesRequest([property: StringLength(8000)] string? Generelt);
 
-	public record GenereltDto(string? Generelt);
+	public record NotesDto(string? Generelt);
 
 	[HttpGet]
 	public async Task<ActionResult<WeekPlanDto>> GetWeekPlan(
@@ -347,11 +347,11 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 	}
 
 	[HttpPut("generelt")]
-	public async Task<ActionResult<GenereltDto>> UpdateGenerelt(
+	public async Task<ActionResult<NotesDto>> UpdateGenerelt(
 		Guid classId,
 		[FromQuery] int? isoYear,
 		[FromQuery] int? isoWeek,
-		[FromBody] UpdateGenereltRequest req,
+		[FromBody] UpdateNotesRequest req,
 		CancellationToken cancellationToken)
 	{
 		if (isoYear is null || isoWeek is null)
@@ -407,7 +407,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 		weekPlan.Generelt = req.Generelt;
 		await db.SaveChangesAsync(cancellationToken);
 
-		return Ok(new GenereltDto(weekPlan.Generelt));
+		return Ok(new NotesDto(weekPlan.Generelt));
 	}
 
 	[HttpPost("slots/{slotId:guid}/files")]

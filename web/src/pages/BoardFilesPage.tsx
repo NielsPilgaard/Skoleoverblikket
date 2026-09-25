@@ -1,7 +1,7 @@
 import { usePageTitle } from '../hooks/usePageTitle'
 import { FileSystemBrowser } from '../components/files/FileSystemBrowser'
 
-export default function BestyrelseFilerPage() {
+export default function BoardFilesPage() {
   usePageTitle('Bestyrelsesdokumenter')
 
   return (

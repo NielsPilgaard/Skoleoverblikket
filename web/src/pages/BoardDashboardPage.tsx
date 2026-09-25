@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getApiV1StatsDashboardOptions } from '../api/generated/@tanstack/react-query.gen'
 import { usePageTitle } from '../hooks/usePageTitle'
 
-export default function BestyrelseDashboardPage() {
+export default function BoardDashboardPage() {
   usePageTitle('Bestyrelsesoversigt')
   const { data, isLoading, error } = useQuery(getApiV1StatsDashboardOptions())
 

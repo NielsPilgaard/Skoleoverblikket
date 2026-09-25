@@ -354,7 +354,7 @@ function WindowSection({ window_ }: { window_: WindowDto }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function ParentFerieindmeldingPage() {
+export default function ParentVacationRegistrationPage() {
   usePageTitle('Ferietilmelding')
 
   const { data: windows = [] } = useQuery({

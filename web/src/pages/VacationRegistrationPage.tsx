@@ -63,7 +63,7 @@ const emptyForm = {
   isOpen: false,
 }
 
-export default function FerieindmeldingPage() {
+export default function VacationRegistrationPage() {
   usePageTitle('Ferietilmelding')
   const navigate = useNavigate()
   const qc = useQueryClient()

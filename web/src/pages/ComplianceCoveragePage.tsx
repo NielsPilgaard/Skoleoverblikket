@@ -5,17 +5,18 @@ import { usePageTitle } from '../hooks/usePageTitle'
 import { useAuth } from '../auth/useAuth'
 import { Modal } from '../components/Modal'
 import {
-  getApiV1StaaMaalMedCoverageOptions,
-  getApiV1StaaMaalMedSnapshotsOptions,
-  getApiV1StaaMaalMedSnapshotsByIdOptions,
-  postApiV1StaaMaalMedSnapshotsMutation,
+  getApiV1ComplianceCoverageCoverageOptions,
+  getApiV1ComplianceCoverageSnapshotsOptions,
+  getApiV1ComplianceCoverageSnapshotsByIdOptions,
+  postApiV1ComplianceCoverageSnapshotsMutation,
 } from '../api/generated/@tanstack/react-query.gen'
 import type {
-  StaaMaalMedControllerSubjectCoverageDto,
-  StaaMaalMedControllerCoverageResponseDto,
+  ComplianceCoverageControllerSubjectCoverageDto,
+  ComplianceCoverageControllerCoverageResponseDto,
+  ComplianceCoverageControllerClassCoverageDto,
 } from '../api/generated/types.gen'
 
-const SNAPSHOTS_QUERY_KEY = [{ _id: 'getApiV1StaaMaalMedSnapshots' }] as const
+const SNAPSHOTS_QUERY_KEY = [{ _id: 'getApiV1ComplianceCoverageSnapshots' }] as const
 
 const CATEGORY_LABELS: Record<string, string> = {
   Dansk: 'Dansk',
@@ -48,7 +49,7 @@ function formatDateTime(d: string | undefined) {
   })
 }
 
-function StatusDot({ subject }: { subject: StaaMaalMedControllerSubjectCoverageDto }) {
+function StatusDot({ subject }: { subject: ComplianceCoverageControllerSubjectCoverageDto }) {
   const status = subject.status ?? 'missing'
   const colors: Record<string, string> = {
     green: 'bg-green-400',
@@ -74,10 +75,18 @@ function StatusDot({ subject }: { subject: StaaMaalMedControllerSubjectCoverageD
   )
 }
 
-function CoverageTable({ data }: { data: StaaMaalMedControllerCoverageResponseDto | undefined }) {
+function CoverageTable({
+  data,
+}: {
+  data: ComplianceCoverageControllerCoverageResponseDto | undefined
+}) {
   const allCategories = [
     ...new Set(
-      (data?.classes ?? []).flatMap((c) => (c.subjects ?? []).map((s) => s.category ?? ''))
+      (data?.classes ?? []).flatMap((c: ComplianceCoverageControllerClassCoverageDto) =>
+        (c.subjects ?? []).map(
+          (s: ComplianceCoverageControllerSubjectCoverageDto) => s.category ?? ''
+        )
+      )
     ),
   ].sort()
 
@@ -200,10 +209,10 @@ function LiveCoverageTab() {
   const [reason, setReason] = useState('')
   const [savedMessage, setSavedMessage] = useState(false)
 
-  const { data, isLoading, isError } = useQuery(getApiV1StaaMaalMedCoverageOptions())
+  const { data, isLoading, isError } = useQuery(getApiV1ComplianceCoverageCoverageOptions())
 
   const createSnapshot = useMutation({
-    ...postApiV1StaaMaalMedSnapshotsMutation(),
+    ...postApiV1ComplianceCoverageSnapshotsMutation(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: SNAPSHOTS_QUERY_KEY })
       setShowModal(false)
@@ -300,7 +309,7 @@ function LiveCoverageTab() {
 
 function SnapshotDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const { data, isLoading, isError } = useQuery(
-    getApiV1StaaMaalMedSnapshotsByIdOptions({ path: { id } })
+    getApiV1ComplianceCoverageSnapshotsByIdOptions({ path: { id } })
   )
 
   return (
@@ -352,7 +361,7 @@ function SnapshotsListTab({ onSelect }: { onSelect: (id: string) => void }) {
     data: snapshots = [],
     isLoading,
     isError,
-  } = useQuery(getApiV1StaaMaalMedSnapshotsOptions())
+  } = useQuery(getApiV1ComplianceCoverageSnapshotsOptions())
 
   if (isLoading) {
     return (
@@ -402,7 +411,7 @@ function SnapshotsListTab({ onSelect }: { onSelect: (id: string) => void }) {
   )
 }
 
-export default function StaaMaalMedPage() {
+export default function ComplianceCoveragePage() {
   usePageTitle('Stå mål med')
   const [tab, setTab] = useState<'live' | 'snapshots'>('live')
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null)

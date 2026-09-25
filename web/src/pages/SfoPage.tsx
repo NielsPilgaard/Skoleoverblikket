@@ -13,12 +13,12 @@ import {
   postApiV1SfoShiftsByIdStaffByStaffIdMutation,
   deleteApiV1SfoShiftsByIdStaffByStaffIdMutation,
   getApiV1StaffOptions,
-  getApiV1SfoUgeplanOptions,
-  getApiV1SfoUgeplanQueryKey,
-  putApiV1SfoUgeplanShiftsMutation,
-  putApiV1SfoUgeplanGenereltMutation,
+  getApiV1SfoWeekPlanOptions,
+  getApiV1SfoWeekPlanQueryKey,
+  putApiV1SfoWeekPlanShiftsMutation,
+  putApiV1SfoWeekPlanGenereltMutation,
 } from '../api/generated/@tanstack/react-query.gen'
-import type { SfoShiftDto, SfoWeekPlanShiftDto } from '../api/client'
+import type { SfoShiftDto, SfoWeekPlanShiftDto, SfoWeekPlanDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 
 function getISOWeek(date: Date): number {
@@ -96,12 +96,12 @@ function SfoGenereltEditor({
   const isCurrentEdit = (submitted: string | null) => (submitted ?? '') === (text || '')
 
   const mutation = useMutation({
-    ...putApiV1SfoUgeplanGenereltMutation(),
+    ...putApiV1SfoWeekPlanGenereltMutation(),
     onSuccess: (_data, variables) => {
       pendingSaveRef.current = false
       prevSavedRef.current = lastSavedRef.current
       void qc.invalidateQueries({
-        queryKey: getApiV1SfoUgeplanQueryKey({ query: { isoYear, isoWeek } }),
+        queryKey: getApiV1SfoWeekPlanQueryKey({ query: { isoYear, isoWeek } }),
       })
       if (isCurrentEdit(variables.body?.generelt ?? null)) {
         setSaveStatus('saved')
@@ -176,13 +176,16 @@ export default function SfoPage() {
     weekShift: SfoWeekPlanShiftDto | undefined
   } | null>(null)
 
-  const { data: weekPlan } = useQuery(getApiV1SfoUgeplanOptions({ query: { isoYear, isoWeek } }))
+  const { data: weekPlan } = useQuery({
+    ...getApiV1SfoWeekPlanOptions({ query: { isoYear, isoWeek } }),
+    select: (data) => data as SfoWeekPlanDto,
+  })
 
   const upsertBeskrivelseMutation = useMutation({
-    ...putApiV1SfoUgeplanShiftsMutation(),
+    ...putApiV1SfoWeekPlanShiftsMutation(),
     onSuccess: () => {
       void qc.invalidateQueries({
-        queryKey: getApiV1SfoUgeplanQueryKey({ query: { isoYear, isoWeek } }),
+        queryKey: getApiV1SfoWeekPlanQueryKey({ query: { isoYear, isoWeek } }),
       })
       setSelectedCell(null)
     },

@@ -266,6 +266,50 @@ export type ClassesControllerYearRollRequest = {
     create?: Array<ClassesControllerYearRollCreateEntry>;
 };
 
+export type ComplianceCoverageControllerClassCoverageDto = {
+    classId: string;
+    className: string;
+    gradeLevel: number;
+    subjects?: Array<ComplianceCoverageControllerSubjectCoverageDto>;
+    unexpectedGradeCategories?: Array<string>;
+};
+
+export type ComplianceCoverageControllerCoverageResponseDto = {
+    classes?: Array<ComplianceCoverageControllerClassCoverageDto>;
+    classesMissingGradeLevel: number;
+    activeSchemaCount: number;
+};
+
+export type ComplianceCoverageControllerCreateSnapshotRequest = {
+    reason?: string | null;
+};
+
+export type ComplianceCoverageControllerSnapshotDetailDto = {
+    id: string;
+    schoolYear: string;
+    createdAt: string;
+    createdByStaffName: string;
+    reason?: string | null;
+    data?: ComplianceCoverageControllerCoverageResponseDto;
+};
+
+export type ComplianceCoverageControllerSnapshotSummaryDto = {
+    id: string;
+    schoolYear: string;
+    createdAt: string;
+    createdByStaffName: string;
+    reason?: string | null;
+};
+
+export type ComplianceCoverageControllerSubjectCoverageDto = {
+    category: string;
+    weeklyHours: number;
+    vejledendeWeeklyHours: number;
+    annualHours: number;
+    vejledendeAnnualHours: number;
+    status: string;
+};
+
 export type ConflictInfo = {
     type: ConflictType;
     slotAId: string;
@@ -282,6 +326,24 @@ export type ConflictInfo = {
 };
 
 export type ConflictType = 'TeacherDoubleBooked' | 'RoomDoubleBooked' | 'AideDoubleBooked' | 'SubstituteDoubleBooked';
+
+export type ContactDirectoryControllerContactDirectoryParentDto = {
+    id: string;
+    name: string;
+    phone?: string | null;
+    address?: string | null;
+    postalCode?: string | null;
+    city?: string | null;
+    email?: string | null;
+    avatarUrl?: string | null;
+    studentNames?: Array<string>;
+    students?: Array<ContactDirectoryControllerContactDirectoryStudentDto>;
+};
+
+export type ContactDirectoryControllerContactDirectoryStudentDto = {
+    id: string;
+    name: string;
+};
 
 export type ContactThreadsControllerAddMessageRequest = {
     body: string;
@@ -521,24 +583,6 @@ export type ImportsControllerUninvitedParentDto = {
     id: string;
     name: string;
     email: string;
-};
-
-export type KontaktControllerKontaktParentDto = {
-    id: string;
-    name: string;
-    phone?: string | null;
-    address?: string | null;
-    postalCode?: string | null;
-    city?: string | null;
-    email?: string | null;
-    avatarUrl?: string | null;
-    studentNames?: Array<string>;
-    students?: Array<KontaktControllerKontaktStudentDto>;
-};
-
-export type KontaktControllerKontaktStudentDto = {
-    id: string;
-    name: string;
 };
 
 export type MessagesControllerGroupPreviewDto = {
@@ -912,7 +956,7 @@ export type SfoControllerUpsertSfoShiftRequest = {
     label?: string | null;
 };
 
-export type SfoWeekPlanControllerGenereltDto = {
+export type SfoWeekPlanControllerNotesDto = {
     generelt?: string | null;
 };
 
@@ -940,7 +984,7 @@ export type SfoWeekPlanControllerSfoWeekPlanShiftDto = {
     beskrivelse?: string | null;
 };
 
-export type SfoWeekPlanControllerUpdateSfoGenereltRequest = {
+export type SfoWeekPlanControllerUpdateSfoNotesRequest = {
     isoYear: number;
     isoWeek: number;
     generelt?: string | null;
@@ -951,50 +995,6 @@ export type SfoWeekPlanControllerUpsertSfoWeekPlanShiftRequest = {
     isoWeek: number;
     sfoShiftId: string;
     beskrivelse?: string | null;
-};
-
-export type StaaMaalMedControllerClassCoverageDto = {
-    classId: string;
-    className: string;
-    gradeLevel: number;
-    subjects?: Array<StaaMaalMedControllerSubjectCoverageDto>;
-    unexpectedGradeCategories?: Array<string>;
-};
-
-export type StaaMaalMedControllerCoverageResponseDto = {
-    classes?: Array<StaaMaalMedControllerClassCoverageDto>;
-    classesMissingGradeLevel: number;
-    activeSchemaCount: number;
-};
-
-export type StaaMaalMedControllerCreateSnapshotRequest = {
-    reason?: string | null;
-};
-
-export type StaaMaalMedControllerSnapshotDetailDto = {
-    id: string;
-    schoolYear: string;
-    createdAt: string;
-    createdByStaffName: string;
-    reason?: string | null;
-    data?: StaaMaalMedControllerCoverageResponseDto;
-};
-
-export type StaaMaalMedControllerSnapshotSummaryDto = {
-    id: string;
-    schoolYear: string;
-    createdAt: string;
-    createdByStaffName: string;
-    reason?: string | null;
-};
-
-export type StaaMaalMedControllerSubjectCoverageDto = {
-    category: string;
-    weeklyHours: number;
-    vejledendeWeeklyHours: number;
-    annualHours: number;
-    vejledendeAnnualHours: number;
-    status: string;
 };
 
 export type StaffControllerPatchAdminPermissionRequest = {
@@ -1326,16 +1326,16 @@ export type WeekPlanControllerBreakTimeSlotDto = {
     endTime: string;
 };
 
-export type WeekPlanControllerGenereltDto = {
-    generelt?: string | null;
-};
-
 export type WeekPlanControllerHolidayDayDto = {
     weekday: DayOfWeek;
     title: string;
 };
 
-export type WeekPlanControllerUpdateGenereltRequest = {
+export type WeekPlanControllerNotesDto = {
+    generelt?: string | null;
+};
+
+export type WeekPlanControllerUpdateNotesRequest = {
     generelt?: string | null;
 };
 
@@ -2275,6 +2275,104 @@ export type DeleteApiV1ClassesByClassIdPermissionsByStaffIdResponses = {
     200: unknown;
 };
 
+export type GetApiV1ComplianceCoverageCoverageData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/compliance-coverage/coverage';
+};
+
+export type GetApiV1ComplianceCoverageCoverageResponses = {
+    /**
+     * OK
+     */
+    200: ComplianceCoverageControllerCoverageResponseDto;
+};
+
+export type GetApiV1ComplianceCoverageCoverageResponse = GetApiV1ComplianceCoverageCoverageResponses[keyof GetApiV1ComplianceCoverageCoverageResponses];
+
+export type GetApiV1ComplianceCoverageSnapshotsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/compliance-coverage/snapshots';
+};
+
+export type GetApiV1ComplianceCoverageSnapshotsResponses = {
+    /**
+     * OK
+     */
+    200: Array<ComplianceCoverageControllerSnapshotSummaryDto>;
+};
+
+export type GetApiV1ComplianceCoverageSnapshotsResponse = GetApiV1ComplianceCoverageSnapshotsResponses[keyof GetApiV1ComplianceCoverageSnapshotsResponses];
+
+export type PostApiV1ComplianceCoverageSnapshotsData = {
+    body?: ComplianceCoverageControllerCreateSnapshotRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/compliance-coverage/snapshots';
+};
+
+export type PostApiV1ComplianceCoverageSnapshotsResponses = {
+    /**
+     * OK
+     */
+    200: ComplianceCoverageControllerSnapshotSummaryDto;
+};
+
+export type PostApiV1ComplianceCoverageSnapshotsResponse = PostApiV1ComplianceCoverageSnapshotsResponses[keyof PostApiV1ComplianceCoverageSnapshotsResponses];
+
+export type DeleteApiV1ComplianceCoverageSnapshotsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/compliance-coverage/snapshots/{id}';
+};
+
+export type DeleteApiV1ComplianceCoverageSnapshotsByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1ComplianceCoverageSnapshotsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/compliance-coverage/snapshots/{id}';
+};
+
+export type GetApiV1ComplianceCoverageSnapshotsByIdResponses = {
+    /**
+     * OK
+     */
+    200: ComplianceCoverageControllerSnapshotDetailDto;
+};
+
+export type GetApiV1ComplianceCoverageSnapshotsByIdResponse = GetApiV1ComplianceCoverageSnapshotsByIdResponses[keyof GetApiV1ComplianceCoverageSnapshotsByIdResponses];
+
+export type GetApiV1ContactDirectoryData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/contact-directory';
+};
+
+export type GetApiV1ContactDirectoryResponses = {
+    /**
+     * OK
+     */
+    200: Array<ContactDirectoryControllerContactDirectoryParentDto>;
+};
+
+export type GetApiV1ContactDirectoryResponse = GetApiV1ContactDirectoryResponses[keyof GetApiV1ContactDirectoryResponses];
+
 export type GetApiV1ContactThreadsData = {
     body?: never;
     path?: never;
@@ -2673,22 +2771,6 @@ export type PostApiV1ImportsBoardMembersResponses = {
 };
 
 export type PostApiV1ImportsBoardMembersResponse = PostApiV1ImportsBoardMembersResponses[keyof PostApiV1ImportsBoardMembersResponses];
-
-export type GetApiV1KontaktData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/kontakt';
-};
-
-export type GetApiV1KontaktResponses = {
-    /**
-     * OK
-     */
-    200: Array<KontaktControllerKontaktParentDto>;
-};
-
-export type GetApiV1KontaktResponse = GetApiV1KontaktResponses[keyof GetApiV1KontaktResponses];
 
 export type GetApiV1MessagesInboxData = {
     body?: never;
@@ -3739,56 +3821,56 @@ export type PostApiV1SfoShiftsByIdStaffByStaffIdResponses = {
     200: unknown;
 };
 
-export type GetApiV1SfoUgeplanData = {
+export type GetApiV1SfoWeekPlanData = {
     body?: never;
     path?: never;
     query?: {
         isoYear?: number;
         isoWeek?: number;
     };
-    url: '/api/v1/sfo/ugeplan';
+    url: '/api/v1/sfo/week-plan';
 };
 
-export type GetApiV1SfoUgeplanResponses = {
+export type GetApiV1SfoWeekPlanResponses = {
     /**
      * OK
      */
     200: SfoWeekPlanControllerSfoWeekPlanDto;
 };
 
-export type GetApiV1SfoUgeplanResponse = GetApiV1SfoUgeplanResponses[keyof GetApiV1SfoUgeplanResponses];
+export type GetApiV1SfoWeekPlanResponse = GetApiV1SfoWeekPlanResponses[keyof GetApiV1SfoWeekPlanResponses];
 
-export type PutApiV1SfoUgeplanGenereltData = {
-    body?: SfoWeekPlanControllerUpdateSfoGenereltRequest;
+export type PutApiV1SfoWeekPlanGenereltData = {
+    body?: SfoWeekPlanControllerUpdateSfoNotesRequest;
     path?: never;
     query?: never;
-    url: '/api/v1/sfo/ugeplan/generelt';
+    url: '/api/v1/sfo/week-plan/generelt';
 };
 
-export type PutApiV1SfoUgeplanGenereltResponses = {
+export type PutApiV1SfoWeekPlanGenereltResponses = {
     /**
      * OK
      */
-    200: SfoWeekPlanControllerGenereltDto;
+    200: SfoWeekPlanControllerNotesDto;
 };
 
-export type PutApiV1SfoUgeplanGenereltResponse = PutApiV1SfoUgeplanGenereltResponses[keyof PutApiV1SfoUgeplanGenereltResponses];
+export type PutApiV1SfoWeekPlanGenereltResponse = PutApiV1SfoWeekPlanGenereltResponses[keyof PutApiV1SfoWeekPlanGenereltResponses];
 
-export type PutApiV1SfoUgeplanShiftsData = {
+export type PutApiV1SfoWeekPlanShiftsData = {
     body?: SfoWeekPlanControllerUpsertSfoWeekPlanShiftRequest;
     path?: never;
     query?: never;
-    url: '/api/v1/sfo/ugeplan/shifts';
+    url: '/api/v1/sfo/week-plan/shifts';
 };
 
-export type PutApiV1SfoUgeplanShiftsResponses = {
+export type PutApiV1SfoWeekPlanShiftsResponses = {
     /**
      * OK
      */
     200: SfoWeekPlanControllerSfoWeekPlanShiftDto;
 };
 
-export type PutApiV1SfoUgeplanShiftsResponse = PutApiV1SfoUgeplanShiftsResponses[keyof PutApiV1SfoUgeplanShiftsResponses];
+export type PutApiV1SfoWeekPlanShiftsResponse = PutApiV1SfoWeekPlanShiftsResponses[keyof PutApiV1SfoWeekPlanShiftsResponses];
 
 export type GetApiV1StaffData = {
     body?: never;
@@ -4167,88 +4249,6 @@ export type PostApiV1StudentsByIdAvatarConfirmResponses = {
      */
     200: unknown;
 };
-
-export type GetApiV1StaaMaalMedCoverageData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/staa-maal-med/coverage';
-};
-
-export type GetApiV1StaaMaalMedCoverageResponses = {
-    /**
-     * OK
-     */
-    200: StaaMaalMedControllerCoverageResponseDto;
-};
-
-export type GetApiV1StaaMaalMedCoverageResponse = GetApiV1StaaMaalMedCoverageResponses[keyof GetApiV1StaaMaalMedCoverageResponses];
-
-export type GetApiV1StaaMaalMedSnapshotsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/staa-maal-med/snapshots';
-};
-
-export type GetApiV1StaaMaalMedSnapshotsResponses = {
-    /**
-     * OK
-     */
-    200: Array<StaaMaalMedControllerSnapshotSummaryDto>;
-};
-
-export type GetApiV1StaaMaalMedSnapshotsResponse = GetApiV1StaaMaalMedSnapshotsResponses[keyof GetApiV1StaaMaalMedSnapshotsResponses];
-
-export type PostApiV1StaaMaalMedSnapshotsData = {
-    body?: StaaMaalMedControllerCreateSnapshotRequest;
-    path?: never;
-    query?: never;
-    url: '/api/v1/staa-maal-med/snapshots';
-};
-
-export type PostApiV1StaaMaalMedSnapshotsResponses = {
-    /**
-     * OK
-     */
-    200: StaaMaalMedControllerSnapshotSummaryDto;
-};
-
-export type PostApiV1StaaMaalMedSnapshotsResponse = PostApiV1StaaMaalMedSnapshotsResponses[keyof PostApiV1StaaMaalMedSnapshotsResponses];
-
-export type DeleteApiV1StaaMaalMedSnapshotsByIdData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/staa-maal-med/snapshots/{id}';
-};
-
-export type DeleteApiV1StaaMaalMedSnapshotsByIdResponses = {
-    /**
-     * OK
-     */
-    200: unknown;
-};
-
-export type GetApiV1StaaMaalMedSnapshotsByIdData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/staa-maal-med/snapshots/{id}';
-};
-
-export type GetApiV1StaaMaalMedSnapshotsByIdResponses = {
-    /**
-     * OK
-     */
-    200: StaaMaalMedControllerSnapshotDetailDto;
-};
-
-export type GetApiV1StaaMaalMedSnapshotsByIdResponse = GetApiV1StaaMaalMedSnapshotsByIdResponses[keyof GetApiV1StaaMaalMedSnapshotsByIdResponses];
 
 export type GetApiV1ModulesData = {
     body?: never;
@@ -4690,7 +4690,7 @@ export type PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteResponses = {
     200: unknown;
 };
 
-export type GetApiV1ClassesByClassIdUgeplanData = {
+export type GetApiV1ClassesByClassIdWeekPlanData = {
     body?: never;
     path: {
         classId: string;
@@ -4700,19 +4700,19 @@ export type GetApiV1ClassesByClassIdUgeplanData = {
         isoWeek?: number;
         schemaId?: string;
     };
-    url: '/api/v1/classes/{classId}/ugeplan';
+    url: '/api/v1/classes/{classId}/week-plan';
 };
 
-export type GetApiV1ClassesByClassIdUgeplanResponses = {
+export type GetApiV1ClassesByClassIdWeekPlanResponses = {
     /**
      * OK
      */
     200: WeekPlanControllerWeekPlanDto;
 };
 
-export type GetApiV1ClassesByClassIdUgeplanResponse = GetApiV1ClassesByClassIdUgeplanResponses[keyof GetApiV1ClassesByClassIdUgeplanResponses];
+export type GetApiV1ClassesByClassIdWeekPlanResponse = GetApiV1ClassesByClassIdWeekPlanResponses[keyof GetApiV1ClassesByClassIdWeekPlanResponses];
 
-export type PutApiV1ClassesByClassIdUgeplanSlotsData = {
+export type PutApiV1ClassesByClassIdWeekPlanSlotsData = {
     body?: WeekPlanControllerUpsertWeekPlanSlotRequest;
     path: {
         classId: string;
@@ -4722,20 +4722,20 @@ export type PutApiV1ClassesByClassIdUgeplanSlotsData = {
         isoWeek?: number;
         schemaId?: string;
     };
-    url: '/api/v1/classes/{classId}/ugeplan/slots';
+    url: '/api/v1/classes/{classId}/week-plan/slots';
 };
 
-export type PutApiV1ClassesByClassIdUgeplanSlotsResponses = {
+export type PutApiV1ClassesByClassIdWeekPlanSlotsResponses = {
     /**
      * OK
      */
     200: WeekPlanControllerWeekPlanSlotDto;
 };
 
-export type PutApiV1ClassesByClassIdUgeplanSlotsResponse = PutApiV1ClassesByClassIdUgeplanSlotsResponses[keyof PutApiV1ClassesByClassIdUgeplanSlotsResponses];
+export type PutApiV1ClassesByClassIdWeekPlanSlotsResponse = PutApiV1ClassesByClassIdWeekPlanSlotsResponses[keyof PutApiV1ClassesByClassIdWeekPlanSlotsResponses];
 
-export type PutApiV1ClassesByClassIdUgeplanGenereltData = {
-    body?: WeekPlanControllerUpdateGenereltRequest;
+export type PutApiV1ClassesByClassIdWeekPlanGenereltData = {
+    body?: WeekPlanControllerUpdateNotesRequest;
     path: {
         classId: string;
     };
@@ -4743,38 +4743,38 @@ export type PutApiV1ClassesByClassIdUgeplanGenereltData = {
         isoYear?: number;
         isoWeek?: number;
     };
-    url: '/api/v1/classes/{classId}/ugeplan/generelt';
+    url: '/api/v1/classes/{classId}/week-plan/generelt';
 };
 
-export type PutApiV1ClassesByClassIdUgeplanGenereltResponses = {
+export type PutApiV1ClassesByClassIdWeekPlanGenereltResponses = {
     /**
      * OK
      */
-    200: WeekPlanControllerGenereltDto;
+    200: WeekPlanControllerNotesDto;
 };
 
-export type PutApiV1ClassesByClassIdUgeplanGenereltResponse = PutApiV1ClassesByClassIdUgeplanGenereltResponses[keyof PutApiV1ClassesByClassIdUgeplanGenereltResponses];
+export type PutApiV1ClassesByClassIdWeekPlanGenereltResponse = PutApiV1ClassesByClassIdWeekPlanGenereltResponses[keyof PutApiV1ClassesByClassIdWeekPlanGenereltResponses];
 
-export type PostApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesData = {
+export type PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesData = {
     body?: WeekPlanControllerAddFileToSlotRequest;
     path: {
         classId: string;
         slotId: string;
     };
     query?: never;
-    url: '/api/v1/classes/{classId}/ugeplan/slots/{slotId}/files';
+    url: '/api/v1/classes/{classId}/week-plan/slots/{slotId}/files';
 };
 
-export type PostApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesResponses = {
+export type PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesResponses = {
     /**
      * OK
      */
     200: WeekPlanControllerWeekPlanSlotFileDto;
 };
 
-export type PostApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesResponse = PostApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesResponses[keyof PostApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesResponses];
+export type PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesResponse = PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesResponses[keyof PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesResponses];
 
-export type DeleteApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesByFileIdData = {
+export type DeleteApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesByFileIdData = {
     body?: never;
     path: {
         classId: string;
@@ -4782,10 +4782,10 @@ export type DeleteApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesByFileIdData = {
         fileId: string;
     };
     query?: never;
-    url: '/api/v1/classes/{classId}/ugeplan/slots/{slotId}/files/{fileId}';
+    url: '/api/v1/classes/{classId}/week-plan/slots/{slotId}/files/{fileId}';
 };
 
-export type DeleteApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesByFileIdResponses = {
+export type DeleteApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesByFileIdResponses = {
     /**
      * OK
      */

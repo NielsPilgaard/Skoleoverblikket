@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
-import { getApiV1ClassesByClassIdUgeplanQueryKey } from '../../api/generated/@tanstack/react-query.gen'
+import { getApiV1ClassesByClassIdWeekPlanQueryKey } from '../../api/generated/@tanstack/react-query.gen'
 
 interface AvailableStaffDto {
   id: string
@@ -21,7 +21,7 @@ interface StaffAvailabilityDto {
   busy: BusyStaffDto[]
 }
 
-interface TildeleVikarPanelProps {
+interface AssignSubstitutePanelProps {
   weekPlanId: string
   slotId: string
   classId: string
@@ -40,7 +40,7 @@ interface TildeleVikarPanelProps {
   onClose: () => void
 }
 
-export function TildeleVikarPanel({
+export function AssignSubstitutePanel({
   weekPlanId,
   slotId,
   classId,
@@ -57,11 +57,11 @@ export function TildeleVikarPanel({
   currentSubstituteAideName,
   schemaId,
   onClose,
-}: TildeleVikarPanelProps) {
+}: AssignSubstitutePanelProps) {
   const qc = useQueryClient()
   const panelRef = useRef<HTMLDivElement>(null)
 
-  const ugeplanQueryKey = getApiV1ClassesByClassIdUgeplanQueryKey({
+  const ugeplanQueryKey = getApiV1ClassesByClassIdWeekPlanQueryKey({
     path: { classId },
     query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
   })
@@ -129,7 +129,7 @@ export function TildeleVikarPanel({
         role="dialog"
         aria-modal="true"
         aria-label="Tildel vikar"
-        data-testid="tildele-vikar-panel"
+        data-testid="assign-substitute-panel"
       >
         {/* Header */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-gray-200">
@@ -143,7 +143,7 @@ export function TildeleVikarPanel({
             onClick={onClose}
             className="ml-4 text-gray-400 hover:text-gray-600 transition-colors"
             aria-label="Luk"
-            data-testid="close-vikar-panel"
+            data-testid="close-substitute-panel"
           >
             <svg
               width="20"
@@ -173,7 +173,7 @@ export function TildeleVikarPanel({
                   onClick={handleClear}
                   disabled={assignMutation.isPending}
                   className="text-xs text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
-                  data-testid="fjern-vikar-button"
+                  data-testid="remove-substitute-button"
                 >
                   Fjern vikar
                 </button>

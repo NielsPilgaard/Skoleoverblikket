@@ -32,7 +32,7 @@ interface NewClassRow {
   name: string
 }
 
-export default function AarsrulPage() {
+export default function ClassRolloverPage() {
   usePageTitle('Årsrul')
   const qc = useQueryClient()
 

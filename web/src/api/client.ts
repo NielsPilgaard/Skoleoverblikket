@@ -110,6 +110,7 @@ export type {
   SchoolsControllerOnboardingStatusDto as OnboardingStatusDto,
   SchoolsControllerSchoolSettingsDto as SchoolSettingsDto,
   SfoControllerSfoShiftDto as SfoShiftDto,
+  SfoWeekPlanControllerSfoWeekPlanDto as SfoWeekPlanDto,
   SfoWeekPlanControllerSfoWeekPlanShiftDto as SfoWeekPlanShiftDto,
   StaffControllerStaffDto as StaffDto,
   StaffInvitationsControllerInvitationDto as InvitationDto,

@@ -33,7 +33,7 @@ interface BreakEntry {
   durationMinutes: number
 }
 
-export default function SkoleindstillingerPage() {
+export default function SchoolSettingsPage() {
   usePageTitle('Indstillinger')
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -214,12 +214,12 @@ export default function SkoleindstillingerPage() {
       <SkoledagCard />
 
       {/* Bestyrelsesmedlemmer */}
-      <BestyrelsesmedlemmerCard />
+      <BoardMembersCard />
     </div>
   )
 }
 
-function BestyrelsesmedlemmerCard() {
+function BoardMembersCard() {
   const qc = useQueryClient()
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteName, setInviteName] = useState('')

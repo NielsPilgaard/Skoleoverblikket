@@ -3,7 +3,7 @@ import Footer from '../components/Footer'
 import SeoMeta from '../components/SeoMeta'
 import { useState } from 'react'
 
-export default function KontaktPage() {
+export default function ContactPage() {
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900 flex flex-col">
       <SeoMeta

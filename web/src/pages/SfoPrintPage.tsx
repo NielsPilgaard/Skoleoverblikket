@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
-import { getApiV1SfoUgeplanOptions } from '../api/generated/@tanstack/react-query.gen'
+import { getApiV1SfoWeekPlanOptions } from '../api/generated/@tanstack/react-query.gen'
 import type { SfoWeekPlanShiftDto } from '../api/client'
 import { Markdown } from '../components/markdown/Markdown'
 
@@ -38,7 +38,7 @@ export default function SfoPrintPage() {
   const isoWeek = Number(searchParams.get('isoWeek') ?? getISOWeek(now))
 
   const { data: weekPlan, isLoading } = useQuery(
-    getApiV1SfoUgeplanOptions({ query: { isoYear, isoWeek } })
+    getApiV1SfoWeekPlanOptions({ query: { isoYear, isoWeek } })
   )
 
   const shifts: SfoWeekPlanShiftDto[] = (weekPlan?.shifts ?? []) as SfoWeekPlanShiftDto[]

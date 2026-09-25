@@ -66,7 +66,7 @@ function isImage(contentType: string): boolean {
   return contentType.startsWith('image/')
 }
 
-export default function KlassechatPage() {
+export default function ClassChatPage() {
   usePageTitle('Klassechat')
   const qc = useQueryClient()
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null)

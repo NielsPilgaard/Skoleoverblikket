@@ -571,9 +571,9 @@ function GroupComposeModal({
   )
 }
 
-// ── BeskederPage ─────────────────────────────────────────────────────────────
+// ── MessagesPage ─────────────────────────────────────────────────────────────
 
-export default function BeskederPage() {
+export default function MessagesPage() {
   usePageTitle('Beskeder')
   const { isAdmin, isParent } = useAuth()
 

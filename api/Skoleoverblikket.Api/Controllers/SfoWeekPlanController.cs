@@ -10,7 +10,7 @@ using Skoleoverblikket.Api.Tenancy;
 namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/sfo/ugeplan")]
+[Route("api/v1/sfo/week-plan")]
 [Authorize(Roles = Roles.Admin)]
 public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant) : ControllerBase
 {
@@ -39,12 +39,12 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 		[Required] Guid SfoShiftId,
 		[StringLength(4000)] string? Beskrivelse);
 
-	public record UpdateSfoGenereltRequest(
+	public record UpdateSfoNotesRequest(
 		[Required] int IsoYear,
 		[Required] int IsoWeek,
 		[property: StringLength(8000)] string? Generelt);
 
-	public record GenereltDto(string? Generelt);
+	public record NotesDto(string? Generelt);
 
 	[HttpGet]
 	public async Task<ActionResult<SfoWeekPlanDto>> Get(
@@ -95,8 +95,8 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 	}
 
 	[HttpPut("generelt")]
-	public async Task<ActionResult<GenereltDto>> UpdateGenerelt(
-		[FromBody] UpdateSfoGenereltRequest request,
+	public async Task<ActionResult<NotesDto>> UpdateGenerelt(
+		[FromBody] UpdateSfoNotesRequest request,
 		CancellationToken cancellationToken)
 	{
 		if (!IsoWeekValidation.IsValid(request.IsoYear, request.IsoWeek))
@@ -114,7 +114,7 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 		weekPlan.Generelt = request.Generelt;
 		await db.SaveChangesAsync(cancellationToken);
 
-		return Ok(new GenereltDto(weekPlan.Generelt));
+		return Ok(new NotesDto(weekPlan.Generelt));
 	}
 
 	[HttpPut("shifts")]

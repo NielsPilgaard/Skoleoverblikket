@@ -69,7 +69,7 @@ function exportCsv(entries: EntryDto[], granularity: VacationRegistrationGranula
   URL.revokeObjectURL(url)
 }
 
-export default function FerieindmeldingDetailPage() {
+export default function VacationRegistrationDetailPage() {
   usePageTitle('Ferietilmelding – svar')
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()

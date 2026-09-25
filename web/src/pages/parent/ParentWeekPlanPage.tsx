@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getApiV1ClassesByClassIdUgeplanOptions } from '../../api/generated/@tanstack/react-query.gen'
+import { getApiV1ClassesByClassIdWeekPlanOptions } from '../../api/generated/@tanstack/react-query.gen'
 import { getApiV1ParentsMe } from '../../api/generated/sdk.gen'
 import type { ParentMeDto } from '../../api/client'
 import { usePageTitle } from '../../hooks/usePageTitle'
@@ -50,7 +50,7 @@ function ClassWeekPlan({
   isoWeek: number
 }) {
   const { data, isLoading, isError } = useQuery(
-    getApiV1ClassesByClassIdUgeplanOptions({ path: { classId }, query: { isoYear, isoWeek } })
+    getApiV1ClassesByClassIdWeekPlanOptions({ path: { classId }, query: { isoYear, isoWeek } })
   )
 
   if (isLoading) return <div className="text-sm text-gray-400">Indlæser ugeplan...</div>
@@ -79,7 +79,7 @@ function ClassWeekPlan({
   )
 }
 
-export default function ParentUgeplanPage() {
+export default function ParentWeekPlanPage() {
   usePageTitle('Ugeplan')
 
   const now = new Date()

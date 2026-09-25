@@ -152,7 +152,7 @@ function NotifyStaffPicker({ studentId, selectedIds, onChange }: NotifyStaffPick
   )
 }
 
-export default function ParentKontaktbogPage() {
+export default function ParentContactBookPage() {
   usePageTitle('Kontaktbog')
   const qc = useQueryClient()
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)

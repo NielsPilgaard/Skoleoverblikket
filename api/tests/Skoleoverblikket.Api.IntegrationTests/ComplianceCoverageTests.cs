@@ -11,7 +11,7 @@ using Skoleoverblikket.Api.Models;
 namespace Skoleoverblikket.Api.IntegrationTests;
 
 /// <summary>
-/// Integration tests for StaaMaalMedController.
+/// Integration tests for ComplianceCoverageController.
 /// Covers:
 ///   - Coverage calc: class with matching slots shows green/yellow/red/missing status.
 ///   - Classes with no slots appear with all subjects missing.
@@ -20,7 +20,7 @@ namespace Skoleoverblikket.Api.IntegrationTests;
 ///   - Only admin/board roles can access the endpoint.
 /// </summary>
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
-public sealed class StaaMaalMedTests(ApiFactory factory)
+public sealed class ComplianceCoverageTests(ApiFactory factory)
 {
 	private static readonly JsonSerializerOptions JsonOpts = new()
 	{
@@ -89,7 +89,7 @@ public sealed class StaaMaalMedTests(ApiFactory factory)
 		return course;
 	}
 
-	// ── GET /api/v1/staa-maal-med/coverage ───────────────────────────────────────
+	// ── GET /api/v1/compliance-coverage/coverage ───────────────────────────────────────
 
 	[Test]
 	public async Task GetCoverage_NonAdmin_Returns403()
@@ -99,7 +99,7 @@ public sealed class StaaMaalMedTests(ApiFactory factory)
 		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", "nonadmin-staamaal");
 
-		var response = await client.GetAsync("/api/v1/staa-maal-med/coverage");
+		var response = await client.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
 	}
@@ -112,7 +112,7 @@ public sealed class StaaMaalMedTests(ApiFactory factory)
 		client.DefaultRequestHeaders.Add("X-Test-Roles", "board");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", "board-staamaal");
 
-		var response = await client.GetAsync("/api/v1/staa-maal-med/coverage");
+		var response = await client.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 	}
@@ -133,10 +133,10 @@ public sealed class StaaMaalMedTests(ApiFactory factory)
 		db.Classes.Add(klass);
 		await db.SaveChangesAsync();
 
-		var response = await _adminClient.GetAsync("/api/v1/staa-maal-med/coverage");
+		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<StaaMaalMedController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 
 		var classDto = dto!.Classes.FirstOrDefault(c => c.ClassId == klass.Id);
@@ -160,10 +160,10 @@ public sealed class StaaMaalMedTests(ApiFactory factory)
 		db.Classes.Add(klass);
 		await db.SaveChangesAsync();
 
-		var response = await _adminClient.GetAsync("/api/v1/staa-maal-med/coverage");
+		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<StaaMaalMedController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 		await Assert.That(dto!.Classes.Any(c => c.ClassId == klass.Id)).IsFalse();
 	}
@@ -182,10 +182,10 @@ public sealed class StaaMaalMedTests(ApiFactory factory)
 			_factory.Services, _tenantId,
 			schema.Id, timeSlot.Id, friCourse.Id, staff.Id);
 
-		var response = await _adminClient.GetAsync("/api/v1/staa-maal-med/coverage");
+		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<StaaMaalMedController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 
 		var classDto = dto!.Classes.FirstOrDefault(c => c.ClassId == klass.Id);
@@ -216,10 +216,10 @@ public sealed class StaaMaalMedTests(ApiFactory factory)
 				weekdays[i % weekdays.Length]);
 		}
 
-		var response = await _adminClient.GetAsync("/api/v1/staa-maal-med/coverage");
+		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<StaaMaalMedController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 
 		var classDto = dto!.Classes.FirstOrDefault(c => c.ClassId == klass.Id);
@@ -250,10 +250,10 @@ public sealed class StaaMaalMedTests(ApiFactory factory)
 				i == 0 ? DayOfWeek.Monday : DayOfWeek.Tuesday);
 		}
 
-		var response = await _adminClient.GetAsync("/api/v1/staa-maal-med/coverage");
+		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<StaaMaalMedController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 
 		var classDto = dto!.Classes.FirstOrDefault(c => c.ClassId == klass.Id);
@@ -270,10 +270,10 @@ public sealed class StaaMaalMedTests(ApiFactory factory)
 		await CreateGradedClassWithActiveSchemaAsync(5, "5.sort-test");
 		await CreateGradedClassWithActiveSchemaAsync(2, "2.sort-test");
 
-		var response = await _adminClient.GetAsync("/api/v1/staa-maal-med/coverage");
+		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<StaaMaalMedController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 
 		var sortTestClasses = dto!.Classes
@@ -298,10 +298,10 @@ public sealed class StaaMaalMedTests(ApiFactory factory)
 			_factory.Services, _tenantId,
 			schema.Id, timeSlot.Id, tyskCourse.Id, staff.Id);
 
-		var response = await _adminClient.GetAsync("/api/v1/staa-maal-med/coverage");
+		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<StaaMaalMedController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 
 		var classDto = dto!.Classes.FirstOrDefault(c => c.ClassId == klass.Id);

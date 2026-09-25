@@ -26,7 +26,7 @@ function StatusBadge({ status }: { status: AbsenceReportDto['status'] }) {
   )
 }
 
-export default function FravaerPage() {
+export default function AbsencePage() {
   usePageTitle('Fravær')
   const qc = useQueryClient()
   const today = new Date().toISOString().slice(0, 10)

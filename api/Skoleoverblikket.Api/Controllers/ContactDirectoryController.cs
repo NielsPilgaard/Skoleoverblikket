@@ -7,11 +7,11 @@ using Skoleoverblikket.Api.Data;
 namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/kontakt")]
+[Route("api/v1/contact-directory")]
 [Authorize]
-public sealed class KontaktController(AppDbContext db) : ControllerBase
+public sealed class ContactDirectoryController(AppDbContext db) : ControllerBase
 {
-	public record KontaktParentDto(
+	public record ContactDirectoryParentDto(
 		Guid Id,
 		string Name,
 		string? Phone,
@@ -21,12 +21,12 @@ public sealed class KontaktController(AppDbContext db) : ControllerBase
 		string? Email,
 		string? AvatarUrl,
 		IReadOnlyList<string> StudentNames,
-		IReadOnlyList<KontaktStudentDto> Students);
+		IReadOnlyList<ContactDirectoryStudentDto> Students);
 
-	public record KontaktStudentDto(Guid Id, string Name);
+	public record ContactDirectoryStudentDto(Guid Id, string Name);
 
 	[HttpGet]
-	public async Task<ActionResult<IReadOnlyList<KontaktParentDto>>> GetKontakt(CancellationToken cancellationToken)
+	public async Task<ActionResult<IReadOnlyList<ContactDirectoryParentDto>>> GetDirectory(CancellationToken cancellationToken)
 	{
 		var subject = User.GetKeycloakSubject();
 
@@ -95,7 +95,7 @@ public sealed class KontaktController(AppDbContext db) : ControllerBase
 			var visibleStudents = visibleStudentIds is null
 				? p.Students
 				: p.Students.Where(s => visibleStudentIds.Contains(s.Id));
-			return new KontaktParentDto(
+			return new ContactDirectoryParentDto(
 				p.Id,
 				p.Name,
 				hideDetails ? null : p.Phone,
@@ -105,7 +105,7 @@ public sealed class KontaktController(AppDbContext db) : ControllerBase
 				hideDetails ? null : p.Email,
 				p.AvatarUrl,
 				visibleStudents.Select(s => s.Name).OrderBy(n => n).ToList(),
-				visibleStudents.Select(s => new KontaktStudentDto(s.Id, s.Name)).OrderBy(s => s.Name).ToList());
+				visibleStudents.Select(s => new ContactDirectoryStudentDto(s.Id, s.Name)).OrderBy(s => s.Name).ToList());
 		}).ToList();
 
 		return Ok(dtos);

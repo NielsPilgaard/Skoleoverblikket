@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import {
-  getApiV1ClassesByClassIdUgeplanOptions,
+  getApiV1ClassesByClassIdWeekPlanOptions,
   getApiV1ClassesOptions,
 } from '../api/generated/@tanstack/react-query.gen'
 import { getISOWeek, getISOWeekYear } from '../utils/isoWeek'
@@ -12,7 +12,7 @@ import { Markdown } from '../components/markdown/Markdown'
 const WEEKDAYS = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag']
 const WEEKDAY_KEYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
-export default function UgeplanPrintPage() {
+export default function WeekPlanPrintPage() {
   const [searchParams] = useSearchParams()
   const classId = searchParams.get('classId') ?? ''
   const schemaId = searchParams.get('schemaId') ?? undefined
@@ -21,7 +21,7 @@ export default function UgeplanPrintPage() {
   const isoWeek = Number(searchParams.get('isoWeek') ?? getISOWeek(now))
 
   const { data: weekPlan, isLoading } = useQuery({
-    ...getApiV1ClassesByClassIdUgeplanOptions({
+    ...getApiV1ClassesByClassIdWeekPlanOptions({
       path: { classId },
       query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
     }),
