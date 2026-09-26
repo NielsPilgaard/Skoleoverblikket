@@ -62,6 +62,10 @@ public sealed class FileUploadService(
 		string key, string contentType, long contentLength, CancellationToken cancellationToken) =>
 		storage.GeneratePresignedUploadUrlAsync(key, contentType, contentLength, PresignExpiry, cancellationToken);
 
+	/// <summary>True if the object at <paramref name="key"/> exists and its size matches <paramref name="expectedSizeBytes"/>.</summary>
+	public async Task<bool> VerifyUploadedObjectAsync(string key, long expectedSizeBytes, CancellationToken cancellationToken) =>
+		await storage.GetObjectSizeAsync(key, cancellationToken) == expectedSizeBytes;
+
 	/// <summary>Unix-seconds timestamp at which a confirm token minted now should expire.</summary>
 	public static long PresignExpiresAt() => DateTimeOffset.UtcNow.Add(PresignExpiry).ToUnixTimeSeconds();
 

@@ -6,19 +6,19 @@ import { WeekPlanList } from '../components/weekplan/WeekPlanList'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getApiV1ClassesByClassIdUgeplanOptions,
-  getApiV1ClassesByClassIdUgeplanQueryKey,
-  putApiV1ClassesByClassIdUgeplanSlotsMutation,
-  putApiV1ClassesByClassIdUgeplanGenereltMutation,
-  postApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesMutation,
-  deleteApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesByFileIdMutation,
+  getApiV1ClassesByClassIdWeekPlanOptions,
+  getApiV1ClassesByClassIdWeekPlanQueryKey,
+  putApiV1ClassesByClassIdWeekPlanSlotsMutation,
+  putApiV1ClassesByClassIdWeekPlanNotesMutation,
+  postApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesMutation,
+  deleteApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesByFileIdMutation,
   getApiV1CoursesOptions,
   getApiV1ClassesOptions,
 } from '../api/generated/@tanstack/react-query.gen'
 import type { ClassDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { FilePicker } from '../components/files/FilePicker'
-import { TildeleVikarPanel } from '../components/vikar/TildeleVikarPanel'
+import { AssignSubstitutePanel } from '../components/vikar/AssignSubstitutePanel'
 import { getISOWeek, getISOWeekYear, getISOWeeksInYear } from '../utils/isoWeek'
 
 // ─── Local types ─────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ interface WeekPlanSlotDto {
   courseName: string
   originalCourseId: string | null
   originalCourseName: string | null
-  beskrivelse: string | null
+  description: string | null
   lektier: string | null
   files: WeekPlanSlotFileDto[]
   substituteTeacherId: string | null
@@ -76,7 +76,7 @@ interface WeekPlanDto {
   holidayDays: HolidayDayDto[]
   breakSlots: BreakTimeSlotDto[]
   slots: WeekPlanSlotDto[]
-  generelt: string | null
+  notes: string | null
 }
 
 interface CourseDto {
@@ -195,7 +195,7 @@ function EditSlotModal({
     }
   })()
 
-  const [beskrivelse, setBeskrivelse] = useState(savedDraft?.beskrivelse ?? slot.beskrivelse ?? '')
+  const [description, setDescription] = useState(savedDraft?.description ?? slot.description ?? '')
   const [lektier, setLektier] = useState(savedDraft?.lektier ?? slot.lektier ?? '')
   const [fagSwapCourseId, setFagSwapCourseId] = useState(slot.originalCourseId ? slot.courseId : '')
   const [filesOpen, setFilesOpen] = useState(false)
@@ -206,29 +206,29 @@ function EditSlotModal({
     autosaveTimer.current = setTimeout(() => {
       sessionStorage.setItem(
         autosaveKey(slot.schemaSlotId),
-        JSON.stringify({ beskrivelse, lektier })
+        JSON.stringify({ description, lektier })
       )
     }, 1000)
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
     }
-  }, [beskrivelse, lektier, slot.schemaSlotId])
+  }, [description, lektier, slot.schemaSlotId])
 
-  const ugeplanQueryKey = getApiV1ClassesByClassIdUgeplanQueryKey({
+  const ugeplanQueryKey = getApiV1ClassesByClassIdWeekPlanQueryKey({
     path: { classId },
     query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
   })
 
   async function ensureSlotSaved(): Promise<string> {
     if (slot.id !== '00000000-0000-0000-0000-000000000000') return slot.id
-    const { mutationFn } = putApiV1ClassesByClassIdUgeplanSlotsMutation()
+    const { mutationFn } = putApiV1ClassesByClassIdWeekPlanSlotsMutation()
     const updated = await mutationFn!(
       {
         path: { classId },
         query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
         body: {
           schemaSlotId: slot.schemaSlotId,
-          beskrivelse: beskrivelse || null,
+          description: description || null,
           lektier: lektier || null,
           fagSwapCourseId: fagSwapCourseId || null,
         },
@@ -250,7 +250,7 @@ function EditSlotModal({
   }
 
   const upsertMutation = useMutation({
-    ...putApiV1ClassesByClassIdUgeplanSlotsMutation(),
+    ...putApiV1ClassesByClassIdWeekPlanSlotsMutation(),
     onSuccess: (updated) => {
       qc.setQueryData(ugeplanQueryKey, (old: WeekPlanDto | undefined) => {
         if (!old) return old
@@ -269,12 +269,12 @@ function EditSlotModal({
   })
 
   const addFileMutation = useMutation({
-    ...postApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesMutation(),
+    ...postApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesMutation(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ugeplanQueryKey }),
   })
 
   const removeFileMutation = useMutation({
-    ...deleteApiV1ClassesByClassIdUgeplanSlotsBySlotIdFilesByFileIdMutation(),
+    ...deleteApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesByFileIdMutation(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ugeplanQueryKey }),
   })
 
@@ -285,7 +285,7 @@ function EditSlotModal({
       query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
       body: {
         schemaSlotId: slot.schemaSlotId,
-        beskrivelse: beskrivelse || null,
+        description: description || null,
         lektier: lektier || null,
         fagSwapCourseId: fagSwapCourseId || null,
       },
@@ -334,8 +334,8 @@ function EditSlotModal({
           <MarkdownTextarea
             autoFocus
             rows={5}
-            value={beskrivelse}
-            onChange={setBeskrivelse}
+            value={description}
+            onChange={setDescription}
             placeholder="Hvad skal der ske i denne lektion?"
             maxLength={8000}
             aria-label="Beskrivelse"
@@ -453,7 +453,7 @@ function EditSlotModal({
 
 // ─── Generelt block ───────────────────────────────────────────────────────────
 
-function GenereltEditor({
+function NotesEditor({
   classId,
   isoYear,
   isoWeek,
@@ -486,14 +486,14 @@ function GenereltEditor({
     setText(incoming)
   }, [value, text])
 
-  const ugeplanQueryKey = getApiV1ClassesByClassIdUgeplanQueryKey({
+  const ugeplanQueryKey = getApiV1ClassesByClassIdWeekPlanQueryKey({
     path: { classId },
     query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
   })
 
   // Serialize saves: each blur chains onto the previous save's promise so two
   // overlapping PUTs can never let an older response land after a newer one and
-  // overwrite the newer `generelt`. A monotonic counter identifies the newest
+  // overwrite the newer `notes`. A monotonic counter identifies the newest
   // save so only its result updates cache/status.
   const saveChainRef = useRef<Promise<unknown>>(Promise.resolve())
   const saveSeqRef = useRef(0)
@@ -503,7 +503,7 @@ function GenereltEditor({
   // overwrite the newer local edit or stamp its outcome onto it.
   const isCurrentEdit = (submitted: string | null | undefined) => (submitted ?? '') === (text || '')
 
-  const { mutationFn } = putApiV1ClassesByClassIdUgeplanGenereltMutation()
+  const { mutationFn } = putApiV1ClassesByClassIdWeekPlanNotesMutation()
 
   function handleChange(next: string) {
     setText(next)
@@ -529,7 +529,7 @@ function GenereltEditor({
             {
               path: { classId },
               query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
-              body: { generelt: normalized },
+              body: { notes: normalized },
             },
             undefined as never
           )
@@ -538,7 +538,7 @@ function GenereltEditor({
             pendingSaveRef.current = false
             if (isCurrentEdit(normalized)) {
               qc.setQueryData(ugeplanQueryKey, (old: WeekPlanDto | undefined) =>
-                old ? { ...old, generelt: result.generelt ?? null } : old
+                old ? { ...old, notes: result.notes ?? null } : old
               )
               setSaveStatus('saved')
             }
@@ -565,7 +565,7 @@ function GenereltEditor({
         maxLength={8000}
         placeholder="Ture, huskeliste, kommende temaer…"
         aria-label="Generelt for ugen"
-        data-testid="generelt-editor"
+        data-testid="notes-editor"
         saveStatus={saveStatus}
         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
       />
@@ -616,7 +616,7 @@ export default function WeekPlanPage() {
   }
 
   const { data: rawWeekPlanData, isLoading } = useQuery({
-    ...getApiV1ClassesByClassIdUgeplanOptions({
+    ...getApiV1ClassesByClassIdWeekPlanOptions({
       path: { classId: classId! },
       query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
     }),
@@ -776,12 +776,12 @@ export default function WeekPlanPage() {
       <div className="flex-1 overflow-y-auto">
         {/* Generelt for ugen */}
         {classId && (
-          <GenereltEditor
+          <NotesEditor
             classId={classId}
             isoYear={isoYear}
             isoWeek={isoWeek}
             schemaId={schemaId}
-            value={weekPlanData?.generelt ?? null}
+            value={weekPlanData?.notes ?? null}
           />
         )}
 
@@ -900,9 +900,9 @@ export default function WeekPlanPage() {
                         </span>
 
                         {/* Beskrivelse */}
-                        {slot.beskrivelse && (
+                        {slot.description && (
                           <div className="text-xs text-gray-700 line-clamp-3 mt-1 prose prose-xs max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
-                            <Markdown>{slot.beskrivelse}</Markdown>
+                            <Markdown>{slot.description}</Markdown>
                           </div>
                         )}
 
@@ -990,7 +990,7 @@ export default function WeekPlanPage() {
             {showParentPreview && (
               <div className="mt-3 max-w-2xl" data-testid="parent-preview">
                 <WeekPlanList
-                  generelt={weekPlanData.generelt}
+                  notes={weekPlanData.notes}
                   slots={weekPlanData.slots}
                   isHolidayWeek={weekPlanData.isHolidayWeek}
                   holidayTitle={weekPlanData.holidayTitle}
@@ -1015,14 +1015,14 @@ export default function WeekPlanPage() {
           onOpenVikar={async () => {
             // Ensure the WeekPlanSlot row exists before opening the vikar panel
             if (editingSlot.id === '00000000-0000-0000-0000-000000000000') {
-              const { mutationFn } = putApiV1ClassesByClassIdUgeplanSlotsMutation()
+              const { mutationFn } = putApiV1ClassesByClassIdWeekPlanSlotsMutation()
               await mutationFn!(
                 {
                   path: { classId },
                   query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
                   body: {
                     schemaSlotId: editingSlot.schemaSlotId,
-                    beskrivelse: null,
+                    description: null,
                     lektier: null,
                     fagSwapCourseId: null,
                   },
@@ -1031,7 +1031,7 @@ export default function WeekPlanPage() {
               )
               // Refetch so slot.id and slot.weekPlanId are populated
               await queryClient.invalidateQueries({
-                queryKey: getApiV1ClassesByClassIdUgeplanQueryKey({
+                queryKey: getApiV1ClassesByClassIdWeekPlanQueryKey({
                   path: { classId },
                   query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
                 }),
@@ -1050,7 +1050,7 @@ export default function WeekPlanPage() {
           const slot = weekPlanData?.slots.find((s) => s.schemaSlotId === vikarSchemaSlotId)
           if (!slot || slot.weekPlanId === '00000000-0000-0000-0000-000000000000') return null
           return (
-            <TildeleVikarPanel
+            <AssignSubstitutePanel
               weekPlanId={slot.weekPlanId}
               slotId={slot.id}
               classId={classId}

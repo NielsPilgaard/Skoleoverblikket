@@ -15,7 +15,7 @@ public sealed class WeekPlan : ITenantScoped, IEntityTypeConfiguration<WeekPlan>
 	public int IsoWeek { get; set; }   // 1–53
 
 	[StringLength(8000)]
-	public string? Generelt { get; set; }
+	public string? Notes { get; set; }
 
 	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 	public ICollection<WeekPlanSlot> Slots { get; set; } = [];

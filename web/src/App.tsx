@@ -14,15 +14,16 @@ import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import InvitationAcceptPage from './pages/InvitationAcceptPage'
-import OmPage from './pages/OmPage'
-import KontaktPage from './pages/KontaktPage'
+import AboutPage from './pages/AboutPage'
+import ContactPage from './pages/ContactPage'
 
 // Lazy load legal/info pages
-const PrivatlivspolitikPage = lazy(() => import('./pages/PrivatlivspolitikPage'))
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 
 // Lazy load all other pages
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const MySchedulePage = lazy(() => import('./pages/MySchedulePage'))
+const StaffDashboardPage = lazy(() => import('./pages/StaffDashboardPage'))
 const ClassesPage = lazy(() => import('./pages/ClassesPage'))
 const SchemaBuilderPage = lazy(() => import('./pages/SchemaBuilderPage'))
 const StaffPage = lazy(() => import('./pages/StaffPage'))
@@ -32,8 +33,8 @@ const RoomsPage = lazy(() => import('./pages/RoomsPage'))
 const RoomSchedulePage = lazy(() => import('./pages/RoomSchedulePage'))
 const PrintSchemaPage = lazy(() => import('./pages/PrintSchemaPage'))
 const SfoPrintPage = lazy(() => import('./pages/SfoPrintPage'))
-const UgeplanPrintPage = lazy(() => import('./pages/UgeplanPrintPage'))
-const SkoleindstillingerPage = lazy(() => import('./pages/SkoleindstillingerPage'))
+const WeekPlanPrintPage = lazy(() => import('./pages/WeekPlanPrintPage'))
+const SchoolSettingsPage = lazy(() => import('./pages/SchoolSettingsPage'))
 const SchoolSetupWizardPage = lazy(() => import('./pages/SchoolSetupWizardPage'))
 const FilesPage = lazy(() => import('./pages/FilesPage'))
 const BillingPage = lazy(() => import('./pages/BillingPage'))
@@ -44,10 +45,10 @@ const WeekPlanPage = lazy(() => import('./pages/WeekPlanPage'))
 const SfoPage = lazy(() => import('./pages/SfoPage'))
 const StudentsPage = lazy(() => import('./pages/StudentsPage'))
 const ParentsPage = lazy(() => import('./pages/ParentsPage'))
-const YearRollPage = lazy(() => import('./pages/AarsrulPage'))
+const YearRollPage = lazy(() => import('./pages/ClassRolloverPage'))
 const ParentSchemaPage = lazy(() => import('./pages/parent/ParentSchemaPage'))
 const ParentCalendarPage = lazy(() => import('./pages/parent/ParentCalendarPage'))
-const ParentUgeplanPage = lazy(() => import('./pages/parent/ParentUgeplanPage'))
+const ParentWeekPlanPage = lazy(() => import('./pages/parent/ParentWeekPlanPage'))
 const ParentProfilePage = lazy(() => import('./pages/parent/ParentProfilePage'))
 const BackofficeLayout = lazy(() => import('./pages/backoffice/BackofficeLayout'))
 const BackofficeTenantsPage = lazy(() => import('./pages/backoffice/BackofficeTenantsPage'))
@@ -58,20 +59,23 @@ const BackofficeEmailPreviewPage = lazy(
   () => import('./pages/backoffice/BackofficeEmailPreviewPage')
 )
 const ParentDirectoryPage = lazy(() => import('./pages/ParentDirectoryPage'))
-const ParentFravaerPage = lazy(() => import('./pages/parent/ParentFravaerPage'))
-const FravaerPage = lazy(() => import('./pages/FravaerPage'))
+const ParentAbsencePage = lazy(() => import('./pages/parent/ParentAbsencePage'))
+const AbsencePage = lazy(() => import('./pages/AbsencePage'))
 const NotificationPreferencesPage = lazy(() => import('./pages/NotificationPreferencesPage'))
-const KontaktbogPage = lazy(() => import('./pages/KontaktbogPage'))
-const ParentKontaktbogPage = lazy(() => import('./pages/parent/ParentKontaktbogPage'))
-const BeskederPage = lazy(() => import('./pages/BeskederPage'))
-const FerieindmeldingPage = lazy(() => import('./pages/FerieindmeldingPage'))
-const FerieindmeldingDetailPage = lazy(() => import('./pages/FerieindmeldingDetailPage'))
-const ParentFerieindmeldingPage = lazy(() => import('./pages/parent/ParentFerieindmeldingPage'))
-const BestyrelseDashboardPage = lazy(() => import('./pages/BestyrelseDashboardPage'))
-const BestyrelseFilerPage = lazy(() => import('./pages/BestyrelseFilerPage'))
-const BestyrelseSkemaerPage = lazy(() => import('./pages/BestyrelseSkemaerPage'))
-const BestyrelseMedarbejderePage = lazy(() => import('./pages/BestyrelseMedarbejderePage'))
-const StaaMaalMedPage = lazy(() => import('./pages/StaaMaalMedPage'))
+const ClassChatPage = lazy(() => import('./pages/ClassChatPage'))
+const ContactBookPage = lazy(() => import('./pages/ContactBookPage'))
+const ParentContactBookPage = lazy(() => import('./pages/parent/ParentContactBookPage'))
+const MessagesPage = lazy(() => import('./pages/MessagesPage'))
+const VacationRegistrationPage = lazy(() => import('./pages/VacationRegistrationPage'))
+const VacationRegistrationDetailPage = lazy(() => import('./pages/VacationRegistrationDetailPage'))
+const ParentVacationRegistrationPage = lazy(
+  () => import('./pages/parent/ParentVacationRegistrationPage')
+)
+const BoardDashboardPage = lazy(() => import('./pages/BoardDashboardPage'))
+const BoardFilesPage = lazy(() => import('./pages/BoardFilesPage'))
+const BoardSchemasPage = lazy(() => import('./pages/BoardSchemasPage'))
+const BoardStaffPage = lazy(() => import('./pages/BoardStaffPage'))
+const ComplianceCoveragePage = lazy(() => import('./pages/ComplianceCoveragePage'))
 const BoardInvitationPage = lazy(() => import('./pages/BoardInvitationPage'))
 const ImportPage = lazy(() => import('./pages/ImportPage'))
 const queryClient = new QueryClient({
@@ -89,20 +93,22 @@ function HomeRedirect() {
     if (isSuperAdmin && viewAs === 'default') return <Navigate to="/backoffice" replace />
     if (isParent) return <Navigate to="/foraeldrevisning/skema" replace />
     if (isBoard) return <Navigate to="/bestyrelse/oversigt" replace />
-    return <Navigate to={isAdmin ? '/dashboard' : '/mig/skema'} replace />
+    return <Navigate to={isAdmin ? '/dashboard' : '/mig/oversigt'} replace />
   }
   return <LandingPage />
 }
 
 function AdminRoute({ children }: { children: JSX.Element }) {
   const { isAdmin } = useAuth()
-  if (!isAdmin) return <Navigate to="/mig/skema" replace />
+  if (!isAdmin) return <Navigate to="/mig/oversigt" replace />
   return <>{children}</>
 }
 
 function ParentRoute({ children }: { children: JSX.Element }) {
   const { isParent } = useAuth()
-  if (!isParent) return <Navigate to="/mig/skema" replace />
+  // Route through HomeRedirect — the caller may be staff or admin, and each
+  // resolves to a different landing page.
+  if (!isParent) return <Navigate to="/" replace />
   return <>{children}</>
 }
 
@@ -114,7 +120,17 @@ function SuperAdminRoute({ children }: { children: JSX.Element }) {
 
 function BoardRoute({ children }: { children: JSX.Element }) {
   const { isBoard } = useAuth()
-  if (!isBoard) return <Navigate to="/mig/skema" replace />
+  // Route through HomeRedirect — see ParentRoute.
+  if (!isBoard) return <Navigate to="/" replace />
+  return <>{children}</>
+}
+
+/** Staff-only (Teacher/Aide/Vikar) — admins, parents, board members and default-mode super admins land elsewhere. */
+function StaffRoute({ children }: { children: JSX.Element }) {
+  const { isAdmin, isParent, isBoard, isSuperAdmin, viewAs } = useAuth()
+  if (isAdmin || isParent || isBoard || (isSuperAdmin && viewAs === 'default')) {
+    return <Navigate to="/" replace />
+  }
   return <>{children}</>
 }
 
@@ -139,14 +155,14 @@ export default function App() {
                 <Route path="invitation/:token" element={<InvitationAcceptPage />} />
                 <Route path="parent-invitation/:token" element={<InvitationAcceptPage />} />
                 <Route path="board-invitation/:token" element={<BoardInvitationPage />} />
-                <Route path="om" element={<OmPage />} />
-                <Route path="privatlivspolitik" element={<PrivatlivspolitikPage />} />
-                <Route path="kontakt" element={<KontaktPage />} />
+                <Route path="om" element={<AboutPage />} />
+                <Route path="privatlivspolitik" element={<PrivacyPolicyPage />} />
+                <Route path="kontakt" element={<ContactPage />} />
                 <Route path="udskriv/klasse/:classId" element={<PrintSchemaPage />} />
                 <Route path="udskriv/medarbejder/:staffId" element={<PrintSchemaPage />} />
                 <Route path="udskriv/lokale/:roomId" element={<PrintSchemaPage />} />
                 <Route path="udskriv/sfo" element={<SfoPrintPage />} />
-                <Route path="udskriv/ugeplan" element={<UgeplanPrintPage />} />
+                <Route path="udskriv/ugeplan" element={<WeekPlanPrintPage />} />
 
                 {/* Pages outside Layout (no sidebar) */}
                 <Route path="setup" element={<SchoolSetupWizardPage />} />
@@ -172,6 +188,14 @@ export default function App() {
                       <AdminRoute>
                         <DashboardPage />
                       </AdminRoute>
+                    }
+                  />
+                  <Route
+                    path="mig/oversigt"
+                    element={
+                      <StaffRoute>
+                        <StaffDashboardPage />
+                      </StaffRoute>
                     }
                   />
                   <Route path="mig/skema" element={<MySchedulePage />} />
@@ -231,7 +255,7 @@ export default function App() {
                     path="indstillinger"
                     element={
                       <AdminRoute>
-                        <SkoleindstillingerPage />
+                        <SchoolSettingsPage />
                       </AdminRoute>
                     }
                   />
@@ -287,7 +311,7 @@ export default function App() {
                     path="foraeldrevisning/ugeplan"
                     element={
                       <ParentRoute>
-                        <ParentUgeplanPage />
+                        <ParentWeekPlanPage />
                       </ParentRoute>
                     }
                   />
@@ -303,17 +327,18 @@ export default function App() {
                     path="foraeldrevisning/fravaer"
                     element={
                       <ParentRoute>
-                        <ParentFravaerPage />
+                        <ParentAbsencePage />
                       </ParentRoute>
                     }
                   />
-                  <Route path="fravaer" element={<FravaerPage />} />
-                  <Route path="kontaktbog" element={<KontaktbogPage />} />
+                  <Route path="fravaer" element={<AbsencePage />} />
+                  <Route path="klassechat" element={<ClassChatPage />} />
+                  <Route path="kontaktbog" element={<ContactBookPage />} />
                   <Route
                     path="foraeldrevisning/kontaktbog"
                     element={
                       <ParentRoute>
-                        <ParentKontaktbogPage />
+                        <ParentContactBookPage />
                       </ParentRoute>
                     }
                   />
@@ -329,12 +354,12 @@ export default function App() {
                     path="indstillinger/notifikationer"
                     element={<NotificationPreferencesPage />}
                   />
-                  <Route path="beskeder" element={<BeskederPage />} />
+                  <Route path="beskeder" element={<MessagesPage />} />
                   <Route
                     path="ferieindmelding"
                     element={
                       <AdminRoute>
-                        <FerieindmeldingPage />
+                        <VacationRegistrationPage />
                       </AdminRoute>
                     }
                   />
@@ -342,7 +367,7 @@ export default function App() {
                     path="ferieindmelding/:id"
                     element={
                       <AdminRoute>
-                        <FerieindmeldingDetailPage />
+                        <VacationRegistrationDetailPage />
                       </AdminRoute>
                     }
                   />
@@ -350,7 +375,7 @@ export default function App() {
                     path="foraeldrevisning/ferieindmelding"
                     element={
                       <ParentRoute>
-                        <ParentFerieindmeldingPage />
+                        <ParentVacationRegistrationPage />
                       </ParentRoute>
                     }
                   />
@@ -358,7 +383,7 @@ export default function App() {
                     path="bestyrelse/oversigt"
                     element={
                       <BoardRoute>
-                        <BestyrelseDashboardPage />
+                        <BoardDashboardPage />
                       </BoardRoute>
                     }
                   />
@@ -366,7 +391,7 @@ export default function App() {
                     path="bestyrelse/filer"
                     element={
                       <BoardRoute>
-                        <BestyrelseFilerPage />
+                        <BoardFilesPage />
                       </BoardRoute>
                     }
                   />
@@ -374,7 +399,7 @@ export default function App() {
                     path="bestyrelse/skemaer"
                     element={
                       <BoardRoute>
-                        <BestyrelseSkemaerPage />
+                        <BoardSchemasPage />
                       </BoardRoute>
                     }
                   />
@@ -382,7 +407,7 @@ export default function App() {
                     path="bestyrelse/medarbejdere"
                     element={
                       <BoardRoute>
-                        <BestyrelseMedarbejderePage />
+                        <BoardStaffPage />
                       </BoardRoute>
                     }
                   />
@@ -390,7 +415,7 @@ export default function App() {
                     path="staa-maal-med"
                     element={
                       <AdminRoute>
-                        <StaaMaalMedPage />
+                        <ComplianceCoveragePage />
                       </AdminRoute>
                     }
                   />
@@ -406,7 +431,7 @@ export default function App() {
                     path="bestyrelse/staa-maal-med"
                     element={
                       <BoardRoute>
-                        <StaaMaalMedPage />
+                        <ComplianceCoveragePage />
                       </BoardRoute>
                     }
                   />

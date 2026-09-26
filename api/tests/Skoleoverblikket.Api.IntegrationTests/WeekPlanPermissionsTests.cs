@@ -55,7 +55,7 @@ public sealed class WeekPlanPermissionsTests(ApiFactory factory)
 		client.DefaultRequestHeaders.Add("X-Test-Subject", "random-teacher");
 
 		var response = await client.GetAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+			$"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 	}
@@ -87,7 +87,7 @@ public sealed class WeekPlanPermissionsTests(ApiFactory factory)
 		client.DefaultRequestHeaders.Add("X-Test-Subject", teacherSubject);
 
 		var response = await client.PutAsJsonAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
 			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlot.Id, "Lektier: side 12-15", null, null));
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -126,12 +126,12 @@ public sealed class WeekPlanPermissionsTests(ApiFactory factory)
 		teacherClient.DefaultRequestHeaders.Add("X-Test-Subject", teacherSubject);
 
 		var response = await teacherClient.PutAsJsonAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
 			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlot.Id, "Vi læser kapitel 5", null, null));
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 		var slot = await response.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
-		await Assert.That(slot!.Beskrivelse).IsEqualTo("Vi læser kapitel 5");
+		await Assert.That(slot!.Description).IsEqualTo("Vi læser kapitel 5");
 	}
 
 	/// <summary>
@@ -165,7 +165,7 @@ public sealed class WeekPlanPermissionsTests(ApiFactory factory)
 		client.DefaultRequestHeaders.Add("X-Test-Subject", teacherSubject);
 
 		var response = await client.PutAsJsonAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
 			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlot.Id, "Se film i dag", null, null));
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -204,7 +204,7 @@ public sealed class WeekPlanPermissionsTests(ApiFactory factory)
 		client.DefaultRequestHeaders.Add("X-Test-Subject", teacherSubject);
 
 		var response = await client.PutAsJsonAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
 			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlot.Id, "Vil aldrig blive gemt", null, null));
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);

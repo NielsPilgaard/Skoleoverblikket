@@ -81,13 +81,13 @@ public sealed class VikarTests(ApiFactory factory)
 
 		// Get the schema slot id
 		var planResponse = await _client.GetAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+			$"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		var planDto = await planResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
 		var schemaSlotId = planDto!.Slots[0].SchemaSlotId;
 
 		// Upsert week plan slot to get a real slot row
 		var upsertResponse = await _client.PutAsJsonAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
 			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlotId, null, null, null));
 		upsertResponse.EnsureSuccessStatusCode();
 		var slotDto = await upsertResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
@@ -110,7 +110,7 @@ public sealed class VikarTests(ApiFactory factory)
 	}
 
 	/// <summary>
-	/// After assigning a substitute, GET /ugeplan returns the substitute name and id on the slot.
+	/// After assigning a substitute, GET /week-plan returns the substitute name and id on the slot.
 	/// </summary>
 	[Test]
 	public async Task AssignSubstitute_ThenGetUgeplan_ReturnsSubstituteOnSlot()
@@ -126,12 +126,12 @@ public sealed class VikarTests(ApiFactory factory)
 			new { timeSlotId = timeSlot.Id, weekday = (int)DayOfWeek.Wednesday, courseId = course.Id, teacherId = teacher.Id });
 
 		var planResponse1 = await _client.GetAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+			$"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		var planDto1 = await planResponse1.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
 		var schemaSlotId = planDto1!.Slots[0].SchemaSlotId;
 
 		var upsertResponse = await _client.PutAsJsonAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
 			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlotId, null, null, null));
 		upsertResponse.EnsureSuccessStatusCode();
 		var slotDto = await upsertResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
@@ -142,9 +142,9 @@ public sealed class VikarTests(ApiFactory factory)
 			new VikarController.AssignSubstituteRequest(vikar.Id, null));
 		await Assert.That(assignResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-		// GET ugeplan — substitute should be visible on the slot
+		// GET week-plan — substitute should be visible on the slot
 		var planResponse2 = await _client.GetAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+			$"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		var planDto2 = await planResponse2.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
 		var slot = planDto2!.Slots.First(s => s.SchemaSlotId == schemaSlotId);
 		await Assert.That(slot.SubstituteTeacherId).IsEqualTo(vikar.Id);
@@ -168,12 +168,12 @@ public sealed class VikarTests(ApiFactory factory)
 			new { timeSlotId = timeSlot.Id, weekday = (int)DayOfWeek.Thursday, courseId = course.Id, teacherId = teacher.Id });
 
 		var planResponse = await _client.GetAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+			$"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		var planDto = await planResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
 		var schemaSlotId = planDto!.Slots[0].SchemaSlotId;
 
 		var upsertResponse = await _client.PutAsJsonAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
 			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlotId, null, null, null));
 		upsertResponse.EnsureSuccessStatusCode();
 		var slotDto = await upsertResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
@@ -202,12 +202,12 @@ public sealed class VikarTests(ApiFactory factory)
 			new { timeSlotId = timeSlot.Id, weekday = (int)DayOfWeek.Friday, courseId = course.Id, teacherId = teacher.Id });
 
 		var planResponse = await _client.GetAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+			$"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		var planDto = await planResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
 		var schemaSlotId = planDto!.Slots[0].SchemaSlotId;
 
 		var upsertResponse = await _client.PutAsJsonAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
 			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlotId, null, null, null));
 		upsertResponse.EnsureSuccessStatusCode();
 		var slotDto = await upsertResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
@@ -226,7 +226,7 @@ public sealed class VikarTests(ApiFactory factory)
 
 		// Verify cleared in GET
 		var planResponse2 = await _client.GetAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+			$"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		var planDto2 = await planResponse2.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
 		var slot = planDto2!.Slots.First(s => s.SchemaSlotId == schemaSlotId);
 		await Assert.That(slot.SubstituteTeacherId).IsNull();

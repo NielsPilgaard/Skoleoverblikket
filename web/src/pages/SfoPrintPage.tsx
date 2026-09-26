@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
-import { getApiV1SfoUgeplanOptions } from '../api/generated/@tanstack/react-query.gen'
+import { getApiV1SfoWeekPlanOptions } from '../api/generated/@tanstack/react-query.gen'
 import type { SfoWeekPlanShiftDto } from '../api/client'
 import { Markdown } from '../components/markdown/Markdown'
 
@@ -38,12 +38,12 @@ export default function SfoPrintPage() {
   const isoWeek = Number(searchParams.get('isoWeek') ?? getISOWeek(now))
 
   const { data: weekPlan, isLoading } = useQuery(
-    getApiV1SfoUgeplanOptions({ query: { isoYear, isoWeek } })
+    getApiV1SfoWeekPlanOptions({ query: { isoYear, isoWeek } })
   )
 
   const shifts: SfoWeekPlanShiftDto[] = (weekPlan?.shifts ?? []) as SfoWeekPlanShiftDto[]
-  const generelt = (weekPlan as { generelt?: string | null } | undefined)?.generelt
-  const hasGenerelt = Boolean(generelt?.trim())
+  const notes = (weekPlan as { notes?: string | null } | undefined)?.notes
+  const hasGenerelt = Boolean(notes?.trim())
 
   useEffect(() => {
     if (!isLoading) {
@@ -132,16 +132,16 @@ export default function SfoPrintPage() {
       .print-time { display: block; font-weight: 600; font-size: 11px; color: #374151; }
       .print-cell { display: flex; flex-direction: column; gap: 1px; }
       .print-course { font-weight: 600; color: #111827; font-size: 11px; }
-      .print-beskrivelse { font-size: 10px; color: #374151; font-style: italic; }
-      .print-beskrivelse p { margin: 0; }
-      .print-beskrivelse ul, .print-beskrivelse ol { margin: 1px 0; padding-left: 14px; }
+      .print-description { font-size: 10px; color: #374151; font-style: italic; }
+      .print-description p { margin: 0; }
+      .print-description ul, .print-description ol { margin: 1px 0; padding-left: 14px; }
       .print-info { font-size: 10px; color: #6b7280; }
       .print-empty { text-align: center; color: #9ca3af; margin-top: 32px; font-size: 13px; }
-      .print-generelt { font-size: 11px; color: #374151; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; margin-bottom: 10px; }
-      .print-generelt p { margin: 0 0 4px; }
-      .print-generelt p:last-child { margin-bottom: 0; }
-      .print-generelt ul, .print-generelt ol { margin: 2px 0; padding-left: 18px; }
-      .print-generelt-page { break-after: page; page-break-after: always; }
+      .print-notes { font-size: 11px; color: #374151; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; margin-bottom: 10px; }
+      .print-notes p { margin: 0 0 4px; }
+      .print-notes p:last-child { margin-bottom: 0; }
+      .print-notes ul, .print-notes ol { margin: 2px 0; padding-left: 18px; }
+      .print-notes-page { break-after: page; page-break-after: always; }
     `}</style>
       <div className={`print-page${hasGenerelt ? ' has-generelt' : ''}`}>
         <div className="print-header">
@@ -155,8 +155,8 @@ export default function SfoPrintPage() {
         </div>
 
         {hasGenerelt && (
-          <div className="print-generelt print-generelt-page">
-            <Markdown>{generelt}</Markdown>
+          <div className="print-notes print-notes-page">
+            <Markdown>{notes}</Markdown>
           </div>
         )}
 
@@ -201,9 +201,9 @@ export default function SfoPrintPage() {
                         {dayShifts?.map((shift) => (
                           <div key={shift.id ?? shift.sfoShiftId} className="print-cell">
                             {shift.label && <span className="print-course">{shift.label}</span>}
-                            {shift.beskrivelse && (
-                              <div className="print-beskrivelse">
-                                <Markdown>{shift.beskrivelse}</Markdown>
+                            {shift.description && (
+                              <div className="print-description">
+                                <Markdown>{shift.description}</Markdown>
                               </div>
                             )}
                             {shift.staff?.map((s) => (

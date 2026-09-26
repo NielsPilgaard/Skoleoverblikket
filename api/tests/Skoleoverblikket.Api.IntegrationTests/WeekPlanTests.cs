@@ -49,7 +49,7 @@ public sealed class WeekPlanTests(ApiFactory factory)
 		db.Classes.Add(noSchemaClass);
 		await db.SaveChangesAsync();
 
-		var response = await _client.GetAsync($"/api/v1/classes/{noSchemaClass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var response = await _client.GetAsync($"/api/v1/classes/{noSchemaClass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 		var dto = await response.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
@@ -71,7 +71,7 @@ public sealed class WeekPlanTests(ApiFactory factory)
 		await _client.PutAsJsonAsync($"/api/v1/classes/{klass.Id}/schemas/{schema.Id}/slots",
 			new { timeSlotId = timeSlot.Id, weekday = (int)DayOfWeek.Monday, courseId = course.Id, teacherId = teacher.Id });
 
-		var response = await _client.GetAsync($"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var response = await _client.GetAsync($"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 		var dto = await response.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
@@ -91,7 +91,7 @@ public sealed class WeekPlanTests(ApiFactory factory)
 			_factory.Services, _tenantId,
 			CalendarEntryType.Ferie, "Vinterferie", weekMon, weekFri);
 
-		var response = await _client.GetAsync($"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var response = await _client.GetAsync($"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 		var dto = await response.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
@@ -103,12 +103,12 @@ public sealed class WeekPlanTests(ApiFactory factory)
 	public async Task GetWeekPlan_MissingParams_Returns400()
 	{
 		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId);
-		var response = await _client.GetAsync($"/api/v1/classes/{klass.Id}/ugeplan");
+		var response = await _client.GetAsync($"/api/v1/classes/{klass.Id}/week-plan");
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 	}
 
 	[Test]
-	public async Task UpsertSlot_CreatesBeskrivelse_AndReturnsMergedSlot()
+	public async Task UpsertSlot_CreatesDescription_AndReturnsMergedSlot()
 	{
 		var timeSlot = await TestDataBuilder.CreateTimeSlotAsync(_factory.Services, _tenantId,
 			new TimeOnly(9, 0), new TimeOnly(9, 45), sortOrder: 2);
@@ -122,17 +122,17 @@ public sealed class WeekPlanTests(ApiFactory factory)
 		upsertSlotResponse.EnsureSuccessStatusCode();
 
 		// Get the schemaSlotId from the GET response
-		var getResponse = await _client.GetAsync($"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var getResponse = await _client.GetAsync($"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		var planDto = await getResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
 		var schemaSlotId = planDto!.Slots[0].SchemaSlotId;
 
 		var putResponse = await _client.PutAsJsonAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
 			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlotId, "Vi læser kapitel 3", null, null));
 
 		await Assert.That(putResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 		var slotDto = await putResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
-		await Assert.That(slotDto!.Beskrivelse).IsEqualTo("Vi læser kapitel 3");
+		await Assert.That(slotDto!.Description).IsEqualTo("Vi læser kapitel 3");
 		await Assert.That(slotDto.CourseName).IsEqualTo(course.Name);
 		await Assert.That(slotDto.OriginalCourseId).IsNull();
 	}
@@ -150,12 +150,12 @@ public sealed class WeekPlanTests(ApiFactory factory)
 		await _client.PutAsJsonAsync($"/api/v1/classes/{klass.Id}/schemas/{schema.Id}/slots",
 			new { timeSlotId = timeSlot.Id, weekday = (int)DayOfWeek.Wednesday, courseId = originalCourse.Id, teacherId = teacher.Id });
 
-		var getResponse = await _client.GetAsync($"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var getResponse = await _client.GetAsync($"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		var planDto = await getResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
 		var schemaSlotId = planDto!.Slots[0].SchemaSlotId;
 
 		var putResponse = await _client.PutAsJsonAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
 			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlotId, null, null, swapCourse.Id));
 
 		await Assert.That(putResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -170,7 +170,7 @@ public sealed class WeekPlanTests(ApiFactory factory)
 	{
 		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId);
 		var response = await _client.PutAsJsonAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
 			new WeekPlanController.UpsertWeekPlanSlotRequest(Guid.NewGuid(), null, null, null));
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 	}
@@ -186,7 +186,7 @@ public sealed class WeekPlanTests(ApiFactory factory)
 		await _client.PutAsJsonAsync($"/api/v1/classes/{klass.Id}/schemas/{schema.Id}/slots",
 			new { timeSlotId = timeSlot.Id, weekday = (int)DayOfWeek.Thursday, courseId = course.Id, teacherId = teacher.Id });
 
-		var getResponse = await _client.GetAsync($"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var getResponse = await _client.GetAsync($"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		var planDto = await getResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
 		var schemaSlotId = planDto!.Slots[0].SchemaSlotId;
 
@@ -196,7 +196,7 @@ public sealed class WeekPlanTests(ApiFactory factory)
 	private async Task<Guid> UpsertWeekPlanSlotAndGetId(Guid classId, Guid schemaSlotId)
 	{
 		var putResponse = await _client.PutAsJsonAsync(
-			$"/api/v1/classes/{classId}/ugeplan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			$"/api/v1/classes/{classId}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
 			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlotId, "test", null, null));
 		putResponse.EnsureSuccessStatusCode();
 		var slotDto = await putResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
@@ -212,7 +212,7 @@ public sealed class WeekPlanTests(ApiFactory factory)
 
 		// Add file
 		var addResponse = await _client.PostAsJsonAsync(
-			$"/api/v1/classes/{classId}/ugeplan/slots/{slotId}/files",
+			$"/api/v1/classes/{classId}/week-plan/slots/{slotId}/files",
 			new WeekPlanController.AddFileToSlotRequest(file.Id));
 
 		await Assert.That(addResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
@@ -220,18 +220,18 @@ public sealed class WeekPlanTests(ApiFactory factory)
 		await Assert.That(fileDto!.FileName).IsEqualTo("opgave.pdf");
 
 		// Verify it appears in GET
-		var getResponse = await _client.GetAsync($"/api/v1/classes/{classId}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var getResponse = await _client.GetAsync($"/api/v1/classes/{classId}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		var planDto = await getResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
 		var slot = planDto!.Slots.First(s => s.Id == slotId);
 		await Assert.That(slot.Files.Count).IsEqualTo(1);
 
 		// Remove file
 		var deleteResponse = await _client.DeleteAsync(
-			$"/api/v1/classes/{classId}/ugeplan/slots/{slotId}/files/{fileDto.Id}");
+			$"/api/v1/classes/{classId}/week-plan/slots/{slotId}/files/{fileDto.Id}");
 		await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
 
 		// Verify removed
-		var getResponse2 = await _client.GetAsync($"/api/v1/classes/{classId}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var getResponse2 = await _client.GetAsync($"/api/v1/classes/{classId}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		var planDto2 = await getResponse2.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
 		var slot2 = planDto2!.Slots.First(s => s.Id == slotId);
 		await Assert.That(slot2.Files.Count).IsEqualTo(0);
@@ -247,11 +247,11 @@ public sealed class WeekPlanTests(ApiFactory factory)
 		var addRequest = new WeekPlanController.AddFileToSlotRequest(file.Id);
 
 		var first = await _client.PostAsJsonAsync(
-			$"/api/v1/classes/{classId}/ugeplan/slots/{slotId}/files", addRequest);
+			$"/api/v1/classes/{classId}/week-plan/slots/{slotId}/files", addRequest);
 		await Assert.That(first.StatusCode).IsEqualTo(HttpStatusCode.Created);
 
 		var second = await _client.PostAsJsonAsync(
-			$"/api/v1/classes/{classId}/ugeplan/slots/{slotId}/files", addRequest);
+			$"/api/v1/classes/{classId}/week-plan/slots/{slotId}/files", addRequest);
 		await Assert.That(second.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
 	}
 
@@ -268,12 +268,12 @@ public sealed class WeekPlanTests(ApiFactory factory)
 		await _client.PutAsJsonAsync($"/api/v1/classes/{klass.Id}/schemas/{schema.Id}/slots",
 			new { timeSlotId = timeSlot.Id, weekday = (int)DayOfWeek.Friday, courseId = course.Id, teacherId = teacher.Id });
 
-		var getResponse = await _client.GetAsync($"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var getResponse = await _client.GetAsync($"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		var planDto = await getResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
 		var schemaSlotId = planDto!.Slots[0].SchemaSlotId;
 
 		await _client.PutAsJsonAsync(
-			$"/api/v1/classes/{klass.Id}/ugeplan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
 			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlotId, "Tenant A beskrivelse", null, null));
 
 		// Switch to tenant B — use shared factory with a different X-Test-TenantId header
@@ -283,7 +283,7 @@ public sealed class WeekPlanTests(ApiFactory factory)
 		clientB.DefaultRequestHeaders.Add("X-Test-TenantId", secondTenantId.ToString());
 
 		// Tenant B cannot see tenant A's class
-		var responseTenantB = await clientB.GetAsync($"/api/v1/classes/{klass.Id}/ugeplan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var responseTenantB = await clientB.GetAsync($"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		await Assert.That(responseTenantB.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 	}
 }

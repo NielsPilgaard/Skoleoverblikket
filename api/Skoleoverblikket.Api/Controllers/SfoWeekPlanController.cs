@@ -10,7 +10,7 @@ using Skoleoverblikket.Api.Tenancy;
 namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/sfo/ugeplan")]
+[Route("api/v1/sfo/week-plan")]
 [Authorize(Roles = Roles.Admin)]
 public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant) : ControllerBase
 {
@@ -22,7 +22,7 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 		string EndTime,
 		string? Label,
 		IReadOnlyList<SfoStaffRefDto> Staff,
-		string? Beskrivelse);
+		string? Description);
 
 	public record SfoStaffRefDto(Guid Id, string Name);
 
@@ -31,20 +31,20 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 		int IsoYear,
 		int IsoWeek,
 		IReadOnlyList<SfoWeekPlanShiftDto> Shifts,
-		string? Generelt);
+		string? Notes);
 
 	public record UpsertSfoWeekPlanShiftRequest(
 		[Required] int IsoYear,
 		[Required] int IsoWeek,
 		[Required] Guid SfoShiftId,
-		[StringLength(4000)] string? Beskrivelse);
+		[StringLength(4000)] string? Description);
 
-	public record UpdateSfoGenereltRequest(
+	public record UpdateSfoNotesRequest(
 		[Required] int IsoYear,
 		[Required] int IsoWeek,
-		[property: StringLength(8000)] string? Generelt);
+		[property: StringLength(8000)] string? Notes);
 
-	public record GenereltDto(string? Generelt);
+	public record NotesDto(string? Notes);
 
 	[HttpGet]
 	public async Task<ActionResult<SfoWeekPlanDto>> Get(
@@ -88,15 +88,15 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 				shift.EndTime.ToString("HH:mm"),
 				shift.Label,
 				shift.StaffAssignments.Select(sa => new SfoStaffRefDto(sa.StaffId, sa.Staff.Name)).ToList(),
-				weekShift?.Beskrivelse);
+				weekShift?.Description);
 		}).ToList();
 
-		return Ok(new SfoWeekPlanDto(weekPlanId, isoYear.Value, isoWeek.Value, shiftDtos, weekPlan?.Generelt));
+		return Ok(new SfoWeekPlanDto(weekPlanId, isoYear.Value, isoWeek.Value, shiftDtos, weekPlan?.Notes));
 	}
 
-	[HttpPut("generelt")]
-	public async Task<ActionResult<GenereltDto>> UpdateGenerelt(
-		[FromBody] UpdateSfoGenereltRequest request,
+	[HttpPut("notes")]
+	public async Task<ActionResult<NotesDto>> UpdateNotes(
+		[FromBody] UpdateSfoNotesRequest request,
 		CancellationToken cancellationToken)
 	{
 		if (!IsoWeekValidation.IsValid(request.IsoYear, request.IsoWeek))
@@ -111,10 +111,10 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 		}
 
 		var weekPlan = await db.SfoWeekPlans.FirstAsync(w => w.Id == weekPlanId.Value, cancellationToken);
-		weekPlan.Generelt = request.Generelt;
+		weekPlan.Notes = request.Notes;
 		await db.SaveChangesAsync(cancellationToken);
 
-		return Ok(new GenereltDto(weekPlan.Generelt));
+		return Ok(new NotesDto(weekPlan.Notes));
 	}
 
 	[HttpPut("shifts")]
@@ -148,7 +148,7 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 
 		if (weekShift is not null)
 		{
-			weekShift.Beskrivelse = request.Beskrivelse;
+			weekShift.Description = request.Description;
 			weekShift.UpdatedAt = DateTimeOffset.UtcNow;
 		}
 		else
@@ -159,7 +159,7 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 				TenantId = tenant.TenantId,
 				SfoWeekPlanId = weekPlanId.Value,
 				SfoShiftId = request.SfoShiftId,
-				Beskrivelse = request.Beskrivelse,
+				Description = request.Description,
 				UpdatedAt = DateTimeOffset.UtcNow,
 			};
 			db.SfoWeekPlanShifts.Add(weekShift);
@@ -175,7 +175,7 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 			shift.EndTime.ToString("HH:mm"),
 			shift.Label,
 			shift.StaffAssignments.Select(sa => new SfoStaffRefDto(sa.StaffId, sa.Staff.Name)).ToList(),
-			weekShift.Beskrivelse));
+			weekShift.Description));
 	}
 
 	private async Task<Guid?> GetOrCreateWeekPlanId(int isoYear, int isoWeek, CancellationToken cancellationToken)

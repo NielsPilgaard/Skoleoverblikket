@@ -1354,6 +1354,309 @@
         }
       }
     },
+    "/api/v1/class-chats": {
+      "get": {
+        "tags": [
+          "ClassChat"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClassChatController_ClassChatThreadDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClassChatController_ClassChatThreadDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClassChatController_ClassChatThreadDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/class-chats/{classId}/messages": {
+      "get": {
+        "tags": [
+          "ClassChat"
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 30
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_PagedResult`1"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_PagedResult`1"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_PagedResult`1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ClassChat"
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_PostMessageRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_PostMessageRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_PostMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_ClassChatMessageDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_ClassChatMessageDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_ClassChatMessageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/class-chats/{classId}/messages/{messageId}": {
+      "delete": {
+        "tags": [
+          "ClassChat"
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/class-chats/{classId}/attachments/presign": {
+      "post": {
+        "tags": [
+          "ClassChat"
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_PresignAttachmentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_PresignAttachmentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_PresignAttachmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_PresignAttachmentResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_PresignAttachmentResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_PresignAttachmentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/class-chats/{classId}/attachments/confirm": {
+      "post": {
+        "tags": [
+          "ClassChat"
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_ConfirmAttachmentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_ConfirmAttachmentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassChatController_ConfirmAttachmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_ClassChatAttachmentDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_ClassChatAttachmentDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassChatController_ClassChatAttachmentDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/classes": {
       "get": {
         "tags": [
@@ -1759,6 +2062,218 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/compliance-coverage/coverage": {
+      "get": {
+        "tags": [
+          "ComplianceCoverage"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance-coverage/snapshots": {
+      "post": {
+        "tags": [
+          "ComplianceCoverage"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComplianceCoverageController_CreateSnapshotRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComplianceCoverageController_CreateSnapshotRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComplianceCoverageController_CreateSnapshotRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "ComplianceCoverage"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compliance-coverage/snapshots/{id}": {
+      "get": {
+        "tags": [
+          "ComplianceCoverage"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotDetailDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ComplianceCoverage"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/contact-directory": {
+      "get": {
+        "tags": [
+          "ContactDirectory"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContactDirectoryController_ContactDirectoryParentDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContactDirectoryController_ContactDirectoryParentDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContactDirectoryController_ContactDirectoryParentDto"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -2784,44 +3299,6 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportsController_ImportBoardMembersResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/kontakt": {
-      "get": {
-        "tags": [
-          "Kontakt"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/KontaktController_KontaktParentDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/KontaktController_KontaktParentDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/KontaktController_KontaktParentDto"
-                  }
                 }
               }
             }
@@ -5310,7 +5787,7 @@
         }
       }
     },
-    "/api/v1/sfo/ugeplan": {
+    "/api/v1/sfo/week-plan": {
       "get": {
         "tags": [
           "SfoWeekPlan"
@@ -5357,7 +5834,7 @@
         }
       }
     },
-    "/api/v1/sfo/ugeplan/generelt": {
+    "/api/v1/sfo/week-plan/notes": {
       "put": {
         "tags": [
           "SfoWeekPlan"
@@ -5366,17 +5843,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoGenereltRequest"
+                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoNotesRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoGenereltRequest"
+                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoNotesRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoGenereltRequest"
+                "$ref": "#/components/schemas/SfoWeekPlanController_UpdateSfoNotesRequest"
               }
             }
           }
@@ -5387,17 +5864,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/SfoWeekPlanController_GenereltDto"
+                  "$ref": "#/components/schemas/SfoWeekPlanController_NotesDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SfoWeekPlanController_GenereltDto"
+                  "$ref": "#/components/schemas/SfoWeekPlanController_NotesDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SfoWeekPlanController_GenereltDto"
+                  "$ref": "#/components/schemas/SfoWeekPlanController_NotesDto"
                 }
               }
             }
@@ -5405,7 +5882,7 @@
         }
       }
     },
-    "/api/v1/sfo/ugeplan/shifts": {
+    "/api/v1/sfo/week-plan/shifts": {
       "put": {
         "tags": [
           "SfoWeekPlan"
@@ -6030,6 +6507,35 @@
         }
       }
     },
+    "/api/v1/stats/my-dashboard": {
+      "get": {
+        "tags": [
+          "Stats"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsController_MyDashboardStats"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsController_MyDashboardStats"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsController_MyDashboardStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/stripe/webhook": {
       "post": {
         "tags": [
@@ -6310,180 +6816,6 @@
             }
           }
         },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v1/staa-maal-med/coverage": {
-      "get": {
-        "tags": [
-          "StaaMaalMed"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_CoverageResponseDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_CoverageResponseDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_CoverageResponseDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/staa-maal-med/snapshots": {
-      "post": {
-        "tags": [
-          "StaaMaalMed"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StaaMaalMedController_CreateSnapshotRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StaaMaalMedController_CreateSnapshotRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/StaaMaalMedController_CreateSnapshotRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_SnapshotSummaryDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_SnapshotSummaryDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_SnapshotSummaryDto"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "StaaMaalMed"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StaaMaalMedController_SnapshotSummaryDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StaaMaalMedController_SnapshotSummaryDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StaaMaalMedController_SnapshotSummaryDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/staa-maal-med/snapshots/{id}": {
-      "get": {
-        "tags": [
-          "StaaMaalMed"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_SnapshotDetailDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_SnapshotDetailDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StaaMaalMedController_SnapshotDetailDto"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "StaaMaalMed"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -7605,7 +7937,7 @@
         }
       }
     },
-    "/api/v1/classes/{classId}/ugeplan": {
+    "/api/v1/classes/{classId}/week-plan": {
       "get": {
         "tags": [
           "WeekPlan"
@@ -7669,7 +8001,7 @@
         }
       }
     },
-    "/api/v1/classes/{classId}/ugeplan/slots": {
+    "/api/v1/classes/{classId}/week-plan/slots": {
       "put": {
         "tags": [
           "WeekPlan"
@@ -7752,7 +8084,7 @@
         }
       }
     },
-    "/api/v1/classes/{classId}/ugeplan/generelt": {
+    "/api/v1/classes/{classId}/week-plan/notes": {
       "put": {
         "tags": [
           "WeekPlan"
@@ -7788,17 +8120,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/WeekPlanController_UpdateGenereltRequest"
+                "$ref": "#/components/schemas/WeekPlanController_UpdateNotesRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/WeekPlanController_UpdateGenereltRequest"
+                "$ref": "#/components/schemas/WeekPlanController_UpdateNotesRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/WeekPlanController_UpdateGenereltRequest"
+                "$ref": "#/components/schemas/WeekPlanController_UpdateNotesRequest"
               }
             }
           }
@@ -7809,17 +8141,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_GenereltDto"
+                  "$ref": "#/components/schemas/WeekPlanController_NotesDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_GenereltDto"
+                  "$ref": "#/components/schemas/WeekPlanController_NotesDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_GenereltDto"
+                  "$ref": "#/components/schemas/WeekPlanController_NotesDto"
                 }
               }
             }
@@ -7827,7 +8159,7 @@
         }
       }
     },
-    "/api/v1/classes/{classId}/ugeplan/slots/{slotId}/files": {
+    "/api/v1/classes/{classId}/week-plan/slots/{slotId}/files": {
       "post": {
         "tags": [
           "WeekPlan"
@@ -7895,7 +8227,7 @@
         }
       }
     },
-    "/api/v1/classes/{classId}/ugeplan/slots/{slotId}/files/{fileId}": {
+    "/api/v1/classes/{classId}/week-plan/slots/{slotId}/files/{fileId}": {
       "delete": {
         "tags": [
           "WeekPlan"
@@ -8545,6 +8877,228 @@
         ],
         "type": "string"
       },
+      "ClassChatController_ClassChatAttachmentDto": {
+        "required": [
+          "contentType",
+          "fileName",
+          "id",
+          "sizeBytes",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_ClassChatMessageDto": {
+        "required": [
+          "body",
+          "canDelete",
+          "id",
+          "senderId",
+          "senderName",
+          "senderType",
+          "sentAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "senderType": {
+            "$ref": "#/components/schemas/SenderType"
+          },
+          "senderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "senderName": {
+            "type": "string"
+          },
+          "senderAvatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "canDelete": {
+            "type": "boolean"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassChatController_ClassChatAttachmentDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_ClassChatThreadDto": {
+        "required": [
+          "classId",
+          "className",
+          "messageCount"
+        ],
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "gradeLevel": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lastMessageBody": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastMessageSenderName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastMessageSentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "messageCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_ConfirmAttachmentRequest": {
+        "required": [
+          "confirmToken"
+        ],
+        "type": "object",
+        "properties": {
+          "confirmToken": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_PagedResult`1": {
+        "required": [
+          "page",
+          "pageSize",
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassChatController_ClassChatMessageDto"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_PostMessageRequest": {
+        "required": [
+          "body"
+        ],
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "attachmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_PresignAttachmentRequest": {
+        "required": [
+          "fileName",
+          "fileSizeBytes"
+        ],
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string"
+          },
+          "fileSizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassChatController_PresignAttachmentResponse": {
+        "required": [
+          "attachmentId",
+          "confirmToken",
+          "contentType",
+          "uploadUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "attachmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uploadUrl": {
+            "type": "string"
+          },
+          "confirmToken": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "ClassPermissionsController_ClassPermissionDto": {
         "required": [
           "grantedAt",
@@ -8685,6 +9239,174 @@
         },
         "additionalProperties": false
       },
+      "ComplianceCoverageController_ClassCoverageDto": {
+        "required": [
+          "classId",
+          "className",
+          "gradeLevel"
+        ],
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "gradeLevel": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComplianceCoverageController_SubjectCoverageDto"
+            }
+          },
+          "unexpectedGradeCategories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComplianceCoverageController_CoverageResponseDto": {
+        "required": [
+          "activeSchemaCount",
+          "classesMissingGradeLevel"
+        ],
+        "type": "object",
+        "properties": {
+          "classes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComplianceCoverageController_ClassCoverageDto"
+            }
+          },
+          "classesMissingGradeLevel": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeSchemaCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComplianceCoverageController_CreateSnapshotRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComplianceCoverageController_SnapshotDetailDto": {
+        "required": [
+          "createdAt",
+          "createdByStaffName",
+          "id",
+          "schoolYear"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "schoolYear": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdByStaffName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComplianceCoverageController_SnapshotSummaryDto": {
+        "required": [
+          "createdAt",
+          "createdByStaffName",
+          "id",
+          "schoolYear"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "schoolYear": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdByStaffName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComplianceCoverageController_SubjectCoverageDto": {
+        "required": [
+          "annualHours",
+          "category",
+          "status",
+          "vejledendeAnnualHours",
+          "vejledendeWeeklyHours",
+          "weeklyHours"
+        ],
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "weeklyHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "vejledendeWeeklyHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "annualHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "vejledendeAnnualHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "ConflictInfo": {
         "required": [
           "endTime",
@@ -8754,6 +9476,76 @@
           "SubstituteDoubleBooked"
         ],
         "type": "string"
+      },
+      "ContactDirectoryController_ContactDirectoryParentDto": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "postalCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "studentNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "students": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContactDirectoryController_ContactDirectoryStudentDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ContactDirectoryController_ContactDirectoryStudentDto": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       },
       "ContactThreadsController_AddMessageRequest": {
         "required": [
@@ -9633,76 +10425,6 @@
         },
         "additionalProperties": false
       },
-      "KontaktController_KontaktParentDto": {
-        "required": [
-          "id",
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "phone": {
-            "type": "string",
-            "nullable": true
-          },
-          "address": {
-            "type": "string",
-            "nullable": true
-          },
-          "postalCode": {
-            "type": "string",
-            "nullable": true
-          },
-          "city": {
-            "type": "string",
-            "nullable": true
-          },
-          "email": {
-            "type": "string",
-            "nullable": true
-          },
-          "avatarUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "studentNames": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "students": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/KontaktController_KontaktStudentDto"
-            }
-          }
-        },
-        "additionalProperties": false
-      },
-      "KontaktController_KontaktStudentDto": {
-        "required": [
-          "id",
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
       "MessagesController_GroupPreviewDto": {
         "required": [
           "recipientCount"
@@ -10229,7 +10951,8 @@
           "AbsenceConfirmed",
           "AbsenceDismissed",
           "VacationRegistrationOpened",
-          "GroupMessage"
+          "GroupMessage",
+          "ClassChatMessage"
         ],
         "type": "string"
       },
@@ -11173,10 +11896,10 @@
         },
         "additionalProperties": false
       },
-      "SfoWeekPlanController_GenereltDto": {
+      "SfoWeekPlanController_NotesDto": {
         "type": "object",
         "properties": {
-          "generelt": {
+          "notes": {
             "type": "string",
             "nullable": true
           }
@@ -11226,7 +11949,7 @@
               "$ref": "#/components/schemas/SfoWeekPlanController_SfoWeekPlanShiftDto"
             }
           },
-          "generelt": {
+          "notes": {
             "type": "string",
             "nullable": true
           }
@@ -11271,14 +11994,14 @@
               "$ref": "#/components/schemas/SfoWeekPlanController_SfoStaffRefDto"
             }
           },
-          "beskrivelse": {
+          "description": {
             "type": "string",
             "nullable": true
           }
         },
         "additionalProperties": false
       },
-      "SfoWeekPlanController_UpdateSfoGenereltRequest": {
+      "SfoWeekPlanController_UpdateSfoNotesRequest": {
         "required": [
           "isoWeek",
           "isoYear"
@@ -11293,7 +12016,7 @@
             "type": "integer",
             "format": "int32"
           },
-          "generelt": {
+          "notes": {
             "maxLength": 8000,
             "minLength": 0,
             "type": "string",
@@ -11322,177 +12045,9 @@
             "type": "string",
             "format": "uuid"
           },
-          "beskrivelse": {
+          "description": {
             "type": "string",
             "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "StaaMaalMedController_ClassCoverageDto": {
-        "required": [
-          "classId",
-          "className",
-          "gradeLevel"
-        ],
-        "type": "object",
-        "properties": {
-          "classId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "className": {
-            "type": "string"
-          },
-          "gradeLevel": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "subjects": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StaaMaalMedController_SubjectCoverageDto"
-            }
-          },
-          "unexpectedGradeCategories": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "additionalProperties": false
-      },
-      "StaaMaalMedController_CoverageResponseDto": {
-        "required": [
-          "activeSchemaCount",
-          "classesMissingGradeLevel"
-        ],
-        "type": "object",
-        "properties": {
-          "classes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StaaMaalMedController_ClassCoverageDto"
-            }
-          },
-          "classesMissingGradeLevel": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "activeSchemaCount": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "StaaMaalMedController_CreateSnapshotRequest": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "maxLength": 500,
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "StaaMaalMedController_SnapshotDetailDto": {
-        "required": [
-          "createdAt",
-          "createdByStaffName",
-          "id",
-          "schoolYear"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "schoolYear": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdByStaffName": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string",
-            "nullable": true
-          },
-          "data": {
-            "$ref": "#/components/schemas/StaaMaalMedController_CoverageResponseDto"
-          }
-        },
-        "additionalProperties": false
-      },
-      "StaaMaalMedController_SnapshotSummaryDto": {
-        "required": [
-          "createdAt",
-          "createdByStaffName",
-          "id",
-          "schoolYear"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "schoolYear": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdByStaffName": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "StaaMaalMedController_SubjectCoverageDto": {
-        "required": [
-          "annualHours",
-          "category",
-          "status",
-          "vejledendeAnnualHours",
-          "vejledendeWeeklyHours",
-          "weeklyHours"
-        ],
-        "type": "object",
-        "properties": {
-          "category": {
-            "type": "string"
-          },
-          "weeklyHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "vejledendeWeeklyHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "annualHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "vejledendeAnnualHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "status": {
-            "type": "string"
           }
         },
         "additionalProperties": false
@@ -11692,6 +12247,7 @@
         "required": [
           "classCount",
           "courseCount",
+          "pendingAbsenceCount",
           "roomCount",
           "schemasComplete",
           "schemasTotal",
@@ -11740,6 +12296,23 @@
             "items": {
               "$ref": "#/components/schemas/StatsController_UnassignedClass"
             }
+          },
+          "pendingAbsenceCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "openVacationWindow": {
+            "$ref": "#/components/schemas/StatsController_OpenVacationWindowDto"
+          },
+          "unreadMessageCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "unreadKontaktbogCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -11797,6 +12370,90 @@
           "hours": {
             "type": "number",
             "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StatsController_MyDashboardStats": {
+        "type": "object",
+        "properties": {
+          "todaySchedule": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatsController_TodayLektion"
+            }
+          },
+          "unreadMessageCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "unreadKontaktbogCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "StatsController_OpenVacationWindowDto": {
+        "required": [
+          "entryCount",
+          "registrationDeadline",
+          "title",
+          "windowId"
+        ],
+        "type": "object",
+        "properties": {
+          "windowId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "registrationDeadline": {
+            "type": "string",
+            "format": "date"
+          },
+          "entryCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StatsController_TodayLektion": {
+        "required": [
+          "className",
+          "courseName",
+          "endTime",
+          "slotId",
+          "startTime"
+        ],
+        "type": "object",
+        "properties": {
+          "slotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "courseName": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "roomName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -12667,16 +13324,6 @@
         },
         "additionalProperties": false
       },
-      "WeekPlanController_GenereltDto": {
-        "type": "object",
-        "properties": {
-          "generelt": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
       "WeekPlanController_HolidayDayDto": {
         "required": [
           "title",
@@ -12693,10 +13340,20 @@
         },
         "additionalProperties": false
       },
-      "WeekPlanController_UpdateGenereltRequest": {
+      "WeekPlanController_NotesDto": {
         "type": "object",
         "properties": {
-          "generelt": {
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WeekPlanController_UpdateNotesRequest": {
+        "type": "object",
+        "properties": {
+          "notes": {
             "maxLength": 8000,
             "minLength": 0,
             "type": "string",
@@ -12715,7 +13372,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "beskrivelse": {
+          "description": {
             "type": "string",
             "nullable": true
           },
@@ -12792,7 +13449,7 @@
               "$ref": "#/components/schemas/WeekPlanController_WeekPlanSlotDto"
             }
           },
-          "generelt": {
+          "notes": {
             "type": "string",
             "nullable": true
           }
@@ -12856,7 +13513,7 @@
             "type": "string",
             "nullable": true
           },
-          "beskrivelse": {
+          "description": {
             "type": "string",
             "nullable": true
           },
@@ -12958,10 +13615,19 @@
       "name": "Calendar"
     },
     {
+      "name": "ClassChat"
+    },
+    {
       "name": "Classes"
     },
     {
       "name": "ClassPermissions"
+    },
+    {
+      "name": "ComplianceCoverage"
+    },
+    {
+      "name": "ContactDirectory"
     },
     {
       "name": "ContactThreads"
@@ -12977,9 +13643,6 @@
     },
     {
       "name": "Imports"
-    },
-    {
-      "name": "Kontakt"
     },
     {
       "name": "Messages"
@@ -13037,9 +13700,6 @@
     },
     {
       "name": "Students"
-    },
-    {
-      "name": "StaaMaalMed"
     },
     {
       "name": "SubscriptionModules"
