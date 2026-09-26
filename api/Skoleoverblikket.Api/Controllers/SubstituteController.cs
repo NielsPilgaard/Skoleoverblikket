@@ -9,7 +9,7 @@ namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
 [Authorize]
-public sealed class VikarController(AppDbContext db) : ControllerBase
+public sealed class SubstituteController(AppDbContext db) : ControllerBase
 {
 	public record AvailableStaffDto(Guid Id, string Name, StaffRole Role);
 

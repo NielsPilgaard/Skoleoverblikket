@@ -1333,6 +1333,22 @@ export const getApiV1Modules = <ThrowOnError extends boolean = false>(options?: 
     ...options
 });
 
+export const getApiV1StaffAvailable = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1StaffAvailableData, ThrowOnError>) => (options?.client ?? client).get<GetApiV1StaffAvailableResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/staff/available',
+    ...options
+});
+
+export const putApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstitute = <ThrowOnError extends boolean = false>(options: Options<PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteData, ThrowOnError>) => (options.client ?? client).put<PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/week-plans/{weekPlanId}/slots/{slotId}/substitute',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
 export const getApiV1AdminEmailPreviewStaffInvitation = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1AdminEmailPreviewStaffInvitationData, ThrowOnError>) => (options?.client ?? client).get<GetApiV1AdminEmailPreviewStaffInvitationResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/admin/email-preview/staff-invitation',
@@ -1492,22 +1508,6 @@ export const deleteApiV1VacationRegistrationByIdEntriesByStudentId = <ThrowOnErr
 export const putApiV1VacationRegistrationByIdEntriesByStudentId = <ThrowOnError extends boolean = false>(options: Options<PutApiV1VacationRegistrationByIdEntriesByStudentIdData, ThrowOnError>) => (options.client ?? client).put<PutApiV1VacationRegistrationByIdEntriesByStudentIdResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/vacation-registration/{id}/entries/{studentId}',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-export const getApiV1StaffAvailable = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1StaffAvailableData, ThrowOnError>) => (options?.client ?? client).get<GetApiV1StaffAvailableResponses, unknown, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/staff/available',
-    ...options
-});
-
-export const putApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstitute = <ThrowOnError extends boolean = false>(options: Options<PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteData, ThrowOnError>) => (options.client ?? client).put<PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteResponses, unknown, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/week-plans/{weekPlanId}/slots/{slotId}/substitute',
     ...options,
     headers: {
         'Content-Type': 'application/json',

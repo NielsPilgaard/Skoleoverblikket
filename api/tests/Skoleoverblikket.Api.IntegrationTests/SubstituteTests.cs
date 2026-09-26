@@ -11,7 +11,7 @@ using Skoleoverblikket.Api.Models;
 namespace Skoleoverblikket.Api.IntegrationTests;
 
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
-public sealed class VikarTests(ApiFactory factory)
+public sealed class SubstituteTests(ApiFactory factory)
 {
 	private static readonly JsonSerializerOptions JsonOpts = new()
 	{
@@ -55,7 +55,7 @@ public sealed class VikarTests(ApiFactory factory)
 			$"/api/v1/staff/available?isoYear={TestYear}&isoWeek={TestWeek}&weekday=1&timeSlotId={timeSlot.Id}");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<VikarController.StaffAvailabilityDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<SubstituteController.StaffAvailabilityDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 		await Assert.That(dto!.Available.Any(s => s.Id == freeTeacher.Id)).IsTrue();
 		await Assert.That(dto.Busy.Any(s => s.Id == busyTeacher.Id)).IsTrue();
@@ -97,14 +97,14 @@ public sealed class VikarTests(ApiFactory factory)
 		// Assign substitute
 		var assignResponse = await _client.PutAsJsonAsync(
 			$"/api/v1/week-plans/{weekPlanId}/slots/{weekPlanSlotId}/substitute",
-			new VikarController.AssignSubstituteRequest(substituteStaff.Id, null));
+			new SubstituteController.AssignSubstituteRequest(substituteStaff.Id, null));
 		await Assert.That(assignResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
 		// Now check availability — substitute should be busy
 		var availResponse = await _client.GetAsync(
 			$"/api/v1/staff/available?isoYear={TestYear}&isoWeek={TestWeek}&weekday=2&timeSlotId={timeSlot.Id}");
 		await Assert.That(availResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var availability = await availResponse.Content.ReadFromJsonAsync<VikarController.StaffAvailabilityDto>(JsonOpts);
+		var availability = await availResponse.Content.ReadFromJsonAsync<SubstituteController.StaffAvailabilityDto>(JsonOpts);
 		await Assert.That(availability!.Busy.Any(s => s.Id == substituteStaff.Id)).IsTrue();
 		await Assert.That(availability.Available.Any(s => s.Id == substituteStaff.Id)).IsFalse();
 	}
@@ -118,7 +118,7 @@ public sealed class VikarTests(ApiFactory factory)
 		var timeSlot = await TestDataBuilder.CreateTimeSlotAsync(_factory.Services, _tenantId,
 			new TimeOnly(10, 0), new TimeOnly(10, 45), sortOrder: 3);
 		var teacher = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Klassens Lærer");
-		var vikar = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Vikar Pedersen", StaffRole.Substitute);
+		var substitute = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Vikar Pedersen", StaffRole.Substitute);
 		var course = await TestDataBuilder.CreateCourseAsync(_factory.Services, _tenantId, "Dansk");
 		var (klass, schema) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "3.b");
 
@@ -139,7 +139,7 @@ public sealed class VikarTests(ApiFactory factory)
 		// Assign substitute
 		var assignResponse = await _client.PutAsJsonAsync(
 			$"/api/v1/week-plans/{slotDto!.WeekPlanId}/slots/{slotDto.Id}/substitute",
-			new VikarController.AssignSubstituteRequest(vikar.Id, null));
+			new SubstituteController.AssignSubstituteRequest(substitute.Id, null));
 		await Assert.That(assignResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
 		// GET week-plan — substitute should be visible on the slot
@@ -147,7 +147,7 @@ public sealed class VikarTests(ApiFactory factory)
 			$"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
 		var planDto2 = await planResponse2.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
 		var slot = planDto2!.Slots.First(s => s.SchemaSlotId == schemaSlotId);
-		await Assert.That(slot.SubstituteTeacherId).IsEqualTo(vikar.Id);
+		await Assert.That(slot.SubstituteTeacherId).IsEqualTo(substitute.Id);
 		await Assert.That(slot.SubstituteTeacherName).IsEqualTo("Vikar Pedersen");
 	}
 
@@ -160,7 +160,7 @@ public sealed class VikarTests(ApiFactory factory)
 		var timeSlot = await TestDataBuilder.CreateTimeSlotAsync(_factory.Services, _tenantId,
 			new TimeOnly(11, 0), new TimeOnly(11, 45), sortOrder: 4);
 		var teacher = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Lærer");
-		var vikar = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Vikar");
+		var substitute = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Vikar");
 		var course = await TestDataBuilder.CreateCourseAsync(_factory.Services, _tenantId);
 		var (klass, schema) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "4.c");
 
@@ -180,7 +180,7 @@ public sealed class VikarTests(ApiFactory factory)
 
 		var response = await _client.PutAsJsonAsync(
 			$"/api/v1/week-plans/{slotDto!.WeekPlanId}/slots/{slotDto.Id}/substitute",
-			new VikarController.AssignSubstituteRequest(vikar.Id, vikar.Id));
+			new SubstituteController.AssignSubstituteRequest(substitute.Id, substitute.Id));
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 	}
@@ -194,7 +194,7 @@ public sealed class VikarTests(ApiFactory factory)
 		var timeSlot = await TestDataBuilder.CreateTimeSlotAsync(_factory.Services, _tenantId,
 			new TimeOnly(12, 0), new TimeOnly(12, 45), sortOrder: 5);
 		var teacher = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Lærer B");
-		var vikar = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Vikar B", StaffRole.Substitute);
+		var substitute = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Vikar B", StaffRole.Substitute);
 		var course = await TestDataBuilder.CreateCourseAsync(_factory.Services, _tenantId, "Natur/teknik");
 		var (klass, schema) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "5.a");
 
@@ -215,13 +215,13 @@ public sealed class VikarTests(ApiFactory factory)
 		// Assign
 		var assignResponse = await _client.PutAsJsonAsync(
 			$"/api/v1/week-plans/{slotDto!.WeekPlanId}/slots/{slotDto.Id}/substitute",
-			new VikarController.AssignSubstituteRequest(vikar.Id, null));
+			new SubstituteController.AssignSubstituteRequest(substitute.Id, null));
 		await Assert.That(assignResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
 		// Clear
 		var clearResponse = await _client.PutAsJsonAsync(
 			$"/api/v1/week-plans/{slotDto.WeekPlanId}/slots/{slotDto.Id}/substitute",
-			new VikarController.AssignSubstituteRequest(null, null));
+			new SubstituteController.AssignSubstituteRequest(null, null));
 		await Assert.That(clearResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
 		// Verify cleared in GET

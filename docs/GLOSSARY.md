@@ -9,12 +9,10 @@ These words appear in code identifiers deliberately and must **not** be renamed:
 | Danish | English meaning | Where it shows up in code |
 |---|---|---|
 | klasse | class | `Class`, `ClassId`, `ClassesController` (already English root, "klasse" appears in route paths/comments) |
-| fag | course/subject | `Course`, `FagSwapCourseId` |
 | lokale | room | `Room`, `RoomsController` |
 | lektion | time slot / lesson | `TimeSlot`, `TimeSlotsController` |
 | lærer | teacher | `Teacher`-flavored roles/fields |
 | pædagog | aide | `Aide`-flavored roles/fields |
-| vikar | substitute | `VikarController`, `web/src/components/vikar/` |
 | skema | schema/schedule | `SchemasController`, `SchemaBuilderPage`, `PrintSchemaPage`, `ParentSchemaPage` |
 | SFO | after-school care institution (no clean English equivalent) | `SfoController`, `SfoWeekPlanController`, `SfoPage` |
 
@@ -60,3 +58,5 @@ These were Danish by accident, not by domain necessity, and have been renamed in
 | route `PUT .../week-plan/generelt` | `PUT .../week-plan/notes` | Backend route (WeekPlanController, SfoWeekPlanController) |
 | `GenereltEditor` / `SfoGenereltEditor` (React components) | `NotesEditor` / `SfoNotesEditor` | Weekplan/SFO editor components |
 | CSS classes `print-generelt` / `print-beskrivelse` | `print-notes` / `print-description` | Print stylesheets in SfoPrintPage.tsx, WeekPlanPrintPage.tsx |
+| `VikarController` / `web/src/components/vikar/` | `SubstituteController` / `web/src/components/substitute/` | `vikar` removed from kept-word list — `Substitute` already used by `StaffRole.Substitute` |
+| `WeekPlanSlot.FagSwapCourseId` / `.FagSwapCourse` | `.OverrideCourseId` / `.OverrideCourse` | `fag` removed from kept-word list; describes the field's purpose (per-slot course override) rather than translating literally |

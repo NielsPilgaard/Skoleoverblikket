@@ -1146,6 +1146,29 @@ export type SubscriptionModule = 'ParentModule' | 'BoardModule';
 
 export type SubscriptionStatus = 'Trialing' | 'Active' | 'PastDue' | 'Canceled' | 'Unpaid';
 
+export type SubstituteControllerAssignSubstituteRequest = {
+    substituteTeacherId?: string | null;
+    substituteAideId?: string | null;
+};
+
+export type SubstituteControllerAvailableStaffDto = {
+    id: string;
+    name: string;
+    role: StaffRole;
+};
+
+export type SubstituteControllerBusyStaffDto = {
+    id: string;
+    name: string;
+    role: StaffRole;
+    conflictDescription: string;
+};
+
+export type SubstituteControllerStaffAvailabilityDto = {
+    available?: Array<SubstituteControllerAvailableStaffDto>;
+    busy?: Array<SubstituteControllerBusyStaffDto>;
+};
+
 export type TenantDetailDto = {
     id: string;
     name: string;
@@ -1292,29 +1315,6 @@ export type VacationRegistrationControllerWindowDto = {
 
 export type VacationRegistrationGranularity = 'Weeks' | 'Days';
 
-export type VikarControllerAssignSubstituteRequest = {
-    substituteTeacherId?: string | null;
-    substituteAideId?: string | null;
-};
-
-export type VikarControllerAvailableStaffDto = {
-    id: string;
-    name: string;
-    role: StaffRole;
-};
-
-export type VikarControllerBusyStaffDto = {
-    id: string;
-    name: string;
-    role: StaffRole;
-    conflictDescription: string;
-};
-
-export type VikarControllerStaffAvailabilityDto = {
-    available?: Array<VikarControllerAvailableStaffDto>;
-    busy?: Array<VikarControllerBusyStaffDto>;
-};
-
 export type WeekPlanControllerAddFileToSlotRequest = {
     schoolFileId: string;
 };
@@ -1343,7 +1343,7 @@ export type WeekPlanControllerUpsertWeekPlanSlotRequest = {
     schemaSlotId: string;
     description?: string | null;
     lektier?: string | null;
-    fagSwapCourseId?: string | null;
+    overrideCourseId?: string | null;
 };
 
 export type WeekPlanControllerWeekPlanDto = {
@@ -4266,6 +4266,44 @@ export type GetApiV1ModulesResponses = {
 
 export type GetApiV1ModulesResponse = GetApiV1ModulesResponses[keyof GetApiV1ModulesResponses];
 
+export type GetApiV1StaffAvailableData = {
+    body?: never;
+    path?: never;
+    query?: {
+        isoYear?: number;
+        isoWeek?: number;
+        weekday?: number;
+        timeSlotId?: string;
+    };
+    url: '/api/v1/staff/available';
+};
+
+export type GetApiV1StaffAvailableResponses = {
+    /**
+     * OK
+     */
+    200: SubstituteControllerStaffAvailabilityDto;
+};
+
+export type GetApiV1StaffAvailableResponse = GetApiV1StaffAvailableResponses[keyof GetApiV1StaffAvailableResponses];
+
+export type PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteData = {
+    body?: SubstituteControllerAssignSubstituteRequest;
+    path: {
+        weekPlanId: string;
+        slotId: string;
+    };
+    query?: never;
+    url: '/api/v1/week-plans/{weekPlanId}/slots/{slotId}/substitute';
+};
+
+export type PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
 export type GetApiV1AdminEmailPreviewStaffInvitationData = {
     body?: never;
     path?: never;
@@ -4646,44 +4684,6 @@ export type PutApiV1VacationRegistrationByIdEntriesByStudentIdData = {
 };
 
 export type PutApiV1VacationRegistrationByIdEntriesByStudentIdResponses = {
-    /**
-     * OK
-     */
-    200: unknown;
-};
-
-export type GetApiV1StaffAvailableData = {
-    body?: never;
-    path?: never;
-    query?: {
-        isoYear?: number;
-        isoWeek?: number;
-        weekday?: number;
-        timeSlotId?: string;
-    };
-    url: '/api/v1/staff/available';
-};
-
-export type GetApiV1StaffAvailableResponses = {
-    /**
-     * OK
-     */
-    200: VikarControllerStaffAvailabilityDto;
-};
-
-export type GetApiV1StaffAvailableResponse = GetApiV1StaffAvailableResponses[keyof GetApiV1StaffAvailableResponses];
-
-export type PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteData = {
-    body?: VikarControllerAssignSubstituteRequest;
-    path: {
-        weekPlanId: string;
-        slotId: string;
-    };
-    query?: never;
-    url: '/api/v1/week-plans/{weekPlanId}/slots/{slotId}/substitute';
-};
-
-export type PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteResponses = {
     /**
      * OK
      */

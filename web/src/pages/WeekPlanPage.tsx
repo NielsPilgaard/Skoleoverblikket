@@ -18,7 +18,7 @@ import {
 import type { ClassDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { FilePicker } from '../components/files/FilePicker'
-import { AssignSubstitutePanel } from '../components/vikar/AssignSubstitutePanel'
+import { AssignSubstitutePanel } from '../components/substitute/AssignSubstitutePanel'
 import { getISOWeek, getISOWeekYear, getISOWeeksInYear } from '../utils/isoWeek'
 
 // ─── Local types ─────────────────────────────────────────────────────────────
@@ -165,7 +165,7 @@ interface EditSlotModalProps {
   weekdayLabel: string
   courses: CourseDto[]
   onClose: () => void
-  onOpenVikar: () => Promise<void>
+  onOpenSubstitute: () => Promise<void>
 }
 
 const AUTOSAVE_PREFIX = 'ugeplan_draft_'
@@ -183,7 +183,7 @@ function EditSlotModal({
   weekdayLabel,
   courses,
   onClose,
-  onOpenVikar,
+  onOpenSubstitute,
 }: EditSlotModalProps) {
   const qc = useQueryClient()
 
@@ -197,7 +197,9 @@ function EditSlotModal({
 
   const [description, setDescription] = useState(savedDraft?.description ?? slot.description ?? '')
   const [lektier, setLektier] = useState(savedDraft?.lektier ?? slot.lektier ?? '')
-  const [fagSwapCourseId, setFagSwapCourseId] = useState(slot.originalCourseId ? slot.courseId : '')
+  const [overrideCourseId, setOverrideCourseId] = useState(
+    slot.originalCourseId ? slot.courseId : ''
+  )
   const [filesOpen, setFilesOpen] = useState(false)
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -230,7 +232,7 @@ function EditSlotModal({
           schemaSlotId: slot.schemaSlotId,
           description: description || null,
           lektier: lektier || null,
-          fagSwapCourseId: fagSwapCourseId || null,
+          overrideCourseId: overrideCourseId || null,
         },
       },
       undefined as never
@@ -287,7 +289,7 @@ function EditSlotModal({
         schemaSlotId: slot.schemaSlotId,
         description: description || null,
         lektier: lektier || null,
-        fagSwapCourseId: fagSwapCourseId || null,
+        overrideCourseId: overrideCourseId || null,
       },
     })
   }
@@ -400,8 +402,8 @@ function EditSlotModal({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Fagbytte</label>
           <select
-            value={fagSwapCourseId}
-            onChange={(e) => setFagSwapCourseId(e.target.value)}
+            value={overrideCourseId}
+            onChange={(e) => setOverrideCourseId(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
           >
             <option value="">Intet fagbytte (brug skemaets fag)</option>
@@ -419,9 +421,9 @@ function EditSlotModal({
       <div className="flex justify-center">
         <button
           type="button"
-          onClick={onOpenVikar}
+          onClick={onOpenSubstitute}
           className="w-3/4 flex items-center justify-center gap-2 px-4 py-2 mb-4 text-sm font-medium rounded-lg border border-blue-300 bg-blue-50 text-blue-800 hover:bg-blue-100 transition-colors"
-          data-testid="tildel-vikar-button"
+          data-testid="assign-substitute-button"
         >
           {slot.substituteTeacherName || slot.substituteAideName ? (
             <>
@@ -586,7 +588,7 @@ export default function WeekPlanPage() {
   const [isoYear, setIsoYear] = useState(() => getISOWeekYear(new Date()))
   const [isoWeek, setIsoWeek] = useState(() => getISOWeek(new Date()))
   const [editingSchemaSlotId, setEditingSchemaSlotId] = useState<string | null>(null)
-  const [vikarSchemaSlotId, setVikarSchemaSlotId] = useState<string | null>(null)
+  const [substituteSchemaSlotId, setSubstituteSchemaSlotId] = useState<string | null>(null)
   const [showParentPreview, setShowParentPreview] = useState(false)
 
   function prevWeek() {
@@ -945,9 +947,12 @@ export default function WeekPlanPage() {
                           </div>
                         )}
 
-                        {/* Substitute (vikar) indicator */}
+                        {/* Substitute indicator */}
                         {(slot.substituteTeacherName || slot.substituteAideName) && (
-                          <div className="flex items-center gap-1 mt-1" data-testid="vikar-badge">
+                          <div
+                            className="flex items-center gap-1 mt-1"
+                            data-testid="substitute-badge"
+                          >
                             <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-400 text-white text-xs font-bold shrink-0">
                               V
                             </span>
@@ -1002,7 +1007,7 @@ export default function WeekPlanPage() {
       </div>
 
       {/* Edit modal */}
-      {editingSlot && classId && !vikarSchemaSlotId && (
+      {editingSlot && classId && !substituteSchemaSlotId && (
         <EditSlotModal
           slot={editingSlot}
           classId={classId}
@@ -1012,8 +1017,8 @@ export default function WeekPlanPage() {
           weekdayLabel={WEEKDAYS[WEEKDAY_KEYS.indexOf(editingSlot.weekday)] ?? ''}
           courses={courses}
           onClose={() => setEditingSchemaSlotId(null)}
-          onOpenVikar={async () => {
-            // Ensure the WeekPlanSlot row exists before opening the vikar panel
+          onOpenSubstitute={async () => {
+            // Ensure the WeekPlanSlot row exists before opening the substitute panel
             if (editingSlot.id === '00000000-0000-0000-0000-000000000000') {
               const { mutationFn } = putApiV1ClassesByClassIdWeekPlanSlotsMutation()
               await mutationFn!(
@@ -1024,7 +1029,7 @@ export default function WeekPlanPage() {
                     schemaSlotId: editingSlot.schemaSlotId,
                     description: null,
                     lektier: null,
-                    fagSwapCourseId: null,
+                    overrideCourseId: null,
                   },
                 },
                 undefined as never
@@ -1038,16 +1043,16 @@ export default function WeekPlanPage() {
               })
             }
             setEditingSchemaSlotId(null)
-            setVikarSchemaSlotId(editingSlot.schemaSlotId)
+            setSubstituteSchemaSlotId(editingSlot.schemaSlotId)
           }}
         />
       )}
 
-      {/* Vikar panel */}
-      {vikarSchemaSlotId &&
+      {/* Substitute panel */}
+      {substituteSchemaSlotId &&
         classId &&
         (() => {
-          const slot = weekPlanData?.slots.find((s) => s.schemaSlotId === vikarSchemaSlotId)
+          const slot = weekPlanData?.slots.find((s) => s.schemaSlotId === substituteSchemaSlotId)
           if (!slot || slot.weekPlanId === '00000000-0000-0000-0000-000000000000') return null
           return (
             <AssignSubstitutePanel
@@ -1066,7 +1071,7 @@ export default function WeekPlanPage() {
               currentSubstituteAideId={slot.substituteAideId}
               currentSubstituteAideName={slot.substituteAideName}
               schemaId={schemaId}
-              onClose={() => setVikarSchemaSlotId(null)}
+              onClose={() => setSubstituteSchemaSlotId(null)}
             />
           )
         })()}

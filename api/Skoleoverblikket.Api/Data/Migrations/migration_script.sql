@@ -2123,3 +2123,42 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260926180501_RenameFagSwapCourseToOverrideCourse') THEN
+    ALTER TABLE "WeekPlanSlots" DROP CONSTRAINT "FK_WeekPlanSlots_Courses_FagSwapCourseId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260926180501_RenameFagSwapCourseToOverrideCourse') THEN
+    ALTER TABLE "WeekPlanSlots" RENAME COLUMN "FagSwapCourseId" TO "OverrideCourseId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260926180501_RenameFagSwapCourseToOverrideCourse') THEN
+    ALTER INDEX "IX_WeekPlanSlots_FagSwapCourseId" RENAME TO "IX_WeekPlanSlots_OverrideCourseId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260926180501_RenameFagSwapCourseToOverrideCourse') THEN
+    ALTER TABLE "WeekPlanSlots" ADD CONSTRAINT "FK_WeekPlanSlots_Courses_OverrideCourseId" FOREIGN KEY ("OverrideCourseId") REFERENCES "Courses" ("Id") ON DELETE SET NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260926180501_RenameFagSwapCourseToOverrideCourse') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260926180501_RenameFagSwapCourseToOverrideCourse', '10.0.7');
+    END IF;
+END $EF$;
+COMMIT;
+

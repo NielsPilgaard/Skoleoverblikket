@@ -60,7 +60,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 		Guid SchemaSlotId,
 		string? Description,
 		string? Lektier,
-		Guid? FagSwapCourseId);
+		Guid? OverrideCourseId);
 
 	public record AddFileToSlotRequest(Guid SchoolFileId);
 
@@ -146,7 +146,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 				.ThenInclude(s => s.Files)
 					.ThenInclude(f => f.SchoolFile)
 			.Include(w => w.Slots)
-				.ThenInclude(s => s.FagSwapCourse)
+				.ThenInclude(s => s.OverrideCourse)
 			.Include(w => w.Slots)
 				.ThenInclude(s => s.SubstituteTeacher)
 			.Include(w => w.Slots)
@@ -171,7 +171,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			.Select(ss =>
 		{
 			var wps = weekPlan?.Slots.FirstOrDefault(s => s.SchemaSlotId == ss.Id);
-			var effectiveCourse = wps?.FagSwapCourse ?? ss.Course;
+			var effectiveCourse = wps?.OverrideCourse ?? ss.Course;
 			var timeSlotLabel = ss.TimeSlot.Label ?? ss.TimeSlot.SortOrder.ToString();
 
 			return new WeekPlanSlotDto(
@@ -184,8 +184,8 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 				EndTime: ss.TimeSlot.EndTime,
 				CourseId: effectiveCourse.Id,
 				CourseName: effectiveCourse.Name,
-				OriginalCourseId: wps?.FagSwapCourseId.HasValue == true ? ss.CourseId : null,
-				OriginalCourseName: wps?.FagSwapCourseId.HasValue == true ? ss.Course.Name : null,
+				OriginalCourseId: wps?.OverrideCourseId.HasValue == true ? ss.CourseId : null,
+				OriginalCourseName: wps?.OverrideCourseId.HasValue == true ? ss.Course.Name : null,
 				Description: wps?.Description,
 				Lektier: wps?.Lektier,
 				Files: (wps?.Files ?? [])
@@ -263,12 +263,12 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			return Forbid();
 		}
 
-		if (req.FagSwapCourseId.HasValue)
+		if (req.OverrideCourseId.HasValue)
 		{
-			var courseExists = await db.Courses.AnyAsync(c => c.Id == req.FagSwapCourseId.Value, cancellationToken);
+			var courseExists = await db.Courses.AnyAsync(c => c.Id == req.OverrideCourseId.Value, cancellationToken);
 			if (!courseExists)
 			{
-				return Problem("FagSwapCourseId findes ikke under denne lejer", statusCode: 400);
+				return Problem("OverrideCourseId findes ikke under denne lejer", statusCode: 400);
 			}
 		}
 
@@ -291,7 +291,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 
 		var slot = await db.WeekPlanSlots
 			.Include(s => s.Files).ThenInclude(f => f.SchoolFile)
-			.Include(s => s.FagSwapCourse)
+			.Include(s => s.OverrideCourse)
 			.FirstOrDefaultAsync(s => s.WeekPlanId == weekPlan.Id && s.SchemaSlotId == req.SchemaSlotId, cancellationToken);
 
 		if (slot is null)
@@ -308,17 +308,17 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 
 		slot.Description = req.Description;
 		slot.Lektier = req.Lektier;
-		slot.FagSwapCourseId = req.FagSwapCourseId;
+		slot.OverrideCourseId = req.OverrideCourseId;
 		slot.UpdatedAt = DateTimeOffset.UtcNow;
 
 		await db.SaveChangesAsync(cancellationToken);
 
 		// Reload to get navigation props
-		await db.Entry(slot).Reference(s => s.FagSwapCourse).LoadAsync(cancellationToken);
+		await db.Entry(slot).Reference(s => s.OverrideCourse).LoadAsync(cancellationToken);
 		await db.Entry(slot).Reference(s => s.SubstituteTeacher).LoadAsync(cancellationToken);
 		await db.Entry(slot).Reference(s => s.SubstituteAide).LoadAsync(cancellationToken);
 
-		var effectiveCourse = slot.FagSwapCourse ?? schemaSlot.Course;
+		var effectiveCourse = slot.OverrideCourse ?? schemaSlot.Course;
 		var timeSlotLabel = schemaSlot.TimeSlot.Label ?? schemaSlot.TimeSlot.SortOrder.ToString();
 
 		return Ok(new WeekPlanSlotDto(
@@ -331,8 +331,8 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			EndTime: schemaSlot.TimeSlot.EndTime,
 			CourseId: effectiveCourse.Id,
 			CourseName: effectiveCourse.Name,
-			OriginalCourseId: slot.FagSwapCourseId.HasValue ? schemaSlot.CourseId : null,
-			OriginalCourseName: slot.FagSwapCourseId.HasValue ? schemaSlot.Course.Name : null,
+			OriginalCourseId: slot.OverrideCourseId.HasValue ? schemaSlot.CourseId : null,
+			OriginalCourseName: slot.OverrideCourseId.HasValue ? schemaSlot.Course.Name : null,
 			Description: slot.Description,
 			Lektier: slot.Lektier,
 			Files: slot.Files

@@ -6861,6 +6861,120 @@
         }
       }
     },
+    "/api/v1/staff/available": {
+      "get": {
+        "tags": [
+          "Substitute"
+        ],
+        "parameters": [
+          {
+            "name": "isoYear",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "isoWeek",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "weekday",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "timeSlotId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubstituteController_StaffAvailabilityDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubstituteController_StaffAvailabilityDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubstituteController_StaffAvailabilityDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/week-plans/{weekPlanId}/slots/{slotId}/substitute": {
+      "put": {
+        "tags": [
+          "Substitute"
+        ],
+        "parameters": [
+          {
+            "name": "weekPlanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "slotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubstituteController_AssignSubstituteRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubstituteController_AssignSubstituteRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubstituteController_AssignSubstituteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/admin/email-preview/staff-invitation": {
       "get": {
         "tags": [
@@ -7816,120 +7930,6 @@
             }
           }
         ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v1/staff/available": {
-      "get": {
-        "tags": [
-          "Vikar"
-        ],
-        "parameters": [
-          {
-            "name": "isoYear",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "isoWeek",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "weekday",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "timeSlotId",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/VikarController_StaffAvailabilityDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VikarController_StaffAvailabilityDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VikarController_StaffAvailabilityDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/week-plans/{weekPlanId}/slots/{slotId}/substitute": {
-      "put": {
-        "tags": [
-          "Vikar"
-        ],
-        "parameters": [
-          {
-            "name": "weekPlanId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "slotId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VikarController_AssignSubstituteRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VikarController_AssignSubstituteRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/VikarController_AssignSubstituteRequest"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "OK"
@@ -12625,6 +12625,86 @@
         ],
         "type": "string"
       },
+      "SubstituteController_AssignSubstituteRequest": {
+        "type": "object",
+        "properties": {
+          "substituteTeacherId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "substituteAideId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubstituteController_AvailableStaffDto": {
+        "required": [
+          "id",
+          "name",
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/StaffRole"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubstituteController_BusyStaffDto": {
+        "required": [
+          "conflictDescription",
+          "id",
+          "name",
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/StaffRole"
+          },
+          "conflictDescription": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubstituteController_StaffAvailabilityDto": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubstituteController_AvailableStaffDto"
+            }
+          },
+          "busy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubstituteController_BusyStaffDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "TenantDetailDto": {
         "required": [
           "createdAt",
@@ -13204,86 +13284,6 @@
         ],
         "type": "string"
       },
-      "VikarController_AssignSubstituteRequest": {
-        "type": "object",
-        "properties": {
-          "substituteTeacherId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "substituteAideId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "VikarController_AvailableStaffDto": {
-        "required": [
-          "id",
-          "name",
-          "role"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "role": {
-            "$ref": "#/components/schemas/StaffRole"
-          }
-        },
-        "additionalProperties": false
-      },
-      "VikarController_BusyStaffDto": {
-        "required": [
-          "conflictDescription",
-          "id",
-          "name",
-          "role"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "role": {
-            "$ref": "#/components/schemas/StaffRole"
-          },
-          "conflictDescription": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "VikarController_StaffAvailabilityDto": {
-        "type": "object",
-        "properties": {
-          "available": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VikarController_AvailableStaffDto"
-            }
-          },
-          "busy": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VikarController_BusyStaffDto"
-            }
-          }
-        },
-        "additionalProperties": false
-      },
       "WeekPlanController_AddFileToSlotRequest": {
         "required": [
           "schoolFileId"
@@ -13380,7 +13380,7 @@
             "type": "string",
             "nullable": true
           },
-          "fagSwapCourseId": {
+          "overrideCourseId": {
             "type": "string",
             "format": "uuid",
             "nullable": true
@@ -13705,6 +13705,9 @@
       "name": "SubscriptionModules"
     },
     {
+      "name": "Substitute"
+    },
+    {
       "name": "SuperAdminEmailPreview"
     },
     {
@@ -13718,9 +13721,6 @@
     },
     {
       "name": "VacationRegistration"
-    },
-    {
-      "name": "Vikar"
     },
     {
       "name": "WeekPlan"

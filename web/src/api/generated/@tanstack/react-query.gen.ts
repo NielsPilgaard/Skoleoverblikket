@@ -2603,6 +2603,35 @@ export const getApiV1ModulesOptions = (options?: Options<GetApiV1ModulesData>) =
     queryKey: getApiV1ModulesQueryKey(options)
 });
 
+export const getApiV1StaffAvailableQueryKey = (options?: Options<GetApiV1StaffAvailableData>) => createQueryKey('getApiV1StaffAvailable', options);
+
+export const getApiV1StaffAvailableOptions = (options?: Options<GetApiV1StaffAvailableData>) => queryOptions<GetApiV1StaffAvailableResponse, DefaultError, GetApiV1StaffAvailableResponse, ReturnType<typeof getApiV1StaffAvailableQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getApiV1StaffAvailable({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getApiV1StaffAvailableQueryKey(options)
+});
+
+export const putApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteMutation = (options?: Partial<Options<PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteData>>): UseMutationOptions<unknown, DefaultError, Options<PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteData>> => {
+    const mutationOptions: UseMutationOptions<unknown, DefaultError, Options<PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await putApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstitute({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
 export const getApiV1AdminEmailPreviewStaffInvitationQueryKey = (options?: Options<GetApiV1AdminEmailPreviewStaffInvitationData>) => createQueryKey('getApiV1AdminEmailPreviewStaffInvitation', options);
 
 export const getApiV1AdminEmailPreviewStaffInvitationOptions = (options?: Options<GetApiV1AdminEmailPreviewStaffInvitationData>) => queryOptions<unknown, DefaultError, unknown, ReturnType<typeof getApiV1AdminEmailPreviewStaffInvitationQueryKey>>({
@@ -2928,35 +2957,6 @@ export const putApiV1VacationRegistrationByIdEntriesByStudentIdMutation = (optio
     const mutationOptions: UseMutationOptions<unknown, DefaultError, Options<PutApiV1VacationRegistrationByIdEntriesByStudentIdData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await putApiV1VacationRegistrationByIdEntriesByStudentId({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-export const getApiV1StaffAvailableQueryKey = (options?: Options<GetApiV1StaffAvailableData>) => createQueryKey('getApiV1StaffAvailable', options);
-
-export const getApiV1StaffAvailableOptions = (options?: Options<GetApiV1StaffAvailableData>) => queryOptions<GetApiV1StaffAvailableResponse, DefaultError, GetApiV1StaffAvailableResponse, ReturnType<typeof getApiV1StaffAvailableQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await getApiV1StaffAvailable({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: getApiV1StaffAvailableQueryKey(options)
-});
-
-export const putApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteMutation = (options?: Partial<Options<PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteData>>): UseMutationOptions<unknown, DefaultError, Options<PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteData>> => {
-    const mutationOptions: UseMutationOptions<unknown, DefaultError, Options<PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await putApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstitute({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

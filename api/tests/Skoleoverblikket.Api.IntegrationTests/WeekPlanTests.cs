@@ -138,7 +138,7 @@ public sealed class WeekPlanTests(ApiFactory factory)
 	}
 
 	[Test]
-	public async Task UpsertSlot_WithFagSwap_ReturnsOverriddenCourseName()
+	public async Task UpsertSlot_WithOverrideCourse_ReturnsOverriddenCourseName()
 	{
 		var timeSlot = await TestDataBuilder.CreateTimeSlotAsync(_factory.Services, _tenantId,
 			new TimeOnly(10, 0), new TimeOnly(10, 45), sortOrder: 3);

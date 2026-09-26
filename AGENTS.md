@@ -75,7 +75,7 @@ Never bypass this filter. Never trust a slug string as an authorization signal �
 ### General
 
 - Style and naming conventions (indentation, casing, imports) are enforced by `.editorconfig` and the project linting setup. Do not duplicate those rules here.
-- Danish domain terms: klasse (class), fag (course), lokale (room), lektion (time slot), lærer (teacher), pædagog (aide), vikar (substitute), skema (schema/schedule). These are the only Danish words allowed in code identifiers (class names, file names, routes). Everything else in code must be English — UI text and URL paths stay Danish, since the product is Danish-language only. See [docs/GLOSSARY.md](docs/GLOSSARY.md) for the full kept-word list and the mapping of incidental Danish names already renamed to English.
+- Danish domain terms: klasse (class), lokale (room), lektion (time slot), lærer (teacher), pædagog (aide), skema (schema/schedule), SFO (after-school care). These are the only Danish words allowed in code identifiers (class names, file names, routes). Everything else in code must be English — UI text and URL paths stay Danish, since the product is Danish-language only. See [docs/GLOSSARY.md](docs/GLOSSARY.md) for the full kept-word list and the mapping of incidental Danish names already renamed to English.
 
 ## Testing
 
