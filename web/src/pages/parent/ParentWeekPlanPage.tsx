@@ -34,7 +34,7 @@ interface Slot {
   timeSlotLabel: string
   startTime: string
   courseName: string
-  beskrivelse?: string | null
+  description?: string | null
   lektier?: string | null
 }
 
@@ -61,7 +61,7 @@ function ClassWeekPlan({
         isHolidayWeek?: boolean
         holidayTitle?: string | null
         slots?: Slot[]
-        generelt?: string | null
+        notes?: string | null
       }
     | undefined
   if (!plan) return null
@@ -70,7 +70,7 @@ function ClassWeekPlan({
     <div>
       <h2 className="text-base font-semibold text-gray-900 mb-3">{className}</h2>
       <WeekPlanList
-        generelt={plan.generelt}
+        notes={plan.notes}
         slots={plan.slots ?? []}
         isHolidayWeek={plan.isHolidayWeek}
         holidayTitle={plan.holidayTitle}

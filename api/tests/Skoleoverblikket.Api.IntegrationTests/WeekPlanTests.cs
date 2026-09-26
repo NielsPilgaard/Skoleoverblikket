@@ -108,7 +108,7 @@ public sealed class WeekPlanTests(ApiFactory factory)
 	}
 
 	[Test]
-	public async Task UpsertSlot_CreatesBeskrivelse_AndReturnsMergedSlot()
+	public async Task UpsertSlot_CreatesDescription_AndReturnsMergedSlot()
 	{
 		var timeSlot = await TestDataBuilder.CreateTimeSlotAsync(_factory.Services, _tenantId,
 			new TimeOnly(9, 0), new TimeOnly(9, 45), sortOrder: 2);
@@ -132,7 +132,7 @@ public sealed class WeekPlanTests(ApiFactory factory)
 
 		await Assert.That(putResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 		var slotDto = await putResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
-		await Assert.That(slotDto!.Beskrivelse).IsEqualTo("Vi læser kapitel 3");
+		await Assert.That(slotDto!.Description).IsEqualTo("Vi læser kapitel 3");
 		await Assert.That(slotDto.CourseName).IsEqualTo(course.Name);
 		await Assert.That(slotDto.OriginalCourseId).IsNull();
 	}

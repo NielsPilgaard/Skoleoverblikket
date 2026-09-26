@@ -957,7 +957,7 @@ export type SfoControllerUpsertSfoShiftRequest = {
 };
 
 export type SfoWeekPlanControllerNotesDto = {
-    generelt?: string | null;
+    notes?: string | null;
 };
 
 export type SfoWeekPlanControllerSfoStaffRefDto = {
@@ -970,7 +970,7 @@ export type SfoWeekPlanControllerSfoWeekPlanDto = {
     isoYear: number;
     isoWeek: number;
     shifts?: Array<SfoWeekPlanControllerSfoWeekPlanShiftDto>;
-    generelt?: string | null;
+    notes?: string | null;
 };
 
 export type SfoWeekPlanControllerSfoWeekPlanShiftDto = {
@@ -981,20 +981,20 @@ export type SfoWeekPlanControllerSfoWeekPlanShiftDto = {
     endTime: string;
     label?: string | null;
     staff?: Array<SfoWeekPlanControllerSfoStaffRefDto>;
-    beskrivelse?: string | null;
+    description?: string | null;
 };
 
 export type SfoWeekPlanControllerUpdateSfoNotesRequest = {
     isoYear: number;
     isoWeek: number;
-    generelt?: string | null;
+    notes?: string | null;
 };
 
 export type SfoWeekPlanControllerUpsertSfoWeekPlanShiftRequest = {
     isoYear: number;
     isoWeek: number;
     sfoShiftId: string;
-    beskrivelse?: string | null;
+    description?: string | null;
 };
 
 export type StaffControllerPatchAdminPermissionRequest = {
@@ -1332,16 +1332,16 @@ export type WeekPlanControllerHolidayDayDto = {
 };
 
 export type WeekPlanControllerNotesDto = {
-    generelt?: string | null;
+    notes?: string | null;
 };
 
 export type WeekPlanControllerUpdateNotesRequest = {
-    generelt?: string | null;
+    notes?: string | null;
 };
 
 export type WeekPlanControllerUpsertWeekPlanSlotRequest = {
     schemaSlotId: string;
-    beskrivelse?: string | null;
+    description?: string | null;
     lektier?: string | null;
     fagSwapCourseId?: string | null;
 };
@@ -1358,7 +1358,7 @@ export type WeekPlanControllerWeekPlanDto = {
     holidayDays?: Array<WeekPlanControllerHolidayDayDto>;
     breakSlots?: Array<WeekPlanControllerBreakTimeSlotDto>;
     slots?: Array<WeekPlanControllerWeekPlanSlotDto>;
-    generelt?: string | null;
+    notes?: string | null;
 };
 
 export type WeekPlanControllerWeekPlanSlotDto = {
@@ -1373,7 +1373,7 @@ export type WeekPlanControllerWeekPlanSlotDto = {
     courseName: string;
     originalCourseId?: string | null;
     originalCourseName?: string | null;
-    beskrivelse?: string | null;
+    description?: string | null;
     lektier?: string | null;
     files?: Array<WeekPlanControllerWeekPlanSlotFileDto>;
     substituteTeacherId?: string | null;
@@ -3840,21 +3840,21 @@ export type GetApiV1SfoWeekPlanResponses = {
 
 export type GetApiV1SfoWeekPlanResponse = GetApiV1SfoWeekPlanResponses[keyof GetApiV1SfoWeekPlanResponses];
 
-export type PutApiV1SfoWeekPlanGenereltData = {
+export type PutApiV1SfoWeekPlanNotesData = {
     body?: SfoWeekPlanControllerUpdateSfoNotesRequest;
     path?: never;
     query?: never;
-    url: '/api/v1/sfo/week-plan/generelt';
+    url: '/api/v1/sfo/week-plan/notes';
 };
 
-export type PutApiV1SfoWeekPlanGenereltResponses = {
+export type PutApiV1SfoWeekPlanNotesResponses = {
     /**
      * OK
      */
     200: SfoWeekPlanControllerNotesDto;
 };
 
-export type PutApiV1SfoWeekPlanGenereltResponse = PutApiV1SfoWeekPlanGenereltResponses[keyof PutApiV1SfoWeekPlanGenereltResponses];
+export type PutApiV1SfoWeekPlanNotesResponse = PutApiV1SfoWeekPlanNotesResponses[keyof PutApiV1SfoWeekPlanNotesResponses];
 
 export type PutApiV1SfoWeekPlanShiftsData = {
     body?: SfoWeekPlanControllerUpsertSfoWeekPlanShiftRequest;
@@ -4734,7 +4734,7 @@ export type PutApiV1ClassesByClassIdWeekPlanSlotsResponses = {
 
 export type PutApiV1ClassesByClassIdWeekPlanSlotsResponse = PutApiV1ClassesByClassIdWeekPlanSlotsResponses[keyof PutApiV1ClassesByClassIdWeekPlanSlotsResponses];
 
-export type PutApiV1ClassesByClassIdWeekPlanGenereltData = {
+export type PutApiV1ClassesByClassIdWeekPlanNotesData = {
     body?: WeekPlanControllerUpdateNotesRequest;
     path: {
         classId: string;
@@ -4743,17 +4743,17 @@ export type PutApiV1ClassesByClassIdWeekPlanGenereltData = {
         isoYear?: number;
         isoWeek?: number;
     };
-    url: '/api/v1/classes/{classId}/week-plan/generelt';
+    url: '/api/v1/classes/{classId}/week-plan/notes';
 };
 
-export type PutApiV1ClassesByClassIdWeekPlanGenereltResponses = {
+export type PutApiV1ClassesByClassIdWeekPlanNotesResponses = {
     /**
      * OK
      */
     200: WeekPlanControllerNotesDto;
 };
 
-export type PutApiV1ClassesByClassIdWeekPlanGenereltResponse = PutApiV1ClassesByClassIdWeekPlanGenereltResponses[keyof PutApiV1ClassesByClassIdWeekPlanGenereltResponses];
+export type PutApiV1ClassesByClassIdWeekPlanNotesResponse = PutApiV1ClassesByClassIdWeekPlanNotesResponses[keyof PutApiV1ClassesByClassIdWeekPlanNotesResponses];
 
 export type PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesData = {
     body?: WeekPlanControllerAddFileToSlotRequest;

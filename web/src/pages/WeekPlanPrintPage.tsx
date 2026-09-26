@@ -72,13 +72,13 @@ export default function WeekPlanPrintPage() {
     timeSlotLabel: string | null
     courseName: string | null
     originalCourseName: string | null
-    beskrivelse: string | null
+    description: string | null
     lektier: string | null
   }
 
   const slots = (weekPlan?.slots ?? []) as SlotRow[]
-  const generelt = (weekPlan as { generelt?: string | null } | undefined)?.generelt
-  const hasGenerelt = Boolean(generelt?.trim())
+  const notes = (weekPlan as { notes?: string | null } | undefined)?.notes
+  const hasGenerelt = Boolean(notes?.trim())
 
   // Build time axis from unique startTime values
   const timeAxis = [
@@ -151,16 +151,16 @@ export default function WeekPlanPrintPage() {
         .print-cell { display: flex; flex-direction: column; gap: 1px; }
         .print-course { font-weight: 600; color: #111827; font-size: 11px; }
         .print-swap { font-size: 10px; color: #6b7280; font-style: italic; }
-        .print-beskrivelse { font-size: 10px; color: #374151; }
+        .print-description { font-size: 10px; color: #374151; }
         .print-lektier { font-size: 10px; color: #2563eb; }
-        .print-generelt { font-size: 11px; color: #374151; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; margin-bottom: 10px; }
-        .print-generelt p { margin: 0 0 4px; }
-        .print-generelt p:last-child { margin-bottom: 0; }
-        .print-generelt ul, .print-generelt ol { margin: 2px 0; padding-left: 18px; }
-        .print-beskrivelse p, .print-lektier p { margin: 0; }
-        .print-beskrivelse ul, .print-beskrivelse ol,
+        .print-notes { font-size: 11px; color: #374151; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; margin-bottom: 10px; }
+        .print-notes p { margin: 0 0 4px; }
+        .print-notes p:last-child { margin-bottom: 0; }
+        .print-notes ul, .print-notes ol { margin: 2px 0; padding-left: 18px; }
+        .print-description p, .print-lektier p { margin: 0; }
+        .print-description ul, .print-description ol,
         .print-lektier ul, .print-lektier ol { margin: 1px 0; padding-left: 14px; }
-        .print-generelt-page { break-after: page; page-break-after: always; }
+        .print-notes-page { break-after: page; page-break-after: always; }
         .print-empty { text-align: center; color: #9ca3af; margin-top: 32px; font-size: 13px; }
         .no-print-bar {
           position: fixed; top: 0; right: 0; left: 0;
@@ -197,8 +197,8 @@ export default function WeekPlanPrintPage() {
         </div>
 
         {hasGenerelt && (
-          <div className="print-generelt print-generelt-page">
-            <Markdown>{generelt}</Markdown>
+          <div className="print-notes print-notes-page">
+            <Markdown>{notes}</Markdown>
           </div>
         )}
 
@@ -252,9 +252,9 @@ export default function WeekPlanPrintPage() {
                                 slot.originalCourseName !== slot.courseName && (
                                   <span className="print-swap">↔ {slot.originalCourseName}</span>
                                 )}
-                              {slot.beskrivelse && (
-                                <div className="print-beskrivelse">
-                                  <Markdown>{slot.beskrivelse}</Markdown>
+                              {slot.description && (
+                                <div className="print-description">
+                                  <Markdown>{slot.description}</Markdown>
                                 </div>
                               )}
                               {slot.lektier && (

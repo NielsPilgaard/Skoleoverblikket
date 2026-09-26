@@ -57,7 +57,7 @@ public sealed class ComplianceCoverageController(AppDbContext db, UvmTimetableSe
 		var schoolYearStart = now.Month >= 8 ? now.Year : now.Year - 1;
 		var schoolYear = $"{schoolYearStart}-{schoolYearStart + 1}";
 
-		var snapshot = new StaaMaalMedSnapshot
+		var snapshot = new ComplianceCoverageSnapshot
 		{
 			Id = Guid.NewGuid(),
 			TenantId = tenant.TenantId,
@@ -68,7 +68,7 @@ public sealed class ComplianceCoverageController(AppDbContext db, UvmTimetableSe
 			Data = JsonSerializer.Serialize(coverage),
 		};
 
-		db.StaaMaalMedSnapshots.Add(snapshot);
+		db.ComplianceCoverageSnapshots.Add(snapshot);
 		await db.SaveChangesAsync(cancellationToken);
 
 		return CreatedAtAction(nameof(GetSnapshot), new { id = snapshot.Id },
@@ -78,7 +78,7 @@ public sealed class ComplianceCoverageController(AppDbContext db, UvmTimetableSe
 	[HttpGet("snapshots")]
 	public async Task<ActionResult<List<SnapshotSummaryDto>>> GetSnapshots(CancellationToken cancellationToken)
 	{
-		var snapshots = await db.StaaMaalMedSnapshots
+		var snapshots = await db.ComplianceCoverageSnapshots
 			.AsNoTracking()
 			.OrderByDescending(s => s.CreatedAt)
 			.Select(s => new SnapshotSummaryDto(s.Id, s.SchoolYear, s.CreatedAt, s.CreatedByStaff.Name, s.Reason))
@@ -90,7 +90,7 @@ public sealed class ComplianceCoverageController(AppDbContext db, UvmTimetableSe
 	[HttpGet("snapshots/{id:guid}")]
 	public async Task<ActionResult<SnapshotDetailDto>> GetSnapshot(Guid id, CancellationToken cancellationToken)
 	{
-		var snapshot = await db.StaaMaalMedSnapshots
+		var snapshot = await db.ComplianceCoverageSnapshots
 			.AsNoTracking()
 			.Include(s => s.CreatedByStaff)
 			.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
@@ -121,13 +121,13 @@ public sealed class ComplianceCoverageController(AppDbContext db, UvmTimetableSe
 	[Authorize(Roles = Roles.Admin)]
 	public async Task<IActionResult> DeleteSnapshot(Guid id, CancellationToken cancellationToken)
 	{
-		var snapshot = await db.StaaMaalMedSnapshots.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+		var snapshot = await db.ComplianceCoverageSnapshots.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 		if (snapshot is null)
 		{
 			return NotFound();
 		}
 
-		db.StaaMaalMedSnapshots.Remove(snapshot);
+		db.ComplianceCoverageSnapshots.Remove(snapshot);
 		await db.SaveChangesAsync(cancellationToken);
 
 		return NoContent();

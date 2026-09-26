@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Skoleoverblikket.Api.Models;
 
-public sealed class StaaMaalMedSnapshot : ITenantScoped, IEntityTypeConfiguration<StaaMaalMedSnapshot>
+public sealed class ComplianceCoverageSnapshot : ITenantScoped, IEntityTypeConfiguration<ComplianceCoverageSnapshot>
 {
 	public Guid Id { get; set; }
 	public Guid TenantId { get; set; }
@@ -25,7 +25,7 @@ public sealed class StaaMaalMedSnapshot : ITenantScoped, IEntityTypeConfiguratio
 
 	public string Data { get; set; } = null!;
 
-	public void Configure(EntityTypeBuilder<StaaMaalMedSnapshot> builder)
+	public void Configure(EntityTypeBuilder<ComplianceCoverageSnapshot> builder)
 	{
 		builder.Property(s => s.Data).HasColumnType("jsonb");
 

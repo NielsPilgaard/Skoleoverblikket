@@ -131,7 +131,7 @@ public sealed class WeekPlanPermissionsTests(ApiFactory factory)
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 		var slot = await response.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
-		await Assert.That(slot!.Beskrivelse).IsEqualTo("Vi læser kapitel 5");
+		await Assert.That(slot!.Description).IsEqualTo("Vi læser kapitel 5");
 	}
 
 	/// <summary>

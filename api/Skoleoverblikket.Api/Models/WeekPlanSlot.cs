@@ -15,7 +15,7 @@ public sealed class WeekPlanSlot : ITenantScoped, IEntityTypeConfiguration<WeekP
 	public SchemaSlot SchemaSlot { get; set; } = null!;
 
 	[StringLength(8000)]
-	public string? Beskrivelse { get; set; }
+	public string? Description { get; set; }
 
 	[StringLength(8000)]
 	public string? Lektier { get; set; }

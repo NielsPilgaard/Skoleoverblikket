@@ -1,9 +1,9 @@
 import { test, expect, type Page } from '@playwright/test'
 
-// The Generelt editor on WeekPlanPage renders regardless of whether the class
+// The Notes editor on WeekPlanPage renders regardless of whether the class
 // has an active schema, so this flow only needs *a* class to exist.
 //
-// Each test gets its own fresh class rather than sharing one: the Generelt
+// Each test gets its own fresh class rather than sharing one: the Notes
 // field autosaves on a debounce, so tests sharing a class could have a
 // previous test's delayed save land after a later test has already started
 // editing, corrupting its content and producing flaky failures.
@@ -23,14 +23,14 @@ async function gotoAnyClassUgeplan(page: Page) {
   const testId = await row.getAttribute('data-testid')
   const classId = testId!.replace('class-row-', '')
   await page.goto(`/klasser/${classId}/ugeplan`)
-  await expect(page.getByTestId('generelt-editor')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByTestId('notes-editor')).toBeVisible({ timeout: 15_000 })
 }
 
 test.describe('WeekPlanPage — MarkdownTextarea affordances', () => {
   test('bullet button prefixes every selected line with "- "', async ({ page }) => {
     await gotoAnyClassUgeplan(page)
 
-    const editor = page.getByTestId('generelt-editor')
+    const editor = page.getByTestId('notes-editor')
     await editor.fill('Tur til skoven\nHusk madpakke')
     await editor.selectText()
     await page.getByRole('button', { name: 'Punktliste' }).click()
@@ -41,7 +41,7 @@ test.describe('WeekPlanPage — MarkdownTextarea affordances', () => {
   test('B button wraps the selection in **…**', async ({ page }) => {
     await gotoAnyClassUgeplan(page)
 
-    const editor = page.getByTestId('generelt-editor')
+    const editor = page.getByTestId('notes-editor')
     await editor.fill('vigtigt')
     await editor.selectText()
     await page.getByRole('button', { name: 'Fed' }).click()
@@ -52,7 +52,7 @@ test.describe('WeekPlanPage — MarkdownTextarea affordances', () => {
   test('Enter on an empty bullet removes the marker and ends the list', async ({ page }) => {
     await gotoAnyClassUgeplan(page)
 
-    const editor = page.getByTestId('generelt-editor')
+    const editor = page.getByTestId('notes-editor')
     await editor.click()
     await editor.fill('- første')
     await editor.press('End')
@@ -66,7 +66,7 @@ test.describe('WeekPlanPage — MarkdownTextarea affordances', () => {
   test('typing "* " at line start normalises to "- "', async ({ page }) => {
     await gotoAnyClassUgeplan(page)
 
-    const editor = page.getByTestId('generelt-editor')
+    const editor = page.getByTestId('notes-editor')
     await editor.fill('')
     await editor.pressSequentially('* mælk')
 
@@ -78,9 +78,9 @@ test.describe('WeekPlanPage — MarkdownTextarea affordances', () => {
   }) => {
     await gotoAnyClassUgeplan(page)
 
-    const editor = page.getByTestId('generelt-editor')
-    const preview = page.getByTestId('generelt-editor-preview')
-    const toggle = page.getByTestId('generelt-editor-preview-toggle')
+    const editor = page.getByTestId('notes-editor')
+    const preview = page.getByTestId('notes-editor-preview')
+    const toggle = page.getByTestId('notes-editor-preview-toggle')
 
     // Shown by default.
     await expect(preview).toBeVisible()
@@ -101,12 +101,12 @@ test.describe('WeekPlanPage — MarkdownTextarea affordances', () => {
 
     // Survives a reload.
     await page.reload()
-    await expect(page.getByTestId('generelt-editor')).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByTestId('generelt-editor-preview')).toBeHidden()
+    await expect(page.getByTestId('notes-editor')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('notes-editor-preview')).toBeHidden()
 
     // Show again → cleared.
-    await page.getByTestId('generelt-editor-preview-toggle').click()
-    await expect(page.getByTestId('generelt-editor-preview')).toBeVisible()
+    await page.getByTestId('notes-editor-preview-toggle').click()
+    await expect(page.getByTestId('notes-editor-preview')).toBeVisible()
     expect(await page.evaluate(() => localStorage.getItem('markdown-preview-hidden'))).toBe('0')
   })
 })

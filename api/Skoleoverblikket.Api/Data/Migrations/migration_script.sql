@@ -2042,3 +2042,84 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260925092313_RenameDanishColumnsToEnglish') THEN
+    ALTER TABLE "StaaMaalMedSnapshots" RENAME TO "ComplianceCoverageSnapshots";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260925092313_RenameDanishColumnsToEnglish') THEN
+    ALTER TABLE "WeekPlanSlots" RENAME COLUMN "Beskrivelse" TO "Description";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260925092313_RenameDanishColumnsToEnglish') THEN
+    ALTER TABLE "WeekPlans" RENAME COLUMN "Generelt" TO "Notes";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260925092313_RenameDanishColumnsToEnglish') THEN
+    ALTER TABLE "SfoWeekPlanShifts" RENAME COLUMN "Beskrivelse" TO "Description";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260925092313_RenameDanishColumnsToEnglish') THEN
+    ALTER TABLE "SfoWeekPlans" RENAME COLUMN "Generelt" TO "Notes";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260925092313_RenameDanishColumnsToEnglish') THEN
+    ALTER TABLE "ComplianceCoverageSnapshots" RENAME CONSTRAINT "PK_StaaMaalMedSnapshots" TO "PK_ComplianceCoverageSnapshots";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260925092313_RenameDanishColumnsToEnglish') THEN
+    ALTER TABLE "ComplianceCoverageSnapshots" RENAME CONSTRAINT "FK_StaaMaalMedSnapshots_Staff_CreatedByStaffId" TO "FK_ComplianceCoverageSnapshots_Staff_CreatedByStaffId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260925092313_RenameDanishColumnsToEnglish') THEN
+    ALTER INDEX "IX_StaaMaalMedSnapshots_CreatedByStaffId" RENAME TO "IX_ComplianceCoverageSnapshots_CreatedByStaffId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260925092313_RenameDanishColumnsToEnglish') THEN
+    ALTER INDEX "IX_StaaMaalMedSnapshots_TenantId_CreatedAt" RENAME TO "IX_ComplianceCoverageSnapshots_TenantId_CreatedAt";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260925092313_RenameDanishColumnsToEnglish') THEN
+    ALTER INDEX "IX_StaaMaalMedSnapshots_TenantId_SchoolYear" RENAME TO "IX_ComplianceCoverageSnapshots_TenantId_SchoolYear";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260925092313_RenameDanishColumnsToEnglish') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260925092313_RenameDanishColumnsToEnglish', '10.0.7');
+    END IF;
+END $EF$;
+COMMIT;
+

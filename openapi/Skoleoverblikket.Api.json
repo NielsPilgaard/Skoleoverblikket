@@ -5834,7 +5834,7 @@
         }
       }
     },
-    "/api/v1/sfo/week-plan/generelt": {
+    "/api/v1/sfo/week-plan/notes": {
       "put": {
         "tags": [
           "SfoWeekPlan"
@@ -8084,7 +8084,7 @@
         }
       }
     },
-    "/api/v1/classes/{classId}/week-plan/generelt": {
+    "/api/v1/classes/{classId}/week-plan/notes": {
       "put": {
         "tags": [
           "WeekPlan"
@@ -11899,7 +11899,7 @@
       "SfoWeekPlanController_NotesDto": {
         "type": "object",
         "properties": {
-          "generelt": {
+          "notes": {
             "type": "string",
             "nullable": true
           }
@@ -11949,7 +11949,7 @@
               "$ref": "#/components/schemas/SfoWeekPlanController_SfoWeekPlanShiftDto"
             }
           },
-          "generelt": {
+          "notes": {
             "type": "string",
             "nullable": true
           }
@@ -11994,7 +11994,7 @@
               "$ref": "#/components/schemas/SfoWeekPlanController_SfoStaffRefDto"
             }
           },
-          "beskrivelse": {
+          "description": {
             "type": "string",
             "nullable": true
           }
@@ -12016,7 +12016,7 @@
             "type": "integer",
             "format": "int32"
           },
-          "generelt": {
+          "notes": {
             "maxLength": 8000,
             "minLength": 0,
             "type": "string",
@@ -12045,7 +12045,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "beskrivelse": {
+          "description": {
             "type": "string",
             "nullable": true
           }
@@ -13343,7 +13343,7 @@
       "WeekPlanController_NotesDto": {
         "type": "object",
         "properties": {
-          "generelt": {
+          "notes": {
             "type": "string",
             "nullable": true
           }
@@ -13353,7 +13353,7 @@
       "WeekPlanController_UpdateNotesRequest": {
         "type": "object",
         "properties": {
-          "generelt": {
+          "notes": {
             "maxLength": 8000,
             "minLength": 0,
             "type": "string",
@@ -13372,7 +13372,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "beskrivelse": {
+          "description": {
             "type": "string",
             "nullable": true
           },
@@ -13449,7 +13449,7 @@
               "$ref": "#/components/schemas/WeekPlanController_WeekPlanSlotDto"
             }
           },
-          "generelt": {
+          "notes": {
             "type": "string",
             "nullable": true
           }
@@ -13513,7 +13513,7 @@
             "type": "string",
             "nullable": true
           },
-          "beskrivelse": {
+          "description": {
             "type": "string",
             "nullable": true
           },

@@ -29,7 +29,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 		string CourseName,
 		Guid? OriginalCourseId,
 		string? OriginalCourseName,
-		string? Beskrivelse,
+		string? Description,
 		string? Lektier,
 		IReadOnlyList<WeekPlanSlotFileDto> Files,
 		Guid? SubstituteTeacherId,
@@ -54,19 +54,19 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 		IReadOnlyList<HolidayDayDto> HolidayDays,
 		IReadOnlyList<BreakTimeSlotDto> BreakSlots,
 		IReadOnlyList<WeekPlanSlotDto> Slots,
-		string? Generelt);
+		string? Notes);
 
 	public record UpsertWeekPlanSlotRequest(
 		Guid SchemaSlotId,
-		string? Beskrivelse,
+		string? Description,
 		string? Lektier,
 		Guid? FagSwapCourseId);
 
 	public record AddFileToSlotRequest(Guid SchoolFileId);
 
-	public record UpdateNotesRequest([property: StringLength(8000)] string? Generelt);
+	public record UpdateNotesRequest([property: StringLength(8000)] string? Notes);
 
-	public record NotesDto(string? Generelt);
+	public record NotesDto(string? Notes);
 
 	[HttpGet]
 	public async Task<ActionResult<WeekPlanDto>> GetWeekPlan(
@@ -131,7 +131,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 
 			return Ok(new WeekPlanDto(
 				weekPlanNoSchema?.Id ?? Guid.Empty, classId, isoYear.Value, isoWeek.Value,
-				weekStart, weekEnd, isHolidayWeek, holidayTitle, holidayDays, [], [], weekPlanNoSchema?.Generelt));
+				weekStart, weekEnd, isHolidayWeek, holidayTitle, holidayDays, [], [], weekPlanNoSchema?.Notes));
 		}
 
 		var schemaSlots = await db.SchemaSlots
@@ -186,7 +186,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 				CourseName: effectiveCourse.Name,
 				OriginalCourseId: wps?.FagSwapCourseId.HasValue == true ? ss.CourseId : null,
 				OriginalCourseName: wps?.FagSwapCourseId.HasValue == true ? ss.Course.Name : null,
-				Beskrivelse: wps?.Beskrivelse,
+				Description: wps?.Description,
 				Lektier: wps?.Lektier,
 				Files: (wps?.Files ?? [])
 					.Select(f => new WeekPlanSlotFileDto(f.Id, f.SchoolFileId, f.SchoolFile.FileName, f.SchoolFile.Url))
@@ -211,7 +211,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			HolidayDays: holidayDays,
 			BreakSlots: breakSlots,
 			Slots: slotDtos,
-			Generelt: weekPlan?.Generelt));
+			Notes: weekPlan?.Notes));
 	}
 
 	[HttpPut("slots")]
@@ -306,7 +306,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			db.WeekPlanSlots.Add(slot);
 		}
 
-		slot.Beskrivelse = req.Beskrivelse;
+		slot.Description = req.Description;
 		slot.Lektier = req.Lektier;
 		slot.FagSwapCourseId = req.FagSwapCourseId;
 		slot.UpdatedAt = DateTimeOffset.UtcNow;
@@ -333,7 +333,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			CourseName: effectiveCourse.Name,
 			OriginalCourseId: slot.FagSwapCourseId.HasValue ? schemaSlot.CourseId : null,
 			OriginalCourseName: slot.FagSwapCourseId.HasValue ? schemaSlot.Course.Name : null,
-			Beskrivelse: slot.Beskrivelse,
+			Description: slot.Description,
 			Lektier: slot.Lektier,
 			Files: slot.Files
 				.Select(f => new WeekPlanSlotFileDto(f.Id, f.SchoolFileId, f.SchoolFile.FileName, f.SchoolFile.Url))
@@ -346,8 +346,8 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 		));
 	}
 
-	[HttpPut("generelt")]
-	public async Task<ActionResult<NotesDto>> UpdateGenerelt(
+	[HttpPut("notes")]
+	public async Task<ActionResult<NotesDto>> UpdateNotes(
 		Guid classId,
 		[FromQuery] int? isoYear,
 		[FromQuery] int? isoWeek,
@@ -404,10 +404,10 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			}
 		}
 
-		weekPlan.Generelt = req.Generelt;
+		weekPlan.Notes = req.Notes;
 		await db.SaveChangesAsync(cancellationToken);
 
-		return Ok(new NotesDto(weekPlan.Generelt));
+		return Ok(new NotesDto(weekPlan.Notes));
 	}
 
 	[HttpPost("slots/{slotId:guid}/files")]
