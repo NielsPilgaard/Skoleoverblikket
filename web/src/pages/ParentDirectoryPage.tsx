@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { usePageTitle } from '../hooks/usePageTitle'
-import { getApiV1KontaktOptions } from '../api/generated/@tanstack/react-query.gen'
-import type { KontaktControllerKontaktParentDto as KontaktParentDto } from '../api/generated/types.gen'
+import { getApiV1ContactDirectoryOptions } from '../api/generated/@tanstack/react-query.gen'
+import type { ContactDirectoryControllerContactDirectoryParentDto as KontaktParentDto } from '../api/generated/types.gen'
 
 interface StudentGroup {
   studentId: string
@@ -39,7 +39,7 @@ export default function ParentDirectoryPage() {
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null)
 
   const { data: parents = [], isLoading } = useQuery({
-    ...getApiV1KontaktOptions(),
+    ...getApiV1ContactDirectoryOptions(),
     select: (data) => data as KontaktParentDto[],
   })
 

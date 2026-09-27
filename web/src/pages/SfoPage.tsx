@@ -13,12 +13,12 @@ import {
   postApiV1SfoShiftsByIdStaffByStaffIdMutation,
   deleteApiV1SfoShiftsByIdStaffByStaffIdMutation,
   getApiV1StaffOptions,
-  getApiV1SfoUgeplanOptions,
-  getApiV1SfoUgeplanQueryKey,
-  putApiV1SfoUgeplanShiftsMutation,
-  putApiV1SfoUgeplanGenereltMutation,
+  getApiV1SfoWeekPlanOptions,
+  getApiV1SfoWeekPlanQueryKey,
+  putApiV1SfoWeekPlanShiftsMutation,
+  putApiV1SfoWeekPlanNotesMutation,
 } from '../api/generated/@tanstack/react-query.gen'
-import type { SfoShiftDto, SfoWeekPlanShiftDto } from '../api/client'
+import type { SfoShiftDto, SfoWeekPlanShiftDto, SfoWeekPlanDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 
 function getISOWeek(date: Date): number {
@@ -56,7 +56,7 @@ const emptyForm = (): ShiftForm => ({
   label: '',
 })
 
-function SfoGenereltEditor({
+function SfoNotesEditor({
   isoYear,
   isoWeek,
   value,
@@ -96,14 +96,14 @@ function SfoGenereltEditor({
   const isCurrentEdit = (submitted: string | null) => (submitted ?? '') === (text || '')
 
   const mutation = useMutation({
-    ...putApiV1SfoUgeplanGenereltMutation(),
+    ...putApiV1SfoWeekPlanNotesMutation(),
     onSuccess: (_data, variables) => {
       pendingSaveRef.current = false
       prevSavedRef.current = lastSavedRef.current
       void qc.invalidateQueries({
-        queryKey: getApiV1SfoUgeplanQueryKey({ query: { isoYear, isoWeek } }),
+        queryKey: getApiV1SfoWeekPlanQueryKey({ query: { isoYear, isoWeek } }),
       })
-      if (isCurrentEdit(variables.body?.generelt ?? null)) {
+      if (isCurrentEdit(variables.body?.notes ?? null)) {
         setSaveStatus('saved')
       }
     },
@@ -113,7 +113,7 @@ function SfoGenereltEditor({
       // to save. That save failed, so roll it back to the last confirmed value —
       // otherwise an unchanged retry blur short-circuits and never re-fires.
       lastSavedRef.current = prevSavedRef.current
-      if (isCurrentEdit(variables.body?.generelt ?? null)) {
+      if (isCurrentEdit(variables.body?.notes ?? null)) {
         setSaveStatus('error')
       }
     },
@@ -131,7 +131,7 @@ function SfoGenereltEditor({
     prevSavedRef.current = lastSavedRef.current
     lastSavedRef.current = text
     setSaveStatus('saving')
-    mutation.mutate({ body: { isoYear, isoWeek, generelt: normalized } })
+    mutation.mutate({ body: { isoYear, isoWeek, notes: normalized } })
   }
 
   return (
@@ -146,7 +146,7 @@ function SfoGenereltEditor({
           maxLength={8000}
           placeholder="Ture, huskeliste, kommende temaer…"
           aria-label="Generelt for ugen"
-          data-testid="sfo-generelt-editor"
+          data-testid="sfo-notes-editor"
           saveStatus={saveStatus}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
         />
@@ -176,13 +176,16 @@ export default function SfoPage() {
     weekShift: SfoWeekPlanShiftDto | undefined
   } | null>(null)
 
-  const { data: weekPlan } = useQuery(getApiV1SfoUgeplanOptions({ query: { isoYear, isoWeek } }))
+  const { data: weekPlan } = useQuery({
+    ...getApiV1SfoWeekPlanOptions({ query: { isoYear, isoWeek } }),
+    select: (data) => data as SfoWeekPlanDto,
+  })
 
-  const upsertBeskrivelseMutation = useMutation({
-    ...putApiV1SfoUgeplanShiftsMutation(),
+  const upsertDescriptionMutation = useMutation({
+    ...putApiV1SfoWeekPlanShiftsMutation(),
     onSuccess: () => {
       void qc.invalidateQueries({
-        queryKey: getApiV1SfoUgeplanQueryKey({ query: { isoYear, isoWeek } }),
+        queryKey: getApiV1SfoWeekPlanQueryKey({ query: { isoYear, isoWeek } }),
       })
       setSelectedCell(null)
     },
@@ -461,7 +464,7 @@ export default function SfoPage() {
         </div>
       </div>
 
-      <SfoGenereltEditor isoYear={isoYear} isoWeek={isoWeek} value={weekPlan?.generelt} />
+      <SfoNotesEditor isoYear={isoYear} isoWeek={isoWeek} value={weekPlan?.notes} />
 
       {/* Grid area */}
       <div className="p-4 sm:p-6 lg:p-8">
@@ -564,9 +567,9 @@ export default function SfoPage() {
                           </div>
                         )}
                         <div className="flex-1 min-w-0 hidden sm:block">
-                          {weekShift?.beskrivelse ? (
+                          {weekShift?.description ? (
                             <div className="text-xs text-gray-600 line-clamp-4 prose prose-xs max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
-                              <Markdown>{weekShift.beskrivelse}</Markdown>
+                              <Markdown>{weekShift.description}</Markdown>
                             </div>
                           ) : (
                             <p className="text-xs text-gray-300 italic">Aktivitet…</p>
@@ -591,12 +594,12 @@ export default function SfoPage() {
           isoWeek={isoWeek}
           staff={staff ?? []}
           onClose={() => setSelectedCell(null)}
-          onSaveBeskrivelse={(beskrivelse) =>
-            upsertBeskrivelseMutation.mutate({
-              body: { isoYear, isoWeek, sfoShiftId: selectedCell.shift.id!, beskrivelse },
+          onSaveDescription={(description) =>
+            upsertDescriptionMutation.mutate({
+              body: { isoYear, isoWeek, sfoShiftId: selectedCell.shift.id!, description },
             })
           }
-          isSavingBeskrivelse={upsertBeskrivelseMutation.isPending}
+          isSavingDescription={upsertDescriptionMutation.isPending}
           onAssignStaff={(staffId) =>
             assignStaffMutation.mutate({ path: { id: selectedCell.shift.id!, staffId } })
           }
@@ -743,8 +746,8 @@ function CellModal({
   isoWeek,
   staff,
   onClose,
-  onSaveBeskrivelse,
-  isSavingBeskrivelse,
+  onSaveDescription,
+  isSavingDescription,
   onAssignStaff,
   onRemoveStaff,
   onEdit,
@@ -756,14 +759,14 @@ function CellModal({
   isoWeek: number
   staff: { id?: string; name?: string | null }[]
   onClose: () => void
-  onSaveBeskrivelse: (beskrivelse: string | null) => void
-  isSavingBeskrivelse: boolean
+  onSaveDescription: (description: string | null) => void
+  isSavingDescription: boolean
   onAssignStaff: (staffId: string) => void
   onRemoveStaff: (staffId: string) => void
   onEdit: () => void
   onDelete: () => void
 }) {
-  const [text, setText] = useState(weekShift?.beskrivelse ?? '')
+  const [text, setText] = useState(weekShift?.description ?? '')
   const [staffQuery, setStaffQuery] = useState('')
   const [staffOpen, setStaffOpen] = useState(false)
   const comboboxRef = useRef<HTMLDivElement>(null)
@@ -795,7 +798,7 @@ function CellModal({
     }
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault()
-      onSaveBeskrivelse(text || null)
+      onSaveDescription(text || null)
     }
   }
 
@@ -984,11 +987,11 @@ function CellModal({
           </button>
         </div>
         <button
-          onClick={() => onSaveBeskrivelse(text || null)}
-          disabled={isSavingBeskrivelse}
+          onClick={() => onSaveDescription(text || null)}
+          disabled={isSavingDescription}
           className="px-4 py-1.5 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 transition-colors"
         >
-          {isSavingBeskrivelse ? 'Gemmer...' : 'Gem'}
+          {isSavingDescription ? 'Gemmer...' : 'Gem'}
         </button>
       </div>
     </Modal>

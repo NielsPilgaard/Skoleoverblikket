@@ -13,7 +13,7 @@ public sealed class SfoWeekPlan : ITenantScoped, IEntityTypeConfiguration<SfoWee
 	public int IsoWeek { get; set; }
 
 	[StringLength(8000)]
-	public string? Generelt { get; set; }
+	public string? Notes { get; set; }
 
 	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 	public ICollection<SfoWeekPlanShift> Shifts { get; set; } = [];
@@ -35,7 +35,7 @@ public sealed class SfoWeekPlanShift : ITenantScoped, IEntityTypeConfiguration<S
 	public SfoShift SfoShift { get; set; } = null!;
 
 	[StringLength(4000)]
-	public string? Beskrivelse { get; set; }
+	public string? Description { get; set; }
 
 	public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 

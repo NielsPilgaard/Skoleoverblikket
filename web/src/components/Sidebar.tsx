@@ -20,6 +20,8 @@ interface NavItem {
   parentOnly?: boolean
   boardOnly?: boolean
   moduleGated?: boolean
+  /** Alternate target for non-admin staff. When set, the item also shows for staff. */
+  staffTo?: string
 }
 
 /**
@@ -31,7 +33,7 @@ const navItems: NavItem[] = [
   {
     to: '/dashboard',
     label: 'Oversigt',
-    adminOnly: true,
+    staffTo: '/mig/oversigt',
     order: 0,
     icon: (
       <svg
@@ -605,6 +607,29 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    to: '/klassechat',
+    label: 'Klassechat',
+    parentOnly: true,
+    moduleGated: true,
+    group: 'Kontakt',
+    order: 70.5,
+    icon: (
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M17 8h2a2 2 0 0 1 2 2v10l-3-3h-8a2 2 0 0 1-2-2v-1" />
+        <path d="M14 3H5a2 2 0 0 0-2 2v9l3-3h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z" />
+      </svg>
+    ),
+  },
+  {
     to: '/foraeldrevisning/kontaktbog',
     label: 'Kontaktbog',
     parentOnly: true,
@@ -666,6 +691,28 @@ const navItems: NavItem[] = [
         strokeLinejoin="round"
       >
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+  },
+  {
+    to: '/klassechat',
+    label: 'Klassechat',
+    moduleGated: true,
+    group: 'Kontakt',
+    order: 73.5,
+    icon: (
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M17 8h2a2 2 0 0 1 2 2v10l-3-3h-8a2 2 0 0 1-2-2v-1" />
+        <path d="M14 3H5a2 2 0 0 0-2 2v9l3-3h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z" />
       </svg>
     ),
   },
@@ -789,7 +836,10 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const { logout, userName, isAdmin, isParent, isBoard } = useAuth()
   const { hasParentModule } = useSubscription()
   const { pathname } = useLocation()
-  const { data: school } = useQuery({ ...getApiV1SchoolsSettingsOptions(), enabled: isAdmin })
+  const { data: school } = useQuery({
+    ...getApiV1SchoolsSettingsOptions(),
+    enabled: isAdmin,
+  })
   const { data: onboarding } = useQuery({
     ...getApiV1SchoolsOnboardingStatusOptions(),
     enabled: isAdmin,
@@ -802,14 +852,23 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     (onboarding.classCount ?? 0) > 0 &&
     (onboarding.roomCount ?? 0) > 0
 
-  const visibleNavItems = navItems.filter((item) => {
-    if (isBoard) return item.boardOnly === true
-    if (item.boardOnly) return false
-    if (isParent) return item.parentOnly === true
-    if (item.parentOnly) return false
-    if (item.moduleGated && !hasParentModule) return false
-    return !item.adminOnly || isAdmin
-  })
+  // Items with `staffTo` render for admin AND staff, each pointing at their own
+  // landing page; everything else keeps the existing adminOnly semantics.
+  const visibleNavItems = useMemo(
+    () =>
+      navItems
+        .filter((item) => {
+          if (isBoard) return item.boardOnly === true
+          if (item.boardOnly) return false
+          if (isParent) return item.parentOnly === true
+          if (item.parentOnly) return false
+          if (item.moduleGated && !hasParentModule) return false
+          if (item.staffTo) return true
+          return !item.adminOnly || isAdmin
+        })
+        .map((item) => (item.staffTo && !isAdmin ? { ...item, to: item.staffTo } : item)),
+    [isAdmin, isParent, isBoard, hasParentModule]
+  )
 
   const navBlocks = useMemo(() => buildNavBlocks(visibleNavItems), [visibleNavItems])
 
@@ -867,7 +926,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         {/* Brand */}
         <div className="flex items-center justify-between px-5 py-5 border-b border-brand-700">
           <NavLink
-            to={isAdmin ? '/dashboard' : isParent ? '/foraeldrevisning/skema' : '/mig/skema'}
+            to={isAdmin ? '/dashboard' : isParent ? '/foraeldrevisning/skema' : '/mig/oversigt'}
             onClick={onClose}
             className="flex items-center gap-2.5 min-w-0 hover:opacity-80 transition-opacity"
           >

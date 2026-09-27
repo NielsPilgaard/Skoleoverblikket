@@ -15,8 +15,11 @@ public static class ServicesExtensions
 		services.AddScoped<ExcelReportBuilder>();
 		services.AddScoped<SubscriptionService>();
 		services.AddScoped<FileUploadService>();
+		services.AddScoped<ClassMembershipService>();
 		services.AddScoped<INotificationService, NotificationService>();
 		services.AddSingleton<UvmTimetableService>();
+
+		services.AddHostedService<ClassChatAttachmentSweeper>();
 
 		services.AddOptions<ApplicationOptions>()
 			.BindConfiguration(ApplicationOptions.SectionName)

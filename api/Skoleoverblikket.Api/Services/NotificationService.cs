@@ -23,8 +23,8 @@ public sealed class NotificationService(AppDbContext db, ITenantContext tenantCo
 		var pref = await db.NotificationPreferences
 			.AsNoTracking()
 			.FirstOrDefaultAsync(p => p.UserId == recipientId && p.UserType == recipientType && p.Type == type, cancellationToken);
-		bool inApp = pref?.InApp ?? true;
-		bool emailEnabled = pref?.Email ?? true;
+		bool inApp = pref?.InApp ?? NotificationDefaults.InAppEnabledByDefault(type);
+		bool emailEnabled = pref?.Email ?? NotificationDefaults.EmailEnabledByDefault(type);
 
 		// 2. If inApp: insert Notification row
 		if (inApp)
@@ -90,8 +90,8 @@ public sealed class NotificationService(AppDbContext db, ITenantContext tenantCo
 		foreach (var req in list)
 		{
 			prefLookup.TryGetValue((req.RecipientId, req.RecipientType, req.Type), out var pref);
-			bool inApp = pref?.InApp ?? true;
-			bool emailEnabled = pref?.Email ?? true;
+			bool inApp = pref?.InApp ?? NotificationDefaults.InAppEnabledByDefault(req.Type);
+			bool emailEnabled = pref?.Email ?? NotificationDefaults.EmailEnabledByDefault(req.Type);
 
 			if (inApp)
 			{
@@ -137,7 +137,7 @@ public sealed class NotificationService(AppDbContext db, ITenantContext tenantCo
 			foreach (var req in list)
 			{
 				prefLookup.TryGetValue((req.RecipientId, req.RecipientType, req.Type), out var pref);
-				if (!(pref?.Email ?? true))
+				if (!(pref?.Email ?? NotificationDefaults.EmailEnabledByDefault(req.Type)))
 				{
 					continue;
 				}

@@ -500,13 +500,13 @@ foreach ($cls in $classes) {
 
             $body = @{
                 schemaSlotId    = $schemaSlot.id
-                beskrivelse     = $t.Beskrivelse
+                description     = $t.Beskrivelse
                 lektier         = $t.Lektier
                 fagSwapCourseId = $null
             }
             $queryString = "?isoYear=2026&isoWeek=$isoWeek&schemaId=$schemaId"
             try {
-                Invoke-Api -Method PUT -Path "/api/v1/classes/$($cls.Id)/ugeplan/slots$queryString" -Body $body | Out-Null
+                Invoke-Api -Method PUT -Path "/api/v1/classes/$($cls.Id)/week-plan/slots$queryString" -Body $body | Out-Null
             }
             catch {
                 # Non-fatal
@@ -643,11 +643,11 @@ foreach ($isoWeek in 2..5) {
             isoYear     = 2026
             isoWeek     = $isoWeek
             sfoShiftId  = $shiftId
-            beskrivelse = $sfoBeskrivelser[$beskIdx % $sfoBeskrivelser.Count]
+            description = $sfoBeskrivelser[$beskIdx % $sfoBeskrivelser.Count]
         }
         $beskIdx++
         try {
-            Invoke-Api -Method PUT -Path "/api/v1/sfo/ugeplan/shifts" -Body $body | Out-Null
+            Invoke-Api -Method PUT -Path "/api/v1/sfo/week-plan/shifts" -Body $body | Out-Null
         }
         catch { }
     }

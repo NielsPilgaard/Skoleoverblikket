@@ -62,6 +62,19 @@ public sealed class S3ObjectStorage(IAmazonS3 s3, IOptions<S3Options> opts) : IO
 		await s3.DeleteObjectAsync(_options.DefaultBucketName, key, cancellationToken);
 	}
 
+	public async Task<long?> GetObjectSizeAsync(string key, CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			var response = await s3.GetObjectMetadataAsync(_options.DefaultBucketName, key, cancellationToken);
+			return response.ContentLength;
+		}
+		catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+		{
+			return null;
+		}
+	}
+
 	public string? GetKeyFromPublicUrl(string publicUrl)
 	{
 		var prefix = $"{_options.SanitizedPublicEndpoint}/{_options.DefaultBucketName}/";

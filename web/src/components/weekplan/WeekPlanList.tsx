@@ -8,19 +8,19 @@ export interface WeekPlanListSlot {
   weekday: string
   startTime: string
   courseName: string
-  beskrivelse?: string | null
+  description?: string | null
   lektier?: string | null
 }
 
 interface WeekPlanListProps {
-  generelt?: string | null
+  notes?: string | null
   slots: WeekPlanListSlot[]
   isHolidayWeek?: boolean
   holidayTitle?: string | null
 }
 
 /** Read-only day-by-day list rendering of a week plan — the same format parents see. */
-export function WeekPlanList({ generelt, slots, isHolidayWeek, holidayTitle }: WeekPlanListProps) {
+export function WeekPlanList({ notes, slots, isHolidayWeek, holidayTitle }: WeekPlanListProps) {
   const [openDays, setOpenDays] = useState<Record<string, boolean>>({})
 
   function toggleDay(day: string) {
@@ -30,9 +30,9 @@ export function WeekPlanList({ generelt, slots, isHolidayWeek, holidayTitle }: W
   if (isHolidayWeek) {
     return (
       <div>
-        {generelt && (
+        {notes && (
           <div className="mb-3 p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm text-gray-700 prose prose-sm max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
-            <Markdown>{generelt}</Markdown>
+            <Markdown>{notes}</Markdown>
           </div>
         )}
         <div className="p-3 bg-blue-50 text-blue-700 text-sm rounded-lg">
@@ -55,9 +55,9 @@ export function WeekPlanList({ generelt, slots, isHolidayWeek, holidayTitle }: W
 
   return (
     <div>
-      {generelt && (
+      {notes && (
         <div className="mb-3 p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm text-gray-700 prose prose-sm max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
-          <Markdown>{generelt}</Markdown>
+          <Markdown>{notes}</Markdown>
         </div>
       )}
       <div className="space-y-2">
@@ -94,9 +94,9 @@ export function WeekPlanList({ generelt, slots, isHolidayWeek, holidayTitle }: W
                         </span>
                         <span className="text-sm font-medium text-gray-900">{s.courseName}</span>
                       </div>
-                      {s.beskrivelse && (
+                      {s.description && (
                         <div className="mt-1 text-xs text-gray-600 ml-16 prose prose-xs max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
-                          <Markdown>{s.beskrivelse}</Markdown>
+                          <Markdown>{s.description}</Markdown>
                         </div>
                       )}
                       {s.lektier && (
