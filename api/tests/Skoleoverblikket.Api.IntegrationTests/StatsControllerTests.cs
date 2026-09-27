@@ -194,6 +194,7 @@ public sealed class StatsControllerTests(ApiFactory factory)
 		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
 		var thread = await db.ContactThreads
+			.IgnoreQueryFilters()
 			.FirstOrDefaultAsync(t => t.TenantId == tenantId && t.StudentId == studentId);
 		if (thread is null)
 		{
@@ -472,8 +473,8 @@ public sealed class StatsControllerTests(ApiFactory factory)
 		using (var scope = _factory.Services.CreateScope())
 		{
 			var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-			var tracked = await db.SchemaSlots.FindAsync(slot.Id);
-			tracked!.AideId = aide.Id;
+			var tracked = await db.SchemaSlots.IgnoreQueryFilters().FirstAsync(s => s.Id == slot.Id);
+			tracked.AideId = aide.Id;
 			await db.SaveChangesAsync();
 		}
 

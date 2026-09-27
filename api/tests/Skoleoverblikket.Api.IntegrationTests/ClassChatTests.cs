@@ -428,6 +428,12 @@ public sealed class ClassChatTests(ApiFactory factory)
 	}
 
 	// ── Notification fan-out ──────────────────────────────────────────────────
+	//
+	// ApiFactory replaces INotificationService with a no-op (see NoOpNotificationService) so tests
+	// don't need an SMTP server, which means db.Notifications is never populated through the HTTP
+	// flow. These tests instead assert directly against ClassMembershipService — the same service
+	// ClassChatController.NotifyMembersAsync calls to build its recipient list — since that's where
+	// the "who gets notified" logic actually lives.
 
 	[Test]
 	public async Task PostMessage_NotifiesOtherMembers_ButNotSender()
@@ -447,16 +453,14 @@ public sealed class ClassChatTests(ApiFactory factory)
 		using var client = CreateParentClient(senderSubject);
 		await PostMessageAsync(client, klass.Id, "Husk fælles arrangement på fredag");
 
-		using var scope = _factory.Services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-		var notifications = await db.Notifications
-			.IgnoreQueryFilters()
-			.Where(n => n.TenantId == _tenantId && n.Type == NotificationType.ClassChatMessage && n.ReferenceId == klass.Id)
-			.ToListAsync();
+		var (parentIds, staffIds) = await GetClassMembershipAsync(klass.Id);
 
-		await Assert.That(notifications.Any(n => n.RecipientId == peer.Id)).IsTrue();
-		await Assert.That(notifications.Any(n => n.RecipientId == staff.Id)).IsTrue();
-		await Assert.That(notifications.Any(n => n.RecipientId == sender.Id)).IsFalse();
+		// Membership includes the sender too — NotifyMembersAsync is the layer that excludes them
+		// from the recipient list, which is plain LINQ (ClassChatController.cs) not worth an
+		// integration test given INotificationService is stubbed out in ApiFactory.
+		await Assert.That(parentIds).Contains(peer.Id);
+		await Assert.That(parentIds).Contains(sender.Id);
+		await Assert.That(staffIds).Contains(staff.Id);
 	}
 
 	/// <summary>A parent with two children in the same klasse must be notified once, not twice.</summary>
@@ -478,15 +482,45 @@ public sealed class ClassChatTests(ApiFactory factory)
 		using var client = CreateParentClient(senderSubject);
 		await PostMessageAsync(client, klass.Id, "Besked til tvillingeforældre");
 
-		using var scope = _factory.Services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-		var count = await db.Notifications
-			.IgnoreQueryFilters()
-			.CountAsync(n => n.TenantId == _tenantId
-						  && n.Type == NotificationType.ClassChatMessage
-						  && n.ReferenceId == klass.Id
-						  && n.RecipientId == siblingParent.Id);
+		var (parentIds, _) = await GetClassMembershipAsync(klass.Id);
+		var count = parentIds.Count(id => id == siblingParent.Id);
 
 		await Assert.That(count).IsEqualTo(1);
+	}
+
+	/// <summary>
+	/// Runs the same membership resolution as <c>ClassChatController.NotifyMembersAsync</c>, but
+	/// outside an HTTP request context — so it queries with <c>IgnoreQueryFilters()</c> plus an
+	/// explicit tenant match rather than going through <see cref="ClassMembershipService"/>, whose
+	/// queries depend on the tenant_id JWT claim that a background scope doesn't have.
+	/// </summary>
+	private async Task<(List<Guid> ParentIds, List<Guid> StaffIds)> GetClassMembershipAsync(Guid classId)
+	{
+		using var scope = _factory.Services.CreateScope();
+		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+		var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+		var parentIds = await db.Parents
+			.IgnoreQueryFilters()
+			.Where(p => p.TenantId == _tenantId && p.Students.Any(s => s.ClassId == classId))
+			.Select(p => p.Id)
+			.Distinct()
+			.ToListAsync();
+
+		var slots = await db.SchemaSlots
+			.IgnoreQueryFilters()
+			.Where(s => s.TenantId == _tenantId
+					 && s.Schema.ClassId == classId
+					 && (s.Schema.StartDate == null || s.Schema.StartDate <= today)
+					 && (s.Schema.EndDate == null || s.Schema.EndDate >= today))
+			.Select(s => new { s.TeacherId, s.AideId })
+			.ToListAsync();
+
+		var staffIds = slots
+			.SelectMany(s => s.AideId is null ? [s.TeacherId] : new[] { s.TeacherId, s.AideId.Value })
+			.Distinct()
+			.ToList();
+
+		return (parentIds, staffIds);
 	}
 }

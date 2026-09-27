@@ -7,6 +7,7 @@ using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using Skoleoverblikket.Api.Models;
 using Skoleoverblikket.Api.Services;
 using Skoleoverblikket.Api.Storage;
+using TUnit.Core;
 
 namespace Skoleoverblikket.Api.IntegrationTests;
 
@@ -18,6 +19,7 @@ namespace Skoleoverblikket.Api.IntegrationTests;
 /// global tenant filter bypassed).
 /// </summary>
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
+[NotInParallel(nameof(ClassChatAttachmentSweeperTests))]
 public sealed class ClassChatAttachmentSweeperTests(ApiFactory factory)
 {
 	private readonly ApiFactory _factory = factory;
