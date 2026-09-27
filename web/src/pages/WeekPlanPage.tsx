@@ -216,7 +216,7 @@ function EditSlotModal({
     }
   }, [description, lektier, slot.schemaSlotId])
 
-  const ugeplanQueryKey = getApiV1ClassesByClassIdWeekPlanQueryKey({
+  const weekPlanQueryKey = getApiV1ClassesByClassIdWeekPlanQueryKey({
     path: { classId },
     query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
   })
@@ -237,7 +237,7 @@ function EditSlotModal({
       },
       undefined as never
     )
-    qc.setQueryData(ugeplanQueryKey, (old: WeekPlanDto | undefined) => {
+    qc.setQueryData(weekPlanQueryKey, (old: WeekPlanDto | undefined) => {
       if (!old) return old
       return {
         ...old,
@@ -254,7 +254,7 @@ function EditSlotModal({
   const upsertMutation = useMutation({
     ...putApiV1ClassesByClassIdWeekPlanSlotsMutation(),
     onSuccess: (updated) => {
-      qc.setQueryData(ugeplanQueryKey, (old: WeekPlanDto | undefined) => {
+      qc.setQueryData(weekPlanQueryKey, (old: WeekPlanDto | undefined) => {
         if (!old) return old
         return {
           ...old,
@@ -272,12 +272,12 @@ function EditSlotModal({
 
   const addFileMutation = useMutation({
     ...postApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesMutation(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ugeplanQueryKey }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: weekPlanQueryKey }),
   })
 
   const removeFileMutation = useMutation({
     ...deleteApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesByFileIdMutation(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ugeplanQueryKey }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: weekPlanQueryKey }),
   })
 
   function handleSave() {
@@ -488,7 +488,7 @@ function NotesEditor({
     setText(incoming)
   }, [value, text])
 
-  const ugeplanQueryKey = getApiV1ClassesByClassIdWeekPlanQueryKey({
+  const weekPlanQueryKey = getApiV1ClassesByClassIdWeekPlanQueryKey({
     path: { classId },
     query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
   })
@@ -539,7 +539,7 @@ function NotesEditor({
           if (seq === saveSeqRef.current) {
             pendingSaveRef.current = false
             if (isCurrentEdit(normalized)) {
-              qc.setQueryData(ugeplanQueryKey, (old: WeekPlanDto | undefined) =>
+              qc.setQueryData(weekPlanQueryKey, (old: WeekPlanDto | undefined) =>
                 old ? { ...old, notes: result.notes ?? null } : old
               )
               setSaveStatus('saved')

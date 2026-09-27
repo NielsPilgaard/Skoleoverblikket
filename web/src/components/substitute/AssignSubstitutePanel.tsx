@@ -61,7 +61,7 @@ export function AssignSubstitutePanel({
   const qc = useQueryClient()
   const panelRef = useRef<HTMLDivElement>(null)
 
-  const ugeplanQueryKey = getApiV1ClassesByClassIdWeekPlanQueryKey({
+  const weekPlanQueryKey = getApiV1ClassesByClassIdWeekPlanQueryKey({
     path: { classId },
     query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
   })
@@ -87,7 +87,7 @@ export function AssignSubstitutePanel({
         substituteAideId,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ugeplanQueryKey })
+      qc.invalidateQueries({ queryKey: weekPlanQueryKey })
       onClose()
     },
   })

@@ -53,7 +53,7 @@ Never bypass this filter. Never trust a slug string as an authorization signal �
 - Module billing (`SubscriptionModulesController`) — parent module gated behind Stripe subscription
 - Backoffice (`SuperAdminTenantsController`, `SuperAdminEmailPreviewController`) — isSuperAdmin role, view-as mode
 - Avatar uploads — presign+confirm pattern for Parent, Staff, Student avatars stored in OVHCloud
-- Vacation registration / ferieindmelding (`VacationRegistrationController`) — admin creates registration windows with granularity (weeks/days) and deadlines; parents submit vacation requests via `ParentFerieindmeldingPage`; admin reviews all entries and manages windows via `FerieindmeldingPage` / `FerieindmeldingDetailPage`; full CRUD on windows with open/closed toggle and CSV export of responses
+- Vacation registration / ferieindmelding (`VacationRegistrationController`) — admin creates registration windows with granularity (weeks/days) and deadlines; parents submit vacation requests via `ParentVacationRegistrationPage`; admin reviews all entries and manages windows via `VacationRegistrationPage` / `VacationRegistrationDetailPage`; full CRUD on windows with open/closed toggle and CSV export of responses
 
 ## Coding conventions
 
@@ -75,7 +75,7 @@ Never bypass this filter. Never trust a slug string as an authorization signal �
 ### General
 
 - Style and naming conventions (indentation, casing, imports) are enforced by `.editorconfig` and the project linting setup. Do not duplicate those rules here.
-- Danish domain terms: klasse (class), lokale (room), lektion (time slot), lærer (teacher), pædagog (aide), skema (schema/schedule), SFO (after-school care). These are the only Danish words allowed in code identifiers (class names, file names, routes). Everything else in code must be English — UI text and URL paths stay Danish, since the product is Danish-language only. See [docs/GLOSSARY.md](docs/GLOSSARY.md) for the full kept-word list and the mapping of incidental Danish names already renamed to English.
+- Danish domain terms: klasse (class), lokale (room), lektion (time slot), lærer (teacher), pædagog (aide), skema (schema/schedule), SFO (after-school care). These are the only Danish words allowed in code identifiers (class names, file names, routes). Everything else in code must be English. UI text and user-facing web page URLs stay Danish, since the product is Danish-language only; backend API route paths (`/api/v1/...`) are English. See [docs/GLOSSARY.md](docs/GLOSSARY.md) for the full kept-word list and the mapping of incidental Danish names already renamed to English.
 
 ## Testing
 
