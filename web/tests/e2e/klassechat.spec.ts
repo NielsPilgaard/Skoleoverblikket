@@ -24,7 +24,7 @@ test.describe('Klassechat', () => {
     await page.getByTestId('klassechat-composer').fill(body)
     await page.getByTestId('klassechat-send').click()
 
-    await expect(page.getByText(body)).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('klassechat-conversation').getByText(body)).toBeVisible({ timeout: 15_000 })
   })
 
   test('a URL in a message renders as a link', async ({ page }) => {
@@ -51,7 +51,7 @@ test.describe('Klassechat', () => {
     await page.getByTestId('klassechat-composer').fill(`${marker} javascript:alert(1)`)
     await page.getByTestId('klassechat-send').click()
 
-    await expect(page.getByText(marker)).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('klassechat-conversation').getByText(marker)).toBeVisible({ timeout: 15_000 })
     await expect(page.locator('a[href^="javascript:"]')).toHaveCount(0)
   })
 
@@ -63,7 +63,7 @@ test.describe('Klassechat', () => {
 
     await page.getByTestId('klassechat-composer').fill(body)
     await page.getByTestId('klassechat-send').click()
-    await expect(page.getByText(body)).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('klassechat-conversation').getByText(body)).toBeVisible({ timeout: 15_000 })
 
     page.once('dialog', (dialog) => dialog.accept())
 
@@ -98,7 +98,7 @@ test.describe('Klassechat', () => {
     await page.getByTestId('klassechat-composer').fill(body)
     await page.getByTestId('klassechat-send').click()
 
-    await expect(page.getByText(body)).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('klassechat-conversation').getByText(body)).toBeVisible({ timeout: 15_000 })
 
     const message = page.getByTestId('klassechat-message').filter({ hasText: body })
     await expect(message.getByRole('link', { name: new RegExp(fileName) })).toBeVisible({ timeout: 15_000 })
