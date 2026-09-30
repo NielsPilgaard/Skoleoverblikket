@@ -27,7 +27,7 @@ const SOFTWARE_APPLICATION_JSON_LD = {
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'Web',
   description:
-    'Billig og enkel skoleadministration. Skema, SFO, ugeplan, vikardækning og forældrekontakt samlet i ét system — i stedet for fem. Prøv gratis i 14 dage.',
+    'Billig og enkel skoleadministration. Skema, SFO, ugeplan, vikardækning og forældrekontakt samlet i ét system — i stedet for fem. Prøv gratis i 30 dage.',
   offers: {
     '@type': 'Offer',
     price: String(MONTHLY_PRICE_KR),
@@ -44,7 +44,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white font-sans text-gray-900">
       <SeoMeta
         title="Billig og enkel skoleadministration til friskoler og privatskoler"
-        description="Billig og enkel skoleadministration. Skema, SFO, ugeplan, vikardækning og forældrekontakt samlet i ét system — i stedet for fem. Prøv gratis i 14 dage."
+        description="Billig og enkel skoleadministration. Skema, SFO, ugeplan, vikardækning og forældrekontakt samlet i ét system — i stedet for fem. Prøv gratis i 30 dage."
         path="/"
       />
       <Helmet>
@@ -462,7 +462,7 @@ export default function LandingPage() {
                     href={`/signup?interval=${billingInterval}`}
                     className="block w-full text-center py-3 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
                   >
-                    Start 14 dages gratis prøve
+                    Start 30 dages gratis prøve
                   </a>
                   <p className="text-xs text-center text-gray-400 mt-2">
                     Intet kreditkort påkrævet
@@ -567,7 +567,7 @@ export default function LandingPage() {
             Klar til at spare tid?
           </h2>
           <p className="mt-3 text-gray-600">
-            14 dage gratis. Intet kreditkort. Kom i gang på under 2 minutter — uanset hvilken skole
+            30 dage gratis. Intet kreditkort. Kom i gang på under 2 minutter — uanset hvilken skole
             du er.
           </p>
           <a

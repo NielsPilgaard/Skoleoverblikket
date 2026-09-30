@@ -1,5 +1,5 @@
 ---
-title: 'ADR: 14-day free trial replaces free tier'
+title: 'ADR: 30-day free trial replaces free tier'
 status: 'Accepted'
 date: '2025-01-01'
 authors: 'Niels Pilgaard Grøndahl'
@@ -7,20 +7,22 @@ tags: ['billing', 'product']
 supersedes: ''
 superseded_by: ''
 description: >-
-  New schools get 14 days of full access with no credit card required and no
+  New schools get 30 days of full access with no credit card required and no
   permanently free tier — a full trial gives a truer evaluation than a
   feature-gated free plan.
 ---
 
-# ADR: 14-day free trial replaces free tier
+# ADR: 30-day free trial replaces free tier
 
 ## TL;DR
 
-New schools get a 14-day free trial with full Basis access, no credit card required to start, no permanently free tier.
+New schools get a 30-day free trial with full Basis access, no credit card required to start, no permanently free tier.
 
 ## Status
 
 **Accepted**
+
+Amended 2026-09-30: trial extended from 14 to 30 days, so schools can evaluate across a full month of real use (including a school holiday) without contacting support.
 
 ## Context
 
@@ -28,7 +30,7 @@ A permanently free tier with limited features adds product complexity — tier g
 
 ## Decision
 
-New schools get a 14-day free trial with full Basis access. No credit card required to start. There is no permanently free tier.
+New schools get a 30-day free trial with full Basis access. No credit card required to start. There is no permanently free tier.
 
 ## Consequences
 
@@ -39,7 +41,7 @@ New schools get a 14-day free trial with full Basis access. No credit card requi
 
 ### Negative
 
-- **NEG-001**: Schools that need longer than 14 days to evaluate (e.g. spanning a school holiday) must contact support for an extension — no self-serve trial-extension mechanism exists.
+- **NEG-001**: Schools that need longer than 30 days to evaluate (e.g. spanning a school holiday) must contact support for an extension — no self-serve trial-extension mechanism exists.
 
 ## Alternatives Considered
 

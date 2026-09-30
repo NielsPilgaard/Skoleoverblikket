@@ -11,7 +11,7 @@ SaaS schema planner for Danish friskoler and private/independent schools. School
 - **File explorer** — upload files linked to courses for easy reference
 - **Stats** — hours per course, hours per teacher/aide, unassigned slots
 - **Printable schemas** — per class, per teacher, per room; designed for A4 print
-- **Billing** — self-serve via Stripe Checkout, 14-day free trial, auto-renew monthly
+- **Billing** — self-serve via Stripe Checkout, 30-day free trial, auto-renew monthly
 
 ## Tech stack
 
@@ -56,7 +56,7 @@ SaaS schema planner for Danish friskoler and private/independent schools. School
 | Basis           | 100 GB  | 499 kr  |
 | Skole+ (future) | 1000 GB | 499 kr  |
 
-14-day free trial with full access. No per-student pricing.
+30-day free trial with full access. No per-student pricing.
 
 See [docs/PRICING.md](docs/PRICING.md) for full details.
 

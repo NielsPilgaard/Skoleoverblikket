@@ -39,7 +39,7 @@ public sealed class Subscription : IEntityTypeConfiguration<Subscription>
 	/// <summary>When the current billing period ends (null during trial)</summary>
 	public DateTimeOffset? CurrentPeriodEnd { get; set; }
 
-	/// <summary>When the trial ends (14 days from school creation)</summary>
+	/// <summary>When the trial ends (30 days from school creation)</summary>
 	public DateTimeOffset TrialEnd { get; set; }
 
 	public DateTimeOffset CreatedAt { get; init; }

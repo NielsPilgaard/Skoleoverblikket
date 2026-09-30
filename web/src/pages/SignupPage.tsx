@@ -120,7 +120,7 @@ export default function SignupPage() {
           </span>
           <h1 className="mt-3 text-lg font-semibold text-gray-900">Opret din skole</h1>
           <p className="mt-1 text-sm text-gray-500">
-            14 dages gratis prøveperiode · Intet kreditkort
+            30 dages gratis prøveperiode · Intet kreditkort
           </p>
         </div>
 

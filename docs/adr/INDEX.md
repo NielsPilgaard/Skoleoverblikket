@@ -19,7 +19,7 @@ status: 'Living'
 | Transactional email provider (Scaleway TEM) | [transactional-email](transactional-email.md) |
 | Pricing model — flat fee per school, not per student | [school-based-pricing](school-based-pricing.md) |
 | Billing flow — Stripe Checkout, self-serve, no manual invoicing | [stripe-checkout-billing](stripe-checkout-billing.md) |
-| Trial — 14 days, full access, no free tier | [14-day-free-trial](14-day-free-trial.md) |
+| Trial — 30 days, full access, no free tier | [free-trial](free-trial.md) |
 | File storage — OVHCloud Object Storage, quotas | [file-storage-approach](file-storage-approach.md) |
 | Schema conflict detection — real-time, clock-time overlap | [schema-conflict-detection](schema-conflict-detection.md) |
 | Printable schema views — per class/teacher/room | [printable-schema](printable-schema.md) |

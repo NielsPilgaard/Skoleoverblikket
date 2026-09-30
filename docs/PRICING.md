@@ -2,7 +2,7 @@
 title: 'Pricing'
 description: >-
   Current billing model — Basis flat fee, optional module add-ons, monthly or
-  yearly interval, 14-day trial. Reflects SubscriptionModulesController /
+  yearly interval, 30-day trial. Reflects SubscriptionModulesController /
   Stripe config, not just the original pricing ADR.
 status: 'Living'
 purpose: Canonical reference for current pricing tiers, trial terms, and billing mechanics — the source of truth PRD.md and AGENTS.md summarize from.
@@ -12,7 +12,7 @@ purpose: Canonical reference for current pricing tiers, trial terms, and billing
 
 ## Model
 
-Simple flat monthly-or-yearly fee per school for the Basis plan, plus optional paid modules a school can add on top. 14-day free trial with full Basis access. Self-serve billing via Stripe Checkout — see [docs/adr/stripe-checkout-billing.md](adr/stripe-checkout-billing.md).
+Simple flat monthly-or-yearly fee per school for the Basis plan, plus optional paid modules a school can add on top. 30-day free trial with full Basis access. Self-serve billing via Stripe Checkout — see [docs/adr/stripe-checkout-billing.md](adr/stripe-checkout-billing.md).
 
 Pricing is transparent and listed on the website. No sales calls, no hidden fees, no per-student pricing — see [docs/adr/school-based-pricing.md](adr/school-based-pricing.md).
 
@@ -50,9 +50,9 @@ More modules may be added over time; check `ModulePriceIds` in Stripe config for
 
 ## Trial
 
-- **14-day free trial** with full Basis access.
+- **30-day free trial** with full Basis access.
 - No credit card required to start the trial.
-- Trial converts to paid via Stripe Checkout at the end of the 14 days.
+- Trial converts to paid via Stripe Checkout at the end of the 30 days.
 - Schools that don't convert lose access (read-only grace period TBD).
 
 ## Payment
@@ -65,6 +65,6 @@ More modules may be added over time; check `ModulePriceIds` in Stripe config for
 ## Notes
 
 - Pricing is in DKK, targeting the Danish market only.
-- No free tier — the 14-day trial replaces it.
+- No free tier — the 30-day trial replaces it.
 - Scandinavian expansion may require pricing adjustments (SEK, NOK) in the future.
 - This doc previously described a hypothetical future "Skole+" flat second tier. That model was superseded by the module-add-on approach actually implemented (`SubscriptionModulesController`) — this doc now reflects that.

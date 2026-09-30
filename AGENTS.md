@@ -28,7 +28,7 @@ Never bypass this filter. Never trust a slug string as an authorization signal â
 
 **Simplicity first**: the primary user is a school secretary with limited time and low technical sophistication. Every feature must be operable without training. Prefer fewer options over more. Prefer obvious over clever.
 
-**Billing via Stripe Checkout**: all billing is self-serve. 14-day free trial, then monthly Stripe Checkout. No manual invoicing. No MobilePay.
+**Billing via Stripe Checkout**: all billing is self-serve. 30-day free trial, then monthly Stripe Checkout. No manual invoicing. No MobilePay.
 
 **Built features (beyond core schema planner)**. This product is far broader than "a timetable app" â€” it is becoming the full admin backbone for a small school, which is the point: less paperwork and fewer disconnected tools, not just a schema grid.
 

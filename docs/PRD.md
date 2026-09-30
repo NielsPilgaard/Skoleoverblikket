@@ -177,7 +177,7 @@ Parents log in to view their children's schedule and communicate with school sta
 ### Payments and billing
 
 - **Stripe Checkout**: self-serve signup, card payment, auto-renew monthly or yearly
-- **14-day free trial**: full access, no payment required upfront
+- **30-day free trial**: full access, no payment required upfront
 - **Basis plan + optional modules**: see [docs/PRICING.md](PRICING.md) for current tier, module, and pricing detail — do not restate numbers here, they drift
 - Schools are never invoiced manually — everything is self-serve
 
@@ -221,7 +221,7 @@ Docendo is the closest functional analog — it is a schema builder used by folk
 3. Real-time conflict detection built into the schema builder
 4. Clean, modern UI — no bloat, no legacy design
 5. EU-only data storage (OVHCloud, Scaleway)
-6. 14-day free trial with full access
+6. 30-day free trial with full access
 7. Serves all Danish school types — folkeskoler, friskoler, privatskoler, efterskoler — with no assumptions about municipal IT infrastructure
 8. One tool instead of many — schema, SFO, ugeplan, vikardækning, forældrekontakt, kontaktbog, ferieindmelding, fraværsregistrering, filarkiv, bestyrelse, and stå-mål-med-publicering all live in the same tenant, so a school is not stitching together a spreadsheet, a mail thread, and three separate logins to run its admin
 

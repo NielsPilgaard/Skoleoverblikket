@@ -52,4 +52,4 @@ Pricing is a flat monthly fee per school. Differentiation (storage, support, opt
 ## Related Decisions
 
 - [stripe-checkout-billing](stripe-checkout-billing.md) — how this pricing model is actually billed
-- [14-day-free-trial](14-day-free-trial.md) — the trial mechanism ahead of paid conversion
+- [free-trial](free-trial.md) — the trial mechanism ahead of paid conversion

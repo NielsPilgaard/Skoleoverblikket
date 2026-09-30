@@ -56,7 +56,7 @@ public static class DbSeeder
 			Id = SeedSubscriptionId,
 			SchoolId = SeedSchoolId,
 			Status = SubscriptionStatus.Trialing,
-			TrialEnd = DateTimeOffset.UtcNow.AddDays(14),
+			TrialEnd = DateTimeOffset.UtcNow.AddDays(30),
 			CreatedAt = DateTimeOffset.UtcNow,
 			UpdatedAt = DateTimeOffset.UtcNow,
 		});

@@ -26,7 +26,7 @@ public sealed class SubscriptionService(
 	SubscriptionItemService subscriptionItemService,
 	Stripe.SubscriptionService stripeSubscriptionService)
 {
-	private const int TrialDays = 14;
+	private const int TrialDays = 30;
 
 	/// <summary>
 	/// Returns the subscription for the given school, creating a Trialing record if none exists.

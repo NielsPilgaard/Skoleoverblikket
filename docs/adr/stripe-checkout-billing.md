@@ -57,4 +57,4 @@ All billing is handled via Stripe Checkout, with monthly or yearly billing inter
 ## Related Decisions
 
 - [school-based-pricing](school-based-pricing.md) — the pricing model this billing mechanism implements
-- [14-day-free-trial](14-day-free-trial.md) — trial period ahead of the first Checkout session
+- [free-trial](free-trial.md) — trial period ahead of the first Checkout session
