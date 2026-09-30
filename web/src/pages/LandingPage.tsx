@@ -27,7 +27,7 @@ const SOFTWARE_APPLICATION_JSON_LD = {
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'Web',
   description:
-    'Billig og enkel skoleadministration. Skema, SFO, ugeplan, vikardækning og forældrekontakt samlet i ét system — i stedet for fem. Prøv gratis i 30 dage.',
+    'Billig og enkel skoleadministration. Skema, SFO, ugeplan og forældrekontakt samlet i ét system — i stedet for fem. Prøv gratis i 30 dage.',
   offers: {
     '@type': 'Offer',
     price: String(MONTHLY_PRICE_KR),
@@ -44,7 +44,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white font-sans text-gray-900">
       <SeoMeta
         title="Billig og enkel skoleadministration til friskoler og privatskoler"
-        description="Billig og enkel skoleadministration. Skema, SFO, ugeplan, vikardækning og forældrekontakt samlet i ét system — i stedet for fem. Prøv gratis i 30 dage."
+        description="Billig og enkel skoleadministration. Skema, SFO, ugeplan og forældrekontakt samlet i ét system — i stedet for fem. Prøv gratis i 30 dage."
         path="/"
       />
       <Helmet>
@@ -89,7 +89,7 @@ export default function LandingPage() {
             Spar tid på det kedelige — brug den på børnene
           </h1>
           <p className="mt-6 text-lg text-gray-600 max-w-xl mx-auto">
-            Skema, SFO, ugeplan, vikardækning og forældrekontakt i ét system. Bygget til friskoler.
+            Skema, SFO, ugeplan og forældrekontakt i ét system. Bygget til friskoler.
             Ingen oplæring nødvendig.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
