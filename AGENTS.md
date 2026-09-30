@@ -66,6 +66,66 @@ Never bypass this filter. Never trust a slug string as an authorization signal �
 - **Tenant scoping**: the `ITenantContext` service is injected and used in the `DbContext` global query filter. Never pass TenantId as a method parameter through business logic — it must come from the context.
 - **Authorization**: role and ClassPermission logic (admin vs. staff, superadmin-mode vs. restricted-mode class editing) is non-obvious — see [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md) before touching auth on any endpoint.
 
+### Encapsulation: thin controllers, feature services
+
+The most common source of breakage here is logic in the wrong place: controllers that query `AppDbContext`, load an entity, set its fields and call `SaveChangesAsync`. The same entity then gets changed from several controllers and test helpers, each with its own idea of a valid state. Add a required field or change a rule, and every one of those call sites breaks at once.
+
+The fix is deliberately small: **controllers handle HTTP, one plain service per feature handles data and rules.** This is not DDD. EF Core already is the repository and unit of work. We add one layer, not five.
+
+**Controllers** do four things:
+
+1. Bind the request.
+2. Enforce role and policy authorization via attributes (`[Authorize(Roles = ...)]`, `EditClassRequirement`, `ParentClassAccessRequirement`).
+3. Call one service method.
+4. Map the result to `Ok`, `NoContent`, `CreatedAtAction`, or a `ProblemDetails` error.
+
+A controller does not inject `AppDbContext` and does not call `SaveChangesAsync`. If an action has an `if` about business state (open/closed, expired, already accepted, conflicts), that `if` belongs in the service.
+
+**Services** live in `api/Skoleoverblikket.Api/Services/` and are registered in `AddDomainServices`. `ClassMembershipService` and `StaffInvitationService` are the reference shape.
+
+- **One concrete class per feature area.** `VacationRegistrationService`, `WeekPlanService`. A `sealed` class with a primary constructor taking `AppDbContext`, `ITenantContext` and whatever else it needs. Inject it as the concrete type.
+- **The owning service is the only writer.** Only the vacation registration service creates, changes or deletes vacation registration entities. Another feature that needs to change them calls a method on that service. Reading another feature's tables with a projection is fine anywhere in a service. Move a read into the owner only when it is duplicated.
+- **Entities are created in one method.** `new VacationRegistrationWindow { ... }` appears in the owning service's create method and nowhere else in production code or tests. That method sets `TenantId` and defaults, so a new required field is a one-line change.
+- **Name methods after what happens when there is a rule or side effect.** `OpenWindowAsync` sends notifications, so it is its own method. A plain edit form with no rules is fine as `UpdateWindowAsync(id, request)`. Don't split CRUD into ceremony.
+- **A method loads, checks, changes, saves once, then triggers side effects** such as notifications and email. Controllers never trigger side effects.
+- **No HTTP in services.** No `IActionResult`, `ProblemDetails`, status codes or `HttpContext`. The controller passes in what the service needs, such as `User.GetKeycloakSubject()`.
+- **Return DTOs, not tracked entities.** Use `.Select(...)` projections with `AsNoTracking` for reads. Request and response records are defined once, next to the service, and the controller uses them directly as its body and return types. No separate command objects, no mapping layer.
+- **Failures: use the simplest return type that works.** Return `null` or `bool` when there is one failure case. Use a small enum only when the controller must tell apart several outcomes, such as not found, not your child and window closed. Throw only for bugs and infrastructure failures.
+- **Data-level authorization lives in the service.** "Does this parent own this student?" must hold no matter who calls the method. Role and policy checks stay on the controller.
+- **Tenant scoping is unchanged.** Services rely on the global query filter. `IgnoreQueryFilters()` in a service needs a comment explaining why and a tenant-isolation test.
+
+A typical endpoint:
+
+```csharp
+[HttpPut("{id:guid}")]
+[Authorize(Roles = Roles.Admin)]
+public async Task<IActionResult> UpdateWindow(Guid id, UpdateWindowRequest req, CancellationToken ct) =>
+	await vacationRegistrations.UpdateWindowAsync(id, req, ct) ? NoContent() : NotFound();
+```
+
+**What we deliberately do not do.** Each of these adds files and indirection without fixing the problem above. Don't introduce them, and push back if a task seems to need one:
+
+- Repositories, `IRepository<T>`, or any wrapper around `AppDbContext`.
+- An interface per service. Add one only for a real second implementation or an external system tests must replace, like `INotificationService` or `IEmailSender`.
+- CQRS, MediatR, one handler class per operation, or pipeline behaviors.
+- Aggregates, value objects, domain events, specifications, or behavior methods on entities. Entities stay plain EF classes.
+- AutoMapper or other mapping libraries. Write the projection.
+- Generic base services, base controllers, or separate Application/Domain/Infrastructure projects.
+- Splitting a service before it hurts. One file per feature is fine until it passes roughly 500 lines. Then split by sub-feature, not by technical layer.
+
+The test for any new abstraction: it must remove real duplication or protect a rule that exists today. "We might need it later" does not count.
+
+**Tests.** Integration tests still go through HTTP only (see [docs/TESTING.md](docs/TESTING.md)). When a test needs data it can't create through the API, `TestDataBuilder` gets the owning service from `factory.Services` and calls its create method instead of `db.Add(new Entity { ... })`. Test data then goes through the same code as production, so a new required field breaks one place instead of twenty tests.
+
+**Existing code.** About 29 controllers predate this rule and write to `AppDbContext` directly. Don't big-bang refactor them.
+
+- **New endpoint or feature**: follow this section.
+- **Changing an existing endpoint's logic**: move that endpoint's logic into the feature's service in the same PR, creating the service if needed.
+- **Unrelated small fix** (typo, status code, attribute): no extraction needed.
+- **Moved entity creation into a service**: switch `TestDataBuilder` and tests that build that entity by hand to the service in the same PR.
+
+Before finishing API work, check whether any controller you touched still writes to `AppDbContext` for the entity you changed. If it does, you are not done.
+
 ### Frontend (React / TypeScript)
 
 - **API client**: always use the generated typed client (hey-api/openapi-ts). Never hand-write fetch calls to API endpoints that are in the spec.
@@ -126,5 +186,6 @@ Do not report a task as complete until all four pass.
 - Hard-code school names, branding, or any tenant-specific values
 - Introduce complexity that a school secretary would not be able to operate
 - Modify existing EF Core migration files
+- Inject `AppDbContext` into a new controller, or create/mutate an entity outside its owning service
 - Trust a URL slug as an authorization token — always resolve to TenantId first
 - Bypass Stripe Checkout for billing (no manual invoicing, no MobilePay)
