@@ -6,8 +6,15 @@
 //   DOKPLOY_URL         — e.g. https://dokploy.yourvps.com
 //   DOKPLOY_COMPOSE_ID  — compose ID visible in the Dokploy dashboard URL
 //   IMAGE_TAG           — e.g. sha-abc1234
+//
+// The Dokploy deployment log (docker pull/compose output) is streamed into this
+// process's output. On failure its error lines become GitHub annotations and the
+// log tail goes to the job summary, since Dokploy's errorMessage alone is just
+// "Docker command failed".
 
-const { DOKPLOY_API_KEY, DOKPLOY_URL, DOKPLOY_COMPOSE_ID, IMAGE_TAG } = process.env;
+import { appendFileSync } from "node:fs";
+
+const { DOKPLOY_API_KEY, DOKPLOY_URL, DOKPLOY_COMPOSE_ID, IMAGE_TAG, GITHUB_ACTIONS, GITHUB_STEP_SUMMARY } = process.env;
 
 if (!DOKPLOY_API_KEY) throw new Error("DOKPLOY_API_KEY is not set");
 if (!DOKPLOY_URL) throw new Error("DOKPLOY_URL is not set");
@@ -15,6 +22,7 @@ if (!DOKPLOY_COMPOSE_ID) throw new Error("DOKPLOY_COMPOSE_ID is not set");
 if (!IMAGE_TAG) throw new Error("IMAGE_TAG is not set");
 
 const headers = { "x-api-key": DOKPLOY_API_KEY, "Content-Type": "application/json" };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function post(path, body) {
     const res = await fetch(`${DOKPLOY_URL}/api/${path}`, {
@@ -33,9 +41,10 @@ async function get(path, query) {
     return res.json();
 }
 
-async function saveEnvironment() {
-    const compose = await get("compose.one", { composeId: DOKPLOY_COMPOSE_ID });
+// Newest first.
+const listDeployments = () => get("deployment.allByCompose", { composeId: DOKPLOY_COMPOSE_ID });
 
+async function saveEnvironment(compose) {
     const overrides = {
         API_IMAGE: `ghcr.io/nielspilgaard/skoleoverblikket-api:${IMAGE_TAG}`,
         WEB_IMAGE: `ghcr.io/nielspilgaard/skoleoverblikket-web:${IMAGE_TAG}`,
@@ -69,20 +78,131 @@ async function redeploy() {
     console.log("Redeploy triggered");
 }
 
-async function waitForDeployment() {
-    console.log("Polling deployment status...");
-    for (;;) {
-        const deployments = await get("deployment.allByCompose", { composeId: DOKPLOY_COMPOSE_ID });
-        const latest = deployments[0];
-        console.log(`  status: ${latest.status}`);
-        if (latest.status === "done") return;
-        if (latest.status === "error") throw new Error(`Deployment failed: ${latest.errorMessage}`);
-        if (latest.status === "cancelled") throw new Error("Deployment was cancelled");
-        await new Promise(r => setTimeout(r, 5000));
+// compose.redeploy only queues the job, so right afterwards the newest deployment can
+// still be the previous one. Wait for a deployment we haven't seen before.
+async function waitForNewDeployment(previousId) {
+    for (let i = 0; i < 60; i++) {
+        const [latest] = await listDeployments();
+        if (latest && latest.deploymentId !== previousId) return latest;
+        await sleep(2000);
+    }
+    throw new Error("Dokploy did not start a new deployment within 2 minutes");
+}
+
+// Dokploy serves deployment logs only over its websocket (tail -f of the log file).
+// Best effort: if it fails, the deploy still works, we just have less to show.
+function streamLog(logPath, serverId) {
+    const lines = [];
+    let partial = "";
+    const url = new URL("/listen-deployment", DOKPLOY_URL);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    url.searchParams.set("logPath", logPath);
+    if (serverId) url.searchParams.set("serverId", serverId);
+
+    let ws;
+    try {
+        // `headers` is a Node (undici) extension to the WebSocket constructor.
+        ws = new WebSocket(url, { headers: { "x-api-key": DOKPLOY_API_KEY } });
+    } catch (err) {
+        console.log(`(Could not stream Dokploy log: ${err.message})`);
+        return { lines, close: async () => {} };
+    }
+
+    if (GITHUB_ACTIONS) console.log("::group::Dokploy deployment log");
+    ws.addEventListener("message", async event => {
+        const text = typeof event.data === "string" ? event.data : await new Response(event.data).text();
+        const chunk = (partial + text).split("\n");
+        partial = chunk.pop();
+        for (const line of chunk) {
+            lines.push(line);
+            console.log(line);
+        }
+    });
+    ws.addEventListener("error", () => console.log("(Dokploy log stream error — see the Dokploy dashboard for the full log)"));
+
+    return {
+        lines,
+        close: async () => {
+            await sleep(2000); // let the tail flush the last lines
+            if (partial) { lines.push(partial); console.log(partial); }
+            ws.close();
+            if (GITHUB_ACTIONS) console.log("::endgroup::");
+        },
+    };
+}
+
+async function waitForCompletion(deploymentId) {
+    const deadline = Date.now() + 25 * 60 * 1000;
+    let lastStatus;
+    while (Date.now() < deadline) {
+        const deployment = (await listDeployments()).find(d => d.deploymentId === deploymentId);
+        if (!deployment) throw new Error(`Deployment ${deploymentId} disappeared`);
+        if (deployment.status !== lastStatus) {
+            console.log(`  status: ${deployment.status}`);
+            lastStatus = deployment.status;
+        }
+        if (["done", "error", "cancelled"].includes(deployment.status)) return deployment;
+        await sleep(5000);
+    }
+    throw new Error("Deployment did not finish within 25 minutes");
+}
+
+// Annotation values must have %, CR and LF escaped.
+const escapeAnnotation = s => s.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
+
+function reportFailure(deployment, logLines) {
+    const message = deployment.status === "cancelled"
+        ? "Deployment was cancelled"
+        : `Deployment failed: ${deployment.errorMessage ?? "unknown error"}`;
+    const errorLines = [...new Set(logLines.filter(l => /error|failed|not found|denied/i.test(l)).map(l => l.trim()))].slice(-10);
+
+    if (GITHUB_ACTIONS) {
+        const details = errorLines.length ? errorLines.join("\n") : "No error lines captured from the Dokploy log.";
+        console.log(`::error title=${escapeAnnotation(message)}::${escapeAnnotation(details)}`);
+    } else {
+        console.error(message);
+        for (const line of errorLines) console.error(`  ${line}`);
+    }
+
+    if (GITHUB_STEP_SUMMARY) {
+        const tail = logLines.slice(-80).join("\n") || "(log not available — check the Dokploy dashboard)";
+        appendFileSync(GITHUB_STEP_SUMMARY, [
+            `## ❌ Deploy of \`${IMAGE_TAG}\` failed`,
+            "",
+            `**${message}**`,
+            "",
+            "<details open><summary>Dokploy log (last 80 lines)</summary>",
+            "",
+            "```",
+            tail,
+            "```",
+            "",
+            "</details>",
+            "",
+        ].join("\n"));
     }
 }
 
-await saveEnvironment();
+const compose = await get("compose.one", { composeId: DOKPLOY_COMPOSE_ID });
+const [previous] = await listDeployments();
+
+await saveEnvironment(compose);
 await redeploy();
-await waitForDeployment();
+const started = await waitForNewDeployment(previous?.deploymentId);
+console.log(`Deployment ${started.deploymentId} started, polling status...`);
+
+const log = started.logPath ? streamLog(started.logPath, compose.serverId) : { lines: [], close: async () => {} };
+let finished;
+try {
+    finished = await waitForCompletion(started.deploymentId);
+} finally {
+    await log.close();
+}
+
+if (finished.status !== "done") {
+    reportFailure(finished, log.lines);
+    process.exit(1);
+}
+
+if (GITHUB_STEP_SUMMARY) appendFileSync(GITHUB_STEP_SUMMARY, `## ✅ Deployed \`${IMAGE_TAG}\` to production\n`);
 console.log(`Deployed ${IMAGE_TAG} successfully`);

@@ -1,11 +1,17 @@
 name: CD
-run-name: "CD: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || github.event.workflow_run.head_sha }}"
+run-name: "CD: ${{ inputs.image_tag }}"
 
+# Called by Staging after e2e passes, with the image tag CI actually published.
+# Staging must pass the tag: its own head_sha can be a later [skip ci] commit (e.g. the
+# autofix formatting commit) that never got images built.
+# workflow_dispatch is for manual deploys and rollbacks.
 on:
-  workflow_run:
-    workflows: [Staging]
-    types: [completed]
-    branches: [main]
+  workflow_call:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (e.g. sha-abc1234)"
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       image_tag:
@@ -17,15 +23,47 @@ jobs:
   deploy:
     name: Deploy to production
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     environment: production
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Fail here, with a readable error, instead of deep inside Dokploy's docker pull.
+      - name: Check images exist
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          missing=0
+          for name in api web keycloak; do
+            image="ghcr.io/nielspilgaard/skoleoverblikket-$name:$IMAGE_TAG"
+            if docker buildx imagetools inspect "$image" > /dev/null 2>&1; then
+              echo "Found $image"
+            else
+              echo "::error title=Image not found::$image does not exist in GHCR. Was it published by the CI run for this commit?"
+              missing=1
+            fi
+          done
+          exit $missing
 
       - name: Deploy to production
         env:
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
           DOKPLOY_COMPOSE_ID: ${{ secrets.DOKPLOY_COMPOSE_ID }}
-          IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || format('sha-{0}', github.event.workflow_run.head_sha) }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: node infrastructure/scripts/deploy.mjs

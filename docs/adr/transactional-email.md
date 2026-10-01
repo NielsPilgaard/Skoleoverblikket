@@ -85,3 +85,4 @@ await smtp.DisconnectAsync(true);
 ## Related Decisions
 
 - [tech-stack](tech-stack.md) — the EU-residency constraint this provider choice satisfies
+- [ai-data-boundary](ai-data-boundary.md) — Scaleway is also used for feedback speech-to-text under the same EU-first rule

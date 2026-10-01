@@ -24,5 +24,6 @@ status: 'Living'
 | Schema conflict detection — real-time, clock-time overlap | [schema-conflict-detection](schema-conflict-detection.md) |
 | Printable schema views — per class/teacher/room | [printable-schema](printable-schema.md) |
 | Time slot inheritance and per-class overrides | [time-slot-inheritance](time-slot-inheritance.md) |
+| AI data boundary — personal data only to EU AI; GitHub/Claude get PII-free specs only (PII guard planned, not yet enforced — specs stay in the EU zone until the dispatch gate exists); AI never merges or migrates | [ai-data-boundary](ai-data-boundary.md) |
 
 See [docs/PRD.md](../PRD.md) for the product requirements these decisions serve, and [AGENTS.md](../../AGENTS.md) for the documentation map.

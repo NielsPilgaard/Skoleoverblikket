@@ -11,7 +11,7 @@ interface SeoMetaProps {
 }
 
 export default function SeoMeta({ title, description, path, noindex }: SeoMetaProps) {
-  const fullTitle = `${title} — ${SITE_NAME}`
+  const fullTitle = title.includes(SITE_NAME) ? title : `${title} — ${SITE_NAME}`
   const url = `${SITE_URL}${path}`
 
   return (
@@ -21,7 +21,6 @@ export default function SeoMeta({ title, description, path, noindex }: SeoMetaPr
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:url" content={url} />
-      <meta property="og:site_name" content={SITE_NAME} />
       <link rel="canonical" href={url} />
       {noindex && <meta name="robots" content="noindex,nofollow" />}
     </Helmet>
