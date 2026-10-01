@@ -11,6 +11,7 @@
     "build": "npm run api:generate && tsc -b && vite build && npm run prerender",
     "prerender": "vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs",
     "lint": "biome check src/",
+    "prepare": "git config core.hooksPath .githooks || exit 0",
     "preview": "vite preview",
     "api:generate": "openapi-ts -f openapi-ts.config.ts",
     "codegen": "npm run api:generate",
