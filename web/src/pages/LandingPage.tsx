@@ -89,8 +89,8 @@ export default function LandingPage() {
             Spar tid på det kedelige — brug den på børnene
           </h1>
           <p className="mt-6 text-lg text-gray-600 max-w-xl mx-auto">
-            Skema, SFO, ugeplan og forældrekontakt i ét system. Bygget til friskoler.
-            Ingen oplæring nødvendig.
+            Skema, SFO, ugeplan og forældrekontakt i ét system. Bygget til friskoler. Ingen oplæring
+            nødvendig.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
             <a
