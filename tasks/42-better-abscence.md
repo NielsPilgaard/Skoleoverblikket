@@ -139,7 +139,7 @@ school holidays. Holidays are not school days, so it never touches absence.
   - Absence records and `AttendanceCheck` rows are kept for the current +
     previous school year, then deleted automatically (nightly job). The
     school year boundary is 1 August: on 1 August 2027, everything dated
-    before 1 August 2025 is deleted.
+    before 1 August 2026 is deleted.
   - Deleted with the student (already cascades via `StudentId`).
   - Reason field hint: "Skriv ikke diagnoser". Category `Illness` is enough.
   - Coordinate the job with `tasks/06-data-retention.md`; state the period

@@ -4,15 +4,15 @@ status: 'In progress'
 purpose: 'Checklist of the remaining steps to get skoleoverblikket.dk indexed and ranking for its own name.'
 description: >-
   Google has not indexed skoleoverblikket.dk. The code fixes (prerendering, one canonical per
-  page, no Keycloak redirect on anonymous visits) are written but not committed. What remains
-  is shipping them, checking login in production, and the manual Search Console, redirect and backlink work.
+  page, no Keycloak redirect on anonymous visits) are written but not yet merged to `main` or
+  deployed. What remains is merging and deploying them, checking login in production, and the manual Search Console, redirect and backlink work.
 ---
 
 # Get skoleoverblikket.dk indexed on Google
 
 ## TL;DR
 
-The code fixes are done locally and not committed. Ship them first, then verify login on prod, then
+The code fixes are written on `feature/tasks-and-seo` but not yet merged or deployed. Merge and deploy them first, then verify login on prod, then
 do Search Console. Everything after that is links and waiting.
 
 ## 1. Ship the code fixes (today)
@@ -22,7 +22,7 @@ do Search Console. Everything after that is links and waiting.
       `src/auth/keycloak.ts`, `src/components/SeoMeta.tsx`, `src/pages/LandingPage.tsx`,
       `public/silent-check-sso.html`, `scripts/prerender.mjs`.
       Leave out the unrelated docs/adr and nightly workflow changes.
-- [ ] Commit and deploy.
+- [ ] Merge to `main` and deploy.
 - [ ] **Check login on prod** (the login check now uses a hidden iframe instead of a page redirect):
   - [ ] Log in, then open `https://skoleoverblikket.dk/` and confirm you are sent to the dashboard.
   - [ ] Open a deep link, e.g. `/klasser`, in a new tab while logged in and confirm it loads.
@@ -61,7 +61,10 @@ do Search Console. Everything after that is links and waiting.
 - [ ] Decide whether the repo should be public. It contains the Keycloak realm and infrastructure
       config. If it stays public, check that no secrets are committed.
 - [ ] Create a LinkedIn company page that links to the site.
-- [ ] Create a Google Business Profile.
+- [ ] Google Business Profile: only if Skoleoverblikket makes in-person contact with customers
+      during stated hours (e.g. a staffed address schools can visit). Online-only businesses are
+      not eligible per Google's [eligibility guidelines](https://support.google.com/business/answer/3038177);
+      otherwise skip this step.
 - [ ] Ask Danmarks Friskoleforening and Danmarks Private Skoler about supplier listings.
 - [ ] Ask existing customer schools to link to the site, for example from their own "systemer vi
       bruger" or parent info page.
