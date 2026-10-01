@@ -8,9 +8,9 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 export const PRERENDERED_PATHS = ['/', '/om', '/kontakt', '/privatlivspolitik']
 
 /**
- * Marketing pages that render without auth. Used for build-time prerendering and while
- * Keycloak initializes, so crawlers and visitors see content instead of a blank page.
- * Any other path renders nothing until auth is ready.
+ * Marketing pages for build-time prerendering, so crawlers see content instead of a blank page.
+ * App.tsx renders the same pages outside its AuthReady gate, so the browser hydrates this HTML
+ * and keeps it mounted when Keycloak finishes initializing.
  */
 export default function PublicRoutes() {
   return (

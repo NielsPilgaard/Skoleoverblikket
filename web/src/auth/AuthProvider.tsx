@@ -4,14 +4,11 @@ import { AuthContext, type ViewAs } from './AuthContext'
 import type { StaffRole } from '../api/generated/types.gen'
 import { getApiV1StaffMe } from '../api/generated/sdk.gen'
 
-export function AuthProvider({
-  children,
-  fallback = null,
-}: {
-  children: ReactNode
-  /** Rendered while Keycloak initializes. */
-  fallback?: ReactNode
-}) {
+/**
+ * Always renders children, so public pages stay mounted when Keycloak finishes initializing.
+ * Routes that need auth must wait for `initialized` themselves.
+ */
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false)
   const [initialized, setInitialized] = useState(false)
   const [staffRole, setStaffRole] = useState<StaffRole | null>(null)
@@ -69,10 +66,6 @@ export function AuthProvider({
       })
   }, [authenticated])
 
-  if (!initialized) {
-    return <>{fallback}</>
-  }
-
   const parsed = keycloak.tokenParsed as Record<string, unknown> | undefined
   const nameRaw = parsed?.name
   const preferredRaw = parsed?.preferred_username
@@ -104,6 +97,7 @@ export function AuthProvider({
   return (
     <AuthContext.Provider
       value={{
+        initialized,
         authenticated,
         isAdmin,
         isParent,

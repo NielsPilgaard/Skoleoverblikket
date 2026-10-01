@@ -1,6 +1,6 @@
 import './App.css'
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import ScrollToTop from './components/ScrollToTop'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -12,7 +12,6 @@ import ViewModeToolbar from './components/ViewModeToolbar'
 // Keep critical public pages as regular imports
 import LandingPage from './pages/LandingPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
-import PublicRoutes from './PublicRoutes'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import InvitationAcceptPage from './pages/InvitationAcceptPage'
@@ -86,6 +85,23 @@ const queryClient = new QueryClient({
   },
 })
 
+/**
+ * Renders nothing until Keycloak init settles. Wraps every route except the marketing pages,
+ * which render (and hydrate from prerendered HTML) without waiting for auth. The Suspense
+ * boundary lives here, not around all routes, because the prerendered HTML has none.
+ */
+function AuthReady() {
+  const { initialized } = useAuth()
+  if (!initialized) return null
+  return (
+    <Suspense
+      fallback={<div className="flex items-center justify-center min-h-screen">Indlæser...</div>}
+    >
+      <Outlet />
+    </Suspense>
+  )
+}
+
 function HomeRedirect() {
   const { authenticated, isAdmin, isParent, isBoard, isSuperAdmin, viewAs } = useAuth()
   if (authenticated) {
@@ -137,26 +153,24 @@ export default function App() {
   return (
     <HelmetProvider>
       <BrowserRouter>
-        <AuthProvider fallback={<PublicRoutes />}>
+        <AuthProvider>
           <QueryClientProvider client={queryClient}>
             <ScrollToTop />
             <ViewModeToolbar />
-            <Suspense
-              fallback={
-                <div className="flex items-center justify-center min-h-screen">Indlæser...</div>
-              }
-            >
-              <Routes>
+            <Routes>
+              {/* Marketing pages: render before auth is ready (see AuthReady) */}
+              <Route path="/" element={<HomeRedirect />} />
+              <Route path="om" element={<AboutPage />} />
+              <Route path="privatlivspolitik" element={<PrivacyPolicyPage />} />
+              <Route path="kontakt" element={<ContactPage />} />
+
+              <Route element={<AuthReady />}>
                 {/* Public routes */}
-                <Route path="/" element={<HomeRedirect />} />
                 <Route path="login" element={<LoginPage />} />
                 <Route path="signup" element={<SignupPage />} />
                 <Route path="invitation/:token" element={<InvitationAcceptPage />} />
                 <Route path="parent-invitation/:token" element={<InvitationAcceptPage />} />
                 <Route path="board-invitation/:token" element={<BoardInvitationPage />} />
-                <Route path="om" element={<AboutPage />} />
-                <Route path="privatlivspolitik" element={<PrivacyPolicyPage />} />
-                <Route path="kontakt" element={<ContactPage />} />
                 <Route path="udskriv/klasse/:classId" element={<PrintSchemaPage />} />
                 <Route path="udskriv/medarbejder/:staffId" element={<PrintSchemaPage />} />
                 <Route path="udskriv/lokale/:roomId" element={<PrintSchemaPage />} />
@@ -435,8 +449,8 @@ export default function App() {
                     }
                   />
                 </Route>
-              </Routes>
-            </Suspense>
+              </Route>
+            </Routes>
           </QueryClientProvider>
         </AuthProvider>
       </BrowserRouter>
