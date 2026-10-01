@@ -4,7 +4,14 @@ import { AuthContext, type ViewAs } from './AuthContext'
 import type { StaffRole } from '../api/generated/types.gen'
 import { getApiV1StaffMe } from '../api/generated/sdk.gen'
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({
+  children,
+  fallback = null,
+}: {
+  children: ReactNode
+  /** Rendered while Keycloak initializes. */
+  fallback?: ReactNode
+}) {
   const [authenticated, setAuthenticated] = useState(false)
   const [initialized, setInitialized] = useState(false)
   const [staffRole, setStaffRole] = useState<StaffRole | null>(null)
@@ -63,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [authenticated])
 
   if (!initialized) {
-    return null
+    return <>{fallback}</>
   }
 
   const parsed = keycloak.tokenParsed as Record<string, unknown> | undefined

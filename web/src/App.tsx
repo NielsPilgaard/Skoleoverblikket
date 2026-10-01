@@ -11,14 +11,13 @@ import ViewModeToolbar from './components/ViewModeToolbar'
 
 // Keep critical public pages as regular imports
 import LandingPage from './pages/LandingPage'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import PublicRoutes from './PublicRoutes'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import InvitationAcceptPage from './pages/InvitationAcceptPage'
 import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
-
-// Lazy load legal/info pages
-const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 
 // Lazy load all other pages
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
@@ -137,9 +136,9 @@ function StaffRoute({ children }: { children: JSX.Element }) {
 export default function App() {
   return (
     <HelmetProvider>
-      <AuthProvider>
-        <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
+      <BrowserRouter>
+        <AuthProvider fallback={<PublicRoutes />}>
+          <QueryClientProvider client={queryClient}>
             <ScrollToTop />
             <ViewModeToolbar />
             <Suspense
@@ -438,9 +437,9 @@ export default function App() {
                 </Route>
               </Routes>
             </Suspense>
-          </BrowserRouter>
-        </QueryClientProvider>
-      </AuthProvider>
+          </QueryClientProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </HelmetProvider>
   )
 }

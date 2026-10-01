@@ -24,6 +24,7 @@ const SOFTWARE_APPLICATION_JSON_LD = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
   name: 'Skoleoverblikket',
+  url: 'https://skoleoverblikket.dk/',
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'Web',
   description:
@@ -37,18 +38,27 @@ const SOFTWARE_APPLICATION_JSON_LD = {
   },
 }
 
+const ORGANIZATION_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Skoleoverblikket',
+  url: 'https://skoleoverblikket.dk/',
+  logo: 'https://skoleoverblikket.dk/logo.png',
+}
+
 export default function LandingPage() {
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('Monthly')
   const isYearly = billingInterval === 'Yearly'
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900">
       <SeoMeta
-        title="Billig og enkel skoleadministration til friskoler og privatskoler"
+        title="Skoleoverblikket — billig og enkel skoleadministration til friskoler"
         description="Billig og enkel skoleadministration. Skema, SFO, ugeplan og forældrekontakt samlet i ét system — i stedet for fem. Prøv gratis i 30 dage."
         path="/"
       />
       <Helmet>
         <script type="application/ld+json">{JSON.stringify(SOFTWARE_APPLICATION_JSON_LD)}</script>
+        <script type="application/ld+json">{JSON.stringify(ORGANIZATION_JSON_LD)}</script>
       </Helmet>
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
@@ -89,8 +99,8 @@ export default function LandingPage() {
             Spar tid på det kedelige — brug den på børnene
           </h1>
           <p className="mt-6 text-lg text-gray-600 max-w-xl mx-auto">
-            Skema, SFO, ugeplan og forældrekontakt i ét system. Bygget til friskoler.
-            Ingen oplæring nødvendig.
+            Skema, SFO, ugeplan og forældrekontakt i ét system. Bygget til friskoler. Ingen oplæring
+            nødvendig.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
             <a
