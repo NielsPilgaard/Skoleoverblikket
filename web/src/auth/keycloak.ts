@@ -27,6 +27,12 @@ export function getInitPromise(): Promise<boolean> {
 
     const keycloakInit = keycloak.init({
       onLoad: seeded ? undefined : 'check-sso',
+      // Check the SSO session in a hidden iframe instead of a full-page redirect to Keycloak.
+      // A redirect on every anonymous visit makes Google see the marketing pages as redirects.
+      // No fallback to the redirect when the browser blocks the iframe's cookies: the visitor
+      // just counts as logged out until they click "Log ind".
+      silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
+      silentCheckSsoFallback: false,
       pkceMethod: 'S256',
       checkLoginIframe: false,
       // tokenStore is a valid runtime option not yet reflected in the @types/keycloak-js typings
