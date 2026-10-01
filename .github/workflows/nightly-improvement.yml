@@ -1,0 +1,116 @@
+name: Nightly improvement
+
+# Every night Claude makes one tiny, safe improvement and opens a PR.
+# Never pushes to main: a push to main runs migrations and deploys (see ci.yml).
+#
+# Cost: Actions minutes are free (public repo). Claude usage comes from the
+# Pro/Max subscription via CLAUDE_CODE_OAUTH_TOKEN (`claude setup-token`).
+# PRs are opened with the Claude GitHub App token, so CI runs on them.
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+      timezone: "Europe/Copenhagen"
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-improvement
+  cancel-in-progress: false
+
+jobs:
+  improve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      # Skip the whole run (zero Claude usage) while last night's PR is still unreviewed.
+      - name: Check for open nightly PR
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create nightly-improvement --repo "$GITHUB_REPOSITORY" --color 0E8A16 \
+            --description "Opened by the nightly improvement workflow" --force
+          open=$(gh pr list --repo "$GITHUB_REPOSITORY" --label nightly-improvement --state open --json number --jq 'length')
+          if [ "$open" -gt 0 ]; then
+            echo "Open nightly PR exists, skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          case "$(TZ=Europe/Copenhagen date +%u)" in
+            1) focus="Dead code: remove one unused function, component, import, using, variable or file." ;;
+            2) focus="Danish UI text: fix one typo, inconsistent term or unclear label a school secretary would stumble on." ;;
+            3) focus="Accessibility: fix one missing aria-label, alt text, label association or button type in the web app." ;;
+            4) focus="Backend hygiene: add one missing CancellationToken pass-through, AsNoTracking on a read query, or ProblemDetails error shape." ;;
+            5) focus="Docs: fix one stale reference in docs/ or AGENTS.md (a controller, file or rule that no longer matches the code)." ;;
+            6) focus="Simplification: simplify one overly complex function or React component without changing behavior." ;;
+            7) focus="Type safety: remove one 'any', non-null assertion or loose type in web/src." ;;
+          esac
+          echo "focus=$focus" >> "$GITHUB_OUTPUT"
+          echo "date=$(TZ=Europe/Copenhagen date +%F)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.skip != 'true'
+        with:
+          fetch-depth: 1
+
+      - name: Setup .NET 10
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Setup Node.js 24
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        if: steps.check.outputs.skip != 'true'
+        run: npm ci
+        working-directory: web
+
+      - name: Run Claude
+        if: steps.check.outputs.skip != 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            DATE: ${{ steps.check.outputs.date }}
+
+            You are running unattended at night. Make ONE tiny, safe improvement to this codebase and open a PR.
+
+            Tonight's focus: ${{ steps.check.outputs.focus }}
+
+            Steps:
+            1. Run `gh pr list --label nightly-improvement --state all --limit 30 --json title,state` and do not repeat
+               anything listed there (closed = rejected, don't retry it).
+            2. Find one candidate matching tonight's focus. Search narrowly with Grep/Glob; don't read the whole repo.
+            3. Make the change. Follow AGENTS.md.
+            4. Verify only what you touched:
+               - C# changes: `dotnet build api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj 2>&1 | tail -n 30`
+                 and `dotnet format api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj`
+               - web changes: `npm --prefix web run lint 2>&1 | tail -n 30` and `npm --prefix web run build 2>&1 | tail -n 30`
+               If verification fails and you can't fix it in two attempts, revert with `git checkout -- .` and stop.
+            5. Create branch `nightly/${{ steps.check.outputs.date }}`, commit with a Conventional Commits message, push, and run
+               `gh pr create --base main --label nightly-improvement --title "<conventional title>" --body "<what and why, 2-4 lines>"`.
+
+            Hard limits:
+            - At most 3 files and about 40 changed lines. Smaller is better.
+            - Never touch: Migrations/, .github/, infrastructure/, scripts/, package.json, package-lock.json, *.csproj,
+              global query filters, auth/authorization code, Stripe/billing code, tests' expected behavior.
+            - No new dependencies, no behavior changes, no refactors spanning features.
+            - If nothing is clearly worth changing, stop without opening a PR. A skipped night is fine; a pointless PR is not.
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 30
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(git:*),Bash(gh pr list:*),Bash(gh pr create:*),Bash(dotnet build:*),Bash(dotnet format:*),Bash(npm --prefix web run lint:*),Bash(npm --prefix web run build:*),Bash(tail:*)"
