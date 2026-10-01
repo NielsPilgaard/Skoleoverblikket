@@ -61,3 +61,4 @@ Not formally evaluated against competitors at the time — the choice followed d
 - [monorepo-openapi](monorepo-openapi.md) — how API and frontend stay in sync given this stack
 - [self-hosted-postgres-backups](self-hosted-postgres-backups.md) — operational consequence of self-hosting PostgreSQL
 - [transactional-email](transactional-email.md) — provider choice within the same EU-residency constraint
+- [ai-data-boundary](ai-data-boundary.md) — extends the EU-residency constraint to AI processing
