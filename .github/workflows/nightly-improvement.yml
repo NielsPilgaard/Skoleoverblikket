@@ -1,6 +1,6 @@
 name: Nightly improvement
 
-# Every night Claude makes one tiny, safe improvement and opens a PR.
+# Every night Claude makes one focused, verified improvement and opens a PR.
 # Never pushes to main: a push to main runs migrations and deploys (see ci.yml).
 #
 # Cost: Actions minutes are free (public repo). Claude usage comes from the
@@ -20,7 +20,7 @@ concurrency:
 jobs:
   improve:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       id-token: write
       contents: write
@@ -42,7 +42,7 @@ jobs:
             exit 0
           fi
           echo "skip=false" >> "$GITHUB_OUTPUT"
-          echo "day=$(TZ=Europe/Copenhagen date +%u)" >> "$GITHUB_OUTPUT"
+          echo "area=$(( $(TZ=Europe/Copenhagen date +%-j) % 10 + 1 ))" >> "$GITHUB_OUTPUT"
           echo "date=$(TZ=Europe/Copenhagen date +%F)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v5
@@ -79,43 +79,62 @@ jobs:
             REPO: ${{ github.repository }}
             DATE: ${{ steps.check.outputs.date }}
 
-            You are running unattended at night. Make ONE tiny, safe improvement to this codebase and open a PR.
+            You are running unattended at night. Make ONE focused, meaningful improvement to this codebase, verify it,
+            and open a PR. Aim for the change a careful senior developer would make in an hour: worth reviewing,
+            but small enough to review in five minutes.
 
             Focus areas:
-            1. Dead code: remove one unused function, component, import, using, variable or file.
-            2. Danish UI text: fix one typo, inconsistent term or unclear label a school secretary would stumble on.
-            3. Accessibility: fix one missing aria-label, alt text, label association or button type in the web app.
-            4. Backend hygiene: add one missing CancellationToken pass-through, AsNoTracking on a read query, or ProblemDetails error shape.
-            5. Docs: fix one stale reference in docs/ or AGENTS.md (a controller, file or rule that no longer matches the code).
-            6. Simplification: simplify one overly complex function or React component without changing behavior.
-            7. Type safety: remove one 'any', non-null assertion or loose type in web/src.
+            1. Encapsulation: AGENTS.md says ~29 controllers still inject AppDbContext and write to it directly. Move one
+               small controller's (or one endpoint group's) data logic into its feature service, following the
+               "Encapsulation" section exactly. Switch TestDataBuilder/tests to the service if entity creation moved.
+            2. Bug fix: find and fix one real bug (wrong date/week math, null handling, off-by-one, missing tenant-scoped
+               lookup, wrong status code). Add an integration test that fails without the fix.
+            3. Test coverage: add integration tests for one endpoint or flow that has none and whose silent break
+               would block Hanne (see docs/TESTING.md).
+            4. Usability for Hanne: improve one screen in web/src: clearer Danish error message, a helpful empty state,
+               a missing loading/disabled state, or a layout that breaks on a phone (see docs/PERSONAS.md).
+            5. Performance: fix one N+1 query, over-fetching (load whole entities where a projection would do), or
+               needless re-render/re-fetch in the web app.
+            6. Dead code: remove unused functions, components, endpoints-without-callers, imports or files.
+            7. Simplification: simplify one overly complex function or React component without changing behavior.
+            8. Type safety: remove 'any', non-null assertions and loose types in one area of web/src.
+            9. Accessibility: fix missing aria-labels, alt text, label associations or keyboard access on one page.
+            10. Docs: fix stale statements in docs/ or AGENTS.md that no longer match the code.
 
-            Start with area ${{ steps.check.outputs.day }}. If a few targeted searches find nothing worth changing there,
-            move to the next area (wrap 7 -> 1). Stop after trying 3 areas.
+            Start with area ${{ steps.check.outputs.area }}. If targeted searches find nothing worth changing there,
+            move to the next area (wrap 10 -> 1). Stop after trying 3 areas.
 
             Steps:
             1. Run `gh pr list --label nightly-improvement --state all --limit 30 --json title,state` and do not repeat
                anything listed there (closed = rejected, don't retry it).
-            2. Find one candidate in the current focus area. Search narrowly with Grep/Glob; don't read the whole repo.
-            3. Make the change. Follow AGENTS.md.
-            4. Verify only what you touched:
-               - C# changes: `dotnet build api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj 2>&1 | tail -n 30`
-                 and `dotnet format api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj`
-               - web changes: `npm --prefix web run lint 2>&1 | tail -n 30` and `npm --prefix web run build 2>&1 | tail -n 30`
-               If verification fails and you can't fix it in two attempts, revert with `git checkout -- .` and stop.
-            5. Create branch `nightly/${{ steps.check.outputs.date }}`, commit with a Conventional Commits message, push, and run
-               `gh pr create --base main --label nightly-improvement --title "<conventional title>" --body "<what and why, 2-4 lines>"`.
+            2. Find one candidate. Search with Grep/Glob and read only the files you need. Read the relevant docs
+               (AGENTS.md sections, docs/AUTHORIZATION.md, docs/TESTING.md) before changing code they govern.
+            3. Make the change. Follow AGENTS.md conventions exactly.
+            4. Verify what you touched (always pipe through `tail -n 40` to keep output short):
+               - C#: `dotnet build api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj`, then
+                 `dotnet format api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj`.
+               - Tests: run the affected test class only:
+                 `dotnet test --project api/tests/Skoleoverblikket.Api.IntegrationTests/Skoleoverblikket.Api.IntegrationTests.csproj -- --treenode-filter "/*/*/<TestClassName>/*"`
+                 Docker is available for Testcontainers.
+               - Web: `npm --prefix web run lint` and `npm --prefix web run build`.
+               If verification fails and you can't fix it in three attempts, revert with `git checkout -- . && git clean -fd`
+               and try the next area instead.
+            5. Create branch `nightly/${{ steps.check.outputs.date }}`, commit with a Conventional Commits message, push,
+               and run `gh pr create --base main --label nightly-improvement --title "<conventional title>" --body "<body>"`.
+               Body: what changed, why it matters, how you verified it, and anything the reviewer should look at closely.
 
             Hard limits:
-            - At most 3 files and about 40 changed lines. Smaller is better.
+            - One concern per PR. At most ~10 files and ~300 changed lines (tests included).
             - Never touch: Migrations/, .github/, infrastructure/, scripts/, package.json, package-lock.json, *.csproj,
-              global query filters, auth/authorization code, Stripe/billing code, tests' expected behavior.
-            - No new dependencies, no behavior changes, no refactors spanning features.
+              Program.cs, global query filters, auth/authorization code, Stripe/billing code.
+            - No new dependencies. No changes to API request/response shapes or routes (web/openapi/v1.json must not change).
+            - Don't weaken or delete existing tests or assertions. New tests are welcome.
+            - Behavior changes only for real bug fixes or usability improvements, and say so in the PR body.
             - If nothing is clearly worth changing, stop without opening a PR. A skipped night is fine; a pointless PR is not.
           claude_args: |
-            --model claude-sonnet-5-5
-            --max-turns 30
-            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(git:*),Bash(gh pr list:*),Bash(gh pr create:*),Bash(dotnet build:*),Bash(dotnet format:*),Bash(npm --prefix web run lint:*),Bash(npm --prefix web run build:*),Bash(tail:*),Bash(head:*),Bash(ls:*),Bash(find:*),Bash(wc:*),Bash(jq:*),Bash(gh pr view:*)"
+            --model claude-opus-5-5
+            --max-turns 80
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(git:*),Bash(gh pr list:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(dotnet build:*),Bash(dotnet format:*),Bash(dotnet test:*),Bash(npm --prefix web run lint:*),Bash(npm --prefix web run build:*),Bash(tail:*),Bash(head:*),Bash(ls:*),Bash(find:*),Bash(wc:*),Bash(jq:*)"
 
       # Full output is hidden (public repo = public logs). Print only the commands
       # Claude ran, anything the allowlist blocked, and its final message.
