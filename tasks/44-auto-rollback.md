@@ -22,7 +22,7 @@ New `watch` job at the end of `cd.yml`: 15 minutes of checks against prod. Pass 
 Current pipeline ([ci.yml](../.github/workflows/ci.yml) → [staging.yml](../.github/workflows/staging.yml) → [cd.yml](../.github/workflows/cd.yml)):
 
 - Push to `main` → CI builds, tests, **applies migrations to prod via `psql` before deploy**, publishes `sha-xxx` images to GHCR.
-- Staging runs Playwright e2e against the images; success triggers CD.
+- Staging runs Playwright e2e against the images; on success its `deploy` job calls CD (reusable workflow) with CI's image tag.
 - CD calls [infrastructure/scripts/deploy.mjs](../infrastructure/scripts/deploy.mjs) (Dokploy `compose.saveEnvironment` + `compose.redeploy`) and stops once Dokploy says "done". Nobody checks that the site actually works afterwards.
 - Rollback is possible by hand: `CD` workflow_dispatch with an older `image_tag`.
 - `/alive` only checks the process is up (not DB/Keycloak). `/health` and `/alive` are not routed publicly — Traefik only forwards `PathPrefix(/api)` to the API.

@@ -101,3 +101,16 @@ jobs:
       - name: Tear down staging stack
         if: always()
         run: docker compose -f infrastructure/docker/docker-compose.staging.yml down -v
+
+  # Deploy from here rather than a workflow_run-triggered CD: this run's own head_sha can be a
+  # later [skip ci] commit with no images. workflow_run.head_sha is the commit CI built.
+  deploy:
+    name: Deploy
+    needs: [e2e]
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/cd.yml
+    with:
+      image_tag: sha-${{ github.event.workflow_run.head_sha }}
+    secrets: inherit
