@@ -86,7 +86,11 @@ New `FeedbackController` (`/api/v1/feedback`), `FeedbackService` owning the rule
 
 **Redaction** (`FeedbackRedactor`), applied to description, outline text and action-log labels before storing the redacted copies:
 - names of the tenant's students, parents and staff (first, last and full names, case-insensitive, word-boundary) → `[elev]`, `[forælder]`, `[medarbejder]`. Over-redaction ("Mark") is acceptable;
-- CPR (`\d{6}-?\d{4}`), Danish phone numbers, email addresses → `[cpr]`, `[telefon]`, `[email]`.
+- CPR (`\d{6}-?\d{4}`), Danish phone numbers, email addresses → `[cpr]`, `[telefon]`, `[email]`;
+- addresses → `[adresse]`: postnummer + by (`\b\d{4}\s+\p{Lu}\p{L}+`) and street + house number (word ending in a common Danish street suffix such as `vej`, `gade`, `allé`, `stræde`, `vænge`, `toften`, `parken`, `plads`, followed by a number and optional letter/floor). We hold no address data, so this is pattern-only;
+- health details → `[helbred]`: a curated Danish word list (diagnoses, conditions and treatment words such as `ADHD`, `autisme`, `diabetes`, `epilepsi`, `allergi`, `astma`, `depression`, `angst`, `medicin`, `diagnose`, `indlagt`), case-insensitive, matching inflections by prefix. Lives in one file next to `FeedbackRedactor` so it can grow. Over-redaction is acceptable here too.
+
+Pattern and word-list redaction can't catch everything (unknown names, paraphrased health details). That residual risk is why task 47 requires human review before any text leaves the EU zone.
 
 **Entities** (migration via `/add-migration`, written by a human):
 
@@ -122,7 +126,7 @@ SuperAdmin → "Tilbagemeldinger": table (date, school, role, route, status, cat
 ## Testing
 
 API integration (`FeedbackTests.cs`):
-- staff creates a report → stored with redacted copies; names of the tenant's students/staff and a CPR in the description are redacted in `DescriptionRedacted`, raw kept.
+- staff creates a report → stored with redacted copies; names of the tenant's students/staff, a CPR, a street address ("Skolevej 12, 4000 Roskilde") and a health term ("har ADHD") in the description are redacted in `DescriptionRedacted`, raw kept.
 - tenant isolation: another tenant's staff can't read it; `GET /feedback/mine` only returns own reports.
 - upload binding: confirm tokens from tenant A rejected in tenant B's `POST /feedback`; a token for draft X rejected on a report with draft Y; another user's token rejected.
 - retention: after the D7 deadline the job deletes both screenshot objects, nulls the keys and the raw `Description`, keeps `DescriptionRedacted`; an uploaded object with no report is deleted after 24 hours.

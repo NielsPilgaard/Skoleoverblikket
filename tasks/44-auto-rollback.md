@@ -15,7 +15,7 @@ status: 'Proposed'
 
 ## TL;DR
 
-New `watch` job at the end of `cd.yml`: 15 minutes of checks against prod. Pass → record the tag as **last known good** (GitHub Deployment on a separate `production-verified` environment). Fail → if no migration changed between last-good and this sha: redeploy last-good with `deploy.mjs`, open a `deploy-freeze` issue (CD skips while it's open) and a revert PR that closes it. If a migration changed: no rollback, alert only. Applies to **all** deploys, not just AI ones. Also: `main` ruleset, "Skoleoverblikket Bot" GitHub App, `/api/health` readiness endpoint, smoke tenant (`IsInternal`), Pingpuffin for 24/7 uptime. Everything runs in public-repo Actions — €0.
+New `watch` job at the end of `cd.yml`: 15 minutes of checks against prod. Pass → record the tag as **last known good** (GitHub Deployment on a separate `production-verified` environment). Fail → if no migration changed between last-good and this sha and prod has no applied migration missing at last-good: redeploy last-good with `deploy.mjs`, open a `deploy-freeze` issue (CD skips while it's open) and a revert PR that closes it. If a migration changed: no rollback, alert only. Applies to **all** deploys, not just AI ones. Also: `main` ruleset, "Skoleoverblikket Bot" GitHub App, `/api/health` readiness endpoint, smoke tenant (`IsInternal`), Pingpuffin for 24/7 uptime. Everything runs in public-repo Actions — €0.
 
 ## Context
 
@@ -87,8 +87,8 @@ Implement as a Node script `infrastructure/scripts/watch.mjs` (same style as `de
 
 Runs when `watch` fails:
 
-1. `git diff --quiet <last-good-sha>..<sha> -- api/Skoleoverblikket.Api/Data/Migrations/` → changed = **alert only** (email: "Deploy <sha> fejlede — migration i spil, ingen automatisk rollback"). Stop.
-2. Otherwise: run `deploy.mjs` with `IMAGE_TAG=<last-good tag>`, then a shortened watch (health probes only, 3 minutes). If that also fails → alert "rollback fejlede" and stop.
+1. **Migration check against production, not just the sha range.** CI applies migrations to prod on every push to `main`, so prod can hold migrations from commits newer than `<sha>` (e.g. a later push whose CD run is still queued). Read `MigrationId`s from prod `__EFMigrationsHistory` (same `DATABASE_URL` CI uses for `psql`) and compare with the migration files present at `<last-good-sha>` (`git ls-tree --name-only <last-good-sha> -- api/Skoleoverblikket.Api/Data/Migrations/`). Any applied migration missing at last-good, **or** `git diff --quiet <last-good-sha>..<sha> -- api/Skoleoverblikket.Api/Data/Migrations/` reporting a change → **alert only** (email: "Deploy <sha> fejlede — migration i spil, ingen automatisk rollback"). Stop. If the prod query fails, treat it as "migration found" (alert only).
+2. Otherwise: run `deploy.mjs` with `IMAGE_TAG=<last-good tag>`, then a shortened watch (health probes only, 3 minutes). If that also fails → open the `deploy-freeze` issue (step 3, title `🚨 Deploy frosset: rollback af <sha> til <last-good> fejlede`) so the freeze gate blocks further CD runs, keep the "rollback fejlede" alert email, and stop (no revert PR).
 3. Open issue `🚨 Deploy frosset: <sha> rullet tilbage til <last-good>` with label `deploy-freeze` (failing checks summarised, links to the run).
 4. Create branch `rollback/<sha>` with `git revert --no-edit <last-good-sha>..<sha>` and open a PR labelled `rollback-revert` whose body has `Closes #<freeze issue>`. Bot app token so CI runs.
 5. Email the owner with links.

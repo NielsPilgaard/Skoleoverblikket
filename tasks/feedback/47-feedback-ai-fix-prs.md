@@ -2,7 +2,7 @@
 title: 'Feedback AI fix PRs — PII-free spec to Claude in GitHub Actions'
 purpose: 'Turn trivial bug reports into ready-to-review PRs automatically, without personal data ever reaching GitHub or Claude, and close the loop with the reporter when the fix is live.'
 description: >-
-  The API dispatches a PII-guarded fix spec to the public repo via
+  The API dispatches a PII-guarded, owner-reviewed fix spec to the public repo via
   repository_dispatch; a workflow modelled on nightly-improvement.yml runs
   Claude Code on the subscription and opens a PR labelled ai-fix. A CI guard
   enforces allowlist/denylist/size and scans for PII; AI PRs also run e2e before
@@ -15,7 +15,7 @@ status: 'Proposed'
 
 ## TL;DR
 
-`bug:trivial` from [task 46](46-feedback-ai-triage.md) (or the owner's manual "Send til AI-fix") → **PII guard** → `repository_dispatch: feedback-fix` with the spec → `feedback-fix.yml` runs Claude Code (subscription, same pattern as [nightly-improvement.yml](../../.github/workflows/nightly-improvement.yml)) → branch `feedback/<id>` + PR labelled `ai-fix`, body = spec + `Feedback: #<id>`. CI adds `ai-fix-guard` (allowlist, denylist, size, PII) and e2e on the PR. **Auto-merge exists but `AI_AUTOMERGE_MAX_FILES=0`**, so a human merges. After CD + watch ([task 44](../44-auto-rollback.md)) pass, the trailers mark reports `Fixed` and reporters get "Rettet — tak!". Boundary rules: [ai-data-boundary](../../docs/adr/ai-data-boundary.md).
+`bug:trivial` from [task 46](46-feedback-ai-triage.md) (or the owner's manual "Send til AI-fix") → **PII guard** → **owner reviews the spec in the backoffice (EU)** → `repository_dispatch: feedback-fix` with the spec → `feedback-fix.yml` runs Claude Code (subscription, same pattern as [nightly-improvement.yml](../../.github/workflows/nightly-improvement.yml)) → branch `feedback/<id>` + PR labelled `ai-fix`, body = spec + `Feedback: #<id>`. CI adds `ai-fix-guard` (allowlist, denylist, size, PII) and e2e on the PR. **Auto-merge exists but `AI_AUTOMERGE_MAX_FILES=0`**, so a human merges. After CD + watch ([task 44](../44-auto-rollback.md)) pass, the trailers mark reports `Fixed` and reporters get "Rettet — tak!". Boundary rules: [ai-data-boundary](../../docs/adr/ai-data-boundary.md).
 
 ## Context
 
@@ -40,14 +40,19 @@ Requires task 44 (bot GitHub App, ruleset, watch/rollback, freeze) and task 46 (
 
 Fail → `FixStatus = BlockedByGuard`, `needs-human`, the reason shown in the backoffice.
 
+The guard only catches what it recognises: names in the tenant list and fixed patterns. It misses names it doesn't know (siblings, people outside the school) and paraphrases ("pigen med diabetes i 3.A"). So passing the guard is necessary but **not sufficient**:
+
+- **EU-side human review is required before every dispatch, automatic or manual.** A spec that passes the guard goes to `FixStatus = AwaitingReview`. The owner reads the exact spec text that will be sent in the backoffice and clicks "Godkend og send". Only that click dispatches. The manual "Send til AI-fix" path ends on the same review step; it never dispatches without one.
+- Dropping the review for the automatic path needs validated controls first: a red-team set of ≥ 50 specs with unknown names, addresses, health details and paraphrases, with zero leaks through the guard (plus any added controls), documented in [ai-data-boundary](../../docs/adr/ai-data-boundary.md) and switched on explicitly by the owner. Until then the review stays mandatory.
+
 ### 2. Dispatch (API)
 
 - GitHub App "Skoleoverblikket Bot" (task 44) — API config `GitHub__AppId`, `GitHub__PrivateKey`, `GitHub__InstallationId`, `GitHub__Repository`.
 - `POST /repos/{repo}/dispatches` with `event_type: feedback-fix`, `client_payload: { feedbackId, spec }`.
 - Hard precondition, automatic **and** manual: the report's tenant has `AllowAiFeedbackProcessing = true` ([ai-data-boundary](../../docs/adr/ai-data-boundary.md) IMP-002). If false → neither queued nor dispatched; the backoffice shows why.
-- Other preconditions: category `bug:trivial` (or manual send), guard passed (else `BlockedByGuard`, §1), no open `deploy-freeze` issue, < `Feedback__MaxFixDispatchesPerDay` (start at 3) today. If the freeze or the daily cap blocks → queue and retry at the next eligible time (daily job; the retry re-checks the tenant setting).
-- Backoffice: editable spec + "Send til AI-fix" button on any report — same guard and same tenant-setting check, in the same `FeedbackService` method as the automatic path.
-- `FeedbackReport.FixStatus` (`None`, `Queued`, `Dispatched`, `PrOpened`, `GaveUp`, `BlockedByGuard`, `Merged`, `Deployed`), `FixPrUrl`. Migration by a human.
+- Other preconditions: category `bug:trivial` (or manual send), guard passed (else `BlockedByGuard`, §1), owner approved the spec in review (§1; else stays `AwaitingReview`), no open `deploy-freeze` issue, < `Feedback__MaxFixDispatchesPerDay` (start at 3) today. If the freeze or the daily cap blocks → queue and retry at the next eligible time (daily job; the retry re-checks the tenant setting).
+- Backoffice: editable spec + "Send til AI-fix" button on any report — same guard, same tenant-setting check and same review step, in the same `FeedbackService` method as the automatic path. Editing an approved spec resets it to `AwaitingReview` and re-runs the guard.
+- `FeedbackReport.FixStatus` (`None`, `AwaitingReview`, `Queued`, `Dispatched`, `PrOpened`, `GaveUp`, `BlockedByGuard`, `Merged`, `Deployed`), `FixPrUrl`. Migration by a human.
 
 ### 3. Workflow `.github/workflows/feedback-fix.yml`
 
@@ -120,6 +125,7 @@ Suggested trust ramp (owner decides): raise to 1 after 20 AI PRs merged without 
 
 API integration (`FeedbackFixTests.cs`, GitHub HTTP calls stubbed):
 - guard rejects a spec containing a seeded student name, a phone number, or a 6-word quote from the description; accepts a clean one.
+- a guard-passing spec ends in `AwaitingReview` and is not dispatched, for both the automatic and the manual path; approval dispatches; editing after approval resets to `AwaitingReview`.
 - no dispatch and no queue entry when the tenant has `AllowAiFeedbackProcessing = false`, for both the automatic path and the manual "Send til AI-fix" endpoint.
 - no dispatch while a freeze is reported (stub GitHub issues API) and when the daily cap is hit.
 - `fix-status` with a wrong token → 401 ProblemDetails; with the right token → `PrOpened` event.

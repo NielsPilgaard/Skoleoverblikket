@@ -73,8 +73,9 @@ school holidays. Holidays are not school days, so it never touches absence.
   holidays. Always round absence up to the nearest half day.
 - **Follow-up**: contact parents *straks* on ulovligt fravær (not necessarily
   same day, well before 10%). At **10%** in a quarter: inform parents and warn
-  about sanctions. At **15%**: principal notifies the kommune, which stops
-  børne- og ungeydelse for that quarter.
+  about sanctions. At **15%**: the principal notifies the kommune. The
+  kommune then decides separately whether to suspend børne- og ungeydelse for
+  that quarter; suspension is not automatic.
 - Only ulovligt fravær has sanctions. Sygdom and ekstraordinær frihed count in
   total absence but not in the 10%/15% figures.
 
@@ -116,11 +117,15 @@ school holidays. Holidays are not school days, so it never touches absence.
 - **Staff-registered absence defaults to `Unauthorized`.** The teacher can
   change the category (e.g. parent called in sick by phone → `Illness`).
   Changes allowed until the end of the quarter.
-- **Fremmøde is recorded explicitly.** A new `AttendanceCheck` row
-  (ClassId, Date, TakenByStaffId, TakenAt) marks "fremmøde noteret for denne
-  klasse i dag", so admin can see which classes haven't done it yet. Absent
-  students get absence rows. Present students get nothing: no row per
-  present child per day.
+- **Fremmøde is recorded explicitly, per checkpoint.** A new
+  `AttendanceCheck` row (ClassId, Date, `Checkpoint`, TakenByStaffId,
+  TakenAt), unique on (ClassId, Date, Checkpoint), marks "fremmøde noteret".
+  `Checkpoint` is `StartOfDay` or `EndOfDay`. Every class needs `StartOfDay`;
+  classes with `GradeLevel >= 7` also need `EndOfDay` (scope 4). A class
+  counts as done for the day only when all its required checkpoints exist, so
+  admin can see which classes haven't done which check yet. Absent students
+  get absence rows. Present students get nothing: no row per present child
+  per day.
 - **Who registers and who gets follow-up notifications**: admins + staff with
   `EditClassRequirement` on the class (same as today's confirm/dismiss).
   See `docs/AUTHORIZATION.md`.
@@ -170,7 +175,9 @@ school holidays. Holidays are not school days, so it never touches absence.
   targets, no table.
 - Entry points: teacher dashboard ("Fremmøde mangler: 3.A") and the class
   page.
-- Admin view: today's classes with fremmøde noted / not noted.
+- Admin view: today's classes with fremmøde noted / not noted, per
+  checkpoint. 7.–10. klasse shows "Morgen" and "Dagens slutning" separately
+  and is complete only when both are noted.
 - Editing after the fact is allowed (parent calls at 10:00, child arrives
   late within first lesson → remove the absence). Keep `RegisteredByStaffId`
   + an updated-at timestamp; no full audit log in v1.
@@ -213,7 +220,8 @@ school holidays. Holidays are not school days, so it never touches absence.
 
 - For classes with `GradeLevel >= 7`, fremmøde has a second step "Ved
   dagens slutning": tap students who have left. Present in the morning +
-  absent at the end = half-day absence (`HalfDay = true`).
+  absent at the end = half-day absence (`HalfDay = true`). Saving this step
+  writes the `EndOfDay` `AttendanceCheck`, even when nobody left.
 - Lower grades: whole days only, no end-of-day step. `GradeLevel` null →
   treat as lower grade.
 - "Kom for sent" is not a category and not an absence: the teacher removes
@@ -265,7 +273,9 @@ school holidays. Holidays are not school days, so it never touches absence.
 ## Testing
 
 - Integration: parent report (syg/fri), leave approve/reject, fremmøde
-  save + edit, category change, half day for grade ≥7 only, cross-class
+  save + edit, category change, half day for grade ≥7 only, overview
+  marks a grade ≥7 class incomplete until both start- and end-of-day checks
+  exist (lower grades: start only), cross-class
   authorization (teacher without edit rights → 403), parent can only see own
   child, tenant isolation, school-day count against calendar entries
   (Ferie/Lukkedag/Arbejdsdag incl. recurrence), ulovligt % with half-day
