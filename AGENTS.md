@@ -34,7 +34,7 @@ Never bypass this filter. Never trust a slug string as an authorization signal �
 
 - SFO week plan (`SfoWeekPlanController`, `SfoController`) — weekly SFO schedule with print view
 - Ugeplan / weekplan (`WeekPlanController`) — per-class weekly plan with file attachments per slot, shown to parents
-- Vikar overview (`VikarController`) — free/busy staff lookup per time slot and one-click substitute assignment when a teacher or aide is out
+- Vikar overview (`SubstituteController`) — free/busy staff lookup per time slot and one-click substitute assignment when a teacher or aide is out
 - Parent module (`ParentsController`, `ParentMeController`, `ParentInvitationsController`) — parent portal with schema/calendar/ugeplan views
 - Absence reporting (`AbsenceController`) — parents report absence, staff confirm/dismiss
 - Kontakt directory (`ContactDirectoryController`) — role-filtered parent directory with `ShareContactInfo` consent
