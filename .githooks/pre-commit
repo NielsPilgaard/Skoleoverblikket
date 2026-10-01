@@ -1,0 +1,40 @@
+#!/bin/sh
+# Auto-format staged files so CI never fails on formatting.
+# Enabled by `npm install` in web/ (the `prepare` script sets core.hooksPath).
+# Fixed files are re-staged whole, so partially staged hunks in them get committed too.
+# Skip once with `git commit --no-verify`.
+
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+
+web=$(git diff --cached --name-only --diff-filter=ACMR -- 'web/src/*.ts' 'web/src/*.tsx' 'web/src/*.js' 'web/src/*.jsx' 'web/src/*.json' 'web/src/*.css' | grep -v '^web/src/api/generated/')
+cs=$(git diff --cached --name-only --diff-filter=ACMR -- '*.cs' | grep -v '/Migrations/')
+
+if [ -n "$web" ]; then
+	biome=web/node_modules/.bin/biome
+	if [ -x "$biome" ]; then
+		# shellcheck disable=SC2086
+		"$biome" check --write --no-errors-on-unmatched --files-ignore-unknown=true $web || {
+			echo "pre-commit: Biome found errors it cannot fix (see above). Fix them or commit with --no-verify." >&2
+			exit 1
+		}
+		# shellcheck disable=SC2086
+		git add $web
+	else
+		echo "pre-commit: Biome not installed (run npm install in web/), skipping web formatting." >&2
+	fi
+fi
+
+if [ -n "$cs" ]; then
+	if command -v dotnet >/dev/null 2>&1; then
+		# Whitespace only: fast, no project load. CI auto-format applies style fixes too.
+		# shellcheck disable=SC2086
+		dotnet format whitespace . --folder --include $cs || exit 1
+		# shellcheck disable=SC2086
+		git add $cs
+	else
+		echo "pre-commit: dotnet not found, skipping C# formatting." >&2
+	fi
+fi
+
+exit 0

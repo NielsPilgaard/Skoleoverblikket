@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "npm run api:generate && tsc -b && vite build",
     "lint": "biome check src/",
+    "prepare": "git config core.hooksPath .githooks || exit 0",
     "preview": "vite preview",
     "api:generate": "openapi-ts -f openapi-ts.config.ts",
     "codegen": "npm run api:generate",

@@ -1,0 +1,131 @@
+name: CI fix
+
+# When CI fails on a PR because of a lint rule or a TypeScript error, Claude fixes it and pushes to the PR branch.
+# Formatting is handled by the autofix job in ci.yml; this covers what a formatter can't fix.
+#
+# Guardrails:
+# - PRs from branches in this repo only (workflow_run has secrets; never run fork code with them).
+# - One attempt per failure: if the failing commit is Claude's own fix, stop and leave it to a human.
+# - Never runs for main. Never touches tests, the API or anything outside web/src.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+concurrency:
+  group: ci-fix-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      !startsWith(github.event.workflow_run.head_commit.message, 'fix(ci):')
+    permissions:
+      id-token: write
+      contents: write
+      actions: read
+    steps:
+      - name: Find fixable failure
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          tip=$(gh api "repos/$GITHUB_REPOSITORY/branches/$BRANCH" --jq .commit.sha)
+          if [ "$tip" != "$HEAD_SHA" ]; then
+            echo "Branch moved on since this run, skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          job=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/jobs" --jq '.jobs[]
+            | select(.name | startswith("Web"))
+            | select(any(.steps[]; .conclusion == "failure" and (.name == "Lint" or .name == "Build")))
+            | .id')
+          if [ -z "$job" ]; then
+            echo "No lint or build failure in the web job, nothing for Claude to fix."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/actions/jobs/$job/logs" | cut -c30- | tail -n 150 > "$RUNNER_TEMP/failure.log"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          {
+            echo "log<<CI_LOG_EOF"
+            cat "$RUNNER_TEMP/failure.log"
+            echo "CI_LOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v5
+        if: steps.check.outputs.skip != 'true'
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Setup Node.js 24
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        if: steps.check.outputs.skip != 'true'
+        run: npm ci
+        working-directory: web
+
+      - name: Run Claude
+        id: claude
+        if: steps.check.outputs.skip != 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            BRANCH: ${{ github.event.workflow_run.head_branch }}
+
+            CI failed on this PR branch in the web job (Biome lint rule or TypeScript build). Fix it with the
+            smallest correct change and push. The tail of the failing job log:
+
+            ```
+            ${{ steps.check.outputs.log }}
+            ```
+
+            Steps:
+            1. Find the cause from the log. Read only the files it names.
+            2. Fix the code properly. Don't silence the rule with biome-ignore comments, `any`, `@ts-ignore`,
+               or by changing biome.json / tsconfig. Follow AGENTS.md.
+            3. Verify: `npm --prefix web run lint 2>&1 | tail -n 40` and `npm --prefix web run build 2>&1 | tail -n 40`.
+               Formatting complaints are fixed by `web/node_modules/.bin/biome check --write web/src`.
+            4. Commit with a message starting with `fix(ci): ` and `git push origin HEAD:${{ github.event.workflow_run.head_branch }}`.
+
+            Hard limits:
+            - Only edit files under web/src. At most 5 files.
+            - No behavior changes beyond what the fix needs. No new dependencies.
+            - If you can't fix it in three attempts, or the fix needs changes outside web/src, stop without pushing.
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 30
+            --allowedTools "Read,Edit,Glob,Grep,Bash(git:*),Bash(npm --prefix web run lint:*),Bash(npm --prefix web run build:*),Bash(web/node_modules/.bin/biome:*),Bash(tail:*),Bash(head:*)"
+
+      # Public repo = public logs. Print only the commands Claude ran and its final message.
+      - name: Summarize Claude run
+        if: always() && steps.claude.outputs.execution_file != ''
+        env:
+          LOG: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          {
+            echo "## Tool calls"
+            jq -r '(if type=="array" then .[] else . end)
+              | select(.type=="assistant") | .message.content[]?
+              | select(.type=="tool_use")
+              | "- \(.name): \(.input.command // .input.pattern // .input.file_path // "" | tostring | .[0:200])"' "$LOG"
+            echo "## Final message"
+            jq -r '(if type=="array" then .[] else . end) | select(.type=="result") | .result // ""' "$LOG"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
