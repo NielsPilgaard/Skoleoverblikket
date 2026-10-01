@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
+import SeoMeta from '../components/SeoMeta'
 import keycloak, { seedPostSignupToken } from '../auth/keycloak'
 import { BILLING_INTERVAL_STORAGE_KEY, parseBillingInterval } from '../lib/billingInterval'
 
@@ -109,9 +110,11 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-brand-50 flex items-center justify-center p-4">
-      <Helmet>
-        <meta name="robots" content="noindex,nofollow" />
-      </Helmet>
+      <SeoMeta
+        title="Opret din skole — prøv gratis i 30 dage"
+        description="Opret din skole i Skoleoverblikket på 2 minutter. 30 dages gratis prøveperiode, intet kreditkort og ingen binding."
+        path="/signup"
+      />
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-md">
         {/* Header */}
         <div className="px-8 pt-8 pb-6 border-b border-gray-100 text-center">
