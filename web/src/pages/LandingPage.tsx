@@ -33,7 +33,8 @@ const SOFTWARE_APPLICATION_JSON_LD = {
     '@type': 'Offer',
     price: String(MONTHLY_PRICE_KR),
     priceCurrency: 'DKK',
-    priceValidUntil: '2026-12-31',
+    // Rolls forward on every build (the page is prerendered), so it never goes stale.
+    priceValidUntil: `${new Date().getFullYear() + 1}-12-31`,
     description: 'Basis-abonnement pr. måned, inkl. moms, pr. skole. Ingen bindingsperiode.',
   },
 }
