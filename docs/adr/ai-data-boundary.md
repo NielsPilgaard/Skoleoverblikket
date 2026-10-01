@@ -60,7 +60,7 @@ Constraints:
 - **NEG-001**: Triage quality is bounded by the Alexandra model, which is weaker than Claude; misclassification sends reports to `needs-human` (safe, but more manual work).
 - **NEG-002**: The fix agent only sees the spec, not the screenshot — layout bugs must be described well enough in text.
 - **NEG-003**: Subscription rate limits are shared with interactive use; fix runs are throttled (one at a time, daily cap).
-- **NEG-004**: The PII guard is heuristic; a spec could in theory carry a unique non-name identifier ("the girl with diabetes"). Mitigated by the spec format being technical and the guard's verbatim-overlap check.
+- **NEG-004**: The PII guard is planned ([task 47](../../tasks/feedback/47-feedback-ai-fix-prs.md) `FixSpecGuard`) and **not yet enforced**; until that dispatch gate exists, fix specs must stay in the EU zone. Once built it is heuristic: a spec could in theory carry a unique non-name identifier ("the girl with diabetes"). Mitigated by the spec format being technical and the guard's verbatim-overlap check.
 
 ## Alternatives Considered
 
