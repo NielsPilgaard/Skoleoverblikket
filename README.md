@@ -157,9 +157,9 @@ cd web && npm run codegen
 
 - [PRD](docs/PRD.md) — product requirements and feature spec
 - [Personas](docs/PERSONAS.md) — the real users every design decision is measured against
-- [Schema features](docs/schema-features.md) — schema planner detail
+- [Schema features](docs/SCHEMA_FEATURES.md) — schema planner detail
 - [Decisions](docs/DECISIONS.md) — product and architecture decisions
-- [Tasks](docs/TASKS.md) — phased implementation plan
+- [Tasks](tasks/) — numbered task specs
 - [Pricing](docs/PRICING.md) — tier breakdown
 - [Testing](docs/TESTING.md) — testing strategy
-- [Contacts](media/CONTACTS.md) — discovery interview contacts
+- Contacts (`media/CONTACTS.md`, gitignored, local only) — discovery interview contacts

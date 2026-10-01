@@ -61,7 +61,7 @@ Build the core product: tenant setup, schema planner with conflict detection, st
 ### Time slot template
 
 - [x] School-level time slot template API: lesson duration, breaks, school day start/end — `GET/PUT /api/v1/time-slot-template`
-- [ ] Time slot wizard for onboarding (see [schema-features.md](../docs/schema-features.md)) — Phase 2
+- [ ] Time slot wizard for onboarding (see [SCHEMA_FEATURES.md](../../docs/SCHEMA_FEATURES.md)) — Phase 2
 - [x] Per-class time slot overrides
   - **Data model:** `TimeSlotOverride` entity with: classId (FK), dateRange (startDate/endDate), daysOfWeek (bitmask or array), startTime, endTime, recurrenceRule (optional), sortOrder, createdBy (FK)
   - **DB table:** `time_slot_overrides` with columns: id (PK), class_id (FK), start_date, end_date, days_of_week, start_time, end_time, recurrence_rule, sort_order, created_by_id (FK), created_at, updated_at

@@ -47,12 +47,13 @@ do Search Console. Everything after that is links and waiting.
 
 ## 3. Small content fixes (this week)
 
-- [ ] Decide whether the landing page `<h1>` should include "Skoleoverblikket". It currently reads
-      "Spar tid på det kedelige — brug den på børnene". Possible wording: "Skoleoverblikket — spar tid
-      på det kedelige, brug den på børnene", or keep the headline and add the name in a line above it.
-- [ ] Update `priceValidUntil: '2026-12-31'` in `web/src/pages/LandingPage.tsx` before it
-      expires, or remove the field.
-- [ ] Add `/signup` to `web/public/sitemap.xml` if you want it indexed. It is not listed now.
+- [x] Landing page `<h1>` keeps the headline without "Skoleoverblikket". A brand line above it
+      looked wrong, and the name is already in the `<title>`, JSON-LD and nav.
+- [x] `priceValidUntil` in `web/src/pages/LandingPage.tsx` is computed at build time as 31 Dec
+      next year, so it rolls forward on every deploy.
+- [x] `/signup` is indexable: `noindex` removed, `SeoMeta` added, listed in `web/public/sitemap.xml`.
+      It is not prerendered (Google renders it with JavaScript), so check it with URL Inspection
+      after deploy.
 
 ## 4. Get links pointing to the site (ongoing)
 

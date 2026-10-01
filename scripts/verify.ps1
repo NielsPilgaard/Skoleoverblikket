@@ -10,12 +10,15 @@
     Skip Biome and TypeScript build steps.
 .PARAMETER SkipDotnet
     Skip all dotnet steps (format, build, tests).
+.PARAMETER SkipDocs
+    Skip the ryni check (broken Markdown links, SKILL.md metadata).
 #>
 param(
     [switch]$NoFix,
     [switch]$SkipTests,
     [switch]$SkipFrontend,
-    [switch]$SkipDotnet
+    [switch]$SkipDotnet,
+    [switch]$SkipDocs
 )
 
 $ErrorActionPreference = 'Continue'
@@ -28,7 +31,7 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 
 function Step([string]$name, [scriptblock]$body) {
     Write-Host "`n==> $name" -ForegroundColor Cyan
-    $output = & $body 2>&1
+    $output = (& $body 2>&1 | Out-String).TrimEnd()
     $exit = $LASTEXITCODE
     if ($exit -ne 0) {
         $script:Errors += "FAIL [$name]`n$output"
@@ -93,6 +96,35 @@ if (-not $SkipDotnet) {
             Set-Location $RepoRoot
             dotnet test --project api/tests/Skoleoverblikket.Api.IntegrationTests/Skoleoverblikket.Api.IntegrationTests.csproj --configuration Release --no-build -- --timeout 120s
         }
+    }
+}
+
+if (-not $SkipDocs) {
+    Step "ryni (Markdown links + skills)" {
+        if (-not (Get-Command ryni -ErrorAction SilentlyContinue)) {
+            "ryni is not installed. Run scripts/setup.ps1, or see https://github.com/computerlovetech/ryni#installation"
+            $global:LASTEXITCODE = 1
+            return
+        }
+        # ryni has no ignore support and would walk node_modules, bin/ and obj/.
+        # Check a mirror of the non-ignored files instead: Markdown copied, everything
+        # else as an empty placeholder so links to code files still resolve.
+        $mirror = Join-Path ([IO.Path]::GetTempPath()) "skoleoverblikket-ryni"
+        if (Test-Path $mirror) { Remove-Item -Recurse -Force $mirror }
+        git -C $RepoRoot -c core.quotepath=false ls-files -co --exclude-standard | ForEach-Object {
+            $src = Join-Path $RepoRoot $_
+            if (-not (Test-Path -LiteralPath $src -PathType Leaf)) { return }
+            $dest = Join-Path $mirror $_
+            [void][IO.Directory]::CreateDirectory((Split-Path $dest))
+            if ($_ -match '\.(md|markdown)$') {
+                [IO.File]::Copy($src, $dest)
+            } else {
+                [IO.File]::WriteAllBytes($dest, @())
+            }
+        }
+        Set-Location $mirror
+        $env:NO_COLOR = '1'
+        ryni check .
     }
 }
 

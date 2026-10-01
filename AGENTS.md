@@ -155,15 +155,16 @@ After finishing any feature or fix, run **all of the following** before declarin
 1. **TypeScript build**: `cd web && npm run build` — catches type errors that tsc would reject in CI.
 2. **dotnet format**: auto-fixes by default via `verify.ps1`. Use `-NoFix` only to inspect violations without changing files.
 3. **API integration tests**: `dotnet test`
-4. **Playwright e2e**: `cd web && npx playwright test --reporter=line` — starts Aspire stack automatically. Pass `SKIP_ASPIRE=1` if already running.
+4. **ryni**: `ryni check` via `verify.ps1` — broken local Markdown links and invalid `SKILL.md` metadata. Install with `scripts/setup.ps1`.
+5. **Playwright e2e**: `cd web && npx playwright test --reporter=line` — starts Aspire stack automatically. Pass `SKIP_ASPIRE=1` if already running.
 
-Do not report a task as complete until all four pass.
+Do not report a task as complete until all five pass.
 
 Formatting never fails CI: a pre-commit hook (`.githooks/`, enabled by `npm install` in `web/`) formats staged files, and the `autofix` job in `ci.yml` commits any formatting left over. Biome lint rules and TypeScript errors still fail CI; on PRs, `ci-fix.yml` lets Claude try one fix.
 
 **Use the skills instead of running commands manually:**
-- `/verify` — runs steps 1–3 (TypeScript build, dotnet format, dotnet build, API integration tests)
-- `/test` — runs step 4 (Playwright e2e)
+- `/verify` — runs steps 1–4 (TypeScript build, dotnet format, dotnet build, API integration tests, ryni)
+- `/test` — runs step 5 (Playwright e2e)
 - `/add-migration` — generates a new EF Core migration after model changes
 
 ## Documentation map

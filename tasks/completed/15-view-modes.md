@@ -53,7 +53,7 @@ Extended `AuthContext` with `staffRole: StaffRole | null` and `staffId: string |
 
 ### Step 4 — Route protection ✅
 
-`AdminRoute` component in [web/src/App.tsx](../web/src/App.tsx) redirects non-admins to `/mig/skema`. Wrapped routes: dashboard, klasser, medarbejdere, fag, lokaler, eksporter, abonnement, indstillinger, and all sub-routes. Non-admins at `/` redirect to `/mig/skema`.
+`AdminRoute` component in [web/src/App.tsx](../../web/src/App.tsx) redirects non-admins to `/mig/skema`. Wrapped routes: dashboard, klasser, medarbejdere, fag, lokaler, eksporter, abonnement, indstillinger, and all sub-routes. Non-admins at `/` redirect to `/mig/skema`.
 
 ### Step 5 — Admin "view as" switcher (optional, lower priority)
 

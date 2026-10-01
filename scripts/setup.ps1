@@ -96,6 +96,29 @@ else {
     Write-Ok "Aspire CLI installed"
 }
 
+# ── ryni (Markdown/skill linter, used by verify.ps1) ────────────────────────
+
+Write-Step "Checking ryni..."
+
+$ryniVersion = $null
+try { $ryniVersion = (ryni --version 2>$null) } catch {}
+
+if ($ryniVersion) {
+    Write-Skip "ryni is already installed ($ryniVersion)"
+}
+else {
+    Write-Step "Installing ryni..."
+    Invoke-RestMethod -Uri "https://github.com/computerlovetech/ryni/releases/download/v0.2.2/ryni-installer.ps1" | Invoke-Expression
+    $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+    $ryniCheck = $null
+    try { $ryniCheck = (ryni --version 2>$null) } catch {}
+    if (-not $ryniCheck) {
+        Write-Fail "Failed to install ryni. See https://github.com/computerlovetech/ryni#installation"
+        exit 1
+    }
+    Write-Ok "ryni installed"
+}
+
 # ── Docker ───────────────────────────────────────────────────────────────────
 
 Write-Step "Checking Docker..."

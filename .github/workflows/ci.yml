@@ -28,7 +28,7 @@ jobs:
 
       - name: Verify (format + build)
         shell: pwsh
-        run: pwsh scripts/verify.ps1 -SkipFrontend -SkipTests
+        run: pwsh scripts/verify.ps1 -SkipFrontend -SkipTests -SkipDocs
 
       - name: Enable tUnit HTML report artifact upload
         uses: actions/github-script@v7
@@ -74,6 +74,22 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: web
+
+  docs:
+    name: Docs — ryni
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ryni
+        run: |
+          curl -LsSf https://github.com/computerlovetech/ryni/releases/download/v0.2.2/ryni-installer.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # Broken local Markdown links and invalid SKILL.md metadata.
+      - name: ryni check
+        shell: pwsh
+        run: pwsh scripts/verify.ps1 -SkipFrontend -SkipDotnet
 
   # Self-healing formatting: run the formatters and commit the result back to the branch.
   # [skip ci] + GITHUB_TOKEN means the fix commit starts no new CI run or deploy;

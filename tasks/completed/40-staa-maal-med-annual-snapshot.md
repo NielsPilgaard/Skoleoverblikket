@@ -33,7 +33,7 @@ live, off whichever `Schema`/`SchemaSlot` rows are active for "today"
 computation is persisted — every request recomputes from current state.
 
 This is a problem for the annual tilsyn workflow described in
-[19-staa-maal-med.md](completed/19-staa-maal-med.md#5-tilsynssystemet-kontekst-for-feature-positionering):
+[19-staa-maal-med.md](19-staa-maal-med.md#5-tilsynssystemet-kontekst-for-feature-positionering):
 an ekstern tilsynsførende visits at least once a year and needs to assess
 coverage across the whole skoleår, not just the moment they happen to load
 the page. If a schema changes mid-year — a course gets recategorized, a
@@ -45,7 +45,7 @@ after that skoleår has ended and its schemas are no longer the active ones
 
 This task is scoped narrowly: give admins a way to freeze and later retrieve
 a copy of the coverage view. It is explicitly **not**
-[task 20 (Fase 3)](20-staa-maal-med-fase3.md) — task 20 is about storing and
+[task 20 (Fase 3)](../20-staa-maal-med-fase3.md) — task 20 is about storing and
 publishing the school's own undervisningsplaner/mål under Friskoleloven §1a
 (`TeachingPlan`, `TeachingGoal`, `CompliancePath`), a much larger and
 separate feature. This task only snapshots the existing structural

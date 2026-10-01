@@ -143,7 +143,7 @@ evalueringsform, chosen sti + supporting docs). Freeform text fields
 validated/sanitized before persistence; the publish action rejects invalid
 content rather than persisting it. Same pattern as the coverage-snapshot
 feature in
-[40-staa-maal-med-annual-snapshot.md](40-staa-maal-med-annual-snapshot.md).
+[40-staa-maal-med-annual-snapshot.md](completed/40-staa-maal-med-annual-snapshot.md).
 The public page serves the snapshot for the current skoleår if one has been
 published; otherwise it serves the latest snapshot with a `SkoleaarStartYear`
 prior to the current skoleår. It never serves a snapshot for a future

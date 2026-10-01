@@ -107,8 +107,8 @@ Alle øvrige fag har kun _vejledende_ timetal (Bilag 1, ikke bindende).
 
 Skoleoverblikket sporer tidsslots (lektioner) pr. klasse pr. kursus (fag) via skema-slots og kan i dag beregne:
 
-- **Ugetimer pr. fag pr. klasse** — via `StatsController` ([api/Skoleoverblikket.Api/Controllers/StatsController.cs:54](../api/Skoleoverblikket.Api/Controllers/StatsController.cs#L54))
-- **Årstimer pr. fag pr. klasse** (approximeret) — via `ReportsController` kursustimerapport ([api/Skoleoverblikket.Api/Controllers/ReportsController.cs:54](../api/Skoleoverblikket.Api/Controllers/ReportsController.cs#L54)), summeret over aktive skema-perioder (StartDate/EndDate)
+- **Ugetimer pr. fag pr. klasse** — via `StatsController` ([api/Skoleoverblikket.Api/Controllers/StatsController.cs:54](../../api/Skoleoverblikket.Api/Controllers/StatsController.cs#L54))
+- **Årstimer pr. fag pr. klasse** (approximeret) — via `ReportsController` kursustimerapport ([api/Skoleoverblikket.Api/Controllers/ReportsController.cs:54](../../api/Skoleoverblikket.Api/Controllers/ReportsController.cs#L54)), summeret over aktive skema-perioder (StartDate/EndDate)
 - **Lærerbelastning** — timer pr. medarbejder pr. uge og år
 - **Ubesatte klasser** — slots uden kursus-tildeling
 

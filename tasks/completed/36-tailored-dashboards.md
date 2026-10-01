@@ -15,13 +15,13 @@ purpose: >-
 
 ## Context
 
-Sidebar ([Sidebar.tsx](../web/src/components/Sidebar.tsx)) has ~25 nav items across 5 groups (Planlægning, Stamdata, Filer & Eksport, Bestyrelse, Kontakt). Too many for a school secretary (Hanne) or a teacher to scan and know where to go. Rather than restructure the sidebar itself, make the dashboard the answer: land the user on a page tailored to their role that surfaces the actions they actually need and flags what needs attention, with the full sidebar as secondary/reference navigation.
+Sidebar ([Sidebar.tsx](../../web/src/components/Sidebar.tsx)) has ~25 nav items across 5 groups (Planlægning, Stamdata, Filer & Eksport, Bestyrelse, Kontakt). Too many for a school secretary (Hanne) or a teacher to scan and know where to go. Rather than restructure the sidebar itself, make the dashboard the answer: land the user on a page tailored to their role that surfaces the actions they actually need and flags what needs attention, with the full sidebar as secondary/reference navigation.
 
 **Scope this round: Admin and Staff only.** Board (3 routes already, low complexity) and Parent are out of scope — revisit later if needed.
 
-Roles come from [AuthContext.ts](../web/src/auth/AuthContext.ts): `isAdmin`, `isParent`, `isBoard`, `isSuperAdmin`, `staffRole` (Teacher/Aide/Vikar for non-admin staff). No principal/secretary split exists in the system — admin is a single role.
+Roles come from [AuthContext.ts](../../web/src/auth/AuthContext.ts): `isAdmin`, `isParent`, `isBoard`, `isSuperAdmin`, `staffRole` (Teacher/Aide/Vikar for non-admin staff). No principal/secretary split exists in the system — admin is a single role.
 
-## Admin dashboard (`/dashboard`, existing — [DashboardPage.tsx](../web/src/pages/DashboardPage.tsx))
+## Admin dashboard (`/dashboard`, existing — [DashboardPage.tsx](../../web/src/pages/DashboardPage.tsx))
 
 Keep existing `OnboardingCard` and stat cards/tables, but restructure page order and add two new sections.
 
@@ -40,7 +40,7 @@ Keep existing `OnboardingCard` and stat cards/tables, but restructure page order
 4. Existing stat cards (Klasser, Medarbejdere, Fag, Lokaler, Skemaer, Klasser u. skema)
 5. Existing tables (Timer pr. medarbejder, Klasser med mangler)
 
-**Module gating**: beskeder and kontaktbog alert tiles only apply/query if `hasParentModule` is true (see [useSubscription.ts](../web/src/hooks/useSubscription.ts)) — matches existing `moduleGated` sidebar pattern. Pending absence and vacation registration are not module-gated — absence reporting works independent of the parent module (see backend section below).
+**Module gating**: beskeder and kontaktbog alert tiles only apply/query if `hasParentModule` is true (see [useSubscription.ts](../../web/src/hooks/useSubscription.ts)) — matches existing `moduleGated` sidebar pattern. Pending absence and vacation registration are not module-gated — absence reporting works independent of the parent module (see backend section below).
 
 ## Staff dashboard (new — `/mig/oversigt`)
 
@@ -51,7 +51,7 @@ New landing page for non-admin authenticated users (Teacher/Aide/Vikar), replaci
 2. Unread beskeder count (module-gated, hidden if 0 or module inactive)
 3. Unread kontaktbog count (module-gated, hidden if 0 or module inactive)
 
-**Explicitly dropped from this task**: a staff self-report-absence/vikar-request flow. No such feature exists anywhere in the codebase today (absence reporting is parent-reports → admin-confirms only, see [AbsenceController.cs](../api/Skoleoverblikket.Api/Controllers/AbsenceController.cs)). Already tracked separately as [teacher-report-abscence.md](teacher-report-abscence.md) — do not fold into this task.
+**Explicitly dropped from this task**: a staff self-report-absence/vikar-request flow. No such feature exists anywhere in the codebase today (absence reporting is parent-reports → admin-confirms only, see [AbsenceController.cs](../../api/Skoleoverblikket.Api/Controllers/AbsenceController.cs)). Already tracked separately as [38-teacher-report-abscence.md](../38-teacher-report-abscence.md) — do not fold into this task.
 
 ## Routing changes
 
@@ -147,6 +147,6 @@ After controller/DTO changes, run `/codegen` to regenerate OpenAPI spec + typed 
 
 - Board dashboard tailoring
 - Parent dashboard tailoring (parent already lands on `/foraeldrevisning/skema`, unchanged)
-- Staff self-report-absence/vikar-request flow (tracked in [teacher-report-abscence.md](teacher-report-abscence.md))
+- Staff self-report-absence/vikar-request flow (tracked in [38-teacher-report-abscence.md](../38-teacher-report-abscence.md))
 - Sidebar restructuring/regrouping itself — this task solves navigation confusion via the dashboard, not by changing the ~25-item nav tree
 - Upsell/teaser treatment for module-gated tiles when parent module is inactive — tiles are simply omitted, no marketing surface

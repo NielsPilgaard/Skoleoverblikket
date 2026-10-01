@@ -69,7 +69,7 @@ See [docs/PERSONAS.md](PERSONAS.md) for the concrete users these principles are 
 
 ### Schema planner
 
-The core product. Each class (klasse) has its own weekly schema (skema). The school defines a default time slot template — lesson durations and breaks — and each class inherits it. Classes can override individual time slots. See [docs/schema-features.md](schema-features.md) for full detail.
+The core product. Each class (klasse) has its own weekly schema (skema). The school defines a default time slot template — lesson durations and breaks — and each class inherits it. Classes can override individual time slots. See [docs/SCHEMA_FEATURES.md](SCHEMA_FEATURES.md) for full detail.
 
 - Weekly grid view per class
 - Assign course (fag) + teacher (lærer) + room (lokale) to each time slot

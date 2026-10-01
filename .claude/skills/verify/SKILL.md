@@ -1,6 +1,6 @@
 ---
 name: verify
-description: "Run all local validation checks for Skoleoverblikket before declaring work done. USE THIS SKILL when the user says 'verify', 'check everything', 'validate', 'is this ready', 'does it compile', 'are there errors', or similar. Runs: ESLint, TypeScript build, dotnet format, dotnet build, API integration tests, and Playwright e2e."
+description: "Run all local validation checks for Skoleoverblikket before declaring work done. USE THIS SKILL when the user says 'verify', 'check everything', 'validate', 'is this ready', 'does it compile', 'are there errors', or similar. Runs: Biome, TypeScript build, dotnet format, dotnet build, API integration tests, and ryni (Markdown links + skill metadata). Playwright e2e is the /test skill."
 ---
 
 # Verify Skill
@@ -29,6 +29,7 @@ The script runs all steps and **collects all errors before exiting** — you see
 3. **dotnet format** — auto-fixes by default; output suppressed. Use `-NoFix` to inspect violations.
 4. **dotnet build** — Release, `-p:CI=true`
 5. **API integration tests** — tUnit + Testcontainers (skipped with `-SkipTests`; needs Docker)
+6. **ryni** — broken local Markdown links and invalid `SKILL.md` metadata (skipped with `-SkipDocs`). Checks a temp mirror of non-gitignored files, so `node_modules` and build output are ignored. Fails with an install hint if `ryni` is missing — run `scripts/setup.ps1`.
 
 ## Playwright e2e
 
