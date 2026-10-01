@@ -1,0 +1,1 @@
+having a page where parents can access custom links set by admins could be very useful, for example for external integrations, abscence reporting, aula, bodkortet, facebook groups etc etc
