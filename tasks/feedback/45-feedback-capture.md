@@ -33,7 +33,7 @@ Today users who hit a bug have to email, and most won't — Hanne doesn't know w
 - **D4 — Dictation**: Scaleway Generative APIs `whisper-large-v3` (EU, €0.003 per audio minute, first 60 minutes free, max 25 MB, accepts webm/mp4/m4a/ogg/wav, so both Chrome's and Safari's `MediaRecorder` output work as-is). Audio is transcribed and discarded, never stored. Alexandra Instituttet has no speech-to-text on its platform (checked 2026-10-01; their Danish ASR work, CORAL, would mean self-hosting).
 - **D5 — Two copies**: raw (screenshot + text) for the owner in the backoffice; masked screenshot + DOM outline + redacted text/log for AI.
 - **D6 — Reporter feedback**: status notifications only (Modtaget → Vi kigger på det → Rettet / Lukket med begrundelse). Timeline model so a two-way thread can be added later.
-- **D7 — Retention**: screenshots deleted 30 days after the report is closed, or 90 days after creation, whichever comes first. Redacted text and log kept.
+- **D7 — Retention**: raw data — screenshots (raw + masked) **and the raw `Description`** — deleted 30 days after the report is closed, or 90 days after creation, whichever comes first. The raw description holds the unredacted personal data, so it follows the screenshots; `DescriptionRedacted` and the redacted log are kept. Uploaded objects that never became part of a report are deleted within 24 hours.
 
 ## Scope
 
@@ -77,8 +77,9 @@ Never records typed text, input values or response bodies.
 
 New `FeedbackController` (`/api/v1/feedback`), `FeedbackService` owning the rules:
 
-- `POST /feedback/uploads` → presigned PUTs for raw + masked screenshot (existing presign+confirm pattern used for avatars), **private** object keys under `feedback/{tenantId}/{reportId}/`.
-- `POST /feedback` → creates the report (description, outline, action log, context, upload confirm tokens). Validates role/tenant setting and rate limits.
+- `POST /feedback/uploads` → presigned PUTs for raw + masked screenshot (presign+confirm shape as for avatars), **private** object keys. Same role / tenant-setting / rate-limit checks as `POST /feedback`. The server issues a draft id and derives the keys itself from the current tenant (`ITenantContext`) — `feedback/{tenantId}/{draftId}/raw.png|masked.png`; the client never supplies a key, tenant or report id. Returns the draft id plus confirm tokens bound to (tenant, draft id, reporter user id, object key), signed and short-lived.
+- `POST /feedback` → creates the report (description, outline, action log, context, draft id, confirm tokens); the draft id becomes the report id. Validates role/tenant setting and rate limits. Rejects (400 ProblemDetails) any token whose tenant, draft id or user doesn't match the current request, so a token can't attach another tenant's or another report's object. Feedback-specific validation lives in `FeedbackService`; don't reuse `BoardFilesController.Confirm`.
+- **Orphan cleanup**: objects under `feedback/` whose draft id has no `FeedbackReport` (abandoned modal, failed create, rejected token) are deleted by the daily retention job once older than 24 hours. Optionally also an OVH bucket lifecycle rule expiring `feedback/` objects after 90 days as a backstop (never later than D7).
 - `POST /feedback/transcriptions` → audio (≤ 2 min, ≤ 5 MB) → Scaleway Whisper → `{ text }`. Not stored. Rate limited separately (20/user/day).
 - `GET /feedback/mine` → reporter's own reports with reporter-visible events.
 - SuperAdmin endpoints (follow the existing `SuperAdminTenantsController` cross-tenant pattern; see [AUTHORIZATION.md](../../docs/AUTHORIZATION.md)): list/filter, detail with short-lived presigned GETs for both screenshots, `POST …/{id}/status` (status + optional reporter-visible message), `POST …/{id}/duplicate-of/{otherId}`.
@@ -89,7 +90,7 @@ New `FeedbackController` (`/api/v1/feedback`), `FeedbackService` owning the rule
 
 **Entities** (migration via `/add-migration`, written by a human):
 
-- `FeedbackReport`: `TenantId`, `ReporterUserId`, `ReporterRole`, `Description`, `DescriptionRedacted`, `RawScreenshotKey?`, `MaskedScreenshotKey?`, `DomOutline` (jsonb, redacted), `ActionLog` (jsonb, redacted), `Context` (jsonb), `Status` (`Received`, `InProgress`, `Fixed`, `Closed`), `Category?` (task 46), `DuplicateOfId?`, `CreatedAt`, `ClosedAt?`.
+- `FeedbackReport`: `TenantId`, `ReporterUserId`, `ReporterRole`, `Description?` (raw, nulled per D7), `DescriptionRedacted`, `RawScreenshotKey?`, `MaskedScreenshotKey?`, `DomOutline` (jsonb, redacted), `ActionLog` (jsonb, redacted), `Context` (jsonb), `Status` (`Received`, `InProgress`, `Fixed`, `Closed`), `Category?` (task 46), `DuplicateOfId?`, `CreatedAt`, `ClosedAt?`.
 - `FeedbackEvent`: `ReportId`, `Type` (`Created`, `StatusChanged`, `MessageToReporter`, `MarkedDuplicate`, … later `Triage*`, `Fix*`), `Payload` (jsonb), `VisibleToReporter`, `CreatedAt`.
 - `Tenant.FeedbackEnabledForParents` (default false).
 
@@ -97,7 +98,7 @@ New `FeedbackController` (`/api/v1/feedback`), `FeedbackService` owning the rule
 
 **Email to owner**: on every new report, to `Feedback__NotifyEmail` — tenant, role, route, redacted description, link to the backoffice. No screenshot in the email.
 
-**Retention**: background job (daily) deletes screenshot objects per D7 and nulls the keys.
+**Retention**: background job (daily) deletes screenshot objects per D7, nulls the keys and the raw `Description` (set to `null`; column nullable), and sweeps orphaned upload objects (see above).
 
 ### 4. Backoffice page
 
@@ -123,6 +124,8 @@ SuperAdmin → "Tilbagemeldinger": table (date, school, role, route, status, cat
 API integration (`FeedbackTests.cs`):
 - staff creates a report → stored with redacted copies; names of the tenant's students/staff and a CPR in the description are redacted in `DescriptionRedacted`, raw kept.
 - tenant isolation: another tenant's staff can't read it; `GET /feedback/mine` only returns own reports.
+- upload binding: confirm tokens from tenant A rejected in tenant B's `POST /feedback`; a token for draft X rejected on a report with draft Y; another user's token rejected.
+- retention: after the D7 deadline the job deletes both screenshot objects, nulls the keys and the raw `Description`, keeps `DescriptionRedacted`; an uploaded object with no report is deleted after 24 hours.
 - parent gets 403 when `FeedbackEnabledForParents` is off, 201 when on.
 - rate limit returns 429 ProblemDetails on report #6.
 - SuperAdmin status change creates a reporter-visible event and a notification; duplicates follow.

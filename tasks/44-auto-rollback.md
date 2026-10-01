@@ -15,7 +15,7 @@ status: 'Proposed'
 
 ## TL;DR
 
-New `watch` job at the end of `cd.yml`: 15 minutes of checks against prod. Pass → record the tag as **last known good** (GitHub Deployment status). Fail → if no migration changed between last-good and this sha: redeploy last-good with `deploy.mjs`, open a `deploy-freeze` issue (CD skips while it's open) and a revert PR that closes it. If a migration changed: no rollback, alert only. Applies to **all** deploys, not just AI ones. Also: `main` ruleset, "Skoleoverblikket Bot" GitHub App, `/api/health` readiness endpoint, smoke tenant (`IsInternal`), Pingpuffin for 24/7 uptime. Everything runs in public-repo Actions — €0.
+New `watch` job at the end of `cd.yml`: 15 minutes of checks against prod. Pass → record the tag as **last known good** (GitHub Deployment on a separate `production-verified` environment). Fail → if no migration changed between last-good and this sha: redeploy last-good with `deploy.mjs`, open a `deploy-freeze` issue (CD skips while it's open) and a revert PR that closes it. If a migration changed: no rollback, alert only. Applies to **all** deploys, not just AI ones. Also: `main` ruleset, "Skoleoverblikket Bot" GitHub App, `/api/health` readiness endpoint, smoke tenant (`IsInternal`), Pingpuffin for 24/7 uptime. Everything runs in public-repo Actions — €0.
 
 ## Context
 
@@ -70,14 +70,16 @@ Because migrations run before deploy and are forward-only, rolling back the imag
 
 ### 5. Watch job (`cd.yml`)
 
-Runs after `deploy`, `timeout-minutes: 20`, concurrency `production-deploy`:
+Runs after `deploy`, `timeout-minutes: 20`.
 
-1. Fetch last-good tag: latest GitHub Deployment on environment `production` with status `success`.
+**Concurrency**: one workflow-level group in `cd.yml`, `concurrency: { group: production-deploy, cancel-in-progress: false }`, so `deploy`, `watch` and `rollback` of one run hold the group together and a new deploy cannot start while a watch or rollback is active. Every CD entry point (`workflow_run` from Staging, `workflow_dispatch` incl. manual rollback with `image_tag`) runs through `cd.yml` and therefore joins this group; no other workflow may deploy prod. Note: GitHub keeps at most one *pending* run per group, so a newer queued deploy replaces an older queued one — acceptable, since the newer sha includes the older.
+
+1. Fetch last-good tag from a **separate record**: latest GitHub Deployment with status `success` on environment `production-verified` (written only by step 6, never by the `deploy` job), excluding the sha being watched. Do not read the `production` environment: the `deploy` job's `environment: production` makes GitHub mark the current candidate `success` before it is verified.
 2. For 15 minutes, every 30 s: `GET /` (200 + HTML references a hashed bundle), `GET /api/health` (200 + `X-App-Version` == deployed sha after the first 2 minutes), Keycloak discovery `GET https://auth.skoleoverblikket.dk/realms/Skoleoverblikket/.well-known/openid-configuration`.
 3. At ~2 min and ~10 min: run the `smoke` Playwright project (one automatic retry).
 4. At end: elmah.io API — count errors in the watch window vs the 15 minutes before deploy. Fail if `count > max(ELMAH_MIN_ERRORS, ELMAH_SPIKE_FACTOR × baseline)` (repo variables, start at 10 and 5).
 5. **Fail conditions**: 3 consecutive failures of any health probe, smoke failing after retry, or error spike.
-6. **Pass**: create a Deployment status `success` for this sha → it becomes last-good. Then (task 47) post `Feedback:` trailers to the API.
+6. **Pass**: create a Deployment on environment `production-verified` for this sha with status `success` → it becomes last-good. Then (task 47) post `Feedback:` trailers to the API.
 
 Implement as a Node script `infrastructure/scripts/watch.mjs` (same style as `deploy.mjs`), with Playwright invoked from the workflow.
 
