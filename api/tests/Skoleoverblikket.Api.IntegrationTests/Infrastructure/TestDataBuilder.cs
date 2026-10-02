@@ -126,24 +126,6 @@ public static class TestDataBuilder
 		return file;
 	}
 
-	public static async Task<WeekPlan> CreateWeekPlanAsync(
-		IServiceProvider services, Guid tenantId, Guid classId, int isoYear, int isoWeek)
-	{
-		using var scope = services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-		var plan = new WeekPlan
-		{
-			Id = Guid.NewGuid(),
-			TenantId = tenantId,
-			ClassId = classId,
-			IsoYear = isoYear,
-			IsoWeek = isoWeek,
-		};
-		db.WeekPlans.Add(plan);
-		await db.SaveChangesAsync();
-		return plan;
-	}
-
 	public static async Task<(Class klass, Schema schema)> CreateClassWithSchemaAsync(
 		IServiceProvider services, Guid tenantId,
 		string className = "2.b", string schemaName = "Skema 2024")
