@@ -63,19 +63,22 @@ export function AssignSubstitutePanel({
     },
   })
 
-  function assign(substituteTeacherId: string | null) {
+  function assign(substituteTeacherId: string | null, substituteAideId: string | null) {
     assignMutation.mutate({
       path: { weekPlanId, slotId },
-      body: { substituteTeacherId, substituteAideId: null },
+      body: { substituteTeacherId, substituteAideId },
     })
   }
 
+  // This panel sets the teacher seat; an aide vikar already booked on the lektion stays.
   function handleAssign(staffId: string) {
-    assign(staffId)
+    assign(staffId, currentSubstituteAideId)
   }
 
+  // Removes the vikar shown above: the teacher seat, or the aide seat when that is the only one.
   function handleClear() {
-    assign(null)
+    if (currentSubstituteTeacherId) assign(null, currentSubstituteAideId)
+    else assign(null, null)
   }
 
   // Close on Escape

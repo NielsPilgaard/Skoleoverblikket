@@ -29,6 +29,7 @@ public sealed class StaffAbsenceController(StaffAbsenceService staffAbsences) : 
 		{
 			StaffAbsenceReportResult.Created => CreatedAtAction(nameof(GetMine), new { }, new { id }),
 			StaffAbsenceReportResult.StaffNotFound => NotFound(),
+			StaffAbsenceReportResult.NoStaffRecord => Problem("Vælg den medarbejder, der er fraværende.", statusCode: 400),
 			StaffAbsenceReportResult.InvalidDates => Problem("Ugyldige datoer. Fravær kan højst dække 90 dage.", statusCode: 400),
 			_ => Forbid(),
 		};

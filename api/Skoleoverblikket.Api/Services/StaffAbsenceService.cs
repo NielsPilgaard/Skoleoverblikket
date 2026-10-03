@@ -233,9 +233,8 @@ public sealed class StaffAbsenceService(
 		var lessons = await GetAffectedLessonsAsync(absence.StaffId, from, absence.EndDate ?? absence.Date, cancellationToken);
 		var assignments = await substitutes.GetAssignmentsAsync(lessons.Select(l => l.Lesson.SchemaSlotId).Distinct().ToList(), cancellationToken);
 
-		db.StaffAbsences.Remove(absence);
-		await db.SaveChangesAsync(cancellationToken);
-
+		// Clear cover first: if a clear fails the absence survives and the delete can be retried,
+		// instead of leaving vikarer booked for an absence that no longer exists.
 		foreach (var (date, lesson) in lessons)
 		{
 			if (CurrentSubstitute(assignments, date, lesson).Id is not null)
@@ -243,6 +242,9 @@ public sealed class StaffAbsenceService(
 				await substitutes.AssignForLessonAsync(date, lesson.SchemaSlotId, lesson.Seat, null, cancellationToken);
 			}
 		}
+
+		db.StaffAbsences.Remove(absence);
+		await db.SaveChangesAsync(cancellationToken);
 
 		return StaffAbsenceDeleteResult.Deleted;
 	}
@@ -272,12 +274,23 @@ public sealed class StaffAbsenceService(
 			})
 			.ToListAsync(cancellationToken);
 
+		// One lesson lookup per staff member over the span of all their absences, not one per absence.
+		var lessonsByStaff = new Dictionary<Guid, List<(DateOnly Date, LessonRow Lesson)>>();
+		foreach (var group in rows.GroupBy(a => a.StaffId))
+		{
+			lessonsByStaff[group.Key] = await GetAffectedLessonsAsync(
+				group.Key, group.Min(a => a.Date), group.Max(a => a.EndDate ?? a.Date), cancellationToken);
+		}
+
+		var assignments = await substitutes.GetAssignmentsAsync(
+			lessonsByStaff.Values.SelectMany(l => l).Select(l => l.Lesson.SchemaSlotId).Distinct().ToList(), cancellationToken);
+
 		var today = SchoolDayCalendar.Today();
 		var result = new List<StaffAbsenceDto>(rows.Count);
 		foreach (var a in rows)
 		{
-			var lessons = await GetAffectedLessonsAsync(a.StaffId, a.Date, a.EndDate, cancellationToken);
-			var assignments = await substitutes.GetAssignmentsAsync(lessons.Select(l => l.Lesson.SchemaSlotId).Distinct().ToList(), cancellationToken);
+			var last = a.EndDate ?? a.Date;
+			var lessons = lessonsByStaff[a.StaffId].Where(l => l.Date >= a.Date && l.Date <= last).ToList();
 			var covered = lessons.Count(l => CurrentSubstitute(assignments, l.Date, l.Lesson).Id is not null);
 			result.Add(new StaffAbsenceDto(
 				a.Id, a.StaffId, a.StaffName, a.Role, a.Date, a.EndDate, a.Reason, a.ReportedByName, a.CreatedAt,

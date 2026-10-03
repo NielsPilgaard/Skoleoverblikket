@@ -68,7 +68,9 @@ export function formatLongDate(iso: string): string {
 export function addDaysIso(iso: string, days: number): string {
   const d = new Date(`${iso}T12:00:00`)
   d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mm}-${dd}`
 }
 
 /** The school year a date falls in, by its start year (1 August boundary): 2025 = 2025/26. */

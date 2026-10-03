@@ -141,6 +141,36 @@ public sealed class AttendanceTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task PendingLeave_DoesNotBlockStaffMark_ApprovedLeaveThenCounts()
+	{
+		var today = DanishToday();
+		if (RecentSchoolDay() != today)
+		{
+			return; // Leave can only be requested from today on, so this needs a school day today.
+		}
+
+		var classId = await _kit.CreateClassAsync(_admin, "6.b", 6);
+		var student = await _kit.CreateStudentAsync(classId);
+		var parent = await _kit.ParentOfAsync(student.Id, $"parent-{Guid.NewGuid()}");
+		await ReportAsync(parent, student.Id, AbsenceCategory.ExtraordinaryLeave, today);
+		var leaveId = (await ParentRecordsAsync(parent)).Single().Id;
+
+		var row = (await GetAsync(_admin, classId, today)).Students.Single();
+		await Assert.That(row.Morning).IsNull();
+		await Assert.That(row.ParentReport!.LeaveStatus).IsEqualTo(LeaveStatus.Pending);
+
+		await SaveAttendanceAsync(_admin, classId, today, AttendanceCheckpoint.StartOfDay, (student.Id, AbsenceCategory.Unauthorized));
+		var records = await ParentRecordsAsync(parent);
+		await Assert.That(records.Any(r => r.Category == AbsenceCategory.Unauthorized && r.Source == AbsenceSource.Staff)).IsTrue();
+
+		// Once approved, the leave is what counts for the day — not the mark made while it was pending.
+		await _admin.PostAsync($"/api/v1/absence/{leaveId}/approve", null);
+		var stats = (await StatsAsync(_admin, today, classId)).Students.Single();
+		await Assert.That(stats.LeaveDays).IsEqualTo(1m);
+		await Assert.That(stats.UnauthorizedDays).IsEqualTo(0m);
+	}
+
+	[Test]
 	public async Task EndOfDay_Grade7Plus_RecordsHalfDay()
 	{
 		if (RecentSchoolDay() is not { } day)

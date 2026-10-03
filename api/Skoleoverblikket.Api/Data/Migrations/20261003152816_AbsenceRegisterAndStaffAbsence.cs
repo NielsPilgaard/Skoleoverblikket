@@ -356,6 +356,11 @@ namespace Skoleoverblikket.Api.Data.Migrations
                 table: "AbsenceReports",
                 newName: "IX_AbsenceReports_ConfirmedByStaffId");
 
+            // Staff-registered fravær has no parent and cannot exist in the old schema.
+            migrationBuilder.Sql("""
+                DELETE FROM "AbsenceReports" WHERE "ReportedByParentId" IS NULL;
+                """);
+
             migrationBuilder.AlterColumn<Guid>(
                 name: "ReportedByParentId",
                 table: "AbsenceReports",

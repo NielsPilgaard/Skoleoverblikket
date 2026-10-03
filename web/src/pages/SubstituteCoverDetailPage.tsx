@@ -44,6 +44,7 @@ export default function SubstituteCoverDetailPage() {
       qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1StaffAbsences' }] })
       navigate('/vikardaekning')
     },
+    onError: (err) => setError(problemDetail(err) ?? 'Fraværet kunne ikke slettes.'),
   })
 
   if (isLoading) return <p className="px-4 py-8 text-sm text-gray-400">Indlæser…</p>

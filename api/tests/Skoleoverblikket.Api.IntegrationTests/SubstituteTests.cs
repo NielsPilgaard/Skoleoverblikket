@@ -236,6 +236,43 @@ public sealed class SubstituteTests(ApiFactory factory)
 		await Assert.That(slot.SubstituteTeacherId).IsNull();
 		await Assert.That(slot.SubstituteTeacherName).IsNull();
 	}
+
+	/// <summary>
+	/// Assigning someone who teaches an overlapping lektion in another klasse is rejected with 409.
+	/// </summary>
+	[Test]
+	public async Task AssignSubstitute_StaffTeachingOverlappingLesson_Returns409()
+	{
+		var timeSlot = await TestDataBuilder.CreateTimeSlotAsync(_factory.Services, _tenantId,
+			new TimeOnly(13, 0), new TimeOnly(13, 45), sortOrder: 6);
+		var teacher = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Lærer C");
+		var busy = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Optaget C");
+		var course = await TestDataBuilder.CreateCourseAsync(_factory.Services, _tenantId, "Engelsk");
+		var (klass, schema) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "6.c");
+		var (_, otherSchema) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "7.c");
+
+		await _client.PutAsJsonAsync($"/api/v1/classes/{klass.Id}/schemas/{schema.Id}/slots",
+			new { timeSlotId = timeSlot.Id, weekday = (int)DayOfWeek.Monday, courseId = course.Id, teacherId = teacher.Id });
+		await TestDataBuilder.CreateSchemaSlotAsync(_factory.Services, _tenantId,
+			otherSchema.Id, timeSlot.Id, course.Id, busy.Id, DayOfWeek.Monday);
+
+		var planResponse = await _client.GetAsync(
+			$"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var planDto = await planResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
+		var schemaSlotId = planDto!.Slots[0].SchemaSlotId;
+
+		var upsertResponse = await _client.PutAsJsonAsync(
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlotId, null, null, null));
+		upsertResponse.EnsureSuccessStatusCode();
+		var slotDto = await upsertResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
+
+		var response = await _client.PutAsJsonAsync(
+			$"/api/v1/week-plans/{slotDto!.WeekPlanId}/slots/{slotDto.Id}/substitute",
+			new AssignSubstituteRequest(busy.Id, null));
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+	}
 	[Test]
 	public async Task GetAvailable_AsParent_Returns403()
 	{

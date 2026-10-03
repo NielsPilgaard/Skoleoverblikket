@@ -67,6 +67,7 @@ public sealed class SubstituteController(
 			SetSubstituteResult.Saved => assignment!,
 			SetSubstituteResult.NotFound => NotFound(),
 			SetSubstituteResult.SamePersonBothRoles => Problem("Samme person kan ikke tildeles som både lærer og pædagog", statusCode: 400),
+			SetSubstituteResult.StaffBusy => Problem("Vikaren er optaget i samme tidsrum. Vælg en anden.", statusCode: 409),
 			_ => Problem("Vikaren findes ikke", statusCode: 400),
 		};
 	}
