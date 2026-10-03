@@ -51,7 +51,7 @@ New landing page for non-admin authenticated users (Teacher/Aide/Vikar), replaci
 2. Unread beskeder count (module-gated, hidden if 0 or module inactive)
 3. Unread kontaktbog count (module-gated, hidden if 0 or module inactive)
 
-**Explicitly dropped from this task**: a staff self-report-absence/vikar-request flow. No such feature exists anywhere in the codebase today (absence reporting is parent-reports → admin-confirms only, see [AbsenceController.cs](../../api/Skoleoverblikket.Api/Controllers/AbsenceController.cs)). Already tracked separately as [38-teacher-report-abscence.md](../38-teacher-report-abscence.md) — do not fold into this task.
+**Explicitly dropped from this task**: a staff self-report-absence/vikar-request flow. No such feature exists anywhere in the codebase today (absence reporting is parent-reports → admin-confirms only, see [AbsenceController.cs](../../api/Skoleoverblikket.Api/Controllers/AbsenceController.cs)). Already tracked separately as [38-teacher-report-abscence.md](38-teacher-report-abscence.md) — do not fold into this task.
 
 ## Routing changes
 
@@ -147,6 +147,6 @@ After controller/DTO changes, run `/codegen` to regenerate OpenAPI spec + typed 
 
 - Board dashboard tailoring
 - Parent dashboard tailoring (parent already lands on `/foraeldrevisning/skema`, unchanged)
-- Staff self-report-absence/vikar-request flow (tracked in [38-teacher-report-abscence.md](../38-teacher-report-abscence.md))
+- Staff self-report-absence/vikar-request flow (tracked in [38-teacher-report-abscence.md](38-teacher-report-abscence.md))
 - Sidebar restructuring/regrouping itself — this task solves navigation confusion via the dashboard, not by changing the ~25-item nav tree
 - Upsell/teaser treatment for module-gated tiles when parent module is inactive — tiles are simply omitted, no marketing surface

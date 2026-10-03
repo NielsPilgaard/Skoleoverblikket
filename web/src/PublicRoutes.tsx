@@ -3,9 +3,10 @@ import LandingPage from './pages/LandingPage'
 import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import ChangelogPage from './pages/ChangelogPage'
 
 /** Marketing pages prerendered to static HTML at build time (see scripts/prerender.mjs). */
-export const PRERENDERED_PATHS = ['/', '/om', '/kontakt', '/privatlivspolitik']
+export const PRERENDERED_PATHS = ['/', '/om', '/kontakt', '/nyheder', '/privatlivspolitik']
 
 /**
  * Marketing pages for build-time prerendering, so crawlers see content instead of a blank page.
@@ -18,6 +19,7 @@ export default function PublicRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="om" element={<AboutPage />} />
       <Route path="kontakt" element={<ContactPage />} />
+      <Route path="nyheder" element={<ChangelogPage />} />
       <Route path="privatlivspolitik" element={<PrivacyPolicyPage />} />
       <Route path="*" element={null} />
     </Routes>

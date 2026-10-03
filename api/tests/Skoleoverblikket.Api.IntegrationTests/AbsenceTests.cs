@@ -1,370 +1,269 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Skoleoverblikket.Api.Controllers;
-using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using Skoleoverblikket.Api.Models;
+using Skoleoverblikket.Api.Services;
+using static Skoleoverblikket.Api.IntegrationTests.Infrastructure.AbsenceTestKit;
 
 namespace Skoleoverblikket.Api.IntegrationTests;
 
 /// <summary>
-/// Integration tests for AbsenceController.
-/// Covers:
-///   - Confirm/dismiss: admin staff, non-admin + open class, non-admin + permission, no permission, no staff row, not found.
-///   - GET /: admin list with optional class filter.
-///   - DELETE: parent cancels own Reported absence; cannot cancel already-confirmed.
+/// The fravær register: parent sick reports and leave requests, leave approval, category changes,
+/// who sees which records, and tenant isolation. Fremmøde itself is in <see cref="AttendanceTests"/>.
 /// </summary>
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
 public sealed class AbsenceTests(ApiFactory factory)
 {
-	private static readonly JsonSerializerOptions JsonOpts = new()
-	{
-		Converters = { new JsonStringEnumConverter() },
-		PropertyNameCaseInsensitive = true,
-	};
-
-	private readonly ApiFactory _factory = factory;
-	private readonly Guid _tenantId = Guid.NewGuid();
-	private HttpClient _adminClient = null!;
+	private AbsenceTestKit _kit = null!;
+	private HttpClient _admin = null!;
+	private Guid _classId;
+	private Student _student = null!;
+	private HttpClient _parent = null!;
 
 	[Before(Test)]
 	public async Task SetUp()
 	{
-		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
-		_adminClient = _factory.CreateClient();
-		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		_adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
-		_adminClient.DefaultRequestHeaders.Add("X-Test-Subject", "admin-subject");
+		_kit = new AbsenceTestKit(factory);
+		await _kit.InitAsync();
+		_admin = await _kit.AdminAsync();
+		_classId = await _kit.CreateClassAsync(_admin, "3.a");
+		_student = await _kit.CreateStudentAsync(_classId);
+		_parent = await _kit.ParentOfAsync(_student.Id, $"parent-{Guid.NewGuid()}");
 	}
 
-	[After(Test)]
-	public void TearDown()
+	private async Task<List<AbsenceRecordDto>> RegisterAsync(HttpClient client, string query = "") =>
+		(await client.GetFromJsonAsync<List<AbsenceRecordDto>>($"/api/v1/absence{query}", JsonOpts))!;
+
+	// ── Parent reports ───────────────────────────────────────────────────────────
+
+	[Test]
+	public async Task ParentSickReport_IsFinalAndInRegister()
 	{
-		_adminClient.Dispose();
+		var today = DanishToday();
+		var response = await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, today, reason: "Feber");
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+
+		var record = (await RegisterAsync(_admin)).Single(r => r.StudentId == _student.Id);
+		await Assert.That(record.Category).IsEqualTo(AbsenceCategory.Illness);
+		await Assert.That(record.LeaveStatus).IsNull();
+		await Assert.That(record.Source).IsEqualTo(AbsenceSource.Parent);
+
+		var mine = await ParentRecordsAsync(_parent);
+		await Assert.That(mine.Count).IsEqualTo(1);
+		await Assert.That(mine[0].CanCancel).IsTrue();
 	}
 
-	// ── Private helpers ──────────────────────────────────────────────────────────
-
-	private HttpClient CreateStaffClient(string subject, bool isAdmin = false)
+	[Test]
+	public async Task ParentReport_ForSomeoneElsesChild_Returns403()
 	{
-		var client = _factory.CreateClient();
-		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", isAdmin ? "admin" : "user");
-		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
-		return client;
+		var other = await _kit.CreateStudentAsync(_classId, "Anden Elev");
+		var response = await ReportAsync(_parent, other.Id, AbsenceCategory.Illness, DanishToday());
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
 	}
 
-	private HttpClient CreateParentClient(string subject)
+	[Test]
+	public async Task ParentReport_Unauthorized_Returns400()
 	{
-		var client = _factory.CreateClient();
-		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
-		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
-		return client;
+		var response = await ReportAsync(_parent, _student.Id, AbsenceCategory.Unauthorized, DanishToday());
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 	}
 
-	private async Task<Student> CreateStudentAsync(Guid classId, string name = "Mikkel Testsen")
+	[Test]
+	public async Task ParentReport_InvalidDates_Returns400()
 	{
-		using var scope = _factory.Services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-		var student = new Student
+		var today = DanishToday();
+		var leaveInPast = await ReportAsync(_parent, _student.Id, AbsenceCategory.ExtraordinaryLeave, today.AddDays(-1));
+		var sickTooLongAgo = await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, today.AddDays(-15));
+		var endBeforeStart = await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, today, today.AddDays(-1));
+
+		await Assert.That(leaveInPast.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+		await Assert.That(sickTooLongAgo.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+		await Assert.That(endBeforeStart.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+	}
+
+	// ── Leave requests ───────────────────────────────────────────────────────────
+
+	[Test]
+	public async Task LeaveRequest_ApprovedByAdmin_ParentSeesApproved()
+	{
+		var nextWeek = DanishToday().AddDays(7);
+		await ReportAsync(_parent, _student.Id, AbsenceCategory.ExtraordinaryLeave, nextWeek, nextWeek.AddDays(2), "Bryllup");
+
+		var pending = await _admin.GetFromJsonAsync<List<AbsenceRecordDto>>("/api/v1/absence/leave-requests", JsonOpts);
+		var request = pending!.Single();
+		await Assert.That(request.LeaveStatus).IsEqualTo(LeaveStatus.Pending);
+
+		var approve = await _admin.PostAsync($"/api/v1/absence/{request.Id}/approve", null);
+		await Assert.That(approve.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+		var mine = await ParentRecordsAsync(_parent);
+		await Assert.That(mine.Single().LeaveStatus).IsEqualTo(LeaveStatus.Approved);
+		await Assert.That(mine.Single().Category).IsEqualTo(AbsenceCategory.ExtraordinaryLeave);
+
+		var again = await _admin.PostAsync($"/api/v1/absence/{request.Id}/reject", null);
+		await Assert.That(again.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+	}
+
+	[Test]
+	public async Task LeaveRequest_Rejected_ParentSeesRejectedAndCanRemoveIt()
+	{
+		var nextWeek = DanishToday().AddDays(7);
+		await ReportAsync(_parent, _student.Id, AbsenceCategory.ExtraordinaryLeave, nextWeek);
+		var id = (await ParentRecordsAsync(_parent)).Single().Id;
+
+		var reject = await _admin.PostAsync($"/api/v1/absence/{id}/reject", null);
+		await Assert.That(reject.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+		await Assert.That((await ParentRecordsAsync(_parent)).Single().LeaveStatus).IsEqualTo(LeaveStatus.Rejected);
+
+		var cancel = await _parent.DeleteAsync($"/api/v1/absence/{id}");
+		await Assert.That(cancel.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+	}
+
+	[Test]
+	public async Task LeaveDecision_ByTeacher_Returns403()
+	{
+		await ReportAsync(_parent, _student.Id, AbsenceCategory.ExtraordinaryLeave, DanishToday().AddDays(7));
+		var id = (await ParentRecordsAsync(_parent)).Single().Id;
+		var (teacher, _) = await _kit.TeacherAsync("leave-teacher");
+
+		var response = await teacher.PostAsync($"/api/v1/absence/{id}/approve", null);
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+	}
+
+	[Test]
+	public async Task ParentCancel_PastSickDay_Returns400()
+	{
+		var yesterday = DanishToday().AddDays(-1);
+		await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, yesterday);
+		var record = (await ParentRecordsAsync(_parent)).Single();
+		await Assert.That(record.CanCancel).IsFalse();
+
+		var response = await _parent.DeleteAsync($"/api/v1/absence/{record.Id}");
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+	}
+
+	// ── Staff-registered records ─────────────────────────────────────────────────
+
+	[Test]
+	public async Task StaffRegisteredAbsence_VisibleToParent_ButNotCancellable()
+	{
+		if (RecentSchoolDay() is not { } day)
 		{
-			Id = Guid.NewGuid(),
-			TenantId = _tenantId,
-			Name = name,
-			ClassId = classId,
-		};
-		db.Students.Add(student);
-		await db.SaveChangesAsync();
-		return student;
-	}
-
-	private async Task<Parent> CreateParentAsync(string keycloakSubject, Guid studentId, string name = "Dorte Testsen")
-	{
-		using var scope = _factory.Services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-		var parent = new Parent
-		{
-			Id = Guid.NewGuid(),
-			TenantId = _tenantId,
-			Name = name,
-			Email = $"{keycloakSubject}@test.dk",
-			KeycloakSubject = keycloakSubject,
-		};
-
-		var studentRef = await db.Students.IgnoreQueryFilters().FirstOrDefaultAsync(s => s.Id == studentId);
-		if (studentRef is not null)
-		{
-			parent.Students.Add(studentRef);
+			return; // The quarter so far is only a weekend — nothing to note fremmøde for.
 		}
 
-		db.Parents.Add(parent);
-		await db.SaveChangesAsync();
-		return parent;
+		var save = await SaveAttendanceAsync(_admin, _classId, day, AttendanceCheckpoint.StartOfDay,
+			(_student.Id, AbsenceCategory.Unauthorized));
+		await Assert.That(save.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+		var record = (await ParentRecordsAsync(_parent)).Single();
+		await Assert.That(record.Category).IsEqualTo(AbsenceCategory.Unauthorized);
+		await Assert.That(record.Source).IsEqualTo(AbsenceSource.Staff);
+		await Assert.That(record.CanCancel).IsFalse();
+
+		var cancel = await _parent.DeleteAsync($"/api/v1/absence/{record.Id}");
+		await Assert.That(cancel.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 	}
 
-	private async Task<AbsenceReport> CreateAbsenceReportAsync(
-		Guid studentId, Guid parentId, AbsenceStatus status = AbsenceStatus.Reported,
-		DateOnly? date = null)
+	[Test]
+	public async Task ChangeCategory_StaffRecord_UnauthorizedToIllness()
 	{
-		using var scope = _factory.Services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-		var report = new AbsenceReport
+		if (RecentSchoolDay() is not { } day)
 		{
-			Id = Guid.NewGuid(),
-			TenantId = _tenantId,
-			StudentId = studentId,
-			ReportedByParentId = parentId,
-			Date = date ?? DateOnly.FromDateTime(DateTime.UtcNow),
-			Status = status,
-		};
-		db.AbsenceReports.Add(report);
-		await db.SaveChangesAsync();
-		return report;
-	}
+			return;
+		}
 
-	private async Task<ClassPermission> CreateClassPermissionAsync(Guid classId, Guid staffId)
-	{
-		using var scope = _factory.Services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-		var perm = new ClassPermission
-		{
-			Id = Guid.NewGuid(),
-			TenantId = _tenantId,
-			ClassId = classId,
-			StaffId = staffId,
-		};
-		db.ClassPermissions.Add(perm);
-		await db.SaveChangesAsync();
-		return perm;
-	}
+		var (teacher, _) = await _kit.TeacherAsync("category-teacher");
+		await SaveAttendanceAsync(teacher, _classId, day, AttendanceCheckpoint.StartOfDay,
+			(_student.Id, AbsenceCategory.Unauthorized));
+		var id = (await RegisterAsync(teacher)).Single().Id;
 
-	// ── POST /{id}/confirm ────────────────────────────────────────────────────────
+		var toIllness = await teacher.PutAsJsonAsync($"/api/v1/absence/{id}/category",
+			new AbsenceController.ChangeAbsenceCategoryRequest(AbsenceCategory.Illness), JsonOpts);
+		await Assert.That(toIllness.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+		await Assert.That((await RegisterAsync(teacher)).Single().Category).IsEqualTo(AbsenceCategory.Illness);
 
-	[Test]
-	public async Task ConfirmAbsence_AdminStaff_Returns204()
-	{
-		const string subject = "confirm-admin-staff";
-		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
-			isAdmin: true, keycloakSubject: subject);
-		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "1.a");
-		var student = await CreateStudentAsync(klass.Id);
-		var parent = await CreateParentAsync("confirm-admin-parent", student.Id);
-		var report = await CreateAbsenceReportAsync(student.Id, parent.Id);
-
-		using var client = CreateStaffClient(subject, isAdmin: true);
-		var response = await client.PostAsync($"/api/v1/absence/{report.Id}/confirm", null);
-
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+		var toLeave = await teacher.PutAsJsonAsync($"/api/v1/absence/{id}/category",
+			new AbsenceController.ChangeAbsenceCategoryRequest(AbsenceCategory.ExtraordinaryLeave), JsonOpts);
+		await Assert.That(toLeave.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 	}
 
 	[Test]
-	public async Task ConfirmAbsence_NonAdminStaff_OpenClass_Returns204()
+	public async Task ChangeCategory_ParentRecord_Returns400()
 	{
-		// Non-admin staff + class has no ClassPermission rows → open access → 204
-		const string subject = "confirm-nonadmin-open";
-		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
-			isAdmin: false, keycloakSubject: subject);
-		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "2.a");
-		var student = await CreateStudentAsync(klass.Id);
-		var parent = await CreateParentAsync("confirm-open-parent", student.Id);
-		var report = await CreateAbsenceReportAsync(student.Id, parent.Id);
+		await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, DanishToday());
+		var id = (await RegisterAsync(_admin)).Single().Id;
 
-		using var client = CreateStaffClient(subject);
-		var response = await client.PostAsync($"/api/v1/absence/{report.Id}/confirm", null);
-
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-	}
-
-	[Test]
-	public async Task ConfirmAbsence_NonAdminStaff_WithPermission_Returns204()
-	{
-		// Non-admin staff + class has permissions + staff has one → 204
-		const string subject = "confirm-nonadmin-with-perm";
-		var staff = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
-			isAdmin: false, keycloakSubject: subject);
-		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "3.a");
-		await CreateClassPermissionAsync(klass.Id, staff.Id);
-		var student = await CreateStudentAsync(klass.Id);
-		var parent = await CreateParentAsync("confirm-perm-parent", student.Id);
-		var report = await CreateAbsenceReportAsync(student.Id, parent.Id);
-
-		using var client = CreateStaffClient(subject);
-		var response = await client.PostAsync($"/api/v1/absence/{report.Id}/confirm", null);
-
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-	}
-
-	[Test]
-	public async Task ConfirmAbsence_NonAdminStaff_WithoutPermission_Returns403()
-	{
-		// Class has permission rows, but not for this staff member → 403
-		const string subject = "confirm-nonadmin-no-perm";
-		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
-			isAdmin: false, keycloakSubject: subject);
-		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "4.a");
-
-		// Lock class to a different staff member to enable restricted mode
-		var otherStaff = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId);
-		await CreateClassPermissionAsync(klass.Id, otherStaff.Id);
-
-		var student = await CreateStudentAsync(klass.Id);
-		var parent = await CreateParentAsync("confirm-no-perm-parent", student.Id);
-		var report = await CreateAbsenceReportAsync(student.Id, parent.Id);
-
-		using var client = CreateStaffClient(subject);
-		var response = await client.PostAsync($"/api/v1/absence/{report.Id}/confirm", null);
-
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
-	}
-
-	[Test]
-	public async Task ConfirmAbsence_NoStaffRecord_Returns403()
-	{
-		// Authenticated user whose sub has no Staff row in DB → 403
-		const string subject = "confirm-no-staff-record";
-		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "5.a");
-		var student = await CreateStudentAsync(klass.Id);
-		var parent = await CreateParentAsync("confirm-no-staff-parent", student.Id);
-		var report = await CreateAbsenceReportAsync(student.Id, parent.Id);
-
-		// No Staff row created for subject "confirm-no-staff-record"
-		using var client = CreateStaffClient(subject);
-		var response = await client.PostAsync($"/api/v1/absence/{report.Id}/confirm", null);
-
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
-	}
-
-	[Test]
-	public async Task ConfirmAbsence_NotFound_Returns404()
-	{
-		const string subject = "confirm-notfound-staff";
-		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
-			isAdmin: true, keycloakSubject: subject);
-
-		using var client = CreateStaffClient(subject, isAdmin: true);
-		var response = await client.PostAsync($"/api/v1/absence/{Guid.NewGuid()}/confirm", null);
-
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
-	}
-
-	// ── POST /{id}/dismiss ────────────────────────────────────────────────────────
-
-	[Test]
-	public async Task DismissAbsence_AdminStaff_Returns204()
-	{
-		const string subject = "dismiss-admin-staff";
-		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
-			isAdmin: true, keycloakSubject: subject);
-		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "6.a");
-		var student = await CreateStudentAsync(klass.Id);
-		var parent = await CreateParentAsync("dismiss-admin-parent", student.Id);
-		var report = await CreateAbsenceReportAsync(student.Id, parent.Id);
-
-		using var client = CreateStaffClient(subject, isAdmin: true);
-		var response = await client.PostAsync($"/api/v1/absence/{report.Id}/dismiss", null);
-
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-	}
-
-	[Test]
-	public async Task DismissAbsence_NonAdminStaff_WithoutPermission_Returns403()
-	{
-		// Class has permission rows, but not for this staff member → 403
-		const string subject = "dismiss-nonadmin-no-perm";
-		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
-			isAdmin: false, keycloakSubject: subject);
-		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "7.a");
-
-		var otherStaff = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId);
-		await CreateClassPermissionAsync(klass.Id, otherStaff.Id);
-
-		var student = await CreateStudentAsync(klass.Id);
-		var parent = await CreateParentAsync("dismiss-no-perm-parent", student.Id);
-		var report = await CreateAbsenceReportAsync(student.Id, parent.Id);
-
-		using var client = CreateStaffClient(subject);
-		var response = await client.PostAsync($"/api/v1/absence/{report.Id}/dismiss", null);
-
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
-	}
-
-	// ── GET / ────────────────────────────────────────────────────────────────────
-
-	[Test]
-	public async Task GetAbsences_Admin_Returns200()
-	{
-		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "8.a");
-		var student = await CreateStudentAsync(klass.Id);
-		var parent = await CreateParentAsync("get-absences-parent", student.Id);
-		await CreateAbsenceReportAsync(student.Id, parent.Id);
-
-		var response = await _adminClient.GetAsync("/api/v1/absence");
-
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var list = await response.Content.ReadFromJsonAsync<List<AbsenceController.AbsenceReportDto>>(JsonOpts);
-		await Assert.That(list).IsNotNull();
-		await Assert.That(list!.Count).IsGreaterThanOrEqualTo(1);
-	}
-
-	[Test]
-	public async Task GetAbsences_FilterByClass_ReturnsOnlyMatchingStudents()
-	{
-		var (targetClass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "9.a");
-		var (otherClass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "9.b");
-
-		var targetStudent = await CreateStudentAsync(targetClass.Id, "Targeted Elev");
-		var otherStudent = await CreateStudentAsync(otherClass.Id, "Other Elev");
-
-		var targetParent = await CreateParentAsync("filter-target-parent", targetStudent.Id);
-		var otherParent = await CreateParentAsync("filter-other-parent", otherStudent.Id);
-
-		var targetReport = await CreateAbsenceReportAsync(targetStudent.Id, targetParent.Id);
-		await CreateAbsenceReportAsync(otherStudent.Id, otherParent.Id);
-
-		var response = await _adminClient.GetAsync($"/api/v1/absence?classId={targetClass.Id}");
-
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var list = await response.Content.ReadFromJsonAsync<List<AbsenceController.AbsenceReportDto>>(JsonOpts);
-		await Assert.That(list).IsNotNull();
-		await Assert.That(list!.All(r => r.StudentId == targetStudent.Id)).IsTrue();
-		await Assert.That(list.Any(r => r.Id == targetReport.Id)).IsTrue();
-	}
-
-	// ── DELETE /{id} ─────────────────────────────────────────────────────────────
-
-	[Test]
-	public async Task CancelAbsence_OwnerInReportedStatus_Returns204()
-	{
-		const string parentSubject = "cancel-owner-parent";
-		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "10.a");
-		var student = await CreateStudentAsync(klass.Id);
-		var parent = await CreateParentAsync(parentSubject, student.Id);
-		var report = await CreateAbsenceReportAsync(student.Id, parent.Id, AbsenceStatus.Reported);
-
-		using var client = CreateParentClient(parentSubject);
-		var response = await client.DeleteAsync($"/api/v1/absence/{report.Id}");
-
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
-	}
-
-	[Test]
-	public async Task CancelAbsence_AlreadyConfirmed_Returns400()
-	{
-		const string parentSubject = "cancel-confirmed-parent";
-		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "11.a");
-		var student = await CreateStudentAsync(klass.Id);
-		var parent = await CreateParentAsync(parentSubject, student.Id);
-		var report = await CreateAbsenceReportAsync(student.Id, parent.Id, AbsenceStatus.Confirmed);
-
-		using var client = CreateParentClient(parentSubject);
-		var response = await client.DeleteAsync($"/api/v1/absence/{report.Id}");
-
+		var response = await _admin.PutAsJsonAsync($"/api/v1/absence/{id}/category",
+			new AbsenceController.ChangeAbsenceCategoryRequest(AbsenceCategory.Unauthorized), JsonOpts);
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+	}
+
+	[Test]
+	public async Task ChangeCategory_TeacherWithoutClassPermission_Returns403()
+	{
+		await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, DanishToday());
+		var id = (await RegisterAsync(_admin)).Single().Id;
+		var (_, owner) = await _kit.TeacherAsync("class-owner", "Klassens Lærer");
+		await _kit.RestrictClassToAsync(_classId, owner.Id);
+		var (outsider, _) = await _kit.TeacherAsync("outsider-teacher", "Anden Lærer");
+
+		var response = await outsider.PutAsJsonAsync($"/api/v1/absence/{id}/category",
+			new AbsenceController.ChangeAbsenceCategoryRequest(AbsenceCategory.Illness), JsonOpts);
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+	}
+
+	// ── Who sees what ────────────────────────────────────────────────────────────
+
+	[Test]
+	public async Task Register_TeacherOnlySeesClassesTheyMayEdit()
+	{
+		var otherClassId = await _kit.CreateClassAsync(_admin, "9.b");
+		var otherStudent = await _kit.CreateStudentAsync(otherClassId, "Elev i 9.b");
+		var otherParent = await _kit.ParentOfAsync(otherStudent.Id, $"parent-{Guid.NewGuid()}");
+		await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, DanishToday());
+		await ReportAsync(otherParent, otherStudent.Id, AbsenceCategory.Illness, DanishToday());
+
+		var (teacher, staff) = await _kit.TeacherAsync("restricted-teacher");
+		var (_, otherTeacher) = await _kit.TeacherAsync("ninth-grade-teacher", "9.b Lærer");
+		await _kit.RestrictClassToAsync(_classId, staff.Id);
+		await _kit.RestrictClassToAsync(otherClassId, otherTeacher.Id);
+
+		var visible = await RegisterAsync(teacher);
+		await Assert.That(visible.Count).IsEqualTo(1);
+		await Assert.That(visible[0].StudentId).IsEqualTo(_student.Id);
+		await Assert.That((await RegisterAsync(_admin)).Count).IsEqualTo(2);
+		await Assert.That((await RegisterAsync(_admin, $"?classId={otherClassId}")).Single().StudentId).IsEqualTo(otherStudent.Id);
+	}
+
+	[Test]
+	public async Task ParentSeesOnlyOwnChildren()
+	{
+		var sibling = await _kit.CreateStudentAsync(_classId, "Klassekammerat");
+		var otherParent = await _kit.ParentOfAsync(sibling.Id, $"parent-{Guid.NewGuid()}");
+		await ReportAsync(otherParent, sibling.Id, AbsenceCategory.Illness, DanishToday());
+
+		await Assert.That((await ParentRecordsAsync(_parent)).Count).IsEqualTo(0);
+		var staffList = await _parent.GetFromJsonAsync<List<AbsenceRecordDto>>("/api/v1/absence", JsonOpts);
+		await Assert.That(staffList!.Count).IsEqualTo(0);
+	}
+
+	[Test]
+	public async Task OtherTenant_CannotSeeOrChangeRecords()
+	{
+		await ReportAsync(_parent, _student.Id, AbsenceCategory.ExtraordinaryLeave, DanishToday().AddDays(7));
+		var id = (await RegisterAsync(_admin)).Single().Id;
+
+		var otherKit = new AbsenceTestKit(factory);
+		await otherKit.InitAsync();
+		var otherAdmin = await otherKit.AdminAsync("other-tenant-admin");
+
+		await Assert.That((await RegisterAsync(otherAdmin)).Count).IsEqualTo(0);
+		var approve = await otherAdmin.PostAsync($"/api/v1/absence/{id}/approve", null);
+		await Assert.That(approve.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+		var category = await otherAdmin.PutAsJsonAsync($"/api/v1/absence/{id}/category",
+			new AbsenceController.ChangeAbsenceCategoryRequest(AbsenceCategory.Illness), JsonOpts);
+		await Assert.That(category.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 	}
 }

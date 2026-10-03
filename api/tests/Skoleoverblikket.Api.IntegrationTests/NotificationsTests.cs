@@ -161,7 +161,7 @@ public sealed class NotificationsTests(ApiFactory factory)
 		var items = new[]
 		{
 			new NotificationPreferencesController.UpsertPreferenceItem(NotificationType.NewMessage, InApp: true, Email: false),
-			new NotificationPreferencesController.UpsertPreferenceItem(NotificationType.AbsenceConfirmed, InApp: false, Email: true),
+			new NotificationPreferencesController.UpsertPreferenceItem(NotificationType.LeaveApproved, InApp: false, Email: true),
 		};
 
 		using var client = CreateStaffClient(subject);

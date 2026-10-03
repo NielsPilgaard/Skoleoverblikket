@@ -26,6 +26,12 @@ The existing Stripe webhook handler should set this field when the subscription 
 
 #### 2. Background job: delete expired tenants
 
+> Pattern to reuse: `AbsenceRetentionJob` (student absence retention, task 42) is the first
+> per-tenant background job. It lists schools with a commented `IgnoreQueryFilters()` and runs
+> each tenant's work in its own DI scope pinned with `HttpTenantContext.UseBackgroundTenant`, so
+> all deletes still go through the tenant query filter. Absence data is already deleted after
+> the previous school year, independent of cancellation.
+
 Add a background service (`IHostedService` or Hangfire recurring job — match whatever background job pattern is already in use in the API) that:
 
 - Runs once daily (e.g. 02:00 UTC)

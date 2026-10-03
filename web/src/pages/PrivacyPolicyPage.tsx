@@ -1,5 +1,5 @@
-import Logo from '../components/Logo'
 import Footer from '../components/Footer'
+import PublicNav from '../components/PublicNav'
 import SeoMeta from '../components/SeoMeta'
 
 export default function PrivacyPolicyPage() {
@@ -99,9 +99,15 @@ export default function PrivacyPolicyPage() {
                 dage for at give mulighed for genaktivering eller eksport — herefter slettes de
                 permanent.
               </p>
+              <p className="mt-3">
+                Elevers fravær og fremmøde gemmes i indeværende og forrige skoleår. Skoleåret
+                skifter 1. august, og så slettes fravær fra det ældste skoleår automatisk. Skolen
+                får besked 1. juli, så den kan hente fraværet som Excel-fil først. Fravær slettes
+                også, når en elev slettes.
+              </p>
               <p className="mt-3 text-sm text-gray-500">
-                Bemærk: automatisk sletning er endnu ikke implementeret. Indtil videre håndteres det
-                manuelt. Kontakt os, hvis du ønsker øjeblikkelig sletning.
+                Bemærk: automatisk sletning efter opsigelse er endnu ikke implementeret. Indtil
+                videre håndteres det manuelt. Kontakt os, hvis du ønsker øjeblikkelig sletning.
               </p>
             </Section>
 
@@ -168,31 +174,5 @@ function Li({ children }: { children: React.ReactNode }) {
       <span className="mt-1 w-1.5 h-1.5 rounded-full bg-brand-400 shrink-0" />
       <span>{children}</span>
     </li>
-  )
-}
-
-function PublicNav() {
-  return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2">
-          <Logo variant="light" size={28} />
-          <span className="font-display text-xl font-semibold text-brand-800">
-            Skoleoverblikket
-          </span>
-        </a>
-        <div className="flex items-center gap-4">
-          <a href="/login" className="text-sm text-gray-600 hover:text-brand-700 transition-colors">
-            Log ind
-          </a>
-          <a
-            href="/signup"
-            className="text-sm px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors font-medium"
-          >
-            Prøv gratis
-          </a>
-        </div>
-      </div>
-    </nav>
   )
 }

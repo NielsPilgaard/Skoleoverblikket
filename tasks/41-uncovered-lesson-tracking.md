@@ -16,7 +16,13 @@ status: 'Proposed'
 
 Today, `VikarController` assignment is entirely opt-in — nothing records whether a lektion that lost its teacher/aide to absence actually got a substitute, or simply went untaught. This task adds a **derived, read-only count** of such "uncovered lessons" per class/subject, computed from task 38's proposed `StaffAbsence`/`VikarAssignment` model (a `StaffAbsence`-affected `SchemaSlot` with no matching `VikarAssignment` on that date = uncovered), and surfaces it next to the existing `StaaMaalMedController` `/coverage` view. No new table, no alerts, no "mark as made up" workflow — just a count, framed strictly as a structural indicator, never a compliance verdict.
 
-**Hard prerequisite: this task cannot start until task 38 (`tasks/38-teacher-report-abscence.md`) is built.** There is no `StaffAbsence` or `VikarAssignment` model yet — both are still proposed, unbuilt.
+**Prerequisite met: task 38 is built** ([38-teacher-report-abscence.md](completed/38-teacher-report-abscence.md)). It shipped differently from the proposal below, so read this first:
+
+- `StaffAbsence` exists as proposed (`Models/StaffAbsence.cs`, owned by `StaffAbsenceService`).
+- There is **no `VikarAssignment` table**. Vikar cover per lektion and date is stored on the existing `WeekPlanSlot.SubstituteTeacherId` / `SubstituteAideId` (one `WeekPlanSlot` per klasse, ISO week and `SchemaSlot`, which is one date). Teacher and aide seats are covered separately.
+- Affected lektioner and their cover: `StaffAbsenceService.GetDetailAsync` (`GET /api/v1/staff-absences/{id}`), which lists each affected `(Date, SchemaSlotId, Seat)` with its current substitute. Derive "uncovered" from that: an affected seat on a past school day with no substitute on the matching `WeekPlanSlot`.
+
+The sections below still describe the original proposal.
 
 ## Context
 

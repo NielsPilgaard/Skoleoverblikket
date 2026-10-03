@@ -35,8 +35,9 @@ Never bypass this filter. Never trust a slug string as an authorization signal �
 - SFO week plan (`SfoWeekPlanController`, `SfoController`) — weekly SFO schedule with print view
 - Ugeplan / weekplan (`WeekPlanController`) — per-class weekly plan with file attachments per slot, shown to parents
 - Vikar overview (`SubstituteController`) — free/busy staff lookup per time slot and one-click substitute assignment when a teacher or aide is out
+- Staff absence + vikardækning (`StaffAbsenceController`, `StaffAbsenceService`, `SubstituteService`) — staff report themselves absent (or the office does it for them); admin sees each affected lektion with ranked free candidates and assigns a vikar per lektion (stored on `WeekPlanSlot`, shown in ugeplan and on the staff dashboard)
 - Parent module (`ParentsController`, `ParentMeController`, `ParentInvitationsController`) — parent portal with schema/calendar/ugeplan views
-- Absence reporting (`AbsenceController`) — parents report absence, staff confirm/dismiss
+- Fravær / student absence register (`AbsenceController`, `AttendanceController`, `AbsenceService`, `AbsenceStatsService`) — daily fremmøde per class, three legal categories, parent sick reports and leave requests, quarterly stats with 10%/15% ulovligt flags, retention of current + previous school year (`AbsenceRetentionJob`)
 - Kontakt directory (`ContactDirectoryController`) — role-filtered parent directory with `ShareContactInfo` consent
 - Kontaktbog (`ContactThreadsController`) — per-child parent↔teacher message threads
 - Beskeder (`MessagesController`) — flat inbox for all tenant users with consent rules
@@ -131,6 +132,7 @@ Before finishing API work, check whether any controller you touched still writes
 - **API client**: always use the generated typed client (hey-api/openapi-ts). Never hand-write fetch calls to API endpoints that are in the spec.
 - **Styling**: Tailwind utility classes only. No CSS-in-JS, no inline `style` props, no separate `.css` files for component styles.
 - **Components**: functional components with hooks only. No class components.
+- **Landing page features**: the feature cards come from `web/src/content/features.tsx`. Every sidebar route must be mapped there in `sidebarRouteFeatures` (to a feature or `null`), or `tsc` fails. When you add a user-facing feature, add or update its card in the same PR. The `/nyheder` changelog (`web/src/content/changelog.ts`) is drafted weekly by `.github/workflows/changelog.yml` from `feat` commits, so write `feat:` subjects that describe what the user gets.
 
 ### General
 

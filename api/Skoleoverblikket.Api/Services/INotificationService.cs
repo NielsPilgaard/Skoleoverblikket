@@ -1,7 +1,36 @@
 namespace Skoleoverblikket.Api.Services;
 
 public enum RecipientType { Parent, Staff, Board }
-public enum NotificationType { NewMessage, NewContactMessage, WeekPlanChanged, AbsenceConfirmed, AbsenceDismissed, VacationRegistrationOpened, GroupMessage, ClassChatMessage }
+/// <summary>Stored as int — append new values, never reorder.</summary>
+public enum NotificationType
+{
+	NewMessage,
+	NewContactMessage,
+	WeekPlanChanged,
+	LeaveApproved,
+	LeaveRejected,
+	VacationRegistrationOpened,
+	GroupMessage,
+	ClassChatMessage,
+
+	/// <summary>To parents: fremmøde registered ulovligt fravær on their child.</summary>
+	UnauthorizedAbsence,
+
+	/// <summary>To admins + class staff: a student reached 10% ulovligt fravær in the quarter.</summary>
+	AbsenceThreshold,
+
+	/// <summary>To admins: a school year's absence data is deleted on 1 August.</summary>
+	AbsenceRetentionWarning,
+
+	/// <summary>To admins: a parent asked for ekstraordinær frihed.</summary>
+	LeaveRequested,
+
+	/// <summary>To admins: a staff member reported themself absent.</summary>
+	StaffAbsenceReported,
+
+	/// <summary>To the vikar: assigned to cover a lektion.</summary>
+	SubstituteAssigned,
+}
 
 /// <summary>Per-type notification defaults applied when a user has no stored preference row.</summary>
 public static class NotificationDefaults

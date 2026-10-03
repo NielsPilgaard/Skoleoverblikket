@@ -5,7 +5,8 @@ public static class TenancyExtensions
 	public static IServiceCollection AddTenancy(this IServiceCollection services)
 	{
 		services.AddHttpContextAccessor();
-		services.AddScoped<ITenantContext, HttpTenantContext>();
+		services.AddScoped<HttpTenantContext>();
+		services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<HttpTenantContext>());
 		services.AddScoped<SubscriptionAccessFilter>();
 		services.AddExceptionHandler<MissingTenantClaimExceptionHandler>();
 

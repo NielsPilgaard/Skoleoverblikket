@@ -5,6 +5,7 @@ import Footer from '../components/Footer'
 import CookieBanner from '../components/CookieBanner'
 import SeoMeta from '../components/SeoMeta'
 import type { BillingInterval } from '../api/client'
+import { features } from '../content/features'
 
 // Keep in sync with web/src/pages/BillingPage.tsx — same prices, must match Stripe Price IDs in StripeOptions.
 const MONTHLY_PRICE_KR = 300
@@ -28,7 +29,7 @@ const SOFTWARE_APPLICATION_JSON_LD = {
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'Web',
   description:
-    'Billig og enkel skoleadministration. Skema, SFO, ugeplan og forældrekontakt samlet i ét system — i stedet for fem. Prøv gratis i 30 dage.',
+    'Billig og enkel skoleadministration. Skema, SFO, ugeplan, fravær og forældrekontakt samlet i ét system — i stedet for fem. Prøv gratis i 30 dage.',
   offers: {
     '@type': 'Offer',
     price: String(MONTHLY_PRICE_KR),
@@ -54,7 +55,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white font-sans text-gray-900">
       <SeoMeta
         title="Skoleoverblikket — billig og enkel skoleadministration til friskoler"
-        description="Billig og enkel skoleadministration. Skema, SFO, ugeplan og forældrekontakt samlet i ét system — i stedet for fem. Prøv gratis i 30 dage."
+        description="Billig og enkel skoleadministration. Skema, SFO, ugeplan, fravær og forældrekontakt samlet i ét system — i stedet for fem. Prøv gratis i 30 dage."
         path="/"
       />
       <Helmet>
@@ -76,6 +77,12 @@ export default function LandingPage() {
               className="text-sm text-gray-600 hover:text-brand-700 transition-colors whitespace-nowrap"
             >
               Log ind
+            </a>
+            <a
+              href="/nyheder"
+              className="hidden md:inline text-sm text-gray-600 hover:text-brand-700 transition-colors whitespace-nowrap"
+            >
+              Nyheder
             </a>
             <a
               href="/kontakt"
@@ -100,8 +107,8 @@ export default function LandingPage() {
             Spar tid på det kedelige — brug den på børnene
           </h1>
           <p className="mt-6 text-lg text-gray-600 max-w-xl mx-auto">
-            Skema, SFO, ugeplan og forældrekontakt i ét system. Bygget til friskoler. Ingen oplæring
-            nødvendig.
+            Skema, SFO, ugeplan, fravær og forældrekontakt i ét system. Bygget til friskoler. Ingen
+            oplæring nødvendig.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
             <a
@@ -130,178 +137,14 @@ export default function LandingPage() {
             Alt hvad din skole behøver
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FeatureCard
-              icon={
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="w-6 h-6"
-                >
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
-              }
-              title="Konfliktkontrol i realtid"
-              description="Systemet advarer øjeblikkeligt om dobbeltbookede lærere eller lokaler — uden manuel kontrol."
-            />
-            <FeatureCard
-              icon={
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="w-6 h-6"
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <path d="M3 9h18M9 21V9" />
-                </svg>
-              }
-              title="Skemabygger"
-              description="Træk og slip lektioner på plads. Nemt at lære — for alle, uanset teknisk erfaring."
-            />
-            <FeatureCard
-              icon={
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="w-6 h-6"
-                >
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              }
-              title="Medarbejderoversigt"
-              description="Se alle medarbejderes skemaer samlet — lærere, pædagoger og vikarer."
-            />
-            <FeatureCard
-              icon={
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="w-6 h-6"
-                >
-                  <polyline points="6 9 6 2 18 2 18 9" />
-                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                  <rect x="6" y="14" width="12" height="8" />
-                </svg>
-              }
-              title="Udskriv skemaer"
-              description="Udskriv klasse-, lærer- og lokaleskemaer med ét klik. Print-venligt format."
-            />
-            <FeatureCard
-              icon={
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="w-6 h-6"
-                >
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-              }
-              title="Filhåndtering"
-              description="Upload og del filer pr. fag. Let tilgængeligt for alle medarbejdere."
-            />
-            <FeatureCard
-              icon={
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="w-6 h-6"
-                >
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  <path d="M3 13h4M9 13h4" stroke="currentColor" strokeWidth="1.8" />
-                </svg>
-              }
-              title="Forældremodul"
-              description="Forældre får adgang til klassens skema, kalender og ugeplan. Kontaktbog, beskeder og kontaktbibliotek inkluderet."
-            />
-            <FeatureCard
-              icon={
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="w-6 h-6"
-                >
-                  <rect x="2" y="7" width="20" height="14" rx="2" />
-                  <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-                  <line x1="12" y1="12" x2="12" y2="16" />
-                  <line x1="10" y1="14" x2="14" y2="14" />
-                </svg>
-              }
-              title="Bestyrelse & Tilsyn"
-              description={
-                'Bestyrelsesmedlemmer får dedikeret adgang med statistikker og dokumentdeling. Inkluderer overblik over "stå mål med"-dækning pr. fag og klasse.'
-              }
-            />
-            <FeatureCard
-              icon={
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="w-6 h-6"
-                >
-                  <rect x="3" y="4" width="18" height="18" rx="2" />
-                  <path d="M16 2v4M8 2v4M3 10h18" />
-                  <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" />
-                </svg>
-              }
-              title="SFO ugeplan"
-              description="Byg og udskriv SFO's ugeoverblik med ét klik. Printvenligt format — klar til opslagstavlen."
-            />
-            <FeatureCard
-              icon={
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="w-6 h-6"
-                >
-                  <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
-                  <rect x="9" y="3" width="6" height="4" rx="1" />
-                  <polyline points="9 12 11 14 15 10" />
-                </svg>
-              }
-              title="Ferieindmelding"
-              description="Forældre melder ind om barnet har behov for pasning i ferien. Overblik over tilmeldte, og eksport til CSV med ét klik."
-            />
-            <FeatureCard
-              icon={
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="w-6 h-6"
-                >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-              }
-              title="Nem import fra regneark"
-              description="Indsæt data fra Excel — elever, forældre, medarbejdere og lokaler oprettes på få minutter. Ingen manuel indtastning."
-            />
+            {features.map((feature) => (
+              <FeatureCard
+                key={feature.key}
+                icon={feature.icon}
+                title={feature.title}
+                description={feature.description}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -327,7 +170,7 @@ export default function LandingPage() {
           <FeatureShowcase
             eyebrow="Forældremodul"
             title="Forældre med i loopet — uden ekstra arbejde"
-            description="Forældre inviteres med ét klik og ser klassens skema, kalender og ugeplan. Kontaktbog, gruppebesked og fraværsindberetning er inkluderet."
+            description="Forældre inviteres med ét klik og ser klassens skema, kalender og ugeplan. Kontaktbog, gruppebesked og fravær med daglig fremmøde er inkluderet."
             imageSrc="/media/forældre.png"
             imageAlt="Forældreoversigt"
             imageRight
@@ -349,7 +192,7 @@ export default function LandingPage() {
             Hvem er Skoleoverblikket til?
           </h2>
           <p className="text-gray-600 mb-10 max-w-xl mx-auto">
-            Skoleoverblikket passer til alle skoler der vil samle skema, SFO, ugeplan og
+            Skoleoverblikket passer til alle skoler der vil samle skema, SFO, ugeplan, fravær og
             forældrekontakt i ét enkelt system — uanset udgangspunktet.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left max-w-2xl mx-auto">
@@ -496,7 +339,7 @@ export default function LandingPage() {
                   'Ugeplaner og kalenderadgang',
                   'Kontaktbog og beskeder',
                   'Kontaktbibliotek',
-                  'Fraværsindberetning',
+                  'Fravær og fremmøde',
                 ]}
               />
               <ModuleCard

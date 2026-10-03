@@ -8,7 +8,7 @@ description: >-
   category (sygdom / ekstraordinær frihed / ulovligt), and admin gets
   per-student/quarter stats with 10% and 15% ulovligt flags. Staff absence and
   vikar stay in task 38.
-status: 'Proposed'
+status: 'Completed'
 ---
 
 # Student absence register (fravær)

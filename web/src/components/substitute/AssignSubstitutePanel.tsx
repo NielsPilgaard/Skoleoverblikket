@@ -1,25 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '../../api/client'
-import { getApiV1ClassesByClassIdWeekPlanQueryKey } from '../../api/generated/@tanstack/react-query.gen'
-
-interface AvailableStaffDto {
-  id: string
-  name: string
-  role: 'Teacher' | 'Aide' | 'Substitute'
-}
-
-interface BusyStaffDto {
-  id: string
-  name: string
-  role: 'Teacher' | 'Aide' | 'Substitute'
-  conflictDescription: string
-}
-
-interface StaffAvailabilityDto {
-  available: AvailableStaffDto[]
-  busy: BusyStaffDto[]
-}
+import {
+  getApiV1ClassesByClassIdWeekPlanQueryKey,
+  getApiV1StaffAvailableOptions,
+  putApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteMutation,
+} from '../../api/generated/@tanstack/react-query.gen'
 
 interface AssignSubstitutePanelProps {
   weekPlanId: string
@@ -66,38 +51,34 @@ export function AssignSubstitutePanel({
     query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
   })
 
-  const { data: availability, isLoading } = useQuery<StaffAvailabilityDto>({
-    queryKey: ['staff-available', isoYear, isoWeek, weekday, timeSlotId],
-    queryFn: () =>
-      api.get<StaffAvailabilityDto>(
-        `/staff/available?isoYear=${isoYear}&isoWeek=${isoWeek}&weekday=${weekday}&timeSlotId=${timeSlotId}`
-      ),
-  })
+  const { data: availability, isLoading } = useQuery(
+    getApiV1StaffAvailableOptions({ query: { isoYear, isoWeek, weekday, timeSlotId } })
+  )
 
   const assignMutation = useMutation({
-    mutationFn: ({
-      substituteTeacherId,
-      substituteAideId,
-    }: {
-      substituteTeacherId: string | null
-      substituteAideId: string | null
-    }) =>
-      api.put(`/week-plans/${weekPlanId}/slots/${slotId}/substitute`, {
-        substituteTeacherId,
-        substituteAideId,
-      }),
+    ...putApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteMutation(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: weekPlanQueryKey })
       onClose()
     },
   })
 
-  function handleAssign(staffId: string) {
-    assignMutation.mutate({ substituteTeacherId: staffId, substituteAideId: null })
+  function assign(substituteTeacherId: string | null, substituteAideId: string | null) {
+    assignMutation.mutate({
+      path: { weekPlanId, slotId },
+      body: { substituteTeacherId, substituteAideId },
+    })
   }
 
+  // This panel sets the teacher seat; an aide vikar already booked on the lektion stays.
+  function handleAssign(staffId: string) {
+    assign(staffId, currentSubstituteAideId)
+  }
+
+  // Removes the vikar shown above: the teacher seat, or the aide seat when that is the only one.
   function handleClear() {
-    assignMutation.mutate({ substituteTeacherId: null, substituteAideId: null })
+    if (currentSubstituteTeacherId) assign(null, currentSubstituteAideId)
+    else assign(null, null)
   }
 
   // Close on Escape
@@ -190,13 +171,13 @@ export function AssignSubstitutePanel({
           {!isLoading && availability && (
             <>
               {/* Available staff */}
-              {availability.available.length > 0 && (
+              {(availability.available ?? []).length > 0 && (
                 <div>
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                     Ledige nu
                   </h3>
                   <ul className="space-y-1">
-                    {availability.available.map((s) => (
+                    {(availability.available ?? []).map((s) => (
                       <li key={s.id}>
                         <button
                           type="button"
@@ -216,20 +197,20 @@ export function AssignSubstitutePanel({
                 </div>
               )}
 
-              {availability.available.length === 0 && (
+              {(availability.available ?? []).length === 0 && (
                 <p className="text-sm text-gray-400 text-center py-4">
                   Ingen ledige medarbejdere på dette tidspunkt
                 </p>
               )}
 
               {/* Busy staff */}
-              {availability.busy.length > 0 && (
+              {(availability.busy ?? []).length > 0 && (
                 <div>
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                     Alle medarbejdere
                   </h3>
                   <ul className="space-y-1">
-                    {availability.busy.map((s) => (
+                    {(availability.busy ?? []).map((s) => (
                       <li key={s.id}>
                         <div className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm opacity-50">
                           <span className="font-medium text-gray-600">{s.name}</span>

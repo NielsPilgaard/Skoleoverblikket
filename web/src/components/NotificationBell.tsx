@@ -19,10 +19,19 @@ interface NotificationItem {
 
 function typeIcon(type: NotificationType): string {
   switch (type) {
-    case 'AbsenceConfirmed':
+    case 'LeaveApproved':
       return '✅'
-    case 'AbsenceDismissed':
+    case 'LeaveRejected':
       return '❌'
+    case 'UnauthorizedAbsence':
+    case 'AbsenceThreshold':
+      return '⚠️'
+    case 'LeaveRequested':
+    case 'AbsenceRetentionWarning':
+      return '🗂️'
+    case 'StaffAbsenceReported':
+    case 'SubstituteAssigned':
+      return '🧑‍🏫'
     case 'NewMessage':
       return '💬'
     case 'NewContactMessage':
@@ -110,9 +119,20 @@ export default function NotificationBell({ variant = 'light' }: NotificationBell
         return '/beskeder'
       case 'WeekPlanChanged':
         return isParent ? '/foraeldrevisning/ugeplan' : '/mig/skema'
-      case 'AbsenceConfirmed':
-      case 'AbsenceDismissed':
-        return isParent ? '/foraeldrevisning/fravaer' : '/fravaer'
+      case 'LeaveApproved':
+      case 'LeaveRejected':
+      case 'UnauthorizedAbsence':
+        return isParent ? '/foraeldrevisning/fravaer' : '/fravaer?fane=register'
+      case 'LeaveRequested':
+        return '/fravaer?fane=fri'
+      case 'AbsenceThreshold':
+        return '/fravaer?fane=statistik'
+      case 'AbsenceRetentionWarning':
+        return '/fravaer'
+      case 'StaffAbsenceReported':
+        return n.referenceId ? `/vikardaekning/${n.referenceId}` : '/vikardaekning'
+      case 'SubstituteAssigned':
+        return isAdmin ? '/vikardaekning' : '/mig/fravaer'
       case 'VacationRegistrationOpened':
         return '/foraeldrevisning/ferieindmelding'
       default:

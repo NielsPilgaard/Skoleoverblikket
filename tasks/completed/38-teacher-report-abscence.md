@@ -6,7 +6,7 @@ description: >-
   which SchemaSlot lektioner are affected and assigns a vikar per slot from
   an auto-suggested availability list. Separate domain from the existing
   parent→student AbsenceReport feature; no model reuse.
-status: 'Proposed'
+status: 'Completed'
 ---
 
 # Staff absence reporting + vikar assignment

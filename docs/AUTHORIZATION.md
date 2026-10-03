@@ -151,6 +151,17 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 | `GET /api/v1/classes/{id}/ugeplan` | `[Authorize]` | Any authenticated user |
 | `PUT /api/v1/classes/{id}/ugeplan/slots` | `[Authorize]` | Any authenticated user — no EditClass check |
 | `POST/DELETE /api/v1/classes/{id}/ugeplan/slots/{slotId}/files` | `[Authorize]` | Any authenticated user |
+| `POST /api/v1/absence`, `GET mine`, `DELETE {id}` | `[Authorize(Roles = "parent")]` | Own children only, checked in `AbsenceService` |
+| `GET /api/v1/absence`, `GET stats` | `[Authorize]` | Filtered to classes the caller passes `EditClass` for (admins: all) |
+| `PUT /api/v1/absence/{id}/category`, `POST follow-ups` | `EditClass` on the student's class | |
+| `GET leave-requests`, `POST {id}/approve`, `POST {id}/reject`, `GET export`, `GET flagged-export` | `[Authorize(Roles = "admin")]` | The principal grants ekstraordinær frihed |
+| `GET/PUT /api/v1/attendance/classes/{classId}` | `EditClass` on the class | Requires a staff row, so parents/board are rejected |
+| `GET /api/v1/attendance/overview` | `[Authorize(Roles = "admin")]` | |
+| `GET /api/v1/attendance/mine/pending` | `[Authorize]`, not parent/board | |
+| `POST /api/v1/staff-absences`, `GET mine`, `DELETE {id}` | `[Authorize]`, not parent/board | Staff report themselves; admins may report for anyone and delete any |
+| `GET /api/v1/staff-absences`, `GET {id}`, `PUT {id}/substitute` | `[Authorize(Roles = "admin")]` | Whole-school action, no ClassPermission check |
+| `GET /api/v1/staff/available`, `GET /api/v1/substitutions/mine` | `[Authorize]`, not parent/board | |
+| `PUT /api/v1/week-plans/{id}/slots/{slotId}/substitute` | `EditClass` on the week plan's class | |
 
 ---
 

@@ -22,14 +22,17 @@ interface NavItem {
   moduleGated?: boolean
   /** Alternate target for non-admin staff. When set, the item also shows for staff. */
   staffTo?: string
+  /** Label shown to non-admin staff when it differs from the admin label. */
+  staffLabel?: string
 }
 
 /**
  * Single source of truth for the sidebar. Each item's `group` and `order`
  * fully determine where it renders — array position doesn't matter.
  * Group order is: order of first item (by `order`) belonging to that group.
+ * `as const` keeps each `to` as a literal so `SidebarRoute` can list them (see content/features.tsx).
  */
-const navItems: NavItem[] = [
+const navItemDefinitions = [
   {
     to: '/dashboard',
     label: 'Oversigt',
@@ -235,6 +238,30 @@ const navItems: NavItem[] = [
       >
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
         <circle cx="12" cy="7" r="4" />
+      </svg>
+    ),
+  },
+  {
+    to: '/vikardaekning',
+    label: 'Vikardækning',
+    staffTo: '/mig/fravaer',
+    staffLabel: 'Mit fravær',
+    group: 'Planlægning',
+    order: 13.5,
+    icon: (
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <polyline points="16 11 18 13 22 9" />
       </svg>
     ),
   },
@@ -761,7 +788,14 @@ const navItems: NavItem[] = [
       </svg>
     ),
   },
-]
+] as const satisfies readonly NavItem[]
+
+const navItems: readonly NavItem[] = navItemDefinitions
+
+/** Every sidebar target. content/features.tsx must map each one, so a new page can't skip the landing page unnoticed. */
+export type SidebarRoute =
+  | (typeof navItemDefinitions)[number]['to']
+  | Extract<(typeof navItemDefinitions)[number], { staffTo: string }>['staffTo']
 
 function NavItemLink({ item, onClose }: { item: NavItem; onClose: () => void }) {
   return (
@@ -866,7 +900,11 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           if (item.staffTo) return true
           return !item.adminOnly || isAdmin
         })
-        .map((item) => (item.staffTo && !isAdmin ? { ...item, to: item.staffTo } : item)),
+        .map((item) =>
+          item.staffTo && !isAdmin
+            ? { ...item, to: item.staffTo, label: item.staffLabel ?? item.label }
+            : item
+        ),
     [isAdmin, isParent, isBoard, hasParentModule]
   )
 

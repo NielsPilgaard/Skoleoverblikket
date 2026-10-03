@@ -4,28 +4,100 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
-export type AbsenceControllerAbsenceReportDto = {
+export type AbsenceCategory = 'Illness' | 'ExtraordinaryLeave' | 'Unauthorized';
+
+export type AbsenceControllerChangeAbsenceCategoryRequest = {
+    category: AbsenceCategory;
+};
+
+export type AbsenceControllerMarkParentsInformedRequest = {
+    studentId: string;
+    year: number;
+    quarter: number;
+};
+
+export type AbsenceFlag = 'None' | 'TenPercent' | 'FifteenPercent';
+
+export type AbsenceMarkDto = {
+    id: string;
+    category: AbsenceCategory;
+    leaveStatus?: LeaveStatus;
+    source: AbsenceSource;
+    reason?: string | null;
+};
+
+export type AbsenceRecordDto = {
     id: string;
     studentId: string;
     studentName: string;
+    classId: string;
+    className: string;
     date: string;
     endDate?: string | null;
+    halfDay: boolean;
+    category: AbsenceCategory;
+    leaveStatus?: LeaveStatus;
+    source: AbsenceSource;
+    registeredByName?: string | null;
     reason?: string | null;
-    status: AbsenceStatus;
     createdAt: string;
+    updatedAt: string;
+    canCancel: boolean;
 };
 
-export type AbsenceControllerReportAbsenceRequest = {
+export type AbsenceSource = 'Parent' | 'Staff';
+
+export type AbsentStudentRequest = {
     studentId: string;
-    date: string;
-    endDate?: string | null;
-    reason?: string | null;
+    category: AbsenceCategory;
 };
-
-export type AbsenceStatus = 'Reported' | 'Confirmed' | 'Dismissed';
 
 export type AdminControllerModuleOverrideRequest = {
     module: SubscriptionModule;
+};
+
+export type AffectedLessonDto = {
+    date: string;
+    schemaSlotId: string;
+    classId: string;
+    className: string;
+    courseName: string;
+    startTime: string;
+    endTime: string;
+    seat: SubstituteSeat;
+    substituteId?: string | null;
+    substituteName?: string | null;
+    candidates?: Array<AvailableStaffDto>;
+};
+
+export type AssignAbsenceSubstituteRequest = {
+    schemaSlotId: string;
+    date: string;
+    staffId?: string | null;
+};
+
+export type AssignSubstituteRequest = {
+    substituteTeacherId?: string | null;
+    substituteAideId?: string | null;
+};
+
+export type AttendanceCheckDto = {
+    takenAt: string;
+    takenByName?: string | null;
+};
+
+export type AttendanceCheckpoint = 'StartOfDay' | 'EndOfDay';
+
+export type AttendanceOverviewDto = {
+    date: string;
+    isSchoolDay: boolean;
+    classes?: Array<ClassAttendanceStatusDto>;
+};
+
+export type AvailableStaffDto = {
+    id: string;
+    name: string;
+    role: StaffRole;
 };
 
 export type BillingControllerCheckoutRequest = {
@@ -131,6 +203,13 @@ export type BoardMembersControllerToggleTeacherDataRequest = {
 
 export type BroadcastAudience = 'AllParents' | 'ClassParents' | 'SfoParents' | 'AllStaff' | 'StaffByRole';
 
+export type BusyStaffDto = {
+    id: string;
+    name: string;
+    role: StaffRole;
+    conflictDescription: string;
+};
+
 export type CalendarControllerCalendarEntryDto = {
     id: string;
     type: CalendarEntryType;
@@ -168,6 +247,30 @@ export type CalendarControllerUpdateCalendarEntryRequest = {
 };
 
 export type CalendarEntryType = 'Ferie' | 'Lukkedag' | 'Arbejdsdag' | 'Begivenhed';
+
+export type ClassAttendanceDto = {
+    classId: string;
+    className: string;
+    date: string;
+    isSchoolDay: boolean;
+    requiresEndOfDay: boolean;
+    canEdit: boolean;
+    startOfDay?: AttendanceCheckDto;
+    endOfDay?: AttendanceCheckDto;
+    students?: Array<StudentAttendanceDto>;
+};
+
+export type ClassAttendanceStatusDto = {
+    classId: string;
+    className: string;
+    gradeLevel?: number | null;
+    requiresEndOfDay: boolean;
+    startOfDay?: AttendanceCheckDto;
+    endOfDay?: AttendanceCheckDto;
+    studentCount: number;
+    absentCount: number;
+    complete: boolean;
+};
 
 export type ClassChatControllerClassChatAttachmentDto = {
     id: string;
@@ -235,6 +338,17 @@ export type ClassPermissionsControllerClassPermissionDto = {
 
 export type ClassPermissionsControllerGrantPermissionRequest = {
     staffId: string;
+};
+
+export type ClassQuarterStatsDto = {
+    classId: string;
+    className: string;
+    studentCount: number;
+    illnessDays: number;
+    leaveDays: number;
+    unauthorizedDays: number;
+    absencePercent: number;
+    flaggedStudents: number;
 };
 
 export type ClassesControllerClassDto = {
@@ -585,6 +699,8 @@ export type ImportsControllerUninvitedParentDto = {
     email: string;
 };
 
+export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected';
+
 export type MessagesControllerGroupPreviewDto = {
     recipientCount: number;
 };
@@ -690,6 +806,16 @@ export type ModuleItemDto = {
     stripeSubscriptionItemId?: string | null;
 };
 
+export type MySubstitutionDto = {
+    date: string;
+    startTime: string;
+    endTime: string;
+    className: string;
+    courseName: string;
+    roomName?: string | null;
+    absentStaffName: string;
+};
+
 export type NotificationPreferencesControllerNotificationPreferenceDto = {
     type: NotificationType;
     inApp: boolean;
@@ -702,7 +828,7 @@ export type NotificationPreferencesControllerUpsertPreferenceItem = {
     email: boolean;
 };
 
-export type NotificationType = 'NewMessage' | 'NewContactMessage' | 'WeekPlanChanged' | 'AbsenceConfirmed' | 'AbsenceDismissed' | 'VacationRegistrationOpened' | 'GroupMessage' | 'ClassChatMessage';
+export type NotificationType = 'NewMessage' | 'NewContactMessage' | 'WeekPlanChanged' | 'LeaveApproved' | 'LeaveRejected' | 'VacationRegistrationOpened' | 'GroupMessage' | 'ClassChatMessage' | 'UnauthorizedAbsence' | 'AbsenceThreshold' | 'AbsenceRetentionWarning' | 'LeaveRequested' | 'StaffAbsenceReported' | 'SubstituteAssigned';
 
 export type NotificationsControllerNotificationDto = {
     id: string;
@@ -818,7 +944,40 @@ export type ParentsControllerUpdateParentContactRequest = {
     city?: string | null;
 };
 
+export type PendingAttendanceDto = {
+    classId: string;
+    className: string;
+    checkpoint: AttendanceCheckpoint;
+};
+
+export type QuarterStatsDto = {
+    year: number;
+    quarter: number;
+    quarterStart: string;
+    quarterEnd: string;
+    schoolDaysInQuarter: number;
+    schoolDaysSoFar: number;
+    students?: Array<StudentQuarterStatsDto>;
+    classes?: Array<ClassQuarterStatsDto>;
+    weeks?: Array<WeekAbsenceDto>;
+};
+
 export type RecipientType = 'Parent' | 'Staff' | 'Board';
+
+export type ReportAbsenceRequest = {
+    studentId: string;
+    date: string;
+    endDate?: string | null;
+    category: AbsenceCategory;
+    reason?: string | null;
+};
+
+export type ReportStaffAbsenceRequest = {
+    staffId?: string | null;
+    date: string;
+    endDate?: string | null;
+    reason?: string | null;
+};
 
 export type RoomsControllerRoomDto = {
     id: string;
@@ -831,6 +990,11 @@ export type RoomsControllerUpsertRoomRequest = {
     name: string;
     capacity?: number | null;
     description?: string | null;
+};
+
+export type SaveAttendanceRequest = {
+    checkpoint: AttendanceCheckpoint;
+    absent?: Array<AbsentStudentRequest>;
 };
 
 export type SchedulesControllerScheduleSlotDto = {
@@ -997,6 +1161,31 @@ export type SfoWeekPlanControllerUpsertSfoWeekPlanShiftRequest = {
     description?: string | null;
 };
 
+export type StaffAbsenceDetailDto = {
+    absence?: StaffAbsenceDto;
+    lessons?: Array<AffectedLessonDto>;
+};
+
+export type StaffAbsenceDto = {
+    id: string;
+    staffId: string;
+    staffName: string;
+    role: StaffRole;
+    date: string;
+    endDate?: string | null;
+    reason?: string | null;
+    reportedByName?: string | null;
+    createdAt: string;
+    affectedLessonCount: number;
+    coveredLessonCount: number;
+    canDelete: boolean;
+};
+
+export type StaffAvailabilityDto = {
+    available?: Array<AvailableStaffDto>;
+    busy?: Array<BusyStaffDto>;
+};
+
 export type StaffControllerPatchAdminPermissionRequest = {
     isAdmin: boolean;
 };
@@ -1062,6 +1251,7 @@ export type StatsControllerDashboardStats = {
     hoursPerStaff?: Array<StatsControllerHoursPerStaff>;
     unassignedClasses?: Array<StatsControllerUnassignedClass>;
     pendingAbsenceCount: number;
+    missingAttendanceCount: number;
     openVacationWindow?: StatsControllerOpenVacationWindowDto;
     unreadMessageCount?: number | null;
     unreadKontaktbogCount?: number | null;
@@ -1086,6 +1276,8 @@ export type StatsControllerMyDashboardStats = {
     todaySchedule?: Array<StatsControllerTodayLektion>;
     unreadMessageCount?: number | null;
     unreadKontaktbogCount?: number | null;
+    pendingAttendance?: Array<PendingAttendanceDto> | null;
+    upcomingSubstitutions?: Array<MySubstitutionDto>;
 };
 
 export type StatsControllerOpenVacationWindowDto = {
@@ -1102,6 +1294,7 @@ export type StatsControllerTodayLektion = {
     courseName: string;
     className: string;
     roomName?: string | null;
+    substituteName?: string | null;
 };
 
 export type StatsControllerUnassignedClass = {
@@ -1109,6 +1302,28 @@ export type StatsControllerUnassignedClass = {
     className: string;
     emptySlots: number;
     hasSchema: boolean;
+};
+
+export type StudentAttendanceDto = {
+    studentId: string;
+    name: string;
+    avatarUrl?: string | null;
+    morning?: AbsenceMarkDto;
+    endOfDay?: AbsenceMarkDto;
+    parentReport?: AbsenceMarkDto;
+};
+
+export type StudentQuarterStatsDto = {
+    studentId: string;
+    studentName: string;
+    classId: string;
+    className: string;
+    illnessDays: number;
+    leaveDays: number;
+    unauthorizedDays: number;
+    unauthorizedPercent: number;
+    flag: AbsenceFlag;
+    parentsInformedAt?: string | null;
 };
 
 export type StudentsControllerAvatarConfirmRequest = {
@@ -1146,28 +1361,15 @@ export type SubscriptionModule = 'ParentModule' | 'BoardModule';
 
 export type SubscriptionStatus = 'Trialing' | 'Active' | 'PastDue' | 'Canceled' | 'Unpaid';
 
-export type SubstituteControllerAssignSubstituteRequest = {
+export type SubstituteAssignmentDto = {
+    id: string;
     substituteTeacherId?: string | null;
+    substituteTeacherName?: string | null;
     substituteAideId?: string | null;
+    substituteAideName?: string | null;
 };
 
-export type SubstituteControllerAvailableStaffDto = {
-    id: string;
-    name: string;
-    role: StaffRole;
-};
-
-export type SubstituteControllerBusyStaffDto = {
-    id: string;
-    name: string;
-    role: StaffRole;
-    conflictDescription: string;
-};
-
-export type SubstituteControllerStaffAvailabilityDto = {
-    available?: Array<SubstituteControllerAvailableStaffDto>;
-    busy?: Array<SubstituteControllerBusyStaffDto>;
-};
+export type SubstituteSeat = 'Teacher' | 'Aide';
 
 export type TenantDetailDto = {
     id: string;
@@ -1315,6 +1517,14 @@ export type VacationRegistrationControllerWindowDto = {
 
 export type VacationRegistrationGranularity = 'Weeks' | 'Days';
 
+export type WeekAbsenceDto = {
+    weekStart: string;
+    isoWeek: number;
+    illnessDays: number;
+    leaveDays: number;
+    unauthorizedDays: number;
+};
+
 export type WeekPlanControllerAddFileToSlotRequest = {
     schoolFileId: string;
 };
@@ -1397,6 +1607,7 @@ export type GetApiV1AbsenceData = {
         classId?: string;
         from?: string;
         to?: string;
+        category?: AbsenceCategory;
     };
     url: '/api/v1/absence';
 };
@@ -1405,13 +1616,13 @@ export type GetApiV1AbsenceResponses = {
     /**
      * OK
      */
-    200: Array<AbsenceControllerAbsenceReportDto>;
+    200: Array<AbsenceRecordDto>;
 };
 
 export type GetApiV1AbsenceResponse = GetApiV1AbsenceResponses[keyof GetApiV1AbsenceResponses];
 
 export type PostApiV1AbsenceData = {
-    body?: AbsenceControllerReportAbsenceRequest;
+    body?: ReportAbsenceRequest;
     path?: never;
     query?: never;
     url: '/api/v1/absence';
@@ -1435,42 +1646,10 @@ export type GetApiV1AbsenceMineResponses = {
     /**
      * OK
      */
-    200: Array<AbsenceControllerAbsenceReportDto>;
+    200: Array<AbsenceRecordDto>;
 };
 
 export type GetApiV1AbsenceMineResponse = GetApiV1AbsenceMineResponses[keyof GetApiV1AbsenceMineResponses];
-
-export type PostApiV1AbsenceByIdConfirmData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/absence/{id}/confirm';
-};
-
-export type PostApiV1AbsenceByIdConfirmResponses = {
-    /**
-     * OK
-     */
-    200: unknown;
-};
-
-export type PostApiV1AbsenceByIdDismissData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/absence/{id}/dismiss';
-};
-
-export type PostApiV1AbsenceByIdDismissResponses = {
-    /**
-     * OK
-     */
-    200: unknown;
-};
 
 export type DeleteApiV1AbsenceByIdData = {
     body?: never;
@@ -1482,6 +1661,137 @@ export type DeleteApiV1AbsenceByIdData = {
 };
 
 export type DeleteApiV1AbsenceByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type PutApiV1AbsenceByIdCategoryData = {
+    body?: AbsenceControllerChangeAbsenceCategoryRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/absence/{id}/category';
+};
+
+export type PutApiV1AbsenceByIdCategoryResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1AbsenceLeaveRequestsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/absence/leave-requests';
+};
+
+export type GetApiV1AbsenceLeaveRequestsResponses = {
+    /**
+     * OK
+     */
+    200: Array<AbsenceRecordDto>;
+};
+
+export type GetApiV1AbsenceLeaveRequestsResponse = GetApiV1AbsenceLeaveRequestsResponses[keyof GetApiV1AbsenceLeaveRequestsResponses];
+
+export type PostApiV1AbsenceByIdApproveData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/absence/{id}/approve';
+};
+
+export type PostApiV1AbsenceByIdApproveResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type PostApiV1AbsenceByIdRejectData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/absence/{id}/reject';
+};
+
+export type PostApiV1AbsenceByIdRejectResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1AbsenceStatsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        year?: number;
+        quarter?: number;
+        classId?: string;
+    };
+    url: '/api/v1/absence/stats';
+};
+
+export type GetApiV1AbsenceStatsResponses = {
+    /**
+     * OK
+     */
+    200: QuarterStatsDto;
+};
+
+export type GetApiV1AbsenceStatsResponse = GetApiV1AbsenceStatsResponses[keyof GetApiV1AbsenceStatsResponses];
+
+export type PostApiV1AbsenceFollowUpsData = {
+    body?: AbsenceControllerMarkParentsInformedRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/absence/follow-ups';
+};
+
+export type PostApiV1AbsenceFollowUpsResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1AbsenceExportData = {
+    body?: never;
+    path?: never;
+    query?: {
+        schoolYear?: number;
+    };
+    url: '/api/v1/absence/export';
+};
+
+export type GetApiV1AbsenceExportResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1AbsenceFlaggedExportData = {
+    body?: never;
+    path?: never;
+    query?: {
+        year?: number;
+        quarter?: number;
+    };
+    url: '/api/v1/absence/flagged-export';
+};
+
+export type GetApiV1AbsenceFlaggedExportResponses = {
     /**
      * OK
      */
@@ -1520,6 +1830,78 @@ export type DeleteApiV1AdminTenantsBySchoolIdModulesByModuleResponses = {
      */
     200: unknown;
 };
+
+export type GetApiV1AttendanceClassesByClassIdData = {
+    body?: never;
+    path: {
+        classId: string;
+    };
+    query?: {
+        date?: string;
+    };
+    url: '/api/v1/attendance/classes/{classId}';
+};
+
+export type GetApiV1AttendanceClassesByClassIdResponses = {
+    /**
+     * OK
+     */
+    200: ClassAttendanceDto;
+};
+
+export type GetApiV1AttendanceClassesByClassIdResponse = GetApiV1AttendanceClassesByClassIdResponses[keyof GetApiV1AttendanceClassesByClassIdResponses];
+
+export type PutApiV1AttendanceClassesByClassIdData = {
+    body?: SaveAttendanceRequest;
+    path: {
+        classId: string;
+    };
+    query?: {
+        date?: string;
+    };
+    url: '/api/v1/attendance/classes/{classId}';
+};
+
+export type PutApiV1AttendanceClassesByClassIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1AttendanceOverviewData = {
+    body?: never;
+    path?: never;
+    query?: {
+        date?: string;
+    };
+    url: '/api/v1/attendance/overview';
+};
+
+export type GetApiV1AttendanceOverviewResponses = {
+    /**
+     * OK
+     */
+    200: AttendanceOverviewDto;
+};
+
+export type GetApiV1AttendanceOverviewResponse = GetApiV1AttendanceOverviewResponses[keyof GetApiV1AttendanceOverviewResponses];
+
+export type GetApiV1AttendanceMinePendingData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/attendance/mine/pending';
+};
+
+export type GetApiV1AttendanceMinePendingResponses = {
+    /**
+     * OK
+     */
+    200: Array<PendingAttendanceDto>;
+};
+
+export type GetApiV1AttendanceMinePendingResponse = GetApiV1AttendanceMinePendingResponses[keyof GetApiV1AttendanceMinePendingResponses];
 
 export type GetApiV1BillingSubscriptionData = {
     body?: never;
@@ -3990,6 +4372,105 @@ export type PatchApiV1StaffByIdAdminPermissionResponses = {
 
 export type PatchApiV1StaffByIdAdminPermissionResponse = PatchApiV1StaffByIdAdminPermissionResponses[keyof PatchApiV1StaffByIdAdminPermissionResponses];
 
+export type GetApiV1StaffAbsencesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        from?: string;
+        to?: string;
+    };
+    url: '/api/v1/staff-absences';
+};
+
+export type GetApiV1StaffAbsencesResponses = {
+    /**
+     * OK
+     */
+    200: Array<StaffAbsenceDto>;
+};
+
+export type GetApiV1StaffAbsencesResponse = GetApiV1StaffAbsencesResponses[keyof GetApiV1StaffAbsencesResponses];
+
+export type PostApiV1StaffAbsencesData = {
+    body?: ReportStaffAbsenceRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/staff-absences';
+};
+
+export type PostApiV1StaffAbsencesResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1StaffAbsencesMineData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/staff-absences/mine';
+};
+
+export type GetApiV1StaffAbsencesMineResponses = {
+    /**
+     * OK
+     */
+    200: Array<StaffAbsenceDto>;
+};
+
+export type GetApiV1StaffAbsencesMineResponse = GetApiV1StaffAbsencesMineResponses[keyof GetApiV1StaffAbsencesMineResponses];
+
+export type DeleteApiV1StaffAbsencesByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/staff-absences/{id}';
+};
+
+export type DeleteApiV1StaffAbsencesByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1StaffAbsencesByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/staff-absences/{id}';
+};
+
+export type GetApiV1StaffAbsencesByIdResponses = {
+    /**
+     * OK
+     */
+    200: StaffAbsenceDetailDto;
+};
+
+export type GetApiV1StaffAbsencesByIdResponse = GetApiV1StaffAbsencesByIdResponses[keyof GetApiV1StaffAbsencesByIdResponses];
+
+export type PutApiV1StaffAbsencesByIdSubstituteData = {
+    body?: AssignAbsenceSubstituteRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/staff-absences/{id}/substitute';
+};
+
+export type PutApiV1StaffAbsencesByIdSubstituteResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
 export type GetApiV1StaffInvitationsData = {
     body?: never;
     path?: never;
@@ -4282,13 +4763,13 @@ export type GetApiV1StaffAvailableResponses = {
     /**
      * OK
      */
-    200: SubstituteControllerStaffAvailabilityDto;
+    200: StaffAvailabilityDto;
 };
 
 export type GetApiV1StaffAvailableResponse = GetApiV1StaffAvailableResponses[keyof GetApiV1StaffAvailableResponses];
 
 export type PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteData = {
-    body?: SubstituteControllerAssignSubstituteRequest;
+    body?: AssignSubstituteRequest;
     path: {
         weekPlanId: string;
         slotId: string;
@@ -4301,8 +4782,29 @@ export type PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteResponses = {
     /**
      * OK
      */
-    200: unknown;
+    200: SubstituteAssignmentDto;
 };
+
+export type PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteResponse = PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteResponses[keyof PutApiV1WeekPlansByWeekPlanIdSlotsBySlotIdSubstituteResponses];
+
+export type GetApiV1SubstitutionsMineData = {
+    body?: never;
+    path?: never;
+    query?: {
+        from?: string;
+        to?: string;
+    };
+    url: '/api/v1/substitutions/mine';
+};
+
+export type GetApiV1SubstitutionsMineResponses = {
+    /**
+     * OK
+     */
+    200: Array<MySubstitutionDto>;
+};
+
+export type GetApiV1SubstitutionsMineResponse = GetApiV1SubstitutionsMineResponses[keyof GetApiV1SubstitutionsMineResponses];
 
 export type GetApiV1AdminEmailPreviewStaffInvitationData = {
     body?: never;
