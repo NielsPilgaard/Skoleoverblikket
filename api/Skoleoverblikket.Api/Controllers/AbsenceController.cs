@@ -1,253 +1,182 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Skoleoverblikket.Api.Auth;
-using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Models;
 using Skoleoverblikket.Api.Services;
 
 namespace Skoleoverblikket.Api.Controllers;
 
+/// <summary>
+/// The student absence register (fravær): parent reports, leave approval, category changes,
+/// quarterly stats and downloads. Fremmøde lives in <see cref="AttendanceController"/>.
+/// </summary>
 [ApiController]
 [Route("api/v1/absence")]
 [Authorize]
-public sealed class AbsenceController(AppDbContext db, INotificationService notifications, IAuthorizationService authorization) : ControllerBase
+public sealed class AbsenceController(
+	AbsenceService absence,
+	AbsenceStatsService absenceStats,
+	IAuthorizationService authorization) : ControllerBase
 {
-	public record ReportAbsenceRequest(Guid StudentId, DateOnly Date, DateOnly? EndDate, string? Reason);
-	public record AbsenceReportDto(
-		Guid Id, Guid StudentId, string StudentName,
-		DateOnly Date, DateOnly? EndDate, string? Reason,
-		AbsenceStatus Status, DateTimeOffset CreatedAt);
+	public record ChangeAbsenceCategoryRequest(AbsenceCategory Category);
+
+	public record MarkParentsInformedRequest(Guid StudentId, int Year, int Quarter);
+
+	// ── Parents ──────────────────────────────────────────────────────────────────
 
 	[HttpPost]
 	[Authorize(Roles = Roles.Parent)]
-	public async Task<IActionResult> ReportAbsence(
-		[FromBody] ReportAbsenceRequest req, CancellationToken cancellationToken)
+	public async Task<IActionResult> ReportAbsence([FromBody] ReportAbsenceRequest req, CancellationToken cancellationToken)
 	{
-		var subject = User.GetKeycloakSubject();
-
-		var parent = await db.Parents
-			.AsNoTracking()
-			.FirstOrDefaultAsync(p => p.KeycloakSubject == subject, cancellationToken);
-
-		if (parent is null)
+		var (result, _) = await absence.ReportByParentAsync(User.GetKeycloakSubject(), req, cancellationToken);
+		return result switch
 		{
-			return Forbid();
-		}
-
-		var parentOwnsStudent = await db.Parents
-			.AnyAsync(p => p.KeycloakSubject == subject && p.Students.Any(s => s.Id == req.StudentId), cancellationToken);
-
-		if (!parentOwnsStudent)
-		{
-			return Forbid();
-		}
-
-		var report = new AbsenceReport
-		{
-			TenantId = parent.TenantId,
-			StudentId = req.StudentId,
-			ReportedByParentId = parent.Id,
-			Date = req.Date,
-			EndDate = req.EndDate,
-			Reason = req.Reason,
+			ParentReportResult.Created => CreatedAtAction(nameof(GetMine), new { }, null),
+			ParentReportResult.NotYourChild => Forbid(),
+			ParentReportResult.InvalidCategory => Problem("Vælg syg eller fri", statusCode: 400),
+			_ => Problem("Ugyldige datoer. Fri skal søges før den første dag, og sygdom kan meldes op til 14 dage tilbage.", statusCode: 400),
 		};
-
-		db.AbsenceReports.Add(report);
-		await db.SaveChangesAsync(cancellationToken);
-
-		return CreatedAtAction(nameof(GetMine), new { }, null);
 	}
 
 	[HttpGet("mine")]
 	[Authorize(Roles = Roles.Parent)]
-	public async Task<ActionResult<IReadOnlyList<AbsenceReportDto>>> GetMine(CancellationToken cancellationToken)
-	{
-		var subject = User.GetKeycloakSubject();
-
-		var parent = await db.Parents.AsNoTracking()
-			.FirstOrDefaultAsync(p => p.KeycloakSubject == subject, cancellationToken);
-
-		if (parent is null)
-		{
-			return Ok(Array.Empty<AbsenceReportDto>());
-		}
-
-		var reports = await db.AbsenceReports
-			.AsNoTracking()
-			.Include(a => a.Student)
-			.Where(a => a.ReportedByParentId == parent.Id)
-			.OrderByDescending(a => a.Date)
-			.Select(a => new AbsenceReportDto(
-				a.Id, a.StudentId, a.Student.Name,
-				a.Date, a.EndDate, a.Reason, a.Status, a.CreatedAt))
-			.ToListAsync(cancellationToken);
-
-		return Ok(reports);
-	}
-
-	[HttpGet]
-	[Authorize(Roles = Roles.Admin)]
-	public async Task<ActionResult<IReadOnlyList<AbsenceReportDto>>> GetAbsences(
-		[FromQuery] Guid? classId, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
-		CancellationToken cancellationToken)
-	{
-		var query = db.AbsenceReports
-			.AsNoTracking()
-			.Include(a => a.Student)
-			.AsQueryable();
-
-		if (classId.HasValue)
-		{
-			query = query.Where(a => a.Student.ClassId == classId.Value);
-		}
-
-		if (from.HasValue)
-		{
-			query = query.Where(a => a.Date >= from.Value);
-		}
-
-		if (to.HasValue)
-		{
-			query = query.Where(a => a.Date <= to.Value);
-		}
-
-		var reports = await query
-			.OrderByDescending(a => a.Date)
-			.Select(a => new AbsenceReportDto(
-				a.Id, a.StudentId, a.Student.Name,
-				a.Date, a.EndDate, a.Reason, a.Status, a.CreatedAt))
-			.ToListAsync(cancellationToken);
-
-		return Ok(reports);
-	}
-
-	[HttpPost("{id:guid}/confirm")]
-	public async Task<IActionResult> ConfirmAbsence(Guid id, CancellationToken cancellationToken)
-	{
-		var subject = User.GetKeycloakSubject();
-
-		var staff = await db.Staff.AsNoTracking()
-			.FirstOrDefaultAsync(s => s.KeycloakSubject == subject, cancellationToken);
-
-		if (staff is null)
-		{
-			return Forbid();
-		}
-
-		var report = await db.AbsenceReports
-			.Include(a => a.Student)
-			.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
-
-		if (report is null)
-		{
-			return NotFound();
-		}
-
-		var authResult = await authorization.AuthorizeAsync(User, report.Student.ClassId, new EditClassRequirement());
-		if (!authResult.Succeeded)
-		{
-			return Forbid();
-		}
-
-		report.Status = AbsenceStatus.Confirmed;
-		report.ConfirmedByStaffId = staff.Id;
-		report.ConfirmedAt = DateTimeOffset.UtcNow;
-
-		await db.SaveChangesAsync(cancellationToken);
-
-		var staffName = staff.Name;
-		var body = $"{staffName} har bekræftet {report.Student.Name}s fravær {report.Date:d. MMMM}";
-
-		await notifications.CreateAsync(
-			report.ReportedByParentId,
-			RecipientType.Parent,
-			NotificationType.AbsenceConfirmed,
-			report.Id,
-			body,
-			cancellationToken);
-
-		return NoContent();
-	}
-
-	[HttpPost("{id:guid}/dismiss")]
-	public async Task<IActionResult> DismissAbsence(Guid id, CancellationToken cancellationToken)
-	{
-		var subject = User.GetKeycloakSubject();
-
-		var staff = await db.Staff.AsNoTracking()
-			.FirstOrDefaultAsync(s => s.KeycloakSubject == subject, cancellationToken);
-
-		if (staff is null)
-		{
-			return Forbid();
-		}
-
-		var report = await db.AbsenceReports
-			.Include(a => a.Student)
-			.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
-
-		if (report is null)
-		{
-			return NotFound();
-		}
-
-		var authResult = await authorization.AuthorizeAsync(User, report.Student.ClassId, new EditClassRequirement());
-		if (!authResult.Succeeded)
-		{
-			return Forbid();
-		}
-
-		report.Status = AbsenceStatus.Dismissed;
-		report.ConfirmedByStaffId = staff.Id;
-		report.ConfirmedAt = DateTimeOffset.UtcNow;
-
-		await db.SaveChangesAsync(cancellationToken);
-
-		var staffName = staff.Name;
-		var body = $"{staffName} har afvist {report.Student.Name}s fravær {report.Date:d. MMMM}";
-
-		await notifications.CreateAsync(
-			report.ReportedByParentId,
-			RecipientType.Parent,
-			NotificationType.AbsenceDismissed,
-			report.Id,
-			body,
-			cancellationToken);
-
-		return NoContent();
-	}
+	public async Task<ActionResult<IReadOnlyList<AbsenceRecordDto>>> GetMine(CancellationToken cancellationToken) =>
+		await absence.GetForParentAsync(User.GetKeycloakSubject(), cancellationToken);
 
 	[HttpDelete("{id:guid}")]
 	[Authorize(Roles = Roles.Parent)]
-	public async Task<IActionResult> CancelAbsence(Guid id, CancellationToken cancellationToken)
-	{
-		var subject = User.GetKeycloakSubject();
-
-		var parent = await db.Parents.AsNoTracking()
-			.FirstOrDefaultAsync(p => p.KeycloakSubject == subject, cancellationToken);
-
-		if (parent is null)
+	public async Task<IActionResult> CancelAbsence(Guid id, CancellationToken cancellationToken) =>
+		await absence.CancelByParentAsync(User.GetKeycloakSubject(), id, cancellationToken) switch
 		{
-			return Forbid();
-		}
+			ParentCancelResult.Cancelled => NoContent(),
+			ParentCancelResult.NotFound => NotFound(),
+			_ => Problem("Fraværet er allerede begyndt og kan ikke annulleres. Kontakt skolen.", statusCode: 400),
+		};
 
-		var report = await db.AbsenceReports
-			.FirstOrDefaultAsync(a => a.Id == id && a.ReportedByParentId == parent.Id, cancellationToken);
+	// ── Staff ────────────────────────────────────────────────────────────────────
 
-		if (report is null)
+	/// <summary>The register, limited to the classes the caller may register fravær for.</summary>
+	[HttpGet]
+	public async Task<ActionResult<IReadOnlyList<AbsenceRecordDto>>> GetAbsences(
+		[FromQuery] Guid? classId, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] AbsenceCategory? category,
+		CancellationToken cancellationToken)
+	{
+		var allowed = await absence.GetEditableClassIdsAsync(User.GetKeycloakSubject(), User.IsInRole(Roles.Admin), cancellationToken);
+		return await absence.ListAsync(classId, from, to, category, allowed, cancellationToken);
+	}
+
+	[HttpPut("{id:guid}/category")]
+	public async Task<IActionResult> ChangeCategory(Guid id, [FromBody] ChangeAbsenceCategoryRequest req, CancellationToken cancellationToken)
+	{
+		var classId = await absence.GetRecordClassIdAsync(id, cancellationToken);
+		if (classId is null)
 		{
 			return NotFound();
 		}
 
-		if (report.Status != AbsenceStatus.Reported)
+		if (!(await authorization.AuthorizeAsync(User, classId.Value, new EditClassRequirement())).Succeeded)
 		{
-			return BadRequest(new { detail = "Kan ikke annullere et fravær der allerede er bekræftet eller afvist." });
+			return Forbid();
 		}
 
-		db.AbsenceReports.Remove(report);
-		await db.SaveChangesAsync(cancellationToken);
-
-		return NoContent();
+		return await absence.ChangeCategoryAsync(id, req.Category, cancellationToken) switch
+		{
+			CategoryChangeResult.Changed => NoContent(),
+			CategoryChangeResult.NotFound => NotFound(),
+			CategoryChangeResult.NotStaffRegistered => Problem("Fravær meldt af forældre kan ikke ændres her", statusCode: 400),
+			CategoryChangeResult.QuarterClosed => Problem("Kvartalet er afsluttet, så fraværet kan ikke længere rettes", statusCode: 400),
+			_ => Problem("Vælg sygdom eller ulovligt fravær", statusCode: 400),
+		};
 	}
+
+	[HttpGet("leave-requests")]
+	[Authorize(Roles = Roles.Admin)]
+	public async Task<ActionResult<IReadOnlyList<AbsenceRecordDto>>> GetLeaveRequests(CancellationToken cancellationToken) =>
+		await absence.GetLeaveRequestsAsync(cancellationToken);
+
+	[HttpPost("{id:guid}/approve")]
+	[Authorize(Roles = Roles.Admin)]
+	public Task<IActionResult> ApproveLeave(Guid id, CancellationToken cancellationToken) =>
+		DecideLeave(id, approve: true, cancellationToken);
+
+	[HttpPost("{id:guid}/reject")]
+	[Authorize(Roles = Roles.Admin)]
+	public Task<IActionResult> RejectLeave(Guid id, CancellationToken cancellationToken) =>
+		DecideLeave(id, approve: false, cancellationToken);
+
+	[HttpGet("stats")]
+	public async Task<ActionResult<QuarterStatsDto>> GetStats(
+		[FromQuery] int year, [FromQuery] int quarter, [FromQuery] Guid? classId, CancellationToken cancellationToken)
+	{
+		if (quarter is < 1 or > 4 || year is < 2000 or > 2100)
+		{
+			return Problem("Ugyldigt kvartal", statusCode: 400);
+		}
+
+		var allowed = await absence.GetEditableClassIdsAsync(User.GetKeycloakSubject(), User.IsInRole(Roles.Admin), cancellationToken);
+		return await absenceStats.GetQuarterStatsAsync(year, quarter, classId, allowed, cancellationToken);
+	}
+
+	[HttpPost("follow-ups")]
+	public async Task<IActionResult> MarkParentsInformed([FromBody] MarkParentsInformedRequest req, CancellationToken cancellationToken)
+	{
+		if (req.Quarter is < 1 or > 4 || req.Year is < 2000 or > 2100)
+		{
+			return Problem("Ugyldigt kvartal", statusCode: 400);
+		}
+
+		var classId = await absence.GetStudentClassIdAsync(req.StudentId, cancellationToken);
+		if (classId is null)
+		{
+			return NotFound();
+		}
+
+		if (!(await authorization.AuthorizeAsync(User, classId.Value, new EditClassRequirement())).Succeeded)
+		{
+			return Forbid();
+		}
+
+		return await absence.MarkParentsInformedAsync(req.StudentId, req.Year, req.Quarter, User.GetKeycloakSubject(), cancellationToken)
+			? NoContent()
+			: NotFound();
+	}
+
+	/// <summary>The full register for one school year (2025 = skoleåret 2025/26) as Excel.</summary>
+	[HttpGet("export")]
+	[Authorize(Roles = Roles.Admin)]
+	[Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")]
+	public async Task<IActionResult> ExportSchoolYear([FromQuery] int schoolYear, CancellationToken cancellationToken)
+	{
+		var current = SchoolDayCalendar.SchoolYearStart(SchoolDayCalendar.Today());
+		if (schoolYear < current - 1 || schoolYear > current)
+		{
+			return Problem("Kun indeværende og forrige skoleår gemmes", statusCode: 400);
+		}
+
+		using var wb = await absenceStats.BuildSchoolYearWorkbookAsync(schoolYear, cancellationToken);
+		return ExcelReportBuilder.ToXlsx(wb, $"fravaer-{schoolYear}-{(schoolYear + 1) % 100:00}.xlsx");
+	}
+
+	/// <summary>Students at or above 15% ulovligt fravær in a quarter, as CSV.</summary>
+	[HttpGet("flagged-export")]
+	[Authorize(Roles = Roles.Admin)]
+	[Produces("text/csv")]
+	public async Task<IActionResult> ExportFlagged([FromQuery] int year, [FromQuery] int quarter, CancellationToken cancellationToken)
+	{
+		if (quarter is < 1 or > 4 || year is < 2000 or > 2100)
+		{
+			return Problem("Ugyldigt kvartal", statusCode: 400);
+		}
+
+		var csv = await absenceStats.BuildFlaggedCsvAsync(year, quarter, cancellationToken);
+		return File(csv, "text/csv; charset=utf-8", $"ulovligt-fravaer-15-procent-{year}-k{quarter}.csv");
+	}
+
+	private async Task<IActionResult> DecideLeave(Guid id, bool approve, CancellationToken cancellationToken) =>
+		await absence.DecideLeaveAsync(id, approve, User.GetKeycloakSubject(), cancellationToken) switch
+		{
+			LeaveDecisionResult.Decided => NoContent(),
+			LeaveDecisionResult.NotFound => NotFound(),
+			_ => Problem("Anmodningen er allerede behandlet", statusCode: 400),
+		};
 }

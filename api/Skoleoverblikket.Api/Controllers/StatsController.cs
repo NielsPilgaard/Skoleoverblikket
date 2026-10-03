@@ -15,7 +15,9 @@ namespace Skoleoverblikket.Api.Controllers;
 public sealed class StatsController(
 	AppDbContext db,
 	SubscriptionService subscriptionService,
-	ITenantContext tenantContext) : ControllerBase
+	ITenantContext tenantContext,
+	AbsenceService absence,
+	SubstituteService substitutes) : ControllerBase
 {
 	private const int SchoolDaysPerWeek = 5; // Mon–Fri
 	public record DashboardStats(
@@ -29,6 +31,7 @@ public sealed class StatsController(
 		IReadOnlyList<HoursPerStaff> HoursPerStaff,
 		IReadOnlyList<UnassignedClass> UnassignedClasses,
 		int PendingAbsenceCount,
+		int MissingAttendanceCount,
 		OpenVacationWindowDto? OpenVacationWindow,
 		int? UnreadMessageCount,
 		int? UnreadKontaktbogCount);
@@ -38,18 +41,24 @@ public sealed class StatsController(
 	public record UnassignedClass(Guid ClassId, string ClassName, int EmptySlots, bool HasSchema);
 	public record OpenVacationWindowDto(Guid WindowId, string Title, DateOnly RegistrationDeadline, int EntryCount);
 
+	/// <param name="PendingAttendance">Klasser still missing fremmøde today; null without the parent module.</param>
+	/// <param name="UpcomingSubstitutions">Lektioner the caller covers as vikar today and the next 7 days.</param>
 	public record MyDashboardStats(
 		IReadOnlyList<TodayLektion> TodaySchedule,
 		int? UnreadMessageCount,
-		int? UnreadKontaktbogCount);
+		int? UnreadKontaktbogCount,
+		IReadOnlyList<PendingAttendanceDto>? PendingAttendance,
+		IReadOnlyList<MySubstitutionDto> UpcomingSubstitutions);
 
+	/// <param name="SubstituteName">Set when a vikar covers the caller's seat in this lektion today.</param>
 	public record TodayLektion(
 		Guid SlotId,
 		TimeOnly StartTime,
 		TimeOnly EndTime,
 		string CourseName,
 		string ClassName,
-		string? RoomName);
+		string? RoomName,
+		string? SubstituteName = null);
 
 	[HttpGet("dashboard")]
 	[Authorize(Roles = $"{Roles.Admin},{Roles.Board}")]
@@ -142,9 +151,9 @@ public sealed class StatsController(
 			.ThenBy(u => u.ClassName)
 			.ToList();
 
-		// Attention alerts — pending absence and open vacation window are not module-gated.
-		var pendingAbsenceCount = await db.AbsenceReports
-			.CountAsync(a => a.Status == AbsenceStatus.Reported, cancellationToken);
+		// Attention alerts — leave requests, missing fremmøde and open vacation window are not module-gated.
+		var pendingAbsenceCount = await absence.CountPendingLeaveRequestsAsync(cancellationToken);
+		var missingAttendanceCount = await absence.CountClassesMissingAttendanceTodayAsync(cancellationToken);
 
 		var openVacationWindow = await db.VacationRegistrationWindows
 			.AsNoTracking()
@@ -160,7 +169,7 @@ public sealed class StatsController(
 			classCount, staffCount, courseCount, roomCount,
 			schemasComplete, schemasTotal,
 			hoursPerCourse, hoursPerStaff, unassigned,
-			pendingAbsenceCount, openVacationWindow,
+			pendingAbsenceCount, missingAttendanceCount, openVacationWindow,
 			unreadMessages, unreadKontaktbog));
 	}
 
@@ -196,28 +205,56 @@ public sealed class StatsController(
 			return Forbid();
 		}
 
-		var today = DateOnly.FromDateTime(DateTime.UtcNow);
+		var today = SchoolDayCalendar.Today();
 		var weekday = today.DayOfWeek;
 
-		var todaySchedule = await db.SchemaSlots
+		var mySlots = await db.SchemaSlots
 			.AsNoTracking()
 			.Where(s => (s.Schema.StartDate == null || s.Schema.StartDate <= today)
 					 && (s.Schema.EndDate == null || s.Schema.EndDate >= today))
 			.Where(s => s.Weekday == weekday)
 			.Where(s => s.TeacherId == staff.Id || s.AideId == staff.Id)
 			.OrderBy(s => s.TimeSlot.StartTime)
-			.Select(s => new TodayLektion(
+			.Select(s => new
+			{
 				s.Id,
 				s.TimeSlot.StartTime,
 				s.TimeSlot.EndTime,
-				s.Course.Name,
-				s.Schema.Class.Name,
-				s.Room != null ? s.Room.Name : null))
+				CourseName = s.Course.Name,
+				ClassName = s.Schema.Class.Name,
+				RoomName = s.Room != null ? s.Room.Name : null,
+				IsTeacher = s.TeacherId == staff.Id,
+			})
 			.ToListAsync(cancellationToken);
+
+		var isoYear = System.Globalization.ISOWeek.GetYear(today.ToDateTime(TimeOnly.MinValue));
+		var isoWeek = System.Globalization.ISOWeek.GetWeekOfYear(today.ToDateTime(TimeOnly.MinValue));
+		var cover = await substitutes.GetAssignmentsAsync(mySlots.Select(s => s.Id).ToList(), cancellationToken);
+		var todaySchedule = mySlots
+			.Select(s =>
+			{
+				string? substituteName = null;
+				if (cover.TryGetValue((isoYear, isoWeek, s.Id), out var c))
+				{
+					substituteName = s.IsTeacher ? c.TeacherName : c.AideName;
+				}
+
+				return new TodayLektion(s.Id, s.StartTime, s.EndTime, s.CourseName, s.ClassName, s.RoomName, substituteName);
+			})
+			.ToList();
 
 		var (unreadMessages, unreadKontaktbog) = await GetUnreadCountsAsync(cancellationToken);
 
-		return Ok(new MyDashboardStats(todaySchedule, unreadMessages, unreadKontaktbog));
+		// Fremmøde is part of the parent module (fraværsregistrering), so only nag when it is active.
+		var pendingAttendance = unreadMessages is null
+			? null
+			: await absence.GetMyPendingAsync(User.GetKeycloakSubject(), DateTimeOffset.UtcNow, cancellationToken);
+
+		var upcomingSubstitutions = await substitutes.GetMySubstitutionsAsync(
+			User.GetKeycloakSubject(), today, today.AddDays(7), cancellationToken);
+
+		return Ok(new MyDashboardStats(
+			todaySchedule, unreadMessages, unreadKontaktbog, pendingAttendance, upcomingSubstitutions));
 	}
 
 	/// <summary>

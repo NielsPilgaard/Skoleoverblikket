@@ -2162,3 +2162,282 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER TABLE "AbsenceReports" DROP CONSTRAINT "FK_AbsenceReports_Parents_ReportedByParentId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER TABLE "AbsenceReports" DROP CONSTRAINT "FK_AbsenceReports_Staff_ConfirmedByStaffId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    DROP INDEX "IX_AbsenceReports_TenantId_Status";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER TABLE "AbsenceReports" RENAME COLUMN "Status" TO "Category";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER TABLE "AbsenceReports" RENAME COLUMN "ConfirmedByStaffId" TO "RegisteredByStaffId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER TABLE "AbsenceReports" RENAME COLUMN "ConfirmedAt" TO "DecidedAt";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER INDEX "IX_AbsenceReports_ConfirmedByStaffId" RENAME TO "IX_AbsenceReports_RegisteredByStaffId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER TABLE "AbsenceReports" ALTER COLUMN "ReportedByParentId" DROP NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER TABLE "AbsenceReports" ADD "DecidedByStaffId" uuid;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER TABLE "AbsenceReports" ADD "HalfDay" boolean NOT NULL DEFAULT FALSE;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER TABLE "AbsenceReports" ADD "LeaveStatus" integer;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER TABLE "AbsenceReports" ADD "UpdatedAt" timestamp with time zone NOT NULL DEFAULT TIMESTAMPTZ '-infinity';
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    UPDATE "AbsenceReports"
+    SET "Category" = CASE WHEN "Category" = 2 THEN 2 ELSE 0 END,
+        "RegisteredByStaffId" = CASE WHEN "Category" = 2 THEN "RegisteredByStaffId" ELSE NULL END,
+        "DecidedAt" = NULL,
+        "UpdatedAt" = "CreatedAt";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE TABLE "AbsenceFollowUps" (
+        "Id" uuid NOT NULL,
+        "TenantId" uuid NOT NULL,
+        "StudentId" uuid NOT NULL,
+        "QuarterStart" date NOT NULL,
+        "WarningSentAt" timestamp with time zone,
+        "ParentsInformedAt" timestamp with time zone,
+        "ParentsInformedByStaffId" uuid,
+        CONSTRAINT "PK_AbsenceFollowUps" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_AbsenceFollowUps_Staff_ParentsInformedByStaffId" FOREIGN KEY ("ParentsInformedByStaffId") REFERENCES "Staff" ("Id") ON DELETE SET NULL,
+        CONSTRAINT "FK_AbsenceFollowUps_Students_StudentId" FOREIGN KEY ("StudentId") REFERENCES "Students" ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE TABLE "AbsenceRetentionWarnings" (
+        "Id" uuid NOT NULL,
+        "TenantId" uuid NOT NULL,
+        "SchoolYearStart" integer NOT NULL,
+        "WarnedAt" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_AbsenceRetentionWarnings" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE TABLE "AttendanceChecks" (
+        "Id" uuid NOT NULL,
+        "TenantId" uuid NOT NULL,
+        "ClassId" uuid NOT NULL,
+        "Date" date NOT NULL,
+        "Checkpoint" integer NOT NULL,
+        "TakenByStaffId" uuid,
+        "TakenAt" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_AttendanceChecks" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_AttendanceChecks_Classes_ClassId" FOREIGN KEY ("ClassId") REFERENCES "Classes" ("Id") ON DELETE CASCADE,
+        CONSTRAINT "FK_AttendanceChecks_Staff_TakenByStaffId" FOREIGN KEY ("TakenByStaffId") REFERENCES "Staff" ("Id") ON DELETE SET NULL
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE TABLE "StaffAbsences" (
+        "Id" uuid NOT NULL,
+        "TenantId" uuid NOT NULL,
+        "StaffId" uuid NOT NULL,
+        "ReportedByStaffId" uuid,
+        "Date" date NOT NULL,
+        "EndDate" date,
+        "Reason" character varying(500),
+        "CreatedAt" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_StaffAbsences" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_StaffAbsences_Staff_ReportedByStaffId" FOREIGN KEY ("ReportedByStaffId") REFERENCES "Staff" ("Id") ON DELETE SET NULL,
+        CONSTRAINT "FK_StaffAbsences_Staff_StaffId" FOREIGN KEY ("StaffId") REFERENCES "Staff" ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE INDEX "IX_AbsenceReports_DecidedByStaffId" ON "AbsenceReports" ("DecidedByStaffId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE INDEX "IX_AbsenceReports_TenantId_LeaveStatus" ON "AbsenceReports" ("TenantId", "LeaveStatus");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE INDEX "IX_AbsenceReports_TenantId_StudentId_Date" ON "AbsenceReports" ("TenantId", "StudentId", "Date");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE INDEX "IX_AbsenceFollowUps_ParentsInformedByStaffId" ON "AbsenceFollowUps" ("ParentsInformedByStaffId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE UNIQUE INDEX "IX_AbsenceFollowUps_StudentId_QuarterStart" ON "AbsenceFollowUps" ("StudentId", "QuarterStart");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE UNIQUE INDEX "IX_AbsenceRetentionWarnings_TenantId_SchoolYearStart" ON "AbsenceRetentionWarnings" ("TenantId", "SchoolYearStart");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE UNIQUE INDEX "IX_AttendanceChecks_ClassId_Date_Checkpoint" ON "AttendanceChecks" ("ClassId", "Date", "Checkpoint");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE INDEX "IX_AttendanceChecks_TakenByStaffId" ON "AttendanceChecks" ("TakenByStaffId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE INDEX "IX_AttendanceChecks_TenantId_Date" ON "AttendanceChecks" ("TenantId", "Date");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE INDEX "IX_StaffAbsences_ReportedByStaffId" ON "StaffAbsences" ("ReportedByStaffId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE INDEX "IX_StaffAbsences_StaffId" ON "StaffAbsences" ("StaffId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    CREATE INDEX "IX_StaffAbsences_TenantId_Date" ON "StaffAbsences" ("TenantId", "Date");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER TABLE "AbsenceReports" ADD CONSTRAINT "FK_AbsenceReports_Parents_ReportedByParentId" FOREIGN KEY ("ReportedByParentId") REFERENCES "Parents" ("Id") ON DELETE SET NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER TABLE "AbsenceReports" ADD CONSTRAINT "FK_AbsenceReports_Staff_DecidedByStaffId" FOREIGN KEY ("DecidedByStaffId") REFERENCES "Staff" ("Id") ON DELETE SET NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    ALTER TABLE "AbsenceReports" ADD CONSTRAINT "FK_AbsenceReports_Staff_RegisteredByStaffId" FOREIGN KEY ("RegisteredByStaffId") REFERENCES "Staff" ("Id") ON DELETE SET NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003152816_AbsenceRegisterAndStaffAbsence') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261003152816_AbsenceRegisterAndStaffAbsence', '10.0.7');
+    END IF;
+END $EF$;
+COMMIT;
+

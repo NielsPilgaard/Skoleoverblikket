@@ -35,6 +35,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ITenant
 	public DbSet<Student> Students => Set<Student>();
 	public DbSet<ParentInvitation> ParentInvitations => Set<ParentInvitation>();
 	public DbSet<AbsenceReport> AbsenceReports => Set<AbsenceReport>();
+	public DbSet<AttendanceCheck> AttendanceChecks => Set<AttendanceCheck>();
+	public DbSet<AbsenceFollowUp> AbsenceFollowUps => Set<AbsenceFollowUp>();
+	public DbSet<AbsenceRetentionWarning> AbsenceRetentionWarnings => Set<AbsenceRetentionWarning>();
+	public DbSet<StaffAbsence> StaffAbsences => Set<StaffAbsence>();
 	public DbSet<SubscriptionModuleItem> SubscriptionModuleItems => Set<SubscriptionModuleItem>();
 	public DbSet<Notification> Notifications => Set<Notification>();
 	public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
