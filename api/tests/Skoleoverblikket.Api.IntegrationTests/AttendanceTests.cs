@@ -196,6 +196,9 @@ public sealed class AttendanceTests(ApiFactory factory)
 
 		var lower = await _kit.CreateClassAsync(_admin, "1.a", 1);
 		var upper = await _kit.CreateClassAsync(_admin, "9.a", 9);
+		// The overview leaves out klasser without students.
+		await _kit.CreateStudentAsync(lower);
+		await _kit.CreateStudentAsync(upper);
 
 		await SaveAttendanceAsync(_admin, lower, day, AttendanceCheckpoint.StartOfDay);
 		await SaveAttendanceAsync(_admin, upper, day, AttendanceCheckpoint.StartOfDay);

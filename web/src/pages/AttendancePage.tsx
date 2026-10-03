@@ -71,8 +71,12 @@ export default function AttendancePage() {
       if (mark && mark.source === 'Staff') next.set(s.studentId, mark.category)
     }
     setSelection(next)
-    setSaved(false)
   }, [data, checkpoint])
+
+  // Not keyed on data: the refetch after a save must not hide the confirmation.
+  useEffect(() => {
+    setSaved(false)
+  }, [classId, date, checkpoint])
 
   const save = useMutation({
     ...putApiV1AttendanceClassesByClassIdMutation(),

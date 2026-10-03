@@ -197,11 +197,12 @@ public sealed class AbsenceService(
 	{
 		var today = SchoolDayCalendar.Today();
 		return await Project(
-				db.AbsenceReports.Where(a => a.Student.Parents.Any(p => p.KeycloakSubject == parentSubject)),
+				db.AbsenceReports
+					.Where(a => a.Student.Parents.Any(p => p.KeycloakSubject == parentSubject))
+					.OrderByDescending(a => a.Date)
+					.ThenByDescending(a => a.CreatedAt),
 				parentView: true,
 				today)
-			.OrderByDescending(a => a.Date)
-			.ThenByDescending(a => a.CreatedAt)
 			.ToListAsync(cancellationToken);
 	}
 
@@ -305,10 +306,11 @@ public sealed class AbsenceService(
 			query = query.Where(a => a.Category == category.Value);
 		}
 
-		return await Project(query, parentView: false, SchoolDayCalendar.Today())
+		query = query
 			.OrderByDescending(a => a.Date)
-			.ThenBy(a => a.ClassName)
-			.ThenBy(a => a.StudentName)
+			.ThenBy(a => a.Student.Class.Name)
+			.ThenBy(a => a.Student.Name);
+		return await Project(query, parentView: false, SchoolDayCalendar.Today())
 			.ToListAsync(cancellationToken);
 	}
 
@@ -318,12 +320,13 @@ public sealed class AbsenceService(
 		var today = SchoolDayCalendar.Today();
 		var since = today.AddDays(-30);
 		return await Project(
-				db.AbsenceReports.Where(a => a.LeaveStatus == LeaveStatus.Pending
-					|| (a.LeaveStatus != null && (a.EndDate ?? a.Date) >= since)),
+				db.AbsenceReports
+					.Where(a => a.LeaveStatus == LeaveStatus.Pending
+						|| (a.LeaveStatus != null && (a.EndDate ?? a.Date) >= since))
+					.OrderBy(a => a.LeaveStatus == LeaveStatus.Pending ? 0 : 1)
+					.ThenBy(a => a.Date),
 				parentView: false,
 				today)
-			.OrderBy(a => a.LeaveStatus == LeaveStatus.Pending ? 0 : 1)
-			.ThenBy(a => a.Date)
 			.ToListAsync(cancellationToken);
 	}
 
@@ -973,7 +976,7 @@ public sealed class AbsenceService(
 			Id = Guid.NewGuid(),
 			TenantId = tenant.TenantId,
 			SchoolYearStart = schoolYearStart,
-			WarnedAt = now,
+			WarnedAt = now.ToUniversalTime(), // Npgsql only writes UTC offsets to timestamptz.
 		});
 		await db.SaveChangesAsync(cancellationToken);
 
