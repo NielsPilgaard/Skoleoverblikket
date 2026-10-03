@@ -5,21 +5,9 @@ import { Helmet } from 'react-helmet-async'
 import { getApiV1SfoWeekPlanOptions } from '../api/generated/@tanstack/react-query.gen'
 import type { SfoWeekPlanShiftDto } from '../api/client'
 import { Markdown } from '../components/markdown/Markdown'
+import { getISOWeek, getISOWeekYear } from '../utils/isoWeek'
 
 const WEEKDAYS = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag']
-
-function getISOWeek(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-}
-
-function getISOWeekYear(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
-  return d.getUTCFullYear()
-}
 
 function buildTimeAxis(shifts: SfoWeekPlanShiftDto[]): { startTime: string; endTime: string }[] {
   const seen = new Map<string, { startTime: string; endTime: string }>()
