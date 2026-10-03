@@ -17,6 +17,7 @@ import SignupPage from './pages/SignupPage'
 import InvitationAcceptPage from './pages/InvitationAcceptPage'
 import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
+import ChangelogPage from './pages/ChangelogPage'
 
 // Lazy load all other pages
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
@@ -59,6 +60,10 @@ const BackofficeEmailPreviewPage = lazy(
 const ParentDirectoryPage = lazy(() => import('./pages/ParentDirectoryPage'))
 const ParentAbsencePage = lazy(() => import('./pages/parent/ParentAbsencePage'))
 const AbsencePage = lazy(() => import('./pages/AbsencePage'))
+const AttendancePage = lazy(() => import('./pages/AttendancePage'))
+const StaffAbsencePage = lazy(() => import('./pages/StaffAbsencePage'))
+const SubstituteCoverPage = lazy(() => import('./pages/SubstituteCoverPage'))
+const SubstituteCoverDetailPage = lazy(() => import('./pages/SubstituteCoverDetailPage'))
 const NotificationPreferencesPage = lazy(() => import('./pages/NotificationPreferencesPage'))
 const ClassChatPage = lazy(() => import('./pages/ClassChatPage'))
 const ContactBookPage = lazy(() => import('./pages/ContactBookPage'))
@@ -163,6 +168,7 @@ export default function App() {
               <Route path="om" element={<AboutPage />} />
               <Route path="privatlivspolitik" element={<PrivacyPolicyPage />} />
               <Route path="kontakt" element={<ContactPage />} />
+              <Route path="nyheder" element={<ChangelogPage />} />
 
               <Route element={<AuthReady />}>
                 {/* Public routes */}
@@ -212,6 +218,30 @@ export default function App() {
                     }
                   />
                   <Route path="mig/skema" element={<MySchedulePage />} />
+                  <Route
+                    path="mig/fravaer"
+                    element={
+                      <StaffRoute>
+                        <StaffAbsencePage />
+                      </StaffRoute>
+                    }
+                  />
+                  <Route
+                    path="vikardaekning"
+                    element={
+                      <AdminRoute>
+                        <SubstituteCoverPage />
+                      </AdminRoute>
+                    }
+                  />
+                  <Route
+                    path="vikardaekning/:id"
+                    element={
+                      <AdminRoute>
+                        <SubstituteCoverDetailPage />
+                      </AdminRoute>
+                    }
+                  />
                   <Route path="klasser" element={<ClassesPage />} />
                   <Route path="klasser/:classId/skema/:schemaId" element={<SchemaBuilderPage />} />
                   <Route
@@ -345,6 +375,7 @@ export default function App() {
                     }
                   />
                   <Route path="fravaer" element={<AbsencePage />} />
+                  <Route path="fravaer/fremmoede/:classId" element={<AttendancePage />} />
                   <Route path="klassechat" element={<ClassChatPage />} />
                   <Route path="kontaktbog" element={<ContactBookPage />} />
                   <Route

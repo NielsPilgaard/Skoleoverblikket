@@ -128,12 +128,17 @@ function AlertTile({
  */
 function AlertsSection({ data }: { data: StatsControllerDashboardStats }) {
   const pendingAbsence = data.pendingAbsenceCount ?? 0
+  const missingAttendance = data.missingAttendanceCount ?? 0
   const vacationWindow = data.openVacationWindow
   const unreadMessages = data.unreadMessageCount ?? 0
   const unreadKontaktbog = data.unreadKontaktbogCount ?? 0
 
   const hasAny =
-    pendingAbsence > 0 || !!vacationWindow || unreadMessages > 0 || unreadKontaktbog > 0
+    pendingAbsence > 0 ||
+    missingAttendance > 0 ||
+    !!vacationWindow ||
+    unreadMessages > 0 ||
+    unreadKontaktbog > 0
 
   if (!hasAny) return null
 
@@ -150,10 +155,18 @@ function AlertsSection({ data }: { data: StatsControllerDashboardStats }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {pendingAbsence > 0 && (
           <AlertTile
-            to="/fravaer"
+            to="/fravaer?fane=fri"
             testId="alert-pending-absence"
-            label="Fravær afventer godkendelse"
-            detail={`${pendingAbsence} ${pendingAbsence === 1 ? 'melding' : 'meldinger'}`}
+            label="Anmodninger om fri"
+            detail={`${pendingAbsence} afventer svar`}
+          />
+        )}
+        {missingAttendance > 0 && (
+          <AlertTile
+            to="/fravaer?fane=fremmoede"
+            testId="alert-missing-attendance"
+            label="Fremmøde mangler i dag"
+            detail={`${missingAttendance} ${missingAttendance === 1 ? 'klasse' : 'klasser'}`}
           />
         )}
         {vacationWindow && (

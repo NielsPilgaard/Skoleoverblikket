@@ -4,6 +4,7 @@ import {
   putApiV1NotificationPreferences,
 } from '../api/generated/sdk.gen'
 import type { NotificationType } from '../api/client'
+import { useAuth } from '../auth/useAuth'
 
 interface PreferenceState {
   type: NotificationType
@@ -16,8 +17,14 @@ const ALL_TYPES: NotificationType[] = [
   'NewContactMessage',
   'GroupMessage',
   'WeekPlanChanged',
-  'AbsenceConfirmed',
-  'AbsenceDismissed',
+  'LeaveApproved',
+  'LeaveRejected',
+  'UnauthorizedAbsence',
+  'LeaveRequested',
+  'AbsenceThreshold',
+  'AbsenceRetentionWarning',
+  'StaffAbsenceReported',
+  'SubstituteAssigned',
   'VacationRegistrationOpened',
   'ClassChatMessage',
 ]
@@ -27,10 +34,34 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   NewContactMessage: 'Ny besked i kontaktbog',
   GroupMessage: 'Gruppebesked',
   WeekPlanChanged: 'Ugeplanen opdateret',
-  AbsenceConfirmed: 'Fravær bekræftet',
-  AbsenceDismissed: 'Fravær afvist',
+  LeaveApproved: 'Fri godkendt',
+  LeaveRejected: 'Fri afvist',
+  UnauthorizedAbsence: 'Ulovligt fravær registreret',
+  LeaveRequested: 'Forælder søger om fri',
+  AbsenceThreshold: 'Elev over 10 % ulovligt fravær',
+  AbsenceRetentionWarning: 'Fraværsdata slettes snart',
+  StaffAbsenceReported: 'Medarbejder har meldt fravær',
+  SubstituteAssigned: 'Du er sat på som vikar',
   VacationRegistrationOpened: 'Ferietilmelding åbnet',
   ClassChatMessage: 'Ny besked i klassechat',
+}
+
+/** Who can receive each type. Types nobody in the caller's role receives are hidden. */
+const AUDIENCE: Record<NotificationType, 'all' | 'parent' | 'staff' | 'admin'> = {
+  NewMessage: 'all',
+  NewContactMessage: 'all',
+  GroupMessage: 'all',
+  WeekPlanChanged: 'all',
+  LeaveApproved: 'parent',
+  LeaveRejected: 'parent',
+  UnauthorizedAbsence: 'parent',
+  LeaveRequested: 'admin',
+  AbsenceThreshold: 'staff',
+  AbsenceRetentionWarning: 'admin',
+  StaffAbsenceReported: 'admin',
+  SubstituteAssigned: 'staff',
+  VacationRegistrationOpened: 'parent',
+  ClassChatMessage: 'all',
 }
 
 /**
@@ -42,8 +73,14 @@ const EMAIL_ON_BY_DEFAULT: Record<NotificationType, boolean> = {
   NewContactMessage: true,
   GroupMessage: true,
   WeekPlanChanged: true,
-  AbsenceConfirmed: true,
-  AbsenceDismissed: true,
+  LeaveApproved: true,
+  LeaveRejected: true,
+  UnauthorizedAbsence: true,
+  LeaveRequested: true,
+  AbsenceThreshold: true,
+  AbsenceRetentionWarning: true,
+  StaffAbsenceReported: true,
+  SubstituteAssigned: true,
   VacationRegistrationOpened: true,
   ClassChatMessage: false,
 }
@@ -65,6 +102,7 @@ function mergeWithDefaults(
 }
 
 export default function NotificationPreferencesPage() {
+  const { isAdmin, isParent } = useAuth()
   const [prefs, setPrefs] = useState<PreferenceState[]>(buildDefaultPreferences)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -114,6 +152,13 @@ export default function NotificationPreferencesPage() {
     setSaved(false)
   }
 
+  const visiblePrefs = prefs.filter((p) => {
+    const audience = AUDIENCE[p.type]
+    if (audience === 'all') return true
+    if (isParent) return audience === 'parent'
+    return audience === 'staff' || (audience === 'admin' && isAdmin)
+  })
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <div className="mb-6">
@@ -147,11 +192,11 @@ export default function NotificationPreferencesPage() {
           </div>
 
           {/* Rows */}
-          {prefs.map((pref, idx) => (
+          {visiblePrefs.map((pref, idx) => (
             <div
               key={pref.type}
               className={`grid grid-cols-[1fr_auto_auto] gap-4 items-center px-5 py-4 ${
-                idx < prefs.length - 1 ? 'border-b border-gray-100' : ''
+                idx < visiblePrefs.length - 1 ? 'border-b border-gray-100' : ''
               }`}
             >
               <span className="text-sm text-gray-800">{TYPE_LABELS[pref.type]}</span>

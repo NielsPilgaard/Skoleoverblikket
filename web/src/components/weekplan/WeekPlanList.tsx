@@ -10,6 +10,8 @@ export interface WeekPlanListSlot {
   courseName: string
   description?: string | null
   lektier?: string | null
+  substituteTeacherName?: string | null
+  substituteAideName?: string | null
 }
 
 interface WeekPlanListProps {
@@ -94,6 +96,17 @@ export function WeekPlanList({ notes, slots, isHolidayWeek, holidayTitle }: Week
                         </span>
                         <span className="text-sm font-medium text-gray-900">{s.courseName}</span>
                       </div>
+                      {(s.substituteTeacherName || s.substituteAideName) && (
+                        <div
+                          className="mt-1 text-xs text-gray-600 ml-16"
+                          data-testid="weekplan-substitute"
+                        >
+                          Vikar:{' '}
+                          {[s.substituteTeacherName, s.substituteAideName]
+                            .filter(Boolean)
+                            .join(' og ')}
+                        </div>
+                      )}
                       {s.description && (
                         <div className="mt-1 text-xs text-gray-600 ml-16 prose prose-xs max-w-none [&_p]:m-0 [&_ul]:my-0.5 [&_li]:my-0">
                           <Markdown>{s.description}</Markdown>

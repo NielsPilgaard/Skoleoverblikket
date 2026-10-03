@@ -6,6 +6,7 @@ import {
 } from '../api/generated/@tanstack/react-query.gen'
 import type { StatsControllerTodayLektion } from '../api/generated/types.gen'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { formatLongDate, todayIso } from '../lib/absence'
 
 /** "08:00:00" → "08:00" — the API sends TimeOnly with seconds. */
 function formatTime(time: string): string {
@@ -54,6 +55,11 @@ function ScheduleRow({ lektion }: { lektion: StatsControllerTodayLektion }) {
           {lektion.className}
           {lektion.roomName ? ` · ${lektion.roomName}` : ''}
         </span>
+        {lektion.substituteName && (
+          <span className="block text-xs text-gray-500 mt-0.5" data-testid="staff-lesson-covered">
+            Vikar: {lektion.substituteName}
+          </span>
+        )}
       </span>
     </li>
   )
@@ -89,6 +95,9 @@ export default function StaffDashboardPage() {
   const todaySchedule = data?.todaySchedule ?? []
   const unreadMessages = data?.unreadMessageCount ?? 0
   const unreadKontaktbog = data?.unreadKontaktbogCount ?? 0
+  const pendingAttendance = data?.pendingAttendance ?? []
+  const substitutions = data?.upcomingSubstitutions ?? []
+  const todayDate = todayIso()
 
   const today = new Intl.DateTimeFormat('da-DK', {
     weekday: 'long',
@@ -120,6 +129,27 @@ export default function StaffDashboardPage() {
         </h1>
         <p className="mt-1 text-sm text-gray-500 first-letter:uppercase">{today}</p>
       </div>
+
+      {pendingAttendance.length > 0 && (
+        <div
+          className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4"
+          data-testid="staff-attendance-missing"
+        >
+          <p className="text-sm font-medium text-amber-900">Fremmøde mangler</p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {pendingAttendance.map((p) => (
+              <Link
+                key={`${p.classId}-${p.checkpoint}`}
+                to={`/fravaer/fremmoede/${p.classId}?dato=${todayDate}${p.checkpoint === 'EndOfDay' ? '&trin=slut' : ''}`}
+                className="px-4 py-2.5 rounded-lg bg-white border border-amber-300 text-sm font-medium text-amber-900 hover:bg-amber-100"
+              >
+                {p.className}
+                {p.checkpoint === 'EndOfDay' ? ' · dagens slutning' : ''}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Unread counts — omitted entirely at zero or when the parent module is inactive */}
       {(unreadMessages > 0 || unreadKontaktbog > 0) && (
@@ -198,6 +228,45 @@ export default function StaffDashboardPage() {
               ))}
             </ul>
           )}
+        </div>
+      )}
+
+      {substitutions.length > 0 && (
+        <div
+          className="bg-white rounded-xl border border-gray-200 overflow-hidden"
+          data-testid="staff-upcoming-substitutions"
+        >
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
+            <h2 className="text-sm font-semibold text-gray-700">Dine vikartimer</h2>
+            <Link
+              to="/mig/fravaer"
+              className="text-sm text-brand-600 hover:text-brand-700 font-medium whitespace-nowrap"
+            >
+              Mit fravær →
+            </Link>
+          </div>
+          <ul className="divide-y divide-gray-50">
+            {substitutions.map((s) => (
+              <li
+                key={`${s.date}-${s.startTime}-${s.className}`}
+                className="flex items-baseline gap-4 px-5 py-3"
+              >
+                <span className="w-24 shrink-0 text-sm tabular-nums text-gray-500">
+                  {formatTime(s.startTime)}–{formatTime(s.endTime)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-gray-800">
+                    {s.className} · {s.courseName}
+                  </span>
+                  <span className="block text-sm text-gray-500 first-letter:uppercase">
+                    {s.date === todayDate ? 'I dag' : formatLongDate(s.date)} · for{' '}
+                    {s.absentStaffName}
+                    {s.roomName ? ` · ${s.roomName}` : ''}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

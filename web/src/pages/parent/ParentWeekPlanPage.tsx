@@ -16,6 +16,8 @@ interface Slot {
   courseName: string
   description?: string | null
   lektier?: string | null
+  substituteTeacherName?: string | null
+  substituteAideName?: string | null
 }
 
 function ClassWeekPlan({
