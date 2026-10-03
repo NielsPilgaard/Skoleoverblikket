@@ -12,6 +12,7 @@ import type {
   VacationRegistrationControllerEntryDto as EntryDto,
   VacationRegistrationGranularity,
 } from '../api/generated/types.gen'
+import { getISOWeek } from '../utils/isoWeek'
 
 function formatDate(d: string | undefined) {
   if (!d) return ''
@@ -28,18 +29,10 @@ function formatIsoDate(iso: string): string {
 
 function formatWeekLabel(monday: string): string {
   const d = new Date(monday)
-  const week = getIsoWeek(d)
+  const week = getISOWeek(d)
   const end = new Date(d)
   end.setDate(end.getDate() + 4)
   return `Uge ${week} · ${d.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })}`
-}
-
-function getIsoWeek(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  const dayNum = d.getUTCDay() || 7
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
 }
 
 function exportCsv(entries: EntryDto[], granularity: VacationRegistrationGranularity | undefined) {

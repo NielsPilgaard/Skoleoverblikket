@@ -11,16 +11,9 @@ import type {
   VacationRegistrationControllerMyEntryDto as MyEntryDto,
   VacationRegistrationGranularity,
 } from '../../api/generated/types.gen'
+import { getISOWeek } from '../../utils/isoWeek'
 
 // ── Date utilities ────────────────────────────────────────────────────────────
-
-function getIsoWeek(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  const dayNum = d.getUTCDay() || 7
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-}
 
 function getMondayOfWeek(date: Date): Date {
   const d = new Date(date)
@@ -85,7 +78,7 @@ function weekLabel(monday: string): string {
   const d = parseDate(monday)
   const end = new Date(d)
   end.setDate(end.getDate() + 4)
-  return `Uge ${getIsoWeek(d)} · ${d.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })}`
+  return `Uge ${getISOWeek(d)} · ${d.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })}`
 }
 
 function dayLabel(iso: string): string {

@@ -20,24 +20,7 @@ import {
 } from '../api/generated/@tanstack/react-query.gen'
 import type { SfoShiftDto, SfoWeekPlanShiftDto, SfoWeekPlanDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
-
-function getISOWeek(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-}
-
-function getISOWeekYear(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
-  return d.getUTCFullYear()
-}
-
-function getISOWeeksInYear(year: number): number {
-  const dec28 = new Date(Date.UTC(year, 11, 28))
-  return getISOWeek(dec28)
-}
+import { getISOWeek, getISOWeekYear, getISOWeeksInYear } from '../utils/isoWeek'
 
 const DAY_NAMES = ['', 'Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag']
 const DAY_NAMES_SHORT = ['', 'Man', 'Tir', 'Ons', 'Tor', 'Fre']
