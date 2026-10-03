@@ -19,7 +19,7 @@ status: 'Proposed'
 
 ## Context
 
-Requires task 44 (bot GitHub App, ruleset, watch/rollback, freeze) and task 46 (fix specs). The repo is public: the dispatch payload, the PR and the workflow logs are world-readable, so only the spec crosses over — never report text, screenshots or names.
+Requires task 44 (ruleset, watch/rollback, freeze) and task 46 (fix specs). The repo is public: the dispatch payload, the PR and the workflow logs are world-readable, so only the spec crosses over — never report text, screenshots or names.
 
 ## Decisions (confirmed)
 
@@ -45,9 +45,22 @@ The guard only catches what it recognises: names in the tenant list and fixed pa
 - **EU-side human review is required before every dispatch, automatic or manual.** A spec that passes the guard goes to `FixStatus = AwaitingReview`. The owner reads the exact spec text that will be sent in the backoffice and clicks "Godkend og send". Only that click dispatches. The manual "Send til AI-fix" path ends on the same review step; it never dispatches without one.
 - Dropping the review for the automatic path needs validated controls first: a red-team set of ≥ 50 specs with unknown names, addresses, health details and paraphrases, with zero leaks through the guard (plus any added controls), documented in [ai-data-boundary](../../docs/adr/ai-data-boundary.md) and switched on explicitly by the owner. Until then the review stays mandatory.
 
-### 2. Dispatch (API)
+### 2. Bot GitHub App
 
-- GitHub App "Skoleoverblikket Bot" (task 44) — API config `GitHub__AppId`, `GitHub__PrivateKey`, `GitHub__InstallationId`, `GitHub__Repository`.
+Task 44 runs on `GITHUB_TOKEN`; this task is the first that needs an App:
+- The API in prod calls `repository_dispatch`. That needs a long-lived credential; a fine-grained PAT expires (≤ 1 year) and breaks silently, an App's private key doesn't, and its installation tokens live 1 hour.
+- AI PRs must trigger CI and enable auto-merge under a **bot identity**, not the owner's — a PAT would make the owner the PR author (can't approve own PR, AI work looks human-authored).
+- Leak blast radius: scoped to this repo and these permissions, not tied to a personal account.
+
+Setup:
+- Create GitHub App **"Skoleoverblikket Bot"**, installed on this repo only. Permissions: `contents: write`, `pull_requests: write`, `issues: read`, `metadata: read`.
+- Workflows get a token via `actions/create-github-app-token`; secrets `BOT_APP_ID`, `BOT_APP_PRIVATE_KEY`.
+- API config `GitHub__AppId`, `GitHub__PrivateKey`, `GitHub__InstallationId`, `GitHub__Repository`.
+- The app is **not** on the `main` ruleset bypass list.
+
+### 2b. Dispatch (API)
+
+- Uses the bot app (§2).
 - `POST /repos/{repo}/dispatches` with `event_type: feedback-fix`, `client_payload: { feedbackId, spec }`.
 - Hard precondition, automatic **and** manual: the report's tenant has `AllowAiFeedbackProcessing = true` ([ai-data-boundary](../../docs/adr/ai-data-boundary.md) IMP-002). If false → neither queued nor dispatched; the backoffice shows why.
 - Other preconditions: category `bug:trivial` (or manual send), guard passed (else `BlockedByGuard`, §1), owner approved the spec in review (§1; else stays `AwaitingReview`), no open `deploy-freeze` issue, < `Feedback__MaxFixDispatchesPerDay` (start at 3) today. If the freeze or the daily cap blocks → queue and retry at the next eligible time (daily job; the retry re-checks the tenant setting).

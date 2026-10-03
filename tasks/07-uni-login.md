@@ -1,4 +1,20 @@
+---
+title: 'UNI•Login SSO Integration (Extra Module)'
+purpose: 'Plan the STIL registration and the Keycloak federation work needed to let staff log in with UNI•Login.'
+description: >-
+  Optional paid add-on that adds UNI•Login (STIL's national school SSO) as a
+  federated OIDC identity provider in Keycloak, mapping UNI•Login users to
+  existing staff records. Requires STIL vendor registration via MitID Erhverv.
+  Tasks are split into steps only Niels can do (MitID, portal submissions) and
+  prep work an agent can do ahead of STIL approval.
+status: 'Proposed'
+---
+
 # UNI•Login SSO Integration (Extra Module)
+
+## TL;DR
+
+Add UNI•Login as a federated OIDC IdP in Keycloak (OIO OIDC 0.9, PKCE, confidential client) so folkeskole staff log in with existing credentials. Most of the calendar time is STIL bureaucracy that needs Niels' MitID Erhverv. Everything else (form texts, metadata JSON, Keycloak config, staff matching, mock IdP, school onboarding kit) can be built before STIL approves anything, so test credentials only need pasting in when they arrive.
 
 UNI•Login is Denmark's national SSO for educational institutions, operated by STIL. It is the de facto standard for folkeskoler — staff and teachers already have UNI•Login accounts provisioned by their municipality.
 
@@ -6,9 +22,9 @@ This is an **optional paid add-on module**, not part of the base plan. It remove
 
 ## How it works
 
-UNI•Login acts as an external identity provider. Keycloak stays as the internal auth layer — UNI•Login is added as a federated IdP (OIDC or SAML 2.0) in Keycloak. On first login, the UNI•Login subject is mapped to the matching staff record in the tenant.
+UNI•Login acts as an external identity provider. Keycloak stays as the internal auth layer — UNI•Login is added as a federated IdP (OIDC) in Keycloak. On first login, the UNI•Login subject is mapped to the matching staff record in the tenant.
 
-Vendor registration is required: register as a service provider with STIL and sign a data processor agreement. No public SDK — standard OIDC/SAML against STIL's metadata endpoints.
+Vendor registration is required: register as a service provider with STIL and sign a data processor agreement. No public SDK — standard OIDC against STIL's metadata endpoints.
 
 ## STIL Registration Process
 
@@ -34,6 +50,7 @@ Vendor registration is required: register as a service provider with STIL and si
 - OIDC, follows **OIO OIDC 0.9** profile
 - **PKCE required**, confidential client
 - Standard OIDC endpoints — no proprietary SDK
+- Keycloak broker redirect URI (prod): `https://auth.skoleoverblikket.dk/realms/Skoleoverblikket/broker/unilogin/endpoint` (IdP alias `unilogin`)
 
 ### Data agreements (three required)
 
@@ -41,7 +58,7 @@ Vendor registration is required: register as a service provider with STIL and si
 |-----------|---------|
 | Tilslutningsaftale | Skoleoverblikket ↔ STIL (via tilslutning.stil.dk) |
 | Dataaftale | Skoleoverblikket ↔ each school (school approves in their UNI•Login admin) |
-| Databehandleraftale | Skoleoverblikket ↔ each school (standard Datatilsynet template) |
+| Databehandleraftale | Skoleoverblikket ↔ each school — covered by [task 48](48-databehandleraftale.md), don't draft a separate one here |
 
 **Note for friskoler:** Schools do NOT need a separate databehandleraftale with STIL itself — only with Skoleoverblikket as vendor. ([source](https://www.friskolerne.dk/nyheder/artikel/ingen-databehandleraftale-ved-brug-af-unilogin))
 
@@ -52,11 +69,59 @@ Vendor registration is required: register as a service provider with STIL and si
 - Technical requirements: [viden.stil.dk Tekniske krav](https://viden.stil.dk/display/OFFSKOLELOGIN/Tekniske+krav)
 - Connect service: [viden.stil.dk Tilslut tjeneste](https://viden.stil.dk/display/OFFSKOLELOGIN/Tilslut+tjeneste)
 
+## Agent prep work (no STIL access needed)
+
+Do these before or in parallel with the MitID steps, so each manual step becomes copy-paste. Check the current viden.stil.dk pages before writing form texts — STIL's portals change.
+
+### 1. Paste-ready form texts
+
+Put them in `docs/stil/` (Danish, ready to copy):
+
+- Tjeneste name and description for tilslutning.stil.dk
+- Declaration that UNI•Login serves a relevant educational purpose (for the production support case)
+- Support case body text for production approval, listing what's attached
+
+### 2. Production OIDC metadata JSON
+
+Template file `docs/stil/prod_oidc_metadata.template.json` with redirect URI, post-logout redirect URI, PKCE and scopes filled in. Niels renames it to `{supportcasenr}_prod_oidc_metadata.json` when the case number is known.
+
+### 3. Technical implementation
+
+- Add a `unilogin` OIDC identity provider to [Skoleoverblikket-realm.json](../infrastructure/keycloak/realms/Skoleoverblikket-realm.json), **disabled by default**, with client ID/secret from config so test/prod credentials only need pasting in.
+- First-broker-login flow: map the UNI•Login user to an existing staff record in the tenant (decide match key — UNI-ID claim vs. email; check which claims STIL actually releases).
+- No-match case: clear Danish error page telling the user to ask the school's admin to invite them (no auto-created accounts).
+- Mock UNI•Login: a second local Keycloak realm acting as fake STIL IdP, wired into the Aspire stack, so the whole flow runs locally.
+- Tests: integration tests for staff matching and the no-match path; Playwright e2e for the login flow against the mock IdP.
+- Module gating: UNI•Login login only available for tenants with the add-on (pricing TBD, see [PRICING.md](../docs/PRICING.md)).
+
+### 4. Pilot school kit
+
+- One-page Danish guide for the school's UNI•Login admin: how to find and approve the Skoleoverblikket dataaftale.
+- Databehandleraftale comes from [task 48](48-databehandleraftale.md).
+
 ## Tasks
 
+### Niels only (MitID Erhverv / portal access)
+
 - [ ] Get MitID Erhverv permissions for tilslutning.stil.dk and udbyderportal.stil.dk
-- [ ] Register on tilslutning.stil.dk — request "Unilogin Broker OIDC"
-- [ ] Add UNI•Login as a federated external IdP in Keycloak (OIDC)
-- [ ] Map UNI•Login `sub` claim to existing tenant staff records on first login
-- [ ] Handle the case where no staff record matches (invite flow or error state)
+- [ ] Register on tilslutning.stil.dk — request "Unilogin Broker OIDC" (use texts from `docs/stil/`)
+- [ ] Create test OIDC service on udbyderportal.stil.dk; paste test client ID/secret into config
+- [ ] File production support case at stil.dk/support (Mon–Fri 08–14) with metadata JSON + declaration
+- [ ] Find a folkeskole pilot school and send them the pilot kit
+
+### Agent (can start now)
+
+- [ ] Write paste-ready Danish form texts in `docs/stil/`
+- [ ] Write production OIDC metadata JSON template
+- [ ] Add `unilogin` IdP (disabled) to Keycloak realm, credentials from config
+- [ ] Map UNI•Login user to existing tenant staff record on first login
+- [ ] No-match error page (invite-only, no auto-created accounts)
+- [ ] Mock UNI•Login realm in local Aspire stack
+- [ ] Integration + e2e tests against mock IdP
+- [ ] Gate UNI•Login behind the add-on module
+- [ ] Pilot school guide for approving the dataaftale
+
+### Together
+
+- [ ] Test end-to-end against STIL test environment once credentials exist
 - [ ] Test with a folkeskole pilot school

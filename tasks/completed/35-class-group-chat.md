@@ -1,6 +1,6 @@
 ---
 title: 'Task 35: Class group chat'
-status: 'Proposed'
+status: 'Completed'
 description: >-
   Schools today run a Facebook group per klasse as an auxiliary tool to
   Skoleoverblikket, for Q&A, discussion, and sharing documents. Build a

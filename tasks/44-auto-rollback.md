@@ -6,8 +6,9 @@ description: >-
   read-only Playwright smoke test on an internal smoke tenant, elmah.io error
   spike). On failure, redeploy the last known good image tag, freeze CD and open
   a revert PR — unless a migration ran since last-good, in which case alert only.
-  Adds a branch ruleset on main, a bot GitHub App, a public readiness endpoint
-  and Pingpuffin monitoring. Phase 1 of the feedback system; ships before any AI code.
+  Adds a branch ruleset on main, a public readiness endpoint, elmah.io deployment
+  tracking and Pingpuffin monitoring. No GitHub App — GITHUB_TOKEN plus a
+  workflow_dispatch of CI on the revert branch. Phase 1 of the feedback system; ships before any AI code.
 status: 'Proposed'
 ---
 
@@ -15,7 +16,7 @@ status: 'Proposed'
 
 ## TL;DR
 
-New `watch` job at the end of `cd.yml`: 15 minutes of checks against prod. Pass → record the tag as **last known good** (GitHub Deployment on a separate `production-verified` environment). Fail → if no migration changed between last-good and this sha and prod has no applied migration missing at last-good: redeploy last-good with `deploy.mjs`, open a `deploy-freeze` issue (CD skips while it's open) and a revert PR that closes it. If a migration changed: no rollback, alert only. Applies to **all** deploys, not just AI ones. Also: `main` ruleset, "Skoleoverblikket Bot" GitHub App, `/api/health` readiness endpoint, smoke tenant (`IsInternal`), Pingpuffin for 24/7 uptime. Everything runs in public-repo Actions — €0.
+New `watch` job at the end of `cd.yml`: 15 minutes of checks against prod. Pass → record the tag as **last known good** (GitHub Deployment on a separate `production-verified` environment). Fail → if no migration changed between last-good and this sha and prod has no applied migration missing at last-good: redeploy last-good with `deploy.mjs`, open a `deploy-freeze` issue (CD skips while it's open) and a revert PR that closes it. If a migration changed: no rollback, alert only. Applies to **all** deploys, not just AI ones. Also: `main` ruleset, `/api/health` readiness endpoint (Xabaril health-check packages), elmah.io deployment per deploy (version = sha), smoke tenant (`IsInternal`), Pingpuffin for 24/7 uptime. Everything runs in public-repo Actions — €0.
 
 ## Context
 
@@ -43,21 +44,33 @@ Because migrations run before deploy and are forward-only, rolling back the imag
 
 ### 1. Readiness endpoint
 
-- `GET /api/health` (anonymous): checks PostgreSQL (`SELECT 1`) and Keycloak OIDC discovery reachability. 200/503 with a minimal body (no versions, no internals beyond `status`).
+- `GET /api/health` (anonymous): standard ASP.NET Core health checks tagged `ready`, mapped with `MapHealthChecks("/api/health", Predicate = tag "ready")`. 200/503 with a minimal body (no versions, no internals beyond `status`).
+  - PostgreSQL: `AspNetCore.HealthChecks.NpgSql` (`AddNpgSql(connectionString, tags: ["ready"])`) — no hand-written `SELECT 1`.
+  - Keycloak: `AspNetCore.HealthChecks.Uris` against the OIDC discovery URL (same Xabaril family), tag `ready`.
 - Also returns header `X-App-Version: <image sha>` so the watch job can assert the new version is live. Bake the sha into the image as `App__Version` build arg (also used by task 45/46).
-- Keep `/alive` as the container healthcheck (process only).
+- Keep `/alive` as the container healthcheck (process only). `/health` (all checks, from ServiceDefaults) stays internal.
 
-### 2. Bot GitHub App
+### 1b. elmah.io deployment tracking
 
-- Create GitHub App **"Skoleoverblikket Bot"**, installed on the repo. Permissions: `contents: write`, `pull_requests: write`, `issues: write`, `deployments: write`, `metadata: read`.
-- Workflows get a token via `actions/create-github-app-token`. Needed because PRs created with `GITHUB_TOKEN` don't trigger CI.
-- Secrets: `BOT_APP_ID`, `BOT_APP_PRIVATE_KEY`. Reused by task 47 (the API dispatches with it).
-- The app is **not** on the ruleset bypass list.
+- After `deploy.mjs` succeeds, the `deploy` job creates an elmah.io deployment: `POST https://api.elmah.io/v3/deployments` with `version: <sha>`, `description: <commit subject>`, `userName: <github.actor>`, `logId: ELMAHIO_LOG_ID`. API key with only *Deployments – Write*, secret `ELMAHIO_DEPLOYMENT_API_KEY` (separate from the app's logging key). Plain `curl` step — no extra action.
+- The rollback job creates a deployment for the last-good version too, so errors after a rollback are attributed to the version actually running.
+- The app also sets `msg.Version = App__Version` in `OnMessage` for both the ASP.NET Core and logging providers, so attribution is exact even during the container switchover (elmah.io only fills `Version` from the latest deployment when the message has none).
+- Gives deployment markers and per-version error counts in the elmah.io UI for free, and lets the watch job count errors **by version** instead of by time window (§5.4).
+
+### 2. Workflow tokens (no GitHub App)
+
+Everything in this task uses `GITHUB_TOKEN`. The GitHub App moved to [task 47](feedback/47-feedback-ai-fix-prs.md), where the API needs a non-expiring credential and AI PRs need a bot author.
+
+- `cd.yml` permissions: `contents: write` (revert branch), `pull-requests: write`, `issues: write` (freeze issue), `deployments: write` (`production-verified`), `actions: write` (dispatch CI).
+- Repo setting **"Allow GitHub Actions to create and approve pull requests"** on, so `GITHUB_TOKEN` can open the revert PR.
+- PRs opened with `GITHUB_TOKEN` don't trigger `pull_request` workflows, but `workflow_dispatch` is exempt. So after opening the revert PR, the rollback job runs `gh workflow run ci.yml --ref rollback/<sha>`. The dispatched run's check runs land on the PR's head commit and satisfy the required checks by name.
+- `ci.yml` gets an `on: workflow_dispatch` trigger. Nothing else changes: `migrate` and `publish-*` already require `github.event_name == 'push'`, `autofix` doesn't run on dispatch, and Staging's `workflow_run` is filtered to `branches: [main]`, so a dispatched CI on `rollback/*` can never migrate, publish or deploy.
+- **Verify once** (part of the rollback test in Testing): the dispatched checks show as passed on the revert PR and the ruleset allows merge. If they don't count, fall back to a fine-grained PAT secret for this one step.
 
 ### 3. Branch ruleset on `main`
 
 - Require status checks: `API — build & test`, `Web — build & lint` (and `ai-fix-guard` once task 47 lands).
-- Bypass: repository admin only (owner keeps direct pushes). Bot app and Claude app cannot bypass.
+- Bypass: repository admin only (owner keeps direct pushes). `github-actions` and the Claude app cannot bypass.
 - Configure via `gh api` and document the command in this task when done.
 
 ### 4. Smoke tenant
@@ -77,7 +90,7 @@ Runs after `deploy`, `timeout-minutes: 20`.
 1. Fetch last-good tag from a **separate record**: latest GitHub Deployment with status `success` on environment `production-verified` (written only by step 6, never by the `deploy` job), excluding the sha being watched. Do not read the `production` environment: the `deploy` job's `environment: production` makes GitHub mark the current candidate `success` before it is verified.
 2. For 15 minutes, every 30 s: `GET /` (200 + HTML references a hashed bundle), `GET /api/health` (200 + `X-App-Version` == deployed sha after the first 2 minutes), Keycloak discovery `GET https://auth.skoleoverblikket.dk/realms/Skoleoverblikket/.well-known/openid-configuration`.
 3. At ~2 min and ~10 min: run the `smoke` Playwright project (one automatic retry).
-4. At end: elmah.io API — count errors in the watch window vs the 15 minutes before deploy. Fail if `count > max(ELMAH_MIN_ERRORS, ELMAH_SPIKE_FACTOR × baseline)` (repo variables, start at 10 and 5).
+4. At end: elmah.io messages API — count Error/Fatal messages with `version:<sha>` in the watch window vs messages with `version:<last-good>` in the 15 minutes before deploy. Fail if `count > max(ELMAH_MIN_ERRORS, ELMAH_SPIKE_FACTOR × baseline)` (repo variables, start at 10 and 5). Read key: secret `ELMAHIO_READ_API_KEY` (*Messages – Read* only).
 5. **Fail conditions**: 3 consecutive failures of any health probe, smoke failing after retry, or error spike.
 6. **Pass**: create a Deployment on environment `production-verified` for this sha with status `success` → it becomes last-good. Then (task 47) post `Feedback:` trailers to the API.
 
@@ -90,7 +103,7 @@ Runs when `watch` fails:
 1. **Migration check against production, not just the sha range.** CI applies migrations to prod on every push to `main`, so prod can hold migrations from commits newer than `<sha>` (e.g. a later push whose CD run is still queued). Read `MigrationId`s from prod `__EFMigrationsHistory` (same `DATABASE_URL` CI uses for `psql`) and compare with the migration files present at `<last-good-sha>` (`git ls-tree --name-only <last-good-sha> -- api/Skoleoverblikket.Api/Data/Migrations/`). Any applied migration missing at last-good, **or** `git diff --quiet <last-good-sha>..<sha> -- api/Skoleoverblikket.Api/Data/Migrations/` reporting a change → **alert only** (email: "Deploy <sha> fejlede — migration i spil, ingen automatisk rollback"). Stop. If the prod query fails, treat it as "migration found" (alert only).
 2. Otherwise: run `deploy.mjs` with `IMAGE_TAG=<last-good tag>`, then a shortened watch (health probes only, 3 minutes). If that also fails → open the `deploy-freeze` issue (step 3, title `🚨 Deploy frosset: rollback af <sha> til <last-good> fejlede`) so the freeze gate blocks further CD runs, keep the "rollback fejlede" alert email, and stop (no revert PR).
 3. Open issue `🚨 Deploy frosset: <sha> rullet tilbage til <last-good>` with label `deploy-freeze` (failing checks summarised, links to the run).
-4. Create branch `rollback/<sha>` with `git revert --no-edit <last-good-sha>..<sha>` and open a PR labelled `rollback-revert` whose body has `Closes #<freeze issue>`. Bot app token so CI runs.
+4. Create branch `rollback/<sha>` with `git revert --no-edit <last-good-sha>..<sha>` and open a PR labelled `rollback-revert` whose body has `Closes #<freeze issue>` (`GITHUB_TOKEN`), then `gh workflow run ci.yml --ref rollback/<sha>` so the required checks run (§2).
 5. Email the owner with links.
 
 ### 7. Freeze gate
@@ -118,4 +131,4 @@ Manual setup (no code): monitors for `https://skoleoverblikket.dk/`, `/api/healt
 
 - API integration test: `/api/health` returns 200 with DB up, 503 with an unreachable Keycloak authority (configure a bogus authority in the factory).
 - API integration test: internal tenants excluded from stats and SuperAdmin tenant list.
-- Rollback path: deliberately deploy a tag whose web bundle throws on load (a throwaway branch built to a test tag) via `workflow_dispatch` — verify redeploy, freeze issue, revert PR, email. Do this once before task 47 goes live, and document the result here.
+- Rollback path: deliberately deploy a tag whose web bundle throws on load (a throwaway branch built to a test tag) via `workflow_dispatch` — verify redeploy, freeze issue, revert PR, dispatched CI checks counting as required checks on the revert PR (§2), elmah.io deployment for last-good, email. Do this once before task 47 goes live, and document the result here.

@@ -41,7 +41,6 @@ Surfaced while planning the feedback system ([ai-data-boundary](../docs/adr/ai-d
 
 ## Open questions
 
-- Lawyer review — who and budget.
 - Does elmah.io store data in the EU? If not, scrub personal data from error logs or switch.
 
 ## Out of scope
