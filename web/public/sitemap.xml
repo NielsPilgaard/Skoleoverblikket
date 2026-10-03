@@ -21,6 +21,11 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://skoleoverblikket.dk/nyheder</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://skoleoverblikket.dk/privatlivspolitik</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
