@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Skoleoverblikket.Api.Data;
+using Skoleoverblikket.Api.Email;
 using Skoleoverblikket.Api.Services;
 using Skoleoverblikket.Api.Storage;
 using Stripe;
@@ -46,6 +47,9 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 			.ForPath("/v1/charges")
 			.ForStatusCode(HttpStatusCode.Unauthorized)))
 		.Build();
+
+	/// <summary>Every email the API sent during the test session. Filter by a per-test address.</summary>
+	public RecordingEmailSender Emails { get; } = new();
 
 	public async Task InitializeAsync()
 	{
@@ -99,6 +103,10 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 			// Replace notification service with a no-op so tests don't need an SMTP server
 			services.RemoveAll<INotificationService>();
 			services.AddScoped<INotificationService, NoOpNotificationService>();
+
+			// Record email instead of sending it — there is no SMTP server in tests
+			services.RemoveAll<IEmailSender>();
+			services.AddSingleton<IEmailSender>(Emails);
 
 			// Point S3 client and S3Options at LocalStack
 			var localStackUrl = _localStack.GetConnectionString();

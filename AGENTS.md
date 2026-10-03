@@ -54,6 +54,8 @@ Never bypass this filter. Never trust a slug string as an authorization signal �
 - Module billing (`SubscriptionModulesController`) — parent module gated behind Stripe subscription
 - Backoffice (`SuperAdminTenantsController`, `SuperAdminEmailPreviewController`) — isSuperAdmin role, view-as mode
 - Avatar uploads — presign+confirm pattern for Parent, Staff, Student avatars stored in OVHCloud
+- Data retention (`SchoolDeletionService`, `SchoolRetentionJob`) — 90 days after Stripe cancellation, admins are warned 7 days ahead and then all school data (rows, files, Keycloak logins) is permanently deleted
+- Databehandleraftale (`DataProcessingAgreementController`, `SuperAdminSubProcessorNoticeController`) — GDPR art. 28 agreement accepted at signup or via an admin banner, public `/databehandleraftale` and `/underdatabehandlere` pages, 30-day sub-processor change notice from the backoffice
 - Vacation registration / ferieindmelding (`VacationRegistrationController`) — admin creates registration windows with granularity (weeks/days) and deadlines; parents submit vacation requests via `ParentVacationRegistrationPage`; admin reviews all entries and manages windows via `VacationRegistrationPage` / `VacationRegistrationDetailPage`; full CRUD on windows with open/closed toggle and CSV export of responses
 
 ## Coding conventions

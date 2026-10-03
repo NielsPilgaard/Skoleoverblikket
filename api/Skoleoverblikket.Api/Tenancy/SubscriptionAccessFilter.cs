@@ -9,7 +9,8 @@ namespace Skoleoverblikket.Api.Tenancy;
 /// <summary>
 /// Blocks mutating requests (POST/PUT/PATCH/DELETE) when the tenant's subscription
 /// has expired (trial ended, canceled, unpaid). Read-only access is always allowed.
-/// Billing and Stripe webhook routes are exempt so schools can always resubscribe.
+/// Billing and Stripe webhook routes are exempt so schools can always resubscribe, and the
+/// databehandleraftale can always be accepted.
 /// </summary>
 public sealed class SubscriptionAccessFilter(AppDbContext db, ITenantContext tenantContext) : IAsyncActionFilter
 {
@@ -22,6 +23,7 @@ public sealed class SubscriptionAccessFilter(AppDbContext db, ITenantContext ten
 		"/api/v1/stripe",
 		"/api/v1/superadmin",
 		"/api/v1/admin",
+		"/api/v1/data-processing-agreement",
 	];
 
 	public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)

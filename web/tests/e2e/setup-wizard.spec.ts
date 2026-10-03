@@ -19,6 +19,7 @@ async function signupAndLandOnWizard(page: Page) {
   await page.getByTestId('signup-last-name').fill('Jensen')
   await page.getByTestId('signup-email').fill(email)
   await page.getByTestId('signup-password').fill('TestPass123!')
+  await page.getByTestId('signup-accept-dpa').check()
   await page.getByRole('button', { name: 'Opret skole' }).click()
 
   await expect(page).toHaveURL(/\/setup/, { timeout: 20_000 })

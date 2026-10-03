@@ -33,6 +33,13 @@ export default function Footer() {
             Privatlivspolitik
           </Link>
           <Link
+            to="/databehandleraftale"
+            data-testid="footer-link-databehandleraftale"
+            className="hover:text-white transition-colors"
+          >
+            Databehandleraftale
+          </Link>
+          <Link
             to="/kontakt"
             data-testid="footer-link-kontakt"
             className="hover:text-white transition-colors"

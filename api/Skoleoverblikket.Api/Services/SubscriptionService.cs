@@ -509,7 +509,7 @@ public sealed class SubscriptionService(
 
 		sub.StripeCustomerId ??= session.CustomerId;
 		sub.StripeSubscriptionId = session.SubscriptionId;
-		sub.Status = SubscriptionStatus.Active;
+		SetStatus(sub, SubscriptionStatus.Active);
 
 		if (session.SubscriptionId is not null)
 		{
@@ -585,7 +585,7 @@ public sealed class SubscriptionService(
 			newStatus = SubscriptionStatus.Active;
 		}
 
-		sub.Status = newStatus;
+		SetStatus(sub, newStatus);
 
 		ApplyIntervalFromBasePlan(sub, stripeSub);
 
@@ -612,7 +612,7 @@ public sealed class SubscriptionService(
 			return;
 		}
 
-		sub.Status = SubscriptionStatus.Active;
+		SetStatus(sub, SubscriptionStatus.Active);
 		sub.UpdatedAt = DateTimeOffset.UtcNow;
 		await db.SaveChangesAsync(cancellationToken);
 	}
@@ -632,8 +632,26 @@ public sealed class SubscriptionService(
 			return;
 		}
 
-		sub.Status = SubscriptionStatus.PastDue;
+		SetStatus(sub, SubscriptionStatus.PastDue);
 		sub.UpdatedAt = DateTimeOffset.UtcNow;
 		await db.SaveChangesAsync(cancellationToken);
+	}
+
+	// CanceledAt starts the data retention clock (SchoolDeletionService). Only a return to a paying
+	// or trial state stops it: a late past_due/unpaid event for the old Stripe subscription must not
+	// make a canceled school keep its data forever.
+	private static void SetStatus(LocalSubscription sub, SubscriptionStatus status)
+	{
+		if (status == SubscriptionStatus.Canceled)
+		{
+			sub.CanceledAt ??= DateTimeOffset.UtcNow;
+		}
+		else if (status is SubscriptionStatus.Active or SubscriptionStatus.Trialing)
+		{
+			sub.CanceledAt = null;
+			sub.DeletionWarningSentAt = null;
+		}
+
+		sub.Status = status;
 	}
 }

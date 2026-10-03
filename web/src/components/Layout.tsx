@@ -3,6 +3,7 @@ import { Link, Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Logo from './Logo'
 import ErrorBoundary from './ErrorBoundary'
+import DataProcessingAgreementBanner from './DataProcessingAgreementBanner'
 import NotificationBell from './NotificationBell'
 import { useQuery } from '@tanstack/react-query'
 import { getApiV1BillingSubscriptionOptions } from '../api/generated/@tanstack/react-query.gen'
@@ -36,6 +37,7 @@ export default function Layout() {
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <SubscriptionBanner />
+        <DataProcessingAgreementBanner />
 
         {/* Mobile top bar */}
         <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 shrink-0">
