@@ -12,6 +12,7 @@ interface ValidationErrors {
   adminFirstName?: string
   adminLastName?: string
   adminPassword?: string
+  acceptDataProcessingAgreement?: string
   general?: string
 }
 
@@ -22,6 +23,7 @@ export default function SignupPage() {
   const [adminEmail, setAdminEmail] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [acceptDpa, setAcceptDpa] = useState(false)
   const [pending, setPending] = useState(false)
   const [errors, setErrors] = useState<ValidationErrors>({})
   const redirectingRef = useRef(false)
@@ -44,7 +46,14 @@ export default function SignupPage() {
       const res = await fetch('/api/v1/tenants', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, adminEmail, adminFirstName, adminLastName, adminPassword }),
+        body: JSON.stringify({
+          name,
+          adminEmail,
+          adminFirstName,
+          adminLastName,
+          adminPassword,
+          acceptDataProcessingAgreement: acceptDpa,
+        }),
       })
 
       if (res.ok) {
@@ -243,6 +252,33 @@ export default function SignupPage() {
             )}
           </div>
 
+          <div>
+            <label className="flex items-start gap-2.5 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptDpa}
+                onChange={(e) => setAcceptDpa(e.target.checked)}
+                data-testid="signup-accept-dpa"
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              />
+              <span>
+                Jeg accepterer{' '}
+                <a
+                  href="/databehandleraftale"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-600 hover:underline"
+                >
+                  databehandleraftalen
+                </a>{' '}
+                på vegne af skolen.
+              </span>
+            </label>
+            {errors.acceptDataProcessingAgreement && (
+              <p className="mt-1 text-xs text-red-600">{errors.acceptDataProcessingAgreement}</p>
+            )}
+          </div>
+
           {errors.general && (
             <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{errors.general}</p>
           )}
@@ -255,6 +291,7 @@ export default function SignupPage() {
               !adminFirstName.trim() ||
               !adminLastName.trim() ||
               !adminPassword ||
+              !acceptDpa ||
               pending
             }
             className="w-full py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

@@ -12,6 +12,8 @@ import ViewModeToolbar from './components/ViewModeToolbar'
 // Keep critical public pages as regular imports
 import LandingPage from './pages/LandingPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import DataProcessingAgreementPage from './pages/DataProcessingAgreementPage'
+import SubProcessorsPage from './pages/SubProcessorsPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import InvitationAcceptPage from './pages/InvitationAcceptPage'
@@ -56,6 +58,9 @@ const BackofficeTenantDetailPage = lazy(
 )
 const BackofficeEmailPreviewPage = lazy(
   () => import('./pages/backoffice/BackofficeEmailPreviewPage')
+)
+const BackofficeSubProcessorNoticePage = lazy(
+  () => import('./pages/backoffice/BackofficeSubProcessorNoticePage')
 )
 const ParentDirectoryPage = lazy(() => import('./pages/ParentDirectoryPage'))
 const ParentAbsencePage = lazy(() => import('./pages/parent/ParentAbsencePage'))
@@ -167,6 +172,8 @@ export default function App() {
               <Route path="/" element={<HomeRedirect />} />
               <Route path="om" element={<AboutPage />} />
               <Route path="privatlivspolitik" element={<PrivacyPolicyPage />} />
+              <Route path="databehandleraftale" element={<DataProcessingAgreementPage />} />
+              <Route path="underdatabehandlere" element={<SubProcessorsPage />} />
               <Route path="kontakt" element={<ContactPage />} />
               <Route path="nyheder" element={<ChangelogPage />} />
 
@@ -197,6 +204,10 @@ export default function App() {
                   <Route path="tenants" element={<BackofficeTenantsPage />} />
                   <Route path="tenants/:schoolId" element={<BackofficeTenantDetailPage />} />
                   <Route path="emails" element={<BackofficeEmailPreviewPage />} />
+                  <Route
+                    path="underdatabehandlere"
+                    element={<BackofficeSubProcessorNoticePage />}
+                  />
                 </Route>
 
                 {/* Authenticated app */}

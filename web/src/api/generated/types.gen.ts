@@ -52,6 +52,10 @@ export type AbsentStudentRequest = {
     category: AbsenceCategory;
 };
 
+export type AcceptDataProcessingAgreementRequest = {
+    version: string;
+};
+
 export type AdminControllerModuleOverrideRequest = {
     module: SubscriptionModule;
 };
@@ -516,6 +520,23 @@ export type CoursesControllerUpsertCourseRequest = {
     description?: string | null;
     color?: string | null;
     category?: SubjectCategory;
+};
+
+export type CreateTenantRequest = {
+    name: string;
+    adminEmail: string;
+    adminFirstName: string;
+    adminLastName: string;
+    adminPassword: string;
+    acceptDataProcessingAgreement: boolean;
+};
+
+export type DataProcessingAgreementStatusDto = {
+    currentVersion: string;
+    acceptedCurrentVersion: boolean;
+    acceptedVersion?: string | null;
+    acceptedAt?: string | null;
+    acceptedByName?: string | null;
 };
 
 export type DayOfWeek = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
@@ -1355,6 +1376,16 @@ export type StudentsControllerUpsertStudentRequest = {
     isEnrolledInSfo: boolean;
 };
 
+export type SubProcessorNoticeRequest = {
+    change: string;
+    effectiveFrom: string;
+};
+
+export type SubProcessorNoticeResultDto = {
+    schoolCount: number;
+    recipientCount: number;
+};
+
 export type SubjectCategory = 'Dansk' | 'Matematik' | 'Engelsk' | 'Naturfag' | 'Historie' | 'Musik' | 'Idraet' | 'Kristendomskundskab' | 'Billedkunst' | 'HaandvaerkOgDesign' | 'Tysk' | 'Fransk' | 'Geografi' | 'Biologi' | 'FysikKemi' | 'Samfundsfag' | 'Fri' | 'Madkundskab';
 
 export type SubscriptionModule = 'ParentModule' | 'BoardModule';
@@ -1370,6 +1401,15 @@ export type SubstituteAssignmentDto = {
 };
 
 export type SubstituteSeat = 'Teacher' | 'Aide';
+
+export type TenantCreatedDto = {
+    id: string;
+    name: string;
+    adminEmail: string;
+    accessToken: string;
+    refreshToken?: string | null;
+    expiresIn: number;
+};
 
 export type TenantDetailDto = {
     id: string;
@@ -1394,23 +1434,6 @@ export type TenantListItemDto = {
     trialEnd: string;
     currentPeriodEnd?: string | null;
     activeModuleCount: number;
-};
-
-export type TenantsControllerCreateTenantRequest = {
-    name: string;
-    adminEmail: string;
-    adminFirstName: string;
-    adminLastName: string;
-    adminPassword: string;
-};
-
-export type TenantsControllerTenantCreatedDto = {
-    id: string;
-    name: string;
-    adminEmail: string;
-    accessToken: string;
-    refreshToken?: string | null;
-    expiresIn: number;
 };
 
 export type TimeSlotsControllerBreakDto = {
@@ -2939,6 +2962,36 @@ export type PutApiV1CoursesByIdResponses = {
 };
 
 export type PutApiV1CoursesByIdResponse = PutApiV1CoursesByIdResponses[keyof PutApiV1CoursesByIdResponses];
+
+export type GetApiV1DataProcessingAgreementData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/data-processing-agreement';
+};
+
+export type GetApiV1DataProcessingAgreementResponses = {
+    /**
+     * OK
+     */
+    200: DataProcessingAgreementStatusDto;
+};
+
+export type GetApiV1DataProcessingAgreementResponse = GetApiV1DataProcessingAgreementResponses[keyof GetApiV1DataProcessingAgreementResponses];
+
+export type PostApiV1DataProcessingAgreementAcceptanceData = {
+    body?: AcceptDataProcessingAgreementRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/data-processing-agreement/acceptance';
+};
+
+export type PostApiV1DataProcessingAgreementAcceptanceResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
 
 export type PostApiV1DemoRequestData = {
     body?: DemoRequestControllerDemoRequestDto;
@@ -4858,6 +4911,22 @@ export type GetApiV1AdminEmailPreviewNotificationResponses = {
     200: unknown;
 };
 
+export type PostApiV1AdminSubProcessorNoticeData = {
+    body?: SubProcessorNoticeRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/sub-processor-notice';
+};
+
+export type PostApiV1AdminSubProcessorNoticeResponses = {
+    /**
+     * OK
+     */
+    200: SubProcessorNoticeResultDto;
+};
+
+export type PostApiV1AdminSubProcessorNoticeResponse = PostApiV1AdminSubProcessorNoticeResponses[keyof PostApiV1AdminSubProcessorNoticeResponses];
+
 export type GetApiV1AdminTenantsData = {
     body?: never;
     path?: never;
@@ -4893,7 +4962,7 @@ export type GetApiV1AdminTenantsBySchoolIdResponses = {
 export type GetApiV1AdminTenantsBySchoolIdResponse = GetApiV1AdminTenantsBySchoolIdResponses[keyof GetApiV1AdminTenantsBySchoolIdResponses];
 
 export type PostApiV1TenantsData = {
-    body?: TenantsControllerCreateTenantRequest;
+    body?: CreateTenantRequest;
     path?: never;
     query?: never;
     url: '/api/v1/tenants';
@@ -4903,7 +4972,7 @@ export type PostApiV1TenantsResponses = {
     /**
      * OK
      */
-    200: TenantsControllerTenantCreatedDto;
+    200: TenantCreatedDto;
 };
 
 export type PostApiV1TenantsResponse = PostApiV1TenantsResponses[keyof PostApiV1TenantsResponses];

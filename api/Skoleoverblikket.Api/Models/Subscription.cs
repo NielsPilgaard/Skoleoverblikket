@@ -42,6 +42,16 @@ public sealed class Subscription : IEntityTypeConfiguration<Subscription>
 	/// <summary>When the trial ends (30 days from school creation)</summary>
 	public DateTimeOffset TrialEnd { get; set; }
 
+	/// <summary>
+	/// When the subscription became canceled. The school's data is permanently deleted
+	/// <see cref="Services.SchoolDeletionService.RetentionPeriod"/> after this. Cleared when the
+	/// school subscribes again.
+	/// </summary>
+	public DateTimeOffset? CanceledAt { get; set; }
+
+	/// <summary>When admins were emailed that the school's data is about to be deleted. Cleared with <see cref="CanceledAt"/>.</summary>
+	public DateTimeOffset? DeletionWarningSentAt { get; set; }
+
 	public DateTimeOffset CreatedAt { get; init; }
 	public DateTimeOffset UpdatedAt { get; set; }
 

@@ -158,6 +158,17 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 		}
 	}
 
+	/// <summary>Like <see cref="DeleteStaffUserAsync"/>, but a user that is already gone counts as deleted.</summary>
+	public async Task DeleteUserIfExistsAsync(string keycloakUserId, CancellationToken cancellationToken)
+	{
+		var response = await adminApi.DeleteUserAsync(keycloakUserId, cancellationToken);
+		if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NotFound)
+		{
+			var err = await response.Content.ReadAsStringAsync(cancellationToken);
+			throw new KeycloakException($"Failed to delete Keycloak user {keycloakUserId}: {response.StatusCode} — {err}");
+		}
+	}
+
 	private async Task AssignRealmRoleAsync(string userId, string roleName, CancellationToken cancellationToken)
 	{
 		try
