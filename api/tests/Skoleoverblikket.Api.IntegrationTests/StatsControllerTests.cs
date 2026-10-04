@@ -229,12 +229,14 @@ public sealed class StatsControllerTests(ApiFactory factory)
 		var student = await CreateStudentAsync(tenantId, klass.Id);
 		await CreateParentAsync(tenantId, "stats-absence-parent", student.Id);
 		using var parentClient = CreateClient(tenantId, "parent", "stats-absence-parent");
-		var nextWeek = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(7);
+		// Reports covering only weekend days are rejected, so pin every date to a weekday.
+		var nextWeek = AbsenceTestKit.SchoolDayFrom(AbsenceTestKit.DanishToday().AddDays(7));
+		var dayAfter = AbsenceTestKit.SchoolDayFrom(nextWeek.AddDays(1));
 
 		// Two pending leave requests count; a sick report is final on submit and does not.
 		await ReportAbsenceAsync(parentClient, student.Id, AbsenceCategory.ExtraordinaryLeave, nextWeek);
-		await ReportAbsenceAsync(parentClient, student.Id, AbsenceCategory.ExtraordinaryLeave, nextWeek.AddDays(1));
-		await ReportAbsenceAsync(parentClient, student.Id, AbsenceCategory.Illness, DateOnly.FromDateTime(DateTime.UtcNow));
+		await ReportAbsenceAsync(parentClient, student.Id, AbsenceCategory.ExtraordinaryLeave, dayAfter);
+		await ReportAbsenceAsync(parentClient, student.Id, AbsenceCategory.Illness, AbsenceTestKit.SickDay());
 
 		using var client = CreateClient(tenantId, "admin", "stats-admin");
 		var stats = await client.GetFromJsonAsync<StatsController.DashboardStats>(
