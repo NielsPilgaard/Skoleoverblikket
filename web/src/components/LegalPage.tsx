@@ -23,7 +23,7 @@ export default function LegalPage({
 
       <main className="flex-1 py-20 px-6">
         <div className="max-w-2xl mx-auto">
-          <h1 className="font-display text-4xl sm:text-5xl font-semibold text-brand-900 leading-tight mb-2">
+          <h1 className="font-display text-3xl sm:text-5xl font-semibold text-brand-900 leading-tight mb-2 break-words">
             {title}
           </h1>
           <p className="text-sm text-gray-400 mb-10">{updated}</p>

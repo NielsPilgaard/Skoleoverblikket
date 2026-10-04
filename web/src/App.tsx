@@ -19,6 +19,7 @@ import SignupPage from './pages/SignupPage'
 import InvitationAcceptPage from './pages/InvitationAcceptPage'
 import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
+import DemoPage from './pages/DemoPage'
 import ChangelogPage from './pages/ChangelogPage'
 
 // Lazy load all other pages
@@ -175,6 +176,7 @@ export default function App() {
               <Route path="databehandleraftale" element={<DataProcessingAgreementPage />} />
               <Route path="underdatabehandlere" element={<SubProcessorsPage />} />
               <Route path="kontakt" element={<ContactPage />} />
+              <Route path="book-demo" element={<DemoPage />} />
               <Route path="nyheder" element={<ChangelogPage />} />
 
               <Route element={<AuthReady />}>

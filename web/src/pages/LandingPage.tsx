@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Helmet } from 'react-helmet-async'
-import Logo from '../components/Logo'
+import PublicNav from '../components/PublicNav'
 import Footer from '../components/Footer'
 import CookieBanner from '../components/CookieBanner'
 import SeoMeta from '../components/SeoMeta'
@@ -62,43 +62,7 @@ export default function LandingPage() {
         <script type="application/ld+json">{JSON.stringify(SOFTWARE_APPLICATION_JSON_LD)}</script>
         <script type="application/ld+json">{JSON.stringify(ORGANIZATION_JSON_LD)}</script>
       </Helmet>
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 min-w-0">
-            <Logo variant="light" size={24} />
-            <span className="font-display text-base sm:text-xl font-semibold text-brand-800 truncate">
-              Skoleoverblikket
-            </span>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            <a
-              href="/login"
-              className="text-sm text-gray-600 hover:text-brand-700 transition-colors whitespace-nowrap"
-            >
-              Log ind
-            </a>
-            <a
-              href="/nyheder"
-              className="hidden md:inline text-sm text-gray-600 hover:text-brand-700 transition-colors whitespace-nowrap"
-            >
-              Nyheder
-            </a>
-            <a
-              href="/kontakt"
-              className="hidden sm:inline text-sm text-brand-700 hover:text-brand-800 transition-colors whitespace-nowrap font-medium"
-            >
-              Book demo
-            </a>
-            <a
-              href="/signup"
-              className="text-sm px-3 py-1.5 sm:px-4 sm:py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors font-medium whitespace-nowrap"
-            >
-              Prøv gratis
-            </a>
-          </div>
-        </div>
-      </nav>
+      <PublicNav />
 
       {/* Hero */}
       <section className="py-24 px-6 text-center bg-gradient-to-b from-brand-50 to-white">
@@ -118,7 +82,7 @@ export default function LandingPage() {
               Kom i gang gratis — på 2 minutter
             </a>
             <a
-              href="/kontakt"
+              href="/book-demo"
               className="px-6 py-3 bg-white text-brand-700 text-base font-medium rounded-lg border border-brand-200 hover:bg-brand-50 transition-colors"
             >
               Book en demo

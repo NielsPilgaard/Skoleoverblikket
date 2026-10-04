@@ -62,11 +62,6 @@ export default function AboutPage() {
             <p>Skoleoverblikket drives af Pilgaard Development</p>
             <p>Nordlyvej 20, 8550 Ryomgård</p>
             <p>
-              <a href="tel:+4529917126" className="hover:text-brand-700 transition-colors">
-                +45 29 91 71 26
-              </a>
-            </p>
-            <p>
               <a
                 href="mailto:kontakt@skoleoverblikket.dk"
                 className="hover:text-brand-700 transition-colors"
