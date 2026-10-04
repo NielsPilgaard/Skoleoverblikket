@@ -8,7 +8,7 @@ Discount mechanism: **separate yearly Stripe Price IDs**, not coupons. Coupons o
 
 **Intro pricing**: launch yearly at a low intro base price (~10.000 kr/år) to win first paying customers; modules remain separate add-on Prices billed on the same interval (base + add-on model, not an all-inclusive bundle — see `ModulePriceIds`). Raise later without touching existing customers — Stripe subscriptions pin the Price ID they checked out with, so a later config change (swap `BasePriceIdYearly`/`ModulePriceIds` to a new, higher Price) only affects *new* checkouts. Existing subs keep billing at their original Price forever (until they themselves change plan via Portal). No grandfather field or extra logic needed — this falls out of the Price-ID-per-sub model for free. Just:
 - Create the yearly Prices in Stripe at the intro amount now.
-- Show an "Intropris" badge next to the yearly option on the billing page.
+- Show an "Intropris" badge next to the yearly option on the billing page. (Revised, no intropris)
 - When raising later: create new Stripe Prices, update `BasePriceIdYearly`/`ModulePriceIds` config, deploy. Do not edit/archive the old Price while any sub still references it.
 
 ---

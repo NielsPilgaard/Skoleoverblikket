@@ -271,9 +271,6 @@ export default function LandingPage() {
                       Spar {YEARLY_SAVINGS_KR} kr/år
                     </span>
                   )}
-                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700">
-                    Intropris
-                  </span>
                 </div>
               </div>
               <div className="px-8 py-6 space-y-3 text-left">
@@ -521,9 +518,6 @@ function ModuleCard({
               Spar {yearlySavings} kr/år
             </span>
           )}
-          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700">
-            Intropris
-          </span>
         </div>
       </div>
       <div className="px-6 py-4 space-y-2">
