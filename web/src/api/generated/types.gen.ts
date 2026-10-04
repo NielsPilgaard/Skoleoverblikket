@@ -4085,6 +4085,20 @@ export type GetApiV1ClassesByClassIdSchemasBySchemaIdConflictsResponses = {
 
 export type GetApiV1ClassesByClassIdSchemasBySchemaIdConflictsResponse = GetApiV1ClassesByClassIdSchemasBySchemaIdConflictsResponses[keyof GetApiV1ClassesByClassIdSchemasBySchemaIdConflictsResponses];
 
+export type GetApiV1ExportsSchoolZipData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/exports/school.zip';
+};
+
+export type GetApiV1ExportsSchoolZipResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
 export type GetApiV1SchoolsSettingsData = {
     body?: never;
     path?: never;
@@ -4934,6 +4948,23 @@ export type GetApiV1AdminEmailPreviewNotificationData = {
 };
 
 export type GetApiV1AdminEmailPreviewNotificationResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1AdminEmailPreviewWelcomeData = {
+    body?: never;
+    path?: never;
+    query?: {
+        name?: string;
+        school?: string;
+    };
+    url: '/api/v1/admin/email-preview/welcome';
+};
+
+export type GetApiV1AdminEmailPreviewWelcomeResponses = {
     /**
      * OK
      */

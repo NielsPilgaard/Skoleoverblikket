@@ -34,7 +34,6 @@ status: 'Active'
 | 6 | [43 Links](43-links.md) | M | Agent | — | Grilled and specced. Basis feature that gives parents a reason to open the app and saves Hanne repeat questions. |
 | 7 | [20 Stå mål med — Fase 3](20-staa-maal-med-fase3.md) | L | Agent | — | Status Ready. §1a publishing is a legal need for every friskole (primary market) and the copy promising it was pulled until it ships. Sells the board/governance module. |
 | 8 | [37 Skole-hjem-samtaler sign-up](37-parent-teacher-signup.md) | M | Agent | — | Every school runs these twice a year, today on paper or email. Visible to every parent, strengthens the paid parent module. |
-| 9 | [51 Full data export](51-full-data-export.md) | M | Agent | Grill first (async vs streamed, messages in or out) | The deletion warning email promises an export we can't really deliver, and GDPR art. 20 needs it. Low volume today, so after the features. |
 | 10 | [25 Schema import via AI](25-schema-import.md) | M | Niels + agent | Alexandra Instituttet DPA and pricing | Re-typing the old schema is the biggest switching barrier for a new school. Builds the shared Alexandra LLM client that 46 and 21 reuse. |
 | 11 | [45 Feedback button](feedback/45-feedback-capture.md) | L | Agent | 44 | Two-click bug reports with context. More valuable once there are more schools than Niels can talk to directly. |
 | 12 | [41 Uncovered lesson tracking](41-uncovered-lesson-tracking.md) | S | Agent | — (task 38 shipped) | Small read-only count next to the Stå mål med coverage view. Pairs naturally with 20 Fase 3. |

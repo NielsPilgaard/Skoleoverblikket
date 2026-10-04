@@ -16,7 +16,7 @@ status: 'Proposed'
 
 ## Context
 
-Surfaced by [06-data-retention](completed/06-data-retention.md): the deletion warning promises "log ind og eksporter data", but there is not much to export yet.
+Surfaced by [06-data-retention](06-data-retention.md): the deletion warning promises "log ind og eksporter data", but there is not much to export yet.
 
 ## Decisions
 
