@@ -190,7 +190,11 @@ export default function NotificationBell({ variant = 'light' }: NotificationBell
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-lg border border-gray-200 z-50 flex flex-col max-h-[min(70vh,28rem)]">
+        // The dark bell sits in the sidebar (opens rightwards); the light one sits at the right
+        // edge of the mobile top bar, so it must open leftwards to stay on screen.
+        <div
+          className={`absolute ${variant === 'dark' ? 'left-0' : 'right-0'} top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-lg border border-gray-200 z-50 flex flex-col max-h-[min(70vh,28rem)]`}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
             <h3 className="text-sm font-semibold text-gray-800">Notifikationer</h3>
