@@ -4940,6 +4940,38 @@ export type GetApiV1AdminEmailPreviewNotificationResponses = {
     200: unknown;
 };
 
+export type GetApiV1AdminEmailPreviewDeletionWarningData = {
+    body?: never;
+    path?: never;
+    query?: {
+        school?: string;
+    };
+    url: '/api/v1/admin/email-preview/deletion-warning';
+};
+
+export type GetApiV1AdminEmailPreviewDeletionWarningResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1AdminEmailPreviewSubProcessorNoticeData = {
+    body?: never;
+    path?: never;
+    query?: {
+        change?: string;
+    };
+    url: '/api/v1/admin/email-preview/sub-processor-notice';
+};
+
+export type GetApiV1AdminEmailPreviewSubProcessorNoticeResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
 export type PostApiV1AdminSubProcessorNoticeData = {
     body?: SubProcessorNoticeRequest;
     path?: never;

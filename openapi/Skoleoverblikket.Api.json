@@ -7870,6 +7870,50 @@
         }
       }
     },
+    "/api/v1/admin/email-preview/deletion-warning": {
+      "get": {
+        "tags": [
+          "SuperAdminEmailPreview"
+        ],
+        "parameters": [
+          {
+            "name": "school",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "Testskolen"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/email-preview/sub-processor-notice": {
+      "get": {
+        "tags": [
+          "SuperAdminEmailPreview"
+        ],
+        "parameters": [
+          {
+            "name": "change",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "Vi tilføjer Alexandra Instituttet (Danmark) til AI-forslag til skemaer."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/admin/sub-processor-notice": {
       "post": {
         "tags": [
