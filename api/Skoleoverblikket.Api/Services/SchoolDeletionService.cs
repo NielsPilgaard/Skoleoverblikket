@@ -277,7 +277,8 @@ public sealed class SchoolDeletionService(
 		if (recipients.Count == 0)
 		{
 			// Nobody to warn. Still counts as sent: the alternative is keeping the data forever.
-			logger.LogWarning("School {SchoolId} has no admin email; deletion warning not delivered", school.Id);
+			// Logged as an error so someone can reach the school by other means before deletion.
+			logger.LogError("School {SchoolId} has no admin email; deletion warning not delivered", school.Id);
 			return;
 		}
 
