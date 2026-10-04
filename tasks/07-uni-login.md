@@ -63,7 +63,7 @@ Vendor registration is required: register as a service provider with STIL and si
 |-----------|---------|
 | Tilslutningsaftale | Skoleoverblikket ↔ STIL (via tilslutning.stil.dk) |
 | Dataaftale | Skoleoverblikket ↔ each school (school approves in their UNI•Login admin) |
-| Databehandleraftale | Skoleoverblikket ↔ each school — covered by [task 48](48-databehandleraftale.md), don't draft a separate one here |
+| Databehandleraftale | Skoleoverblikket ↔ each school — covered by [task 48](completed/48-databehandleraftale.md), don't draft a separate one here |
 
 **Note for friskoler:** Schools do NOT need a separate databehandleraftale with STIL itself — only with Skoleoverblikket as vendor. ([source](https://www.friskolerne.dk/nyheder/artikel/ingen-databehandleraftale-ved-brug-af-unilogin))
 
@@ -106,7 +106,7 @@ Template file `docs/stil/prod_oidc_metadata.template.json` with redirect URI, po
 ### 4. Pilot school kit
 
 - One-page Danish guide for the school's UNI•Login admin: how to find and approve the Skoleoverblikket dataaftale.
-- Databehandleraftale comes from [task 48](48-databehandleraftale.md).
+- Databehandleraftale comes from [task 48](completed/48-databehandleraftale.md).
 
 ## Tasks
 
