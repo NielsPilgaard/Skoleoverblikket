@@ -27,7 +27,7 @@ status: 'Active'
 | # | Task | Size | Owner | Depends on | Why this spot |
 |---|---|---|---|---|---|
 | 1 | [55 Bestyrelse under Stamdata](55-board-in-masterdata.md) | S | Agent | — | Frontend only, fully specced, already staged. Hanne can't find the board today. |
-| 3 | [54 Move prod to bigger VPS](54-move-vps.md) | L | Niels + agent | — | VPS is too small, prod Postgres is reachable from the internet, RPO is 24h. Absorbs 53 phases 3–5, so do it before 53 to avoid building a drill twice. |
+| 3 | [54 Move prod to bigger VPS](54-move-vps.md) | L | Niels + agent | — | VPS could use better speccs for higher volume, prod Postgres is reachable (but secure) from the internet, RPO is 24h. Absorbs 53 phases 3–5, so do it before 53 to avoid building a drill twice. |
 | 4 | [53 Restore drill and off-site backup](53-restore-drill.md) | M | Niels + agent | 54 | Proves backups restore, adds alerts and an off-site copy of DB and files. Losing a school's data would end the company. Phase 2 waits for the 30-day sub-processor notice. |
 | 5 | [44 Auto-rollback and deploy safety net](44-auto-rollback.md) | M | Agent | — (coordinate migration check with 54) | A bad deploy currently stays live until someone notices. Prerequisite for the feedback chain (45–47). |
 | 6 | [43 Links](43-links.md) | M | Agent | — | Grilled and specced. Basis feature that gives parents a reason to open the app and saves Hanne repeat questions. |
@@ -67,4 +67,3 @@ Secondary market. Runs in parallel with the list above because the calendar time
 ## Not tasks
 
 - [TO_VERIFY.md](TO_VERIFY.md): manual UI acceptance checklist.
-- [todo.md](todo.md): manual parent-side test notes (ferietilmelding, kontaktbog, ugeplan print).
