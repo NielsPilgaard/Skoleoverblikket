@@ -104,7 +104,7 @@ public sealed class ParentsController(
 		}
 		catch (Exception ex)
 		{
-			logger.LogError(ex, "Failed to send parent invitation email to {Email}", req.Email);
+			logger.LogError(ex, "Failed to send parent invitation email to parent {ParentId}", parent.Id);
 			return Problem(title: "Kunne ikke sende invitation", detail: "Der opstod en fejl. Prøv igen.", statusCode: 502);
 		}
 

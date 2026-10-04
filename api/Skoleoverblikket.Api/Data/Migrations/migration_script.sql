@@ -2445,23 +2445,53 @@ START TRANSACTION;
 
 DO $EF$
 BEGIN
-    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003205233_Add_StaffAbsence_TimeWindow') THEN
-    ALTER TABLE "StaffAbsences" ADD "EndTime" time without time zone;
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003202052_SchoolRetentionAndDataProcessingAgreement') THEN
+    ALTER TABLE "Subscriptions" ADD "CanceledAt" timestamp with time zone;
     END IF;
 END $EF$;
 
 DO $EF$
 BEGIN
-    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003205233_Add_StaffAbsence_TimeWindow') THEN
-    ALTER TABLE "StaffAbsences" ADD "StartTime" time without time zone;
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003202052_SchoolRetentionAndDataProcessingAgreement') THEN
+    ALTER TABLE "Subscriptions" ADD "DeletionWarningSentAt" timestamp with time zone;
     END IF;
 END $EF$;
 
 DO $EF$
 BEGIN
-    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003205233_Add_StaffAbsence_TimeWindow') THEN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003202052_SchoolRetentionAndDataProcessingAgreement') THEN
+    UPDATE "Subscriptions" SET "CanceledAt" = "UpdatedAt" WHERE "Status" = 3;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003202052_SchoolRetentionAndDataProcessingAgreement') THEN
+    CREATE TABLE "DataProcessingAgreementAcceptances" (
+        "Id" uuid NOT NULL,
+        "TenantId" uuid NOT NULL,
+        "Version" character varying(20) NOT NULL,
+        "AcceptedBySubject" character varying(200) NOT NULL,
+        "AcceptedByName" character varying(200) NOT NULL,
+        "AcceptedByEmail" character varying(500),
+        "AcceptedAt" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_DataProcessingAgreementAcceptances" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003202052_SchoolRetentionAndDataProcessingAgreement') THEN
+    CREATE UNIQUE INDEX "IX_DataProcessingAgreementAcceptances_TenantId_Version" ON "DataProcessingAgreementAcceptances" ("TenantId", "Version");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003202052_SchoolRetentionAndDataProcessingAgreement') THEN
     INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
-    VALUES ('20261003205233_Add_StaffAbsence_TimeWindow', '10.0.7');
+    VALUES ('20261003202052_SchoolRetentionAndDataProcessingAgreement', '10.0.7');
     END IF;
 END $EF$;
 COMMIT;

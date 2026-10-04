@@ -62,6 +62,41 @@ public sealed class S3ObjectStorage(IAmazonS3 s3, IOptions<S3Options> opts) : IO
 		await s3.DeleteObjectAsync(_options.DefaultBucketName, key, cancellationToken);
 	}
 
+	public async Task<int> DeleteByPrefixAsync(string prefix, CancellationToken cancellationToken = default)
+	{
+		// An empty prefix would match the whole bucket.
+		ArgumentException.ThrowIfNullOrWhiteSpace(prefix);
+
+		var deleted = 0;
+		var request = new ListObjectsV2Request { BucketName = _options.DefaultBucketName, Prefix = prefix };
+		ListObjectsV2Response page;
+		do
+		{
+			page = await s3.ListObjectsV2Async(request, cancellationToken);
+			if (page.S3Objects is { Count: > 0 } objects)
+			{
+				var response = await s3.DeleteObjectsAsync(new DeleteObjectsRequest
+				{
+					BucketName = _options.DefaultBucketName,
+					Objects = objects.Select(o => new KeyVersion { Key = o.Key }).ToList(),
+				}, cancellationToken);
+
+				if (response.DeleteErrors is { Count: > 0 } errors)
+				{
+					throw new InvalidOperationException(
+						$"Could not delete {errors.Count} object(s) under '{prefix}', first: {errors[0].Key} ({errors[0].Code})");
+				}
+
+				deleted += objects.Count;
+			}
+
+			request.ContinuationToken = page.NextContinuationToken;
+		}
+		while (page.IsTruncated == true);
+
+		return deleted;
+	}
+
 	public async Task<long?> GetObjectSizeAsync(string key, CancellationToken cancellationToken = default)
 	{
 		try

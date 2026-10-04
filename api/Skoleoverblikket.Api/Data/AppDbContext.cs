@@ -55,6 +55,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ITenant
 	public DbSet<ComplianceCoverageSnapshot> ComplianceCoverageSnapshots => Set<ComplianceCoverageSnapshot>();
 	public DbSet<ClassChatMessage> ClassChatMessages => Set<ClassChatMessage>();
 	public DbSet<ClassChatAttachment> ClassChatAttachments => Set<ClassChatAttachment>();
+	public DbSet<DataProcessingAgreementAcceptance> DataProcessingAgreementAcceptances => Set<DataProcessingAgreementAcceptance>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{

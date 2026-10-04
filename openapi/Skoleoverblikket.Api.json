@@ -3115,6 +3115,66 @@
         }
       }
     },
+    "/api/v1/data-processing-agreement": {
+      "get": {
+        "tags": [
+          "DataProcessingAgreement"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataProcessingAgreementStatusDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataProcessingAgreementStatusDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataProcessingAgreementStatusDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/data-processing-agreement/acceptance": {
+      "post": {
+        "tags": [
+          "DataProcessingAgreement"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptDataProcessingAgreementRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptDataProcessingAgreementRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptDataProcessingAgreementRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/demo-request": {
       "post": {
         "tags": [
@@ -7810,6 +7870,54 @@
         }
       }
     },
+    "/api/v1/admin/sub-processor-notice": {
+      "post": {
+        "tags": [
+          "SuperAdminSubProcessorNotice"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubProcessorNoticeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubProcessorNoticeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubProcessorNoticeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubProcessorNoticeResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubProcessorNoticeResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubProcessorNoticeResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/tenants": {
       "get": {
         "tags": [
@@ -7897,17 +8005,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TenantsController_CreateTenantRequest"
+                "$ref": "#/components/schemas/CreateTenantRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/TenantsController_CreateTenantRequest"
+                "$ref": "#/components/schemas/CreateTenantRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/TenantsController_CreateTenantRequest"
+                "$ref": "#/components/schemas/CreateTenantRequest"
               }
             }
           }
@@ -7918,17 +8026,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/TenantsController_TenantCreatedDto"
+                  "$ref": "#/components/schemas/TenantCreatedDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TenantsController_TenantCreatedDto"
+                  "$ref": "#/components/schemas/TenantCreatedDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TenantsController_TenantCreatedDto"
+                  "$ref": "#/components/schemas/TenantCreatedDto"
                 }
               }
             }
@@ -9185,6 +9293,18 @@
           },
           "category": {
             "$ref": "#/components/schemas/AbsenceCategory"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AcceptDataProcessingAgreementRequest": {
+        "required": [
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -10937,6 +11057,67 @@
           },
           "category": {
             "$ref": "#/components/schemas/SubjectCategory"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateTenantRequest": {
+        "required": [
+          "acceptDataProcessingAgreement",
+          "adminEmail",
+          "adminFirstName",
+          "adminLastName",
+          "adminPassword",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "adminEmail": {
+            "type": "string"
+          },
+          "adminFirstName": {
+            "type": "string"
+          },
+          "adminLastName": {
+            "type": "string"
+          },
+          "adminPassword": {
+            "type": "string"
+          },
+          "acceptDataProcessingAgreement": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DataProcessingAgreementStatusDto": {
+        "required": [
+          "acceptedCurrentVersion",
+          "currentVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "currentVersion": {
+            "type": "string"
+          },
+          "acceptedCurrentVersion": {
+            "type": "boolean"
+          },
+          "acceptedVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "acceptedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "acceptedByName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -14186,6 +14367,41 @@
         },
         "additionalProperties": false
       },
+      "SubProcessorNoticeRequest": {
+        "required": [
+          "change",
+          "effectiveFrom"
+        ],
+        "type": "object",
+        "properties": {
+          "change": {
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubProcessorNoticeResultDto": {
+        "required": [
+          "recipientCount",
+          "schoolCount"
+        ],
+        "type": "object",
+        "properties": {
+          "schoolCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "recipientCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "SubjectCategory": {
         "enum": [
           "Dansk",
@@ -14263,6 +14479,40 @@
           "Aide"
         ],
         "type": "string"
+      },
+      "TenantCreatedDto": {
+        "required": [
+          "accessToken",
+          "adminEmail",
+          "expiresIn",
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "adminEmail": {
+            "type": "string"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresIn": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
       },
       "TenantDetailDto": {
         "required": [
@@ -14361,68 +14611,6 @@
             "nullable": true
           },
           "activeModuleCount": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "TenantsController_CreateTenantRequest": {
-        "required": [
-          "adminEmail",
-          "adminFirstName",
-          "adminLastName",
-          "adminPassword",
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "adminEmail": {
-            "type": "string"
-          },
-          "adminFirstName": {
-            "type": "string"
-          },
-          "adminLastName": {
-            "type": "string"
-          },
-          "adminPassword": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "TenantsController_TenantCreatedDto": {
-        "required": [
-          "accessToken",
-          "adminEmail",
-          "expiresIn",
-          "id",
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "adminEmail": {
-            "type": "string"
-          },
-          "accessToken": {
-            "type": "string"
-          },
-          "refreshToken": {
-            "type": "string",
-            "nullable": true
-          },
-          "expiresIn": {
             "type": "integer",
             "format": "int32"
           }
@@ -15261,6 +15449,9 @@
       "name": "Courses"
     },
     {
+      "name": "DataProcessingAgreement"
+    },
+    {
       "name": "DemoRequest"
     },
     {
@@ -15337,6 +15528,9 @@
     },
     {
       "name": "SuperAdminEmailPreview"
+    },
+    {
+      "name": "SuperAdminSubProcessorNotice"
     },
     {
       "name": "SuperAdminTenants"

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Skoleoverblikket.Api.Data;
@@ -11,9 +12,11 @@ using Skoleoverblikket.Api.Data;
 namespace Skoleoverblikket.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261003202052_SchoolRetentionAndDataProcessingAgreement")]
+    partial class SchoolRetentionAndDataProcessingAgreement
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1444,9 +1447,6 @@ namespace Skoleoverblikket.Api.Data.Migrations
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
 
-                    b.Property<TimeOnly?>("EndTime")
-                        .HasColumnType("time without time zone");
-
                     b.Property<string>("Reason")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -1456,9 +1456,6 @@ namespace Skoleoverblikket.Api.Data.Migrations
 
                     b.Property<Guid>("StaffId")
                         .HasColumnType("uuid");
-
-                    b.Property<TimeOnly?>("StartTime")
-                        .HasColumnType("time without time zone");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
