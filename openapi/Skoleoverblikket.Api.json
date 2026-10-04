@@ -7882,6 +7882,36 @@
         }
       }
     },
+    "/api/v1/admin/email-preview/welcome": {
+      "get": {
+        "tags": [
+          "SuperAdminEmailPreview"
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "Mette"
+            }
+          },
+          {
+            "name": "school",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "Testskolen"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/admin/email-preview/deletion-warning": {
       "get": {
         "tags": [
@@ -15547,6 +15577,9 @@
       "name": "Schemas"
     },
     {
+      "name": "SchoolExport"
+    },
+    {
       "name": "Schools"
     },
     {
@@ -15575,9 +15608,6 @@
     },
     {
       "name": "Students"
-    },
-    {
-      "name": "SchoolExport"
     },
     {
       "name": "SubscriptionModules"

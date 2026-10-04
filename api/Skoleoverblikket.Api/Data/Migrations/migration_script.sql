@@ -2496,3 +2496,46 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003205233_Add_StaffAbsence_TimeWindow') THEN
+    ALTER TABLE "StaffAbsences" ADD "EndTime" time without time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003205233_Add_StaffAbsence_TimeWindow') THEN
+    ALTER TABLE "StaffAbsences" ADD "StartTime" time without time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261003205233_Add_StaffAbsence_TimeWindow') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261003205233_Add_StaffAbsence_TimeWindow', '10.0.7');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261004180439_AddSchoolWelcomeEmailDueAt') THEN
+    ALTER TABLE "Schools" ADD "WelcomeEmailDueAt" timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261004180439_AddSchoolWelcomeEmailDueAt') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261004180439_AddSchoolWelcomeEmailDueAt', '10.0.7');
+    END IF;
+END $EF$;
+COMMIT;
+

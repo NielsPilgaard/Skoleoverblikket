@@ -10,4 +10,6 @@ public sealed record EmailMessage(
 	string Subject,
 	string HtmlBody,
 	string? PlainTextBody = null,
-	IReadOnlyList<string>? Bcc = null);
+	IReadOnlyList<string>? Bcc = null,
+	string? FromName = null,
+	string? ReplyTo = null);

@@ -13,7 +13,7 @@ status: 'Proposed'
 
 ## TL;DR
 
-About 24 hours after `SchoolSignupService.CreateAsync` succeeds, send one email to the new admin. It looks like a personal email, not a newsletter: no logo, no branded card, no button. From "Niels", `Reply-To` `niels@skoleoverblikket.dk`. First paragraph admits it is sent automatically. It ends with an open question so people reply. A failed send must never fail signup.
+About 24 hours after `SchoolSignupService.CreateAsync` succeeds, send one email to the new admin. It looks like a personal email, not a newsletter: no logo, no branded card, no button. From "Niels Pilgaard", `Reply-To` `niels@skoleoverblikket.dk`. First paragraph admits it is sent automatically. It ends with an open question so people reply. A failed send must never fail signup.
 
 ## Context
 
@@ -28,7 +28,7 @@ That fits us well. Our buyer is Hanne or a principal at a small friskole. A real
 1. **Trigger**: send once, about 24 hours after signup. `SchoolSignupService.CreateAsync` sets `School.WelcomeEmailDueAt` to signup + 24h when the school is saved, and the hourly `WelcomeEmailJob` sends due emails and clears the field. Not on any failure path (`EmailTaken`, `AccountFailed`, `SaveFailed`), since no school is saved. Existing schools have no due time and are never emailed.
 2. **Recipient**: `req.AdminEmail`, greeted by `req.AdminFirstName`.
 3. **Sender**:
-   - Display name `Niels`.
+   - Display name `Niels Pilgaard`.
    - From address on the verified Scaleway TEM domain (`skoleoverblikket.dk`), so deliverability is unchanged.
    - `Reply-To`: `niels@skoleoverblikket.dk`.
    - No phone number in the signature.
@@ -70,7 +70,7 @@ Skoleoverblikket
 
 ## Implementation notes
 
-- **`EmailMessage`** ([IEmailSender.cs](../api/Skoleoverblikket.Api/Email/IEmailSender.cs)): add optional `FromName` and `ReplyTo`. `MailKitEmailSender` uses `FromName ?? _options.FromName` and sets `mime.ReplyTo` when given. Existing callers stay unchanged.
+- **`EmailMessage`** ([IEmailSender.cs](../../api/Skoleoverblikket.Api/Email/IEmailSender.cs)): add optional `FromName` and `ReplyTo`. `MailKitEmailSender` uses `FromName ?? _options.FromName` and sets `mime.ReplyTo` when given. Existing callers stay unchanged.
 - **`WelcomeEmail.cs`** in `api/Skoleoverblikket.Api/Email/`, next to `StaffInvitationEmail.cs` and `ParentInvitationEmail.cs`. A static builder returning an `EmailMessage` with both bodies. Sender name and reply-to address are constants here, not config. They are not tenant-specific and there is one founder.
 - **`SchoolSignupService`**: inject `IEmailSender` and `ILogger`. Send after the save, following the service rule "load, check, change, save once, then trigger side effects". Wrap in try/catch so an SMTP outage cannot turn a created school into a signup error.
 - **Migration** for `School.WelcomeEmailDueAt`. No new config. The email is in the backoffice email preview (`/api/v1/admin/email-preview/welcome`).
@@ -78,7 +78,7 @@ Skoleoverblikket
 
 ## Tests
 
-API integration tests through HTTP, using `RecordingEmailSender` ([RecordingEmailSender.cs](../api/tests/Skoleoverblikket.Api.IntegrationTests/Infrastructure/RecordingEmailSender.cs)). Put them in the existing signup test file if there is one, otherwise a new `SchoolSignupWelcomeEmailTests.cs`.
+API integration tests through HTTP, using `RecordingEmailSender` ([RecordingEmailSender.cs](../../api/tests/Skoleoverblikket.Api.IntegrationTests/Infrastructure/RecordingEmailSender.cs)). Put them in the existing signup test file if there is one, otherwise a new `SchoolSignupWelcomeEmailTests.cs`.
 
 - Successful signup records no email at once and none before 24 hours, then exactly one email to the admin address (never twice), with the founder `ReplyTo`, the first name in the body, and no `EmailTemplate` markup.
 - Signup with an email that is already taken records no welcome email.
@@ -99,6 +99,6 @@ No Playwright test. Hanne isn't blocked if this email breaks.
 ## Decisions
 
 1. **Reply-to address**: `niels@skoleoverblikket.dk`. It must exist and be monitored before this ships.
-2. **Sender display name**: `Niels`.
+2. **Sender display name**: `Niels Pilgaard`.
 3. **Signature**: no phone number. Niels can only take calls after 15:00 on weekdays and at weekends, so email is the channel.
 4. **Response time**: say "oftest samme dag" (usually the same day). It reassures without guaranteeing. Never promise "same day" outright.

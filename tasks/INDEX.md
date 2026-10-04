@@ -27,7 +27,6 @@ status: 'Active'
 | # | Task | Size | Owner | Depends on | Why this spot |
 |---|---|---|---|---|---|
 | 1 | [55 Bestyrelse under Stamdata](55-board-in-masterdata.md) | S | Agent | — | Frontend only, fully specced, already staged. Hanne can't find the board today. |
-| 2 | [52 Founder welcome email](52-founder-welcome-email.md) | S | Agent | — | Signup sends no email at all. A personal email in the trial costs a few hours and is the cheapest conversion and feedback lever we have. |
 | 3 | [54 Move prod to bigger VPS](54-move-vps.md) | L | Niels + agent | — | VPS is too small, prod Postgres is reachable from the internet, RPO is 24h. Absorbs 53 phases 3–5, so do it before 53 to avoid building a drill twice. |
 | 4 | [53 Restore drill and off-site backup](53-restore-drill.md) | M | Niels + agent | 54 | Proves backups restore, adds alerts and an off-site copy of DB and files. Losing a school's data would end the company. Phase 2 waits for the 30-day sub-processor notice. |
 | 5 | [44 Auto-rollback and deploy safety net](44-auto-rollback.md) | M | Agent | — (coordinate migration check with 54) | A bad deploy currently stays live until someone notices. Prerequisite for the feedback chain (45–47). |

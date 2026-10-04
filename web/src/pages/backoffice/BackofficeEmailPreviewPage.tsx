@@ -7,6 +7,7 @@ type EmailType =
   | 'notification'
   | 'deletion-warning'
   | 'sub-processor-notice'
+  | 'welcome'
 
 const EMAIL_TYPES: { value: EmailType; label: string }[] = [
   { value: 'staff-invitation', label: 'Medarbejder-invitation' },
@@ -14,6 +15,7 @@ const EMAIL_TYPES: { value: EmailType; label: string }[] = [
   { value: 'notification', label: 'Notifikation' },
   { value: 'deletion-warning', label: 'Varsel om sletning (7 dage før)' },
   { value: 'sub-processor-notice', label: 'Varsel om underdatabehandlere' },
+  { value: 'welcome', label: 'Velkomst fra Niels (dagen efter oprettelse)' },
 ]
 
 /** `?type=deletion-warning` opens that preview directly, so it can be linked to. */
@@ -58,6 +60,9 @@ export default function BackofficeEmailPreviewPage() {
       params.school = school
     } else if (type === 'sub-processor-notice') {
       params.change = change
+    } else if (type === 'welcome') {
+      params.name = name.split(' ')[0]
+      params.school = school
     } else {
       params.name = name
       params.school = school
@@ -104,7 +109,7 @@ export default function BackofficeEmailPreviewPage() {
             </select>
           </div>
 
-          {isInvitation && (
+          {(isInvitation || type === 'welcome') && (
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Navn</label>
               <input
@@ -116,7 +121,7 @@ export default function BackofficeEmailPreviewPage() {
             </div>
           )}
 
-          {(isInvitation || type === 'deletion-warning') && (
+          {(isInvitation || type === 'deletion-warning' || type === 'welcome') && (
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Skole</label>
               <input
