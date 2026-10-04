@@ -22,7 +22,7 @@ public sealed record MySubstitutionDto(
 /// <summary>Which seat in the lektion a vikar covers.</summary>
 public enum SubstituteSeat { Teacher, Aide }
 
-public enum SetSubstituteResult { Saved, NotFound, SamePersonBothRoles, UnknownStaff }
+public enum SetSubstituteResult { Saved, NotFound, SamePersonBothRoles, UnknownStaff, StaffBusy }
 
 public enum AssignLessonResult { Assigned, LessonNotFound, CandidateNotFound, CandidateBusy }
 
@@ -137,12 +137,32 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 			.Select(id => id!.Value)
 			.ToList();
 
+		var date = DateOnly.FromDateTime(ISOWeek.ToDateTime(slot.WeekPlan.IsoYear, slot.WeekPlan.IsoWeek, slot.SchemaSlot.Weekday));
+
+		await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+		if (newlyAssigned.Count > 0)
+		{
+			// Same lock as AssignForLessonAsync, taken in a fixed order so two requests can't deadlock.
+			foreach (var lockKey in newlyAssigned.Select(id => BitConverter.ToInt64(id.ToByteArray(), 0)).Order())
+			{
+				await db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({lockKey})", cancellationToken);
+			}
+
+			var conflicts = await GetConflictsAsync(
+				date, slot.SchemaSlot.TimeSlot.StartTime, slot.SchemaSlot.TimeSlot.EndTime, cancellationToken,
+				ignoreSchemaSlotId: slot.SchemaSlotId);
+			if (newlyAssigned.Any(conflicts.ContainsKey))
+			{
+				return (SetSubstituteResult.StaffBusy, null);
+			}
+		}
+
 		slot.SubstituteTeacherId = req.SubstituteTeacherId;
 		slot.SubstituteAideId = req.SubstituteAideId;
 		slot.UpdatedAt = DateTimeOffset.UtcNow;
 		await db.SaveChangesAsync(cancellationToken);
+		await transaction.CommitAsync(cancellationToken);
 
-		var date = DateOnly.FromDateTime(ISOWeek.ToDateTime(slot.WeekPlan.IsoYear, slot.WeekPlan.IsoWeek, slot.SchemaSlot.Weekday));
 		foreach (var staffId in newlyAssigned)
 		{
 			await NotifyAssignedAsync(staffId, slot.SchemaSlotId, date, cancellationToken);

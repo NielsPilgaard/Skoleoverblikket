@@ -353,7 +353,11 @@ public sealed class AbsenceStatsService(AppDbContext db)
 
 		foreach (var row in rows)
 		{
-			var rank = row.HalfDay ? 1 : row.StaffRegistered ? 3 : 2;
+			// Approved leave beats a staff mark made while the request was still pending.
+			var rank = row.HalfDay ? 1
+				: row.Category == AbsenceCategory.ExtraordinaryLeave && !row.StaffRegistered ? 4
+				: row.StaffRegistered ? 3
+				: 2;
 			var amount = row.HalfDay ? 0.5m : 1m;
 			var first = row.Date < from ? from : row.Date;
 			var lastDay = row.HalfDay ? row.Date : row.EndDate ?? row.Date;

@@ -468,7 +468,9 @@ public sealed class AbsenceService(
 			{
 				var own = records.Where(r => r.StudentId == s.Id).ToList();
 				var staffFull = own.FirstOrDefault(r => r.RegisteredByStaffId != null && !r.HalfDay);
-				var parentCounting = own.FirstOrDefault(r => r.ReportedByParentId != null && r.LeaveStatus != LeaveStatus.Rejected);
+				// A pending leave request is only a note: staff can still mark the student absent.
+				var parentCounting = own.FirstOrDefault(r => r.ReportedByParentId != null
+					&& r.LeaveStatus is null or LeaveStatus.Approved);
 				var parentAny = parentCounting ?? own.FirstOrDefault(r => r.ReportedByParentId != null);
 				var half = own.FirstOrDefault(r => r.RegisteredByStaffId != null && r.HalfDay);
 
@@ -570,7 +572,9 @@ public sealed class AbsenceService(
 		{
 			var own = records.Where(r => r.StudentId == studentId).ToList();
 			var staffFull = own.FirstOrDefault(r => r.RegisteredByStaffId != null && !r.HalfDay);
-			var parentFull = own.FirstOrDefault(r => r.ReportedByParentId != null);
+			// A pending leave request doesn't count yet, so it must not block the staff mark; if the
+			// leave is approved, ResolveDays lets it win over the mark.
+			var parentFull = own.FirstOrDefault(r => r.ReportedByParentId != null && r.LeaveStatus != LeaveStatus.Pending);
 			var half = own.FirstOrDefault(r => r.RegisteredByStaffId != null && r.HalfDay);
 			var isListed = absent.TryGetValue(studentId, out var category);
 
