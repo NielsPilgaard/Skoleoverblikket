@@ -68,8 +68,8 @@ export default function AttendancePage() {
   const options = getApiV1AttendanceClassesByClassIdOptions({ path: { classId }, query: { date } })
   const { data, isLoading, isError } = useQuery(options)
 
-  // Seed the selection from what is saved, unless the user has started tapping. After a save the
-  // selection already matches what was saved, so it stays dirty until the class, date or step changes.
+  // Seed the selection from what is saved, unless the user has started tapping. After a save it
+  // stays dirty until the refetch lands, so the old data can't flash back in.
   useEffect(() => {
     if (!data || dirty) return
     const next: Selection = new Map()
@@ -88,17 +88,21 @@ export default function AttendancePage() {
 
   const save = useMutation({
     ...putApiV1AttendanceClassesByClassIdMutation(),
-    onSuccess: () => {
+    // Awaited, so the mutation stays pending (and the controls locked) until the refetch is in.
+    onSuccess: async () => {
       setSaved(true)
-      qc.invalidateQueries({ queryKey: options.queryKey })
       qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1AttendanceMinePending' }] })
       qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1AttendanceOverview' }] })
+      await qc.invalidateQueries({ queryKey: options.queryKey })
+      setDirty(false)
     },
   })
 
   const students = data?.students ?? []
   const check = checkpoint === 'StartOfDay' ? data?.startOfDay : data?.endOfDay
   const readOnly = !data?.canEdit || !data?.isSchoolDay
+  // Taps during a save would be wiped when the refetch reseeds the selection.
+  const saving = save.isPending
 
   const absentCount = useMemo(() => {
     if (checkpoint === 'StartOfDay') {
@@ -176,6 +180,7 @@ export default function AttendancePage() {
         <button
           type="button"
           onClick={() => goToDate(addDaysIso(date, -1))}
+          disabled={saving}
           className="w-11 h-11 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100"
           aria-label="Forrige dag"
           data-testid="attendance-prev-day"
@@ -190,7 +195,7 @@ export default function AttendancePage() {
         <button
           type="button"
           onClick={() => goToDate(addDaysIso(date, 1))}
-          disabled={date >= today}
+          disabled={date >= today || saving}
           className="w-11 h-11 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-30"
           aria-label="Næste dag"
           data-testid="attendance-next-day"
@@ -206,6 +211,7 @@ export default function AttendancePage() {
               key={cp}
               type="button"
               onClick={() => setCheckpoint(cp)}
+              disabled={saving}
               data-testid={`attendance-checkpoint-${cp}`}
               className={`h-11 rounded-lg text-sm font-medium transition-colors ${
                 checkpoint === cp ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'
@@ -276,7 +282,7 @@ export default function AttendancePage() {
               <button
                 type="button"
                 onClick={() => !locked && toggle(s.studentId)}
-                disabled={readOnly || locked !== null}
+                disabled={readOnly || locked !== null || saving}
                 aria-pressed={isAbsent}
                 data-testid={`attendance-student-${s.studentId}`}
                 className="w-full flex items-center gap-3 min-h-14 px-3 py-2 text-left disabled:cursor-default"
@@ -310,6 +316,7 @@ export default function AttendancePage() {
                       key={c}
                       type="button"
                       onClick={() => setCategory(s.studentId, c)}
+                      disabled={saving}
                       data-testid={`attendance-category-${s.studentId}-${c}`}
                       className={`flex-1 h-10 rounded-lg text-sm font-medium border ${
                         selected === c
@@ -356,15 +363,16 @@ export default function AttendancePage() {
                   setDirty(true)
                   setSelection(new Map())
                 }}
+                disabled={saving}
                 data-testid="attendance-all-present"
-                className="h-12 px-4 rounded-xl border border-gray-300 text-sm font-medium text-gray-700"
+                className="h-12 px-4 rounded-xl border border-gray-300 text-sm font-medium text-gray-700 disabled:opacity-50"
               >
                 {checkpoint === 'StartOfDay' ? 'Alle er her' : 'Ingen er gået'}
               </button>
               <button
                 type="button"
                 onClick={submit}
-                disabled={save.isPending}
+                disabled={saving}
                 data-testid="attendance-save"
                 className="flex-1 h-12 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-50"
               >

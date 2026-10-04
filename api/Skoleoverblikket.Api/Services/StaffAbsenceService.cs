@@ -134,25 +134,34 @@ public sealed class StaffAbsenceService(
 			return (StaffAbsenceReportResult.InvalidDates, null);
 		}
 
-		if (await OverlapsAsync(staffId.Value, range, excludeId: null, cancellationToken))
+		var absence = await WithStaffLockAsync(staffId.Value, async () =>
+		{
+			if (await OverlapsAsync(staffId.Value, range, excludeId: null, cancellationToken))
+			{
+				return null;
+			}
+
+			var created = new StaffAbsence
+			{
+				Id = Guid.NewGuid(),
+				TenantId = tenant.TenantId,
+				StaffId = staffId.Value,
+				ReportedByStaffId = caller?.Id,
+				Date = range.Date,
+				EndDate = range.EndDate,
+				StartTime = range.StartTime,
+				EndTime = range.EndTime,
+				Reason = string.IsNullOrWhiteSpace(req.Reason) ? null : req.Reason.Trim(),
+			};
+			db.StaffAbsences.Add(created);
+			await db.SaveChangesAsync(cancellationToken);
+			return created;
+		}, cancellationToken);
+
+		if (absence is null)
 		{
 			return (StaffAbsenceReportResult.Overlaps, null);
 		}
-
-		var absence = new StaffAbsence
-		{
-			Id = Guid.NewGuid(),
-			TenantId = tenant.TenantId,
-			StaffId = staffId.Value,
-			ReportedByStaffId = caller?.Id,
-			Date = range.Date,
-			EndDate = range.EndDate,
-			StartTime = range.StartTime,
-			EndTime = range.EndTime,
-			Reason = string.IsNullOrWhiteSpace(req.Reason) ? null : req.Reason.Trim(),
-		};
-		db.StaffAbsences.Add(absence);
-		await db.SaveChangesAsync(cancellationToken);
 
 		// They can't cover for anyone while out: free their vikar bookings so those lektioner show as uncovered.
 		var released = await substitutes.ReleaseBookingsAsync(
@@ -197,28 +206,37 @@ public sealed class StaffAbsenceService(
 			return StaffAbsenceUpdateResult.InvalidDates;
 		}
 
-		if (await OverlapsAsync(absence.StaffId, range, excludeId: absence.Id, cancellationToken))
+		var saved = await WithStaffLockAsync(absence.StaffId, async () =>
+		{
+			if (await OverlapsAsync(absence.StaffId, range, excludeId: absence.Id, cancellationToken))
+			{
+				return false;
+			}
+
+			var before = await GetAffectedLessonsAsync(
+				absence.StaffId, new Range(absence.Date, absence.EndDate, absence.StartTime, absence.EndTime), cancellationToken);
+			var after = (await GetAffectedLessonsAsync(absence.StaffId, range, cancellationToken))
+				.Select(l => (l.Date, l.Lesson.SchemaSlotId, l.Lesson.Seat))
+				.ToHashSet();
+			await ClearCoverAsync(
+				absence.StaffId,
+				absence.Id,
+				before.Where(l => l.Date >= today && !after.Contains((l.Date, l.Lesson.SchemaSlotId, l.Lesson.Seat))).ToList(),
+				cancellationToken);
+
+			absence.Date = range.Date;
+			absence.EndDate = range.EndDate;
+			absence.StartTime = range.StartTime;
+			absence.EndTime = range.EndTime;
+			absence.Reason = string.IsNullOrWhiteSpace(req.Reason) ? null : req.Reason.Trim();
+			await db.SaveChangesAsync(cancellationToken);
+			return true;
+		}, cancellationToken);
+
+		if (!saved)
 		{
 			return StaffAbsenceUpdateResult.Overlaps;
 		}
-
-		var before = await GetAffectedLessonsAsync(
-			absence.StaffId, new Range(absence.Date, absence.EndDate, absence.StartTime, absence.EndTime), cancellationToken);
-		var after = (await GetAffectedLessonsAsync(absence.StaffId, range, cancellationToken))
-			.Select(l => (l.Date, l.Lesson.SchemaSlotId, l.Lesson.Seat))
-			.ToHashSet();
-		await ClearCoverAsync(
-			absence.StaffId,
-			absence.Id,
-			before.Where(l => l.Date >= today && !after.Contains((l.Date, l.Lesson.SchemaSlotId, l.Lesson.Seat))).ToList(),
-			cancellationToken);
-
-		absence.Date = range.Date;
-		absence.EndDate = range.EndDate;
-		absence.StartTime = range.StartTime;
-		absence.EndTime = range.EndTime;
-		absence.Reason = string.IsNullOrWhiteSpace(req.Reason) ? null : req.Reason.Trim();
-		await db.SaveChangesAsync(cancellationToken);
 
 		var released = await substitutes.ReleaseBookingsAsync(
 			absence.StaffId, range.Date, range.Last, range.StartTime, range.EndTime, cancellationToken);
@@ -237,7 +255,13 @@ public sealed class StaffAbsenceService(
 		var from = SchoolDayCalendar.Today();
 		var to = from.AddDays(days - 1);
 		var absences = await LoadAsync(a => a.Date <= to && (a.EndDate ?? a.Date) >= from, cancellationToken);
-		return absences.Sum(a => a.Lessons.Count(l => l.Date >= from && l.Date <= to && l.SubstituteId is null));
+		// Distinct: two partial-day absences on one date can both touch the same lektion.
+		return absences
+			.SelectMany(a => a.Lessons)
+			.Where(l => l.Date >= from && l.Date <= to && l.SubstituteId is null)
+			.Select(l => (l.Date, l.Lesson.SchemaSlotId, l.Lesson.Seat))
+			.Distinct()
+			.Count();
 	}
 
 	public async Task<List<StaffAbsenceDto>> GetMineAsync(string? subject, CancellationToken cancellationToken)
@@ -449,6 +473,34 @@ public sealed class StaffAbsenceService(
 
 		return others.Any(o => o.StartTime is null || o.EndTime is null || range.StartTime is null || range.EndTime is null
 			|| (o.StartTime < range.EndTime && range.StartTime < o.EndTime));
+	}
+
+	/// <summary>
+	/// Runs <paramref name="action"/> under a PostgreSQL advisory lock on the staff member, so two
+	/// requests can't both pass the overlap check and save overlapping absences. A session lock, not a
+	/// transaction lock: the action clears vikar cover through <see cref="SubstituteService"/>, which
+	/// opens its own transactions. Same key as SubstituteService's booking lock: one lock per person.
+	/// </summary>
+	private async Task<T> WithStaffLockAsync<T>(Guid staffId, Func<Task<T>> action, CancellationToken cancellationToken)
+	{
+		var lockKey = BitConverter.ToInt64(staffId.ToByteArray(), 0);
+		await db.Database.OpenConnectionAsync(cancellationToken);
+		try
+		{
+			await db.Database.ExecuteSqlAsync($"SELECT pg_advisory_lock({lockKey})", cancellationToken);
+			try
+			{
+				return await action();
+			}
+			finally
+			{
+				await db.Database.ExecuteSqlAsync($"SELECT pg_advisory_unlock({lockKey})", CancellationToken.None);
+			}
+		}
+		finally
+		{
+			await db.Database.CloseConnectionAsync();
+		}
 	}
 
 	/// <summary>
