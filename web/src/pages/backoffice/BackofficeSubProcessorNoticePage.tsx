@@ -4,10 +4,12 @@ import { postApiV1AdminSubProcessorNoticeMutation } from '../../api/generated/@t
 import { SUB_PROCESSOR_NOTICE_DAYS } from '../../content/dataProcessing'
 import { problemDetail } from '../../lib/problem'
 
+// en-CA formats as YYYY-MM-DD, which the date input expects.
+const danishDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Copenhagen' })
+
+/** Today plus some days, as a Danish calendar date — the server checks the notice in Danish time. */
 function isoDate(daysFromToday: number) {
-  const d = new Date()
-  d.setDate(d.getDate() + daysFromToday)
-  return d.toISOString().slice(0, 10)
+  return danishDate.format(new Date(Date.now() + daysFromToday * 24 * 60 * 60 * 1000))
 }
 
 /**

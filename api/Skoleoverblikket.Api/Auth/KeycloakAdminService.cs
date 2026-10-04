@@ -17,9 +17,9 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 {
 	/// <summary>
 	/// Creates a Keycloak user and optionally assigns a realm role.
-	/// Returns the new user's Keycloak subject (UUID).
+	/// Returns the new user's Keycloak subject (UUID), or the existing user's if the email is taken.
 	/// </summary>
-	public async Task<string> CreateUserAsync(
+	public Task<string> CreateUserAsync(
 		string email,
 		string firstName,
 		string lastName,
@@ -27,6 +27,18 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 		Guid? tenantId,
 		string? realmRole,
 		bool forcePasswordReset,
+		CancellationToken cancellationToken) =>
+		CreateUserAsync(email, firstName, lastName, password, tenantId, realmRole, forcePasswordReset, reuseExisting: true, cancellationToken);
+
+	private async Task<string> CreateUserAsync(
+		string email,
+		string firstName,
+		string lastName,
+		string password,
+		Guid? tenantId,
+		string? realmRole,
+		bool forcePasswordReset,
+		bool reuseExisting,
 		CancellationToken cancellationToken)
 	{
 		var attributes = tenantId.HasValue
@@ -48,6 +60,11 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 
 		if (createResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
 		{
+			if (!reuseExisting)
+			{
+				throw new KeycloakUserExistsException();
+			}
+
 			var existing = await adminApi.GetUsersByEmailAsync(email, exact: true, cancellationToken);
 			return existing.FirstOrDefault()?.Id
 				?? throw new KeycloakException($"Keycloak rejected duplicate user but no existing user found for {email}");
@@ -71,7 +88,12 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 		return keycloakUserId;
 	}
 
-	/// <summary>Creates a Keycloak admin user with a permanent password and admin realm role.</summary>
+	/// <summary>
+	/// Creates a Keycloak admin user with a permanent password and admin realm role. Unlike the
+	/// invitation flows, an existing user with the same email is never reused: signup must not
+	/// attach someone else's account to a new school.
+	/// </summary>
+	/// <exception cref="KeycloakUserExistsException">A user with this email already exists.</exception>
 	public Task<string> CreateAdminUserAsync(
 		string email,
 		string firstName,
@@ -79,7 +101,7 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 		string password,
 		Guid tenantId,
 		CancellationToken cancellationToken) =>
-		CreateUserAsync(email, firstName, lastName, password, tenantId, realmRole: "admin", forcePasswordReset: false, cancellationToken);
+		CreateUserAsync(email, firstName, lastName, password, tenantId, realmRole: "admin", forcePasswordReset: false, reuseExisting: false, cancellationToken);
 
 	/// <summary>Creates a Keycloak staff user with a temporary password and UPDATE_PASSWORD required action.</summary>
 	public Task<string> CreateStaffUserAsync(
@@ -187,4 +209,6 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 	}
 }
 
-public sealed class KeycloakException(string message) : Exception(message);
+public class KeycloakException(string message) : Exception(message);
+
+public sealed class KeycloakUserExistsException() : KeycloakException("A Keycloak user with this email already exists.");

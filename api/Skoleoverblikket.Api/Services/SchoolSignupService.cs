@@ -38,6 +38,7 @@ public sealed class SchoolSignupService(
 {
 	public enum Failure
 	{
+		EmailTaken,
 		AccountFailed,
 		SaveFailed,
 		LoginFailed,
@@ -66,6 +67,11 @@ public sealed class SchoolSignupService(
 				password: req.AdminPassword,
 				tenantId: school.Id,
 				cancellationToken);
+		}
+		catch (KeycloakUserExistsException)
+		{
+			// Never touch the existing account: not linked to this school, and not deleted on cleanup.
+			return new Result(null, Failure.EmailTaken);
 		}
 		catch (KeycloakException ex)
 		{

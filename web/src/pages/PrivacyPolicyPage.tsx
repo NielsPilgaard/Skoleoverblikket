@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom'
 import LegalPage, { Li, Section } from '../components/LegalPage'
-import { RETENTION_DAYS_AFTER_CANCELLATION, SUB_PROCESSORS } from '../content/dataProcessing'
+import {
+  BACKUP_RETENTION_DAYS,
+  RETENTION_DAYS_AFTER_CANCELLATION,
+  SUB_PROCESSORS,
+} from '../content/dataProcessing'
 
 export default function PrivacyPolicyPage() {
   return (
@@ -99,6 +103,8 @@ export default function PrivacyPolicyPage() {
           {RETENTION_DAYS_AFTER_CANCELLATION} dage for at give mulighed for genaktivering eller
           eksport. Skolens administratorer får en e-mail 7 dage før, og derefter slettes alle
           skolens data automatisk og permanent, også uploadede filer og brugernes logins.
+          Sikkerhedskopier af databasen gemmes i {BACKUP_RETENTION_DAYS} dage og overskrives
+          derefter.
         </p>
         <p className="mt-3">
           Elevers fravær og fremmøde gemmes i indeværende og forrige skoleår. Skoleåret skifter 1.

@@ -51,13 +51,13 @@ Built:
 Left for Niels:
 
 - [ ] Lawyer review of the agreement text before merging/publishing. Bump the version (both `DPA_VERSION` and `DataProcessingAgreementService.CurrentVersion`) if the text changes after schools have accepted.
-- [ ] Fill in the backup retention period in section 10 (only "overskrives løbende" now — the repo has no backup config).
+- [x] Backup retention in section 10: production database backups are kept 14 days (`BACKUP_RETENTION_DAYS`).
 - [ ] Confirm Stripe's and elmah.io's transfer basis and update the list wording if needed.
-- [ ] Decide on elmah.io (see below).
+- [x] elmah.io: keep it, scrub personal data before sending (see below).
 
 ## Open questions
 
-- ~~Does elmah.io store data in the EU?~~ **No.** elmah.io stores all data in Azure West US / East US and offers no EU region ([legal FAQ](https://elmah.io/legal/legal-faq)). Listed honestly as a US transfer for now. Better: scrub user ids and request data from error logs before they leave the API, or switch to an EU-hosted error tracker.
+- ~~Does elmah.io store data in the EU?~~ **No.** elmah.io stores all data in Azure West US / East US and offers no EU region ([legal FAQ](https://elmah.io/legal/legal-faq)). Listed as a US transfer. `ElmahIoScrubber` now runs on every message from both elmah.io hooks (unhandled exceptions and Error logs): it drops form data, cookies, query values and all headers except a short allowlist (so no Authorization, cookies or client IP), and masks emails, phone and CPR numbers, bearer tokens/JWTs and PostgreSQL key values in titles, details, data and breadcrumbs. Ids are kept on purpose.
 - Alexandra Instituttet and Scaleway transcription are not on the list yet: the AI features are not built. Send the 30-day notice before they ship.
 
 ## Out of scope

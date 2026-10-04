@@ -17,6 +17,9 @@ export const SUB_PROCESSOR_NOTICE_DAYS = 30
 /** Days a school's data is kept after the subscription is canceled. Matches the API. */
 export const RETENTION_DAYS_AFTER_CANCELLATION = 90
 
+/** Days production database backups are kept before they are overwritten. */
+export const BACKUP_RETENTION_DAYS = 14
+
 export interface SubProcessor {
   name: string
   purpose: string
@@ -46,8 +49,9 @@ export const SUB_PROCESSORS: SubProcessor[] = [
   {
     name: 'elmah.io ApS',
     purpose: 'Fejllogning, så vi kan rette fejl hurtigt',
-    data: 'Tekniske oplysninger om fejl, som kan indeholde bruger-id og forespørgselsdata',
+    data: "Tekniske oplysninger om fejl og interne id'er. E-mails, telefon- og CPR-numre, formulardata, cookies og IP-adresser fjernes, før fejlen sendes",
     // elmah.io stores all data in Azure West US / East US and does not offer an EU region.
+    // ElmahIoScrubber (API) removes personal data before anything is sent.
     location: 'USA (Microsoft Azure). Overførsel sker på et gyldigt grundlag efter GDPR kapitel V',
   },
 ]

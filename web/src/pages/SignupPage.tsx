@@ -3,6 +3,8 @@ import { Helmet } from 'react-helmet-async'
 import SeoMeta from '../components/SeoMeta'
 import keycloak, { seedPostSignupToken } from '../auth/keycloak'
 import { BILLING_INTERVAL_STORAGE_KEY, parseBillingInterval } from '../lib/billingInterval'
+import { problemDetail } from '../lib/problem'
+import { postApiV1Tenants } from '../api/generated/sdk.gen'
 
 const SELF_SERVE_ENABLED = true
 
@@ -41,25 +43,23 @@ export default function SignupPage() {
     setPending(true)
 
     try {
-      // Raw fetch intentional: response includes non-spec fields (accessToken, refreshToken) used
-      // to seed Keycloak state immediately after signup, before any auth session exists.
-      const res = await fetch('/api/v1/tenants', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // security: [] keeps this call anonymous. Without it the client's bearer auth would
+      // send the visitor to the Keycloak login page before they have an account.
+      const { data, error, response } = await postApiV1Tenants({
+        security: [],
+        body: {
           name,
           adminEmail,
           adminFirstName,
           adminLastName,
           adminPassword,
           acceptDataProcessingAgreement: acceptDpa,
-        }),
+        },
       })
 
-      if (res.ok) {
-        const body = await res.json()
+      if (data) {
         redirectingRef.current = true
-        seedPostSignupToken(body.accessToken, body.refreshToken)
+        seedPostSignupToken(data.accessToken, data.refreshToken ?? '')
         const interval = parseBillingInterval(
           new URLSearchParams(window.location.search).get('interval')
         )
@@ -70,15 +70,21 @@ export default function SignupPage() {
         return
       }
 
-      if (res.status === 400) {
-        const body = await res.json()
+      if (response.status === 400) {
         const fieldErrors: ValidationErrors = {}
-        for (const [field, msgs] of Object.entries(body.errors ?? {})) {
+        const validation = (error ?? {}) as { errors?: Record<string, string[]> }
+        for (const [field, msgs] of Object.entries(validation.errors ?? {})) {
           const key = (field.charAt(0).toLowerCase() + field.slice(1)) as keyof ValidationErrors
-          fieldErrors[key] = (msgs as string[])[0]
+          fieldErrors[key] = msgs[0]
         }
         setErrors(fieldErrors)
-      } else if (res.status === 502) {
+      } else if (response.status === 409) {
+        setErrors({
+          adminEmail:
+            problemDetail(error) ??
+            'Der findes allerede en bruger med den e-mail. Log ind i stedet.',
+        })
+      } else if (response.status === 502) {
         setErrors({ general: 'Der opstod en fejl ved oprettelse af brugerkonto. Prøv igen.' })
       } else {
         setErrors({ general: 'Der opstod en fejl. Prøv igen.' })
@@ -196,7 +202,11 @@ export default function SignupPage() {
               data-testid="signup-email"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
-            {errors.adminEmail && <p className="mt-1 text-xs text-red-600">{errors.adminEmail}</p>}
+            {errors.adminEmail && (
+              <p className="mt-1 text-xs text-red-600" data-testid="signup-email-error">
+                {errors.adminEmail}
+              </p>
+            )}
           </div>
 
           {/* Password */}

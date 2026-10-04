@@ -86,13 +86,16 @@ public sealed class SchoolDeletionService(
 			return Outcome.WarningSent;
 		}
 
-		if (canceledAt > now - RetentionPeriod || warnedAt > now - WarningNotice)
+		if (!IsDeletionDue(canceledAt, warnedAt, now))
 		{
 			return Outcome.NotDue;
 		}
 
-		return await DeleteSchoolAsync(cancellationToken);
+		return await DeleteSchoolAsync(now, cancellationToken);
 	}
+
+	private static bool IsDeletionDue(DateTimeOffset canceledAt, DateTimeOffset warnedAt, DateTimeOffset now) =>
+		canceledAt <= now - RetentionPeriod && warnedAt <= now - WarningNotice;
 
 	/// <summary>
 	/// Every object key this school can own. Keep in sync with the upload endpoints — each one
@@ -108,9 +111,25 @@ public sealed class SchoolDeletionService(
 		$"logos/{schoolId}", // Logos are "logos/{schoolId}.png" — no folder.
 	];
 
-	private async Task<Outcome> DeleteSchoolAsync(CancellationToken cancellationToken)
+	private async Task<Outcome> DeleteSchoolAsync(DateTimeOffset now, CancellationToken cancellationToken)
 	{
 		var schoolId = tenant.TenantId;
+
+		// Lock the subscription row for the whole deletion and check again under the lock. A school
+		// that resubscribes while this runs then either wins (no deletion) or waits for the lock
+		// (Stripe webhooks touch this row) — files and logins are never deleted for a paying school.
+		// The transaction is disposed without commit on every early return, which releases the lock.
+		await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+		var locked = await db.Subscriptions
+			.FromSqlInterpolated($"SELECT * FROM \"Subscriptions\" WHERE \"SchoolId\" = {schoolId} FOR UPDATE")
+			.AsNoTracking()
+			.FirstOrDefaultAsync(cancellationToken);
+		if (locked is not { CanceledAt: { } canceledAt, DeletionWarningSentAt: { } warnedAt }
+			|| !IsDeletionDue(canceledAt, warnedAt, now))
+		{
+			logger.LogInformation("School {SchoolId} is no longer due for deletion; skipped", schoolId);
+			return Outcome.NotDue;
+		}
 
 		// 1. Files. A failure stops here so the database still knows what to clean up next pass.
 		try
@@ -140,8 +159,7 @@ public sealed class SchoolDeletionService(
 			return Outcome.AccountsFailed;
 		}
 
-		// 3. Database, all or nothing.
-		await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+		// 3. Database, all or nothing, in the transaction that holds the lock.
 		foreach (var entityType in DeletionOrder(db.Model))
 		{
 			await (Task)DeleteRowsMethod.MakeGenericMethod(entityType.ClrType).Invoke(this, [schoolId, cancellationToken])!;

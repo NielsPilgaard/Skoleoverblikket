@@ -151,10 +151,23 @@ public sealed class DataProcessingAgreementService(
 		var (subject, html) = SubProcessorNoticeEmail(request, appOptions.Value.SanitizedBaseUrl);
 
 		// Bcc in batches so schools never see each other's addresses.
+		// A failed batch aborts the run; resending then repeats the earlier batches. Acceptable for a
+		// rare manual notice, so the log says how far it got instead of tracking delivery per batch.
 		const int BatchSize = 50;
+		var sent = 0;
 		foreach (var batch in recipients.Chunk(BatchSize))
 		{
-			await email.SendAsync(new EmailMessage(smtpOptions.Value.FromAddress, subject, html, Bcc: batch), cancellationToken);
+			try
+			{
+				await email.SendAsync(new EmailMessage(smtpOptions.Value.FromAddress, subject, html, Bcc: batch), cancellationToken);
+			}
+			catch (Exception ex) when (ex is not OperationCanceledException)
+			{
+				logger.LogError(ex, "Sub-processor notice stopped after {Sent} of {Total} recipient(s)", sent, recipients.Count);
+				throw;
+			}
+
+			sent += batch.Length;
 		}
 
 		logger.LogInformation("Sent sub-processor notice to {RecipientCount} admin(s) at {SchoolCount} school(s)", recipients.Count, schoolEmails.Count);
@@ -172,7 +185,8 @@ public sealed class DataProcessingAgreementService(
 			<p>Som aftalt i databehandleraftalen giver vi skolen besked mindst 30 dage før, vi tager en ny
 			underdatabehandler i brug eller udskifter en eksisterende.</p>
 			<p><strong>Ændringen:</strong><br>{change}</p>
-			<p>Den opdaterede liste kan ses på <a href="{baseUrl}/underdatabehandlere">{baseUrl}/underdatabehandlere</a>.</p>
+			<p>Listen over underdatabehandlere på <a href="{baseUrl}/underdatabehandlere">{baseUrl}/underdatabehandlere</a>
+			bliver opdateret {date}, når ændringen træder i kraft.</p>
 			<p>Har skolen indsigelser mod ændringen, så skriv til os inden {date}.</p>
 			<p class="notice">Skriv til <a href="mailto:kontakt@skoleoverblikket.dk">kontakt@skoleoverblikket.dk</a>.</p>
 			""");

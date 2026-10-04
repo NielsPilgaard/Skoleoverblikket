@@ -42,9 +42,11 @@ test('signup shows error when submitting duplicate email', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Opret skole' }).click()
 
-  // Should stay on /signup and show an error — not redirect
+  // Should stay on /signup and say the email is taken — never reuse the existing account
   await expect(page).toHaveURL('/signup', { timeout: 10_000 })
-  await expect(page.locator('text=/fejl/i')).toBeVisible({ timeout: 5_000 })
+  await expect(page.getByTestId('signup-email-error')).toContainText('allerede en bruger', {
+    timeout: 5_000,
+  })
 })
 
 test('signup requires accepting the databehandleraftale', async ({ page }) => {

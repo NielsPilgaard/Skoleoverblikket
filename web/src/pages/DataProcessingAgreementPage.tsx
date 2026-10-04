@@ -3,6 +3,7 @@ import LegalPage, { Li, List, MailLink, Section } from '../components/LegalPage'
 import {
   DPA_UPDATED,
   DPA_VERSION,
+  BACKUP_RETENTION_DAYS,
   RETENTION_DAYS_AFTER_CANCELLATION,
   SUB_PROCESSOR_NOTICE_DAYS,
 } from '../content/dataProcessing'
@@ -162,11 +163,18 @@ export default function DataProcessingAgreementPage() {
 
       <Section title="10. Ophør og sletning">
         <p>
-          Når abonnementet er opsagt, kan skolen fortsat logge ind og eksportere sine data i{' '}
-          {RETENTION_DAYS_AFTER_CANCELLATION} dage. Skolens administratorer får en e-mail 7 dage før
-          sletning. Derefter sletter databehandleren automatisk alle skolens data permanent:
-          database, uploadede filer og brugernes logins. Sikkerhedskopier overskrives løbende og
-          slettes, når deres opbevaringsperiode udløber.
+          Når abonnementet er opsagt, kan skolen fortsat logge ind i{' '}
+          {RETENTION_DAYS_AFTER_CANCELLATION} dage. Under Eksporter kan skolen selv hente timer pr.
+          medarbejder, timer pr. fag, det komplette skema og UVM-timetal, og under Fravær kan
+          fraværet hentes som Excel-fil. Øvrige data, fx elever, forældre, beskeder og uploadede
+          filer, udleverer vi på anmodning til <MailLink /> inden sletning.
+        </p>
+        <p>
+          Skolens administratorer får en e-mail 7 dage før sletning. Derefter sletter
+          databehandleren automatisk alle skolens data permanent: database, uploadede filer og
+          brugernes logins. Sikkerhedskopier af databasen gemmes i {BACKUP_RETENTION_DAYS} dage og
+          overskrives derefter, så de sidste kopier af skolens data er væk senest{' '}
+          {BACKUP_RETENTION_DAYS} dage efter sletningen.
         </p>
         <p>Skolen kan bede om at få data slettet tidligere ved at skrive til os.</p>
       </Section>
