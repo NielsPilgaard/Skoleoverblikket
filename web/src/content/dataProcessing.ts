@@ -20,38 +20,49 @@ export const RETENTION_DAYS_AFTER_CANCELLATION = 90
 /** Days production database backups are kept before they are overwritten. */
 export const BACKUP_RETENTION_DAYS = 14
 
+/** The legal entity behind Skoleoverblikket: data processor in the DPA, controller in the privacy policy. */
+export const COMPANY = {
+  name: 'Pilgaard Development',
+  cvr: '41249269',
+  address: 'Nordlyvej 20, 8550 Ryomgård',
+}
+
 export interface SubProcessor {
   name: string
+  /** Registered address, so the school can identify the legal entity. */
+  address: string
   purpose: string
   data: string
   location: string
 }
 
+/**
+ * Processors of the schools' data. Stripe is not here: it only gets our own customer data (the
+ * school as a paying customer), where we are the controller. See the privacy policy.
+ */
 export const SUB_PROCESSORS: SubProcessor[] = [
   {
-    name: 'OVHcloud SAS',
+    name: 'OVH SAS (OVHcloud)',
+    address: '2 rue Kellermann, 59100 Roubaix, Frankrig',
     purpose: 'Servere, database, filopbevaring og sikkerhedskopier',
     data: 'Alle data i Skoleoverblikket',
     location: 'EU (Frankrig)',
   },
   {
     name: 'Scaleway SAS',
+    address: "8 rue de la Ville l'Evêque, 75008 Paris, Frankrig",
     purpose: 'Afsendelse af e-mails (invitationer, notifikationer, beskeder)',
     data: 'Modtagerens navn og e-mailadresse samt e-mailens indhold',
     location: 'EU (Frankrig)',
   },
   {
-    name: 'Stripe Payments Europe Ltd.',
-    purpose: 'Abonnement og betaling',
-    data: 'Skolens navn og administratorens e-mailadresse. Kortdata håndteres kun af Stripe',
-    location: 'EU (Irland). Overførsel til USA sker under EU-U.S. Data Privacy Framework',
-  },
-  {
     name: 'elmah.io ApS',
+    address: 'Danmark',
     purpose: 'Fejllogning, så vi kan rette fejl hurtigt',
-    data: "Tekniske oplysninger om fejl og interne id'er. E-mails, telefon- og CPR-numre, formulardata, cookies og IP-adresser fjernes, før fejlen sendes",
+    data: "Tekniske oplysninger om fejl og interne id'er. Navne, e-mails, telefon- og CPR-numre, formulardata, cookies og IP-adresser sendes ikke med",
     // elmah.io stores all data in Azure West US / East US and does not offer an EU region.
-    // ElmahIoScrubber (API) removes personal data before anything is sent.
-    location: 'USA (Microsoft Azure). Overførsel sker på et gyldigt grundlag efter GDPR kapitel V',
+    // ElmahIoScrubber and the JWT name claim (sub) keep personal data out of what is sent.
+    location:
+      'USA (Microsoft Azure). Microsoft, som opbevarer dataene, er certificeret under EU-U.S. Data Privacy Framework',
   },
 ]

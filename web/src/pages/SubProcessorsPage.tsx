@@ -11,8 +11,8 @@ export default function SubProcessorsPage() {
       updated={`Senest opdateret: ${DPA_UPDATED}`}
     >
       <p>
-        Skoleoverblikket bruger disse leverandører (underdatabehandlere) til at levere tjenesten. De
-        er bundet af de samme databeskyttelsesforpligtelser som os, jf.{' '}
+        Skoleoverblikket bruger disse leverandører (underdatabehandlere) til at behandle skolens
+        personoplysninger. De er bundet af tilsvarende databeskyttelsesforpligtelser som os, jf.{' '}
         <Link to="/databehandleraftale" className="text-brand-700 hover:underline">
           databehandleraftalen
         </Link>
@@ -24,6 +24,8 @@ export default function SubProcessorsPage() {
           <li key={p.name} className="rounded-xl border border-gray-200 p-4">
             <h2 className="font-semibold text-gray-900">{p.name}</h2>
             <dl className="mt-2 grid grid-cols-1 sm:grid-cols-[8rem_1fr] gap-x-4 gap-y-1 text-sm">
+              <dt className="text-gray-500">Adresse</dt>
+              <dd>{p.address}</dd>
               <dt className="text-gray-500">Formål</dt>
               <dd>{p.purpose}</dd>
               <dt className="text-gray-500">Oplysninger</dt>

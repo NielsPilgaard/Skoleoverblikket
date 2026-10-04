@@ -4,6 +4,7 @@ import {
   DPA_UPDATED,
   DPA_VERSION,
   BACKUP_RETENTION_DAYS,
+  COMPANY,
   RETENTION_DAYS_AFTER_CANCELLATION,
   SUB_PROCESSOR_NOTICE_DAYS,
 } from '../content/dataProcessing'
@@ -24,9 +25,15 @@ export default function DataProcessingAgreementPage() {
         <p>
           Aftalen er indgået mellem skolen, der bruger Skoleoverblikket (den{' '}
           <strong>dataansvarlige</strong>
-          ), og Skoleoverblikket (<strong>databehandleren</strong>). Den accepteres elektronisk af
-          en administrator på skolens vegne, når skolen oprettes, eller senere i Skoleoverblikket.
-          Aftalen gælder, så længe skolen har en konto, og indtil alle skolens data er slettet.
+          ), og {COMPANY.name}, CVR {COMPANY.cvr}, {COMPANY.address}, som driver Skoleoverblikket (
+          <strong>databehandleren</strong>). Er skolen en folkeskole, er kommunen den
+          dataansvarlige. Ønsker kommunen at bruge sin egen databehandleraftale, så skriv til os.
+        </p>
+        <p>
+          Aftalen accepteres elektronisk af en administrator på skolens vegne, når skolen oprettes,
+          eller senere i Skoleoverblikket. Administratoren bekræfter dermed at have bemyndigelse til
+          at indgå aftalen. Aftalen gælder, så længe skolen har en konto, og indtil alle skolens
+          data er slettet.
         </p>
         <p>
           Aftalen opfylder kravene i databeskyttelsesforordningen (GDPR) artikel 28, stk. 3. Ved
@@ -49,7 +56,8 @@ export default function DataProcessingAgreementPage() {
         <List>
           <Li>
             <strong>Elever:</strong> navn, klasse, billede, forældretilknytning, fravær og fremmøde
-            (herunder at et fravær skyldes sygdom), ferieønsker og beskeder om eleven.
+            (herunder at et fravær skyldes sygdom og forældrenes bemærkning til en sygemelding),
+            ferieønsker og beskeder om eleven.
           </Li>
           <Li>
             <strong>Forældre:</strong> navn, e-mail, telefonnummer, adresse, billede, samtykke til
@@ -57,7 +65,7 @@ export default function DataProcessingAgreementPage() {
           </Li>
           <Li>
             <strong>Medarbejdere:</strong> navn, e-mail, telefonnummer, rolle, billede, skema,
-            fravær og vikartimer.
+            fravær med en valgfri note og vikartimer.
           </Li>
           <Li>
             <strong>Bestyrelsesmedlemmer:</strong> navn, e-mail og bestyrelsens filer.
@@ -68,8 +76,10 @@ export default function DataProcessingAgreementPage() {
           </Li>
         </List>
         <p>
-          Oplysning om, at et fravær skyldes sygdom, er en helbredsoplysning (GDPR artikel 9).
-          Skolen registrerer den efter reglerne om elevfravær.
+          Oplysning om, at en elev eller medarbejder er syg, er en helbredsoplysning (GDPR artikel
+          9). Skolen registrerer elevfravær efter reglerne om elevfravær. Det er nok at registrere,
+          at der er tale om sygdom. Forældre og medarbejdere bliver bedt om ikke at skrive diagnoser
+          eller andre helbredsoplysninger i bemærkningen, og skolen bør heller ikke selv gøre det.
         </p>
       </Section>
 
@@ -77,8 +87,13 @@ export default function DataProcessingAgreementPage() {
         <List>
           <Li>
             Behandler kun personoplysninger efter skolens dokumenterede instruks, som er denne
-            aftale og skolens brug af Skoleoverblikket. Kræver EU-ret eller dansk ret anden
-            behandling, giver vi skolen besked først, medmindre loven forbyder det.
+            aftale og skolens brug af Skoleoverblikket, også når det gælder overførsel til lande
+            uden for EU/EØS (se afsnit 7). Kræver EU-ret eller dansk ret anden behandling, giver vi
+            skolen besked først, medmindre loven forbyder det.
+          </Li>
+          <Li>
+            Giver straks skolen besked, hvis en instruks efter vores vurdering strider mod
+            databeskyttelsesforordningen eller anden databeskyttelseslovgivning.
           </Li>
           <Li>Sikrer, at alle, der har adgang til oplysningerne, har tavshedspligt.</Li>
           <Li>
@@ -104,8 +119,15 @@ export default function DataProcessingAgreementPage() {
             Hver skoles data er adskilt fra andre skolers. Adgang kræver login, og hver bruger ser
             kun det, rollen giver adgang til (administrator, medarbejder, forælder, bestyrelse).
           </Li>
-          <Li>Adgangskoder gemmes ikke i klartekst.</Li>
-          <Li>Database, uploadede filer og sikkerhedskopier opbevares i EU.</Li>
+          <Li>Adgangskoder gemmes kun som hash, aldrig i klartekst.</Li>
+          <Li>
+            Database, uploadede filer og sikkerhedskopier opbevares i EU. Databasen
+            sikkerhedskopieres dagligt.
+          </Li>
+          <Li>
+            Fejllogs indeholder kun tekniske oplysninger og interne id'er. Navne, kontaktoplysninger
+            og indtastede data fjernes, før en fejl logges.
+          </Li>
           <Li>
             Kun databehandlerens egne folk med et driftsmæssigt behov har adgang til
             produktionsdata.
@@ -129,7 +151,7 @@ export default function DataProcessingAgreementPage() {
           opsige abonnementet.
         </p>
         <p>
-          Underdatabehandlere pålægges de samme databeskyttelsesforpligtelser som i denne aftale.
+          Underdatabehandlere pålægges tilsvarende databeskyttelsesforpligtelser som i denne aftale.
           Databehandleren hæfter over for skolen for underdatabehandlernes overholdelse.
         </p>
       </Section>
@@ -157,7 +179,12 @@ export default function DataProcessingAgreementPage() {
         <p>
           Skolen kan én gang om året, og derudover ved konkret mistanke om brud på aftalen, bede om
           skriftlig dokumentation for, at aftalen overholdes. Fysisk tilsyn aftales på forhånd og
-          afholdes for skolens regning.
+          afholdes for skolens regning. Skolen kan lade en uafhængig revisor med tavshedspligt
+          foretage tilsynet på sine vegne.
+        </p>
+        <p>
+          Datatilsynet og andre myndigheder, der efter loven har adgang til databehandlerens
+          faciliteter og oplysninger, får den adgang.
         </p>
       </Section>
 
@@ -176,14 +203,22 @@ export default function DataProcessingAgreementPage() {
           overskrives derefter, så de sidste kopier af skolens data er væk senest{' '}
           {BACKUP_RETENTION_DAYS} dage efter sletningen.
         </p>
-        <p>Skolen kan bede om at få data slettet tidligere ved at skrive til os.</p>
+        <p>
+          Skolen kan bede om at få data slettet tidligere ved at skrive til os. Data slettes ikke,
+          hvis EU-ret eller dansk ret kræver, at de opbevares.
+        </p>
       </Section>
 
-      <Section title="11. Ændringer og kontakt">
+      <Section title="11. Ændringer, lovvalg og kontakt">
         <p>
           Ændres aftalens tekst, får den et nyt versionsnummer, og skolens administratorer bliver
-          bedt om at acceptere den nye version i Skoleoverblikket. Spørgsmål om aftalen:{' '}
-          <MailLink />.
+          bedt om at acceptere den nye version i Skoleoverblikket. Indtil den nye version er
+          accepteret, gælder den hidtidige. Vil skolen ikke acceptere den nye version, kan skolen
+          opsige abonnementet.
+        </p>
+        <p>
+          Aftalen er underlagt dansk ret, og uenigheder afgøres ved de danske domstole. Spørgsmål om
+          aftalen: <MailLink />.
         </p>
       </Section>
     </LegalPage>

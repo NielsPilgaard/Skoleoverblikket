@@ -24,7 +24,8 @@ export default function CookieBanner() {
       <div aria-hidden className="h-36 sm:h-20" />
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-brand-900 text-brand-100 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
         <p className="text-sm text-center sm:text-left">
-          Vi bruger én session-cookie til login. Ingen sporing, ingen tredjeparts cookies.
+          Vi bruger kun de cookies, der er nødvendige for login. Ingen sporing, ingen tredjeparts
+          cookies.
         </p>
         <button
           data-testid="cookie-banner-dismiss"

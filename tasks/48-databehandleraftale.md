@@ -52,8 +52,12 @@ Left for Niels:
 
 - [ ] Lawyer review of the agreement text before merging/publishing. Bump the version (both `DPA_VERSION` and `DataProcessingAgreementService.CurrentVersion`) if the text changes after schools have accepted.
 - [x] Backup retention in section 10: production database backups are kept 14 days (`BACKUP_RETENTION_DAYS`).
-- [ ] Confirm Stripe's and elmah.io's transfer basis and update the list wording if needed.
+- [ ] Get elmah.io's DPA and confirm their transfer basis (their legal pages name none; the list now says Microsoft is DPF-certified). Add elmah.io's CVR and address to `SUB_PROCESSORS`.
+- [ ] Fill in the security section with measures that are true today: encryption at rest for disk and backups, MFA on OVH/Dokploy/Keycloak admin.
+- [ ] Privacy policy: name the mailbox provider behind kontakt@skoleoverblikket.dk, and give elmah.io's log retention in days.
 - [x] elmah.io: keep it, scrub personal data before sending (see below).
+
+Review pass (2026-10-04): added the art. 28(3) duty to flag unlawful instructions, the company's CVR and address, folkeskole/kommune as controller, Datatilsynet access, governing law, and what happens if a new version isn't accepted. Stripe moved out of the sub-processor list (it only gets our own customer data). Privacy policy split into school-controlled data vs. our own, with a legal basis per purpose. Google Fonts replaced by self-hosted fonts (web and Keycloak theme). elmah.io: the JWT name claim is now `sub`, the scrubber drops a non-id user and PostgreSQL's "Failing row contains" values.
 
 ## Open questions
 
