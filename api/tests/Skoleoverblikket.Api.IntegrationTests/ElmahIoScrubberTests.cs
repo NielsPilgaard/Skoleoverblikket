@@ -66,4 +66,26 @@ public sealed class ElmahIoScrubberTests
 		await Assert.That(message.Detail).Contains("IX_Parents_Email").And.Contains("Key (\"TenantId\", \"Email\")=");
 		await Assert.That(message.Data.Single(d => d.Key == "StaffId").Value).IsEqualTo(schoolId.ToString());
 	}
+
+	[Test]
+	public async Task Names_AreDropped_UserIdKept()
+	{
+		var subject = Guid.NewGuid().ToString();
+		var named = new CreateMessage
+		{
+			User = "Hanne Jensen",
+			Detail = """
+				Npgsql.PostgresException: 23502: null value in column "ClassId" of relation "Students" violates not-null constraint
+				DETAIL: Failing row contains (3f2504e0-4f89-11d3-9a0c-0305e82c3301, Mikkel Hansen, null).
+				""",
+		};
+		var byId = new CreateMessage { User = subject };
+
+		ElmahIoScrubber.Scrub(named);
+		ElmahIoScrubber.Scrub(byId);
+
+		await Assert.That(named.User).IsNull();
+		await Assert.That(named.Detail).DoesNotContain("Mikkel").And.Contains("\"Students\" violates not-null constraint");
+		await Assert.That(byId.User).IsEqualTo(subject);
+	}
 }

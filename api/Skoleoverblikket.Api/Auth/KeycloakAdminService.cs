@@ -67,7 +67,7 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 
 			var existing = await adminApi.GetUsersByEmailAsync(email, exact: true, cancellationToken);
 			return existing.FirstOrDefault()?.Id
-				?? throw new KeycloakException($"Keycloak rejected duplicate user but no existing user found for {email}");
+				?? throw new KeycloakException("Keycloak rejected duplicate user but found no existing user with that email");
 		}
 
 		if (!createResponse.IsSuccessStatusCode)

@@ -6,11 +6,13 @@ namespace Skoleoverblikket.Api.Observability;
 /// <summary>
 /// elmah.io stores data in the US (Azure West/East US, no EU region), so personal data is removed
 /// before a message leaves the API. Ids (user, tenant, entity GUIDs) are kept: they are needed to
-/// debug and identify no one outside our own database.
+/// debug and identify no one outside our own database. Our own log messages and exceptions name
+/// people by id only; names cannot be matched by a pattern, so they must not be logged.
 ///
 /// Dropped: request bodies (Form), cookies, query values, every header not on a short allowlist
-/// (Authorization, Cookie, client IP, Referer). Masked in free text: email addresses, phone
-/// numbers, CPR numbers, bearer tokens and the row values PostgreSQL puts in constraint errors.
+/// (Authorization, Cookie, client IP, Referer), and the user unless it is an id. Masked in free
+/// text: email addresses, phone numbers, CPR numbers, bearer tokens and the row values PostgreSQL
+/// puts in constraint errors (which can hold names).
 /// </summary>
 public static partial class ElmahIoScrubber
 {
@@ -38,7 +40,8 @@ public static partial class ElmahIoScrubber
 		message.Title = ScrubText(message.Title);
 		message.TitleTemplate = ScrubText(message.TitleTemplate);
 		message.Detail = ScrubText(message.Detail);
-		message.User = ScrubText(message.User);
+		// The JWT name claim is the Keycloak subject (a GUID); anything else could be a name.
+		message.User = Guid.TryParse(message.User, out _) ? message.User : null;
 		message.Data = message.Data?.Select(i => new Item(i.Key, ScrubText(i.Value))).ToList();
 		message.Breadcrumbs = message.Breadcrumbs?.Select(b =>
 		{
@@ -55,6 +58,7 @@ public static partial class ElmahIoScrubber
 		}
 
 		text = PostgresKeyValues().Replace(text, "$1=(" + Redacted + ")");
+		text = PostgresFailingRow().Replace(text, "$1(" + Redacted + ")");
 		text = BearerToken().Replace(text, "Bearer " + Redacted);
 		text = Jwt().Replace(text, Redacted);
 		text = Email().Replace(text, Redacted);
@@ -66,6 +70,10 @@ public static partial class ElmahIoScrubber
 	// PostgreSQL unique/foreign key errors: Key ("Email")=(hanne@skole.dk) already exists.
 	[GeneratedRegex(@"(Key \([^)]*\))=\([^)]*\)")]
 	private static partial Regex PostgresKeyValues();
+
+	// PostgreSQL not-null/check errors: Failing row contains (<id>, Mikkel Hansen, null, ...).
+	[GeneratedRegex(@"(Failing row contains )\(.*\)")]
+	private static partial Regex PostgresFailingRow();
 
 	[GeneratedRegex(@"Bearer\s+[A-Za-z0-9\-._~+/]+=*", RegexOptions.IgnoreCase)]
 	private static partial Regex BearerToken();
