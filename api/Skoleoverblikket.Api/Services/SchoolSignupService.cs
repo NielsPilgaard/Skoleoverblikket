@@ -34,7 +34,8 @@ public sealed record TenantCreatedDto(Guid Id, string Name, string AdminEmail, s
 public sealed class SchoolSignupService(
 	AppDbContext db,
 	KeycloakAdminService keycloakAdmin,
-	DataProcessingAgreementService agreements)
+	DataProcessingAgreementService agreements,
+	ILogger<SchoolSignupService> logger)
 {
 	public enum Failure
 	{
@@ -99,7 +100,16 @@ public sealed class SchoolSignupService(
 		}
 		catch (Exception ex)
 		{
-			await keycloakAdmin.DeleteStaffUserAsync(keycloakSubject, cancellationToken);
+			// Cleanup must not hide the save failure, and must run even if the request was canceled.
+			try
+			{
+				await keycloakAdmin.DeleteStaffUserAsync(keycloakSubject, CancellationToken.None);
+			}
+			catch (Exception cleanupEx)
+			{
+				logger.LogError(cleanupEx, "Could not delete Keycloak user {KeycloakSubject} after failed signup save", keycloakSubject);
+			}
+
 			return new Result(null, Failure.SaveFailed, ex.Message);
 		}
 
