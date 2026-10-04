@@ -15,6 +15,9 @@ public interface IObjectStorage
 
 	Task DeleteAsync(string key, CancellationToken cancellationToken = default);
 
+	/// <summary>Deletes every object whose key starts with <paramref name="prefix"/>. Returns how many were deleted.</summary>
+	Task<int> DeleteByPrefixAsync(string prefix, CancellationToken cancellationToken = default);
+
 	/// <summary>
 	/// Returns the size in bytes of the object at <paramref name="key"/>, or null if it does not exist.
 	/// Used to verify a presigned client upload actually landed before trusting its metadata.

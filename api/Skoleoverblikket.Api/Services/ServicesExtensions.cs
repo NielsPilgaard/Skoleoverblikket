@@ -16,10 +16,21 @@ public static class ServicesExtensions
 		services.AddScoped<SubscriptionService>();
 		services.AddScoped<FileUploadService>();
 		services.AddScoped<ClassMembershipService>();
+		services.AddScoped<ComplianceCoverageService>();
+		services.AddScoped<AbsenceService>();
+		services.AddScoped<AbsenceStatsService>();
+		services.AddScoped<StaffAbsenceService>();
+		services.AddScoped<SubstituteService>();
+		services.AddScoped<WeekPlanService>();
+		services.AddScoped<SchoolDeletionService>();
+		services.AddScoped<DataProcessingAgreementService>();
+		services.AddScoped<SchoolSignupService>();
 		services.AddScoped<INotificationService, NotificationService>();
 		services.AddSingleton<UvmTimetableService>();
 
 		services.AddHostedService<ClassChatAttachmentSweeper>();
+		services.AddHostedService<AbsenceRetentionJob>();
+		services.AddHostedService<SchoolRetentionJob>();
 
 		services.AddOptions<ApplicationOptions>()
 			.BindConfiguration(ApplicationOptions.SectionName)

@@ -14,17 +14,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AbsenceController_ReportAbsenceRequest"
+                "$ref": "#/components/schemas/ReportAbsenceRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/AbsenceController_ReportAbsenceRequest"
+                "$ref": "#/components/schemas/ReportAbsenceRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/AbsenceController_ReportAbsenceRequest"
+                "$ref": "#/components/schemas/ReportAbsenceRequest"
               }
             }
           }
@@ -63,6 +63,13 @@
               "type": "string",
               "format": "date"
             }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/AbsenceCategory"
+            }
           }
         ],
         "responses": {
@@ -73,7 +80,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/AbsenceController_AbsenceReportDto"
+                    "$ref": "#/components/schemas/AbsenceRecordDto"
                   }
                 }
               },
@@ -81,7 +88,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/AbsenceController_AbsenceReportDto"
+                    "$ref": "#/components/schemas/AbsenceRecordDto"
                   }
                 }
               },
@@ -89,7 +96,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/AbsenceController_AbsenceReportDto"
+                    "$ref": "#/components/schemas/AbsenceRecordDto"
                   }
                 }
               }
@@ -111,7 +118,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/AbsenceController_AbsenceReportDto"
+                    "$ref": "#/components/schemas/AbsenceRecordDto"
                   }
                 }
               },
@@ -119,7 +126,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/AbsenceController_AbsenceReportDto"
+                    "$ref": "#/components/schemas/AbsenceRecordDto"
                   }
                 }
               },
@@ -127,57 +134,11 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/AbsenceController_AbsenceReportDto"
+                    "$ref": "#/components/schemas/AbsenceRecordDto"
                   }
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/v1/absence/{id}/confirm": {
-      "post": {
-        "tags": [
-          "Absence"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v1/absence/{id}/dismiss": {
-      "post": {
-        "tags": [
-          "Absence"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
           }
         }
       }
@@ -195,6 +156,270 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/absence/{id}/category": {
+      "put": {
+        "tags": [
+          "Absence"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbsenceController_ChangeAbsenceCategoryRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbsenceController_ChangeAbsenceCategoryRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbsenceController_ChangeAbsenceCategoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/absence/leave-requests": {
+      "get": {
+        "tags": [
+          "Absence"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AbsenceRecordDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AbsenceRecordDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AbsenceRecordDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/absence/{id}/approve": {
+      "post": {
+        "tags": [
+          "Absence"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/absence/{id}/reject": {
+      "post": {
+        "tags": [
+          "Absence"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/absence/stats": {
+      "get": {
+        "tags": [
+          "Absence"
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "quarter",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "classId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuarterStatsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuarterStatsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuarterStatsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/absence/follow-ups": {
+      "post": {
+        "tags": [
+          "Absence"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbsenceController_MarkParentsInformedRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbsenceController_MarkParentsInformedRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbsenceController_MarkParentsInformedRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/absence/export": {
+      "get": {
+        "tags": [
+          "Absence"
+        ],
+        "parameters": [
+          {
+            "name": "schoolYear",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/absence/flagged-export": {
+      "get": {
+        "tags": [
+          "Absence"
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "quarter",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -274,6 +499,179 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/attendance/classes/{classId}": {
+      "get": {
+        "tags": [
+          "Attendance"
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassAttendanceDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassAttendanceDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassAttendanceDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Attendance"
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAttendanceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAttendanceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAttendanceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/attendance/overview": {
+      "get": {
+        "tags": [
+          "Attendance"
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceOverviewDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceOverviewDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceOverviewDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attendance/mine/pending": {
+      "get": {
+        "tags": [
+          "Attendance"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PendingAttendanceDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PendingAttendanceDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PendingAttendanceDto"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -2077,17 +2475,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+                  "$ref": "#/components/schemas/CoverageResponseDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+                  "$ref": "#/components/schemas/CoverageResponseDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+                  "$ref": "#/components/schemas/CoverageResponseDto"
                 }
               }
             }
@@ -2104,17 +2502,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ComplianceCoverageController_CreateSnapshotRequest"
+                "$ref": "#/components/schemas/CreateCoverageSnapshotRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ComplianceCoverageController_CreateSnapshotRequest"
+                "$ref": "#/components/schemas/CreateCoverageSnapshotRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ComplianceCoverageController_CreateSnapshotRequest"
+                "$ref": "#/components/schemas/CreateCoverageSnapshotRequest"
               }
             }
           }
@@ -2125,17 +2523,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                  "$ref": "#/components/schemas/CoverageSnapshotSummaryDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                  "$ref": "#/components/schemas/CoverageSnapshotSummaryDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                  "$ref": "#/components/schemas/CoverageSnapshotSummaryDto"
                 }
               }
             }
@@ -2154,7 +2552,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                    "$ref": "#/components/schemas/CoverageSnapshotSummaryDto"
                   }
                 }
               },
@@ -2162,7 +2560,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                    "$ref": "#/components/schemas/CoverageSnapshotSummaryDto"
                   }
                 }
               },
@@ -2170,7 +2568,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                    "$ref": "#/components/schemas/CoverageSnapshotSummaryDto"
                   }
                 }
               }
@@ -2201,17 +2599,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotDetailDto"
+                  "$ref": "#/components/schemas/CoverageSnapshotDetailDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotDetailDto"
+                  "$ref": "#/components/schemas/CoverageSnapshotDetailDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotDetailDto"
+                  "$ref": "#/components/schemas/CoverageSnapshotDetailDto"
                 }
               }
             }
@@ -2710,6 +3108,66 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/data-processing-agreement": {
+      "get": {
+        "tags": [
+          "DataProcessingAgreement"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataProcessingAgreementStatusDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataProcessingAgreementStatusDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataProcessingAgreementStatusDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/data-processing-agreement/acceptance": {
+      "post": {
+        "tags": [
+          "DataProcessingAgreement"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptDataProcessingAgreementRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptDataProcessingAgreementRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptDataProcessingAgreementRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -6220,6 +6678,272 @@
         }
       }
     },
+    "/api/v1/staff-absences": {
+      "post": {
+        "tags": [
+          "StaffAbsence"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportStaffAbsenceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportStaffAbsenceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportStaffAbsenceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "StaffAbsence"
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffAbsenceDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffAbsenceDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffAbsenceDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/staff-absences/mine": {
+      "get": {
+        "tags": [
+          "StaffAbsence"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffAbsenceDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffAbsenceDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffAbsenceDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/staff-absences/{id}": {
+      "get": {
+        "tags": [
+          "StaffAbsence"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffAbsenceDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffAbsenceDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffAbsenceDetailDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "StaffAbsence"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStaffAbsenceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStaffAbsenceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStaffAbsenceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "StaffAbsence"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/staff-absences/{id}/substitute": {
+      "put": {
+        "tags": [
+          "StaffAbsence"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignAbsenceSubstituteRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignAbsenceSubstituteRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignAbsenceSubstituteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/staff-invitations": {
       "get": {
         "tags": [
@@ -6906,17 +7630,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/SubstituteController_StaffAvailabilityDto"
+                  "$ref": "#/components/schemas/StaffAvailabilityDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SubstituteController_StaffAvailabilityDto"
+                  "$ref": "#/components/schemas/StaffAvailabilityDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SubstituteController_StaffAvailabilityDto"
+                  "$ref": "#/components/schemas/StaffAvailabilityDto"
                 }
               }
             }
@@ -6953,24 +7677,97 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SubstituteController_AssignSubstituteRequest"
+                "$ref": "#/components/schemas/AssignSubstituteRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/SubstituteController_AssignSubstituteRequest"
+                "$ref": "#/components/schemas/AssignSubstituteRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/SubstituteController_AssignSubstituteRequest"
+                "$ref": "#/components/schemas/AssignSubstituteRequest"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubstituteAssignmentDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubstituteAssignmentDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubstituteAssignmentDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/substitutions/mine": {
+      "get": {
+        "tags": [
+          "Substitute"
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MySubstitutionDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MySubstitutionDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MySubstitutionDto"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -7073,6 +7870,98 @@
         }
       }
     },
+    "/api/v1/admin/email-preview/deletion-warning": {
+      "get": {
+        "tags": [
+          "SuperAdminEmailPreview"
+        ],
+        "parameters": [
+          {
+            "name": "school",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "Testskolen"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/email-preview/sub-processor-notice": {
+      "get": {
+        "tags": [
+          "SuperAdminEmailPreview"
+        ],
+        "parameters": [
+          {
+            "name": "change",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "Vi tilføjer Alexandra Instituttet (Danmark) til AI-forslag til skemaer."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/sub-processor-notice": {
+      "post": {
+        "tags": [
+          "SuperAdminSubProcessorNotice"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubProcessorNoticeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubProcessorNoticeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubProcessorNoticeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubProcessorNoticeResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubProcessorNoticeResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubProcessorNoticeResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/tenants": {
       "get": {
         "tags": [
@@ -7160,17 +8049,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TenantsController_CreateTenantRequest"
+                "$ref": "#/components/schemas/CreateTenantRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/TenantsController_CreateTenantRequest"
+                "$ref": "#/components/schemas/CreateTenantRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/TenantsController_CreateTenantRequest"
+                "$ref": "#/components/schemas/CreateTenantRequest"
               }
             }
           }
@@ -7181,17 +8070,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/TenantsController_TenantCreatedDto"
+                  "$ref": "#/components/schemas/TenantCreatedDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TenantsController_TenantCreatedDto"
+                  "$ref": "#/components/schemas/TenantCreatedDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TenantsController_TenantCreatedDto"
+                  "$ref": "#/components/schemas/TenantCreatedDto"
                 }
               }
             }
@@ -8271,14 +9160,99 @@
   },
   "components": {
     "schemas": {
-      "AbsenceController_AbsenceReportDto": {
+      "AbsenceCategory": {
+        "enum": [
+          "Illness",
+          "ExtraordinaryLeave",
+          "Unauthorized"
+        ],
+        "type": "string"
+      },
+      "AbsenceController_ChangeAbsenceCategoryRequest": {
         "required": [
+          "category"
+        ],
+        "type": "object",
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/AbsenceCategory"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AbsenceController_MarkParentsInformedRequest": {
+        "required": [
+          "quarter",
+          "studentId",
+          "year"
+        ],
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "quarter": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AbsenceFlag": {
+        "enum": [
+          "None",
+          "TenPercent",
+          "FifteenPercent"
+        ],
+        "type": "string"
+      },
+      "AbsenceMarkDto": {
+        "required": [
+          "category",
+          "id",
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "category": {
+            "$ref": "#/components/schemas/AbsenceCategory"
+          },
+          "leaveStatus": {
+            "$ref": "#/components/schemas/LeaveStatus"
+          },
+          "source": {
+            "$ref": "#/components/schemas/AbsenceSource"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AbsenceRecordDto": {
+        "required": [
+          "canCancel",
+          "category",
+          "classId",
+          "className",
           "createdAt",
           "date",
+          "halfDay",
           "id",
-          "status",
+          "source",
           "studentId",
-          "studentName"
+          "studentName",
+          "updatedAt"
         ],
         "type": "object",
         "properties": {
@@ -8293,6 +9267,13 @@
           "studentName": {
             "type": "string"
           },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
           "date": {
             "type": "string",
             "format": "date"
@@ -8302,23 +9283,50 @@
             "format": "date",
             "nullable": true
           },
+          "halfDay": {
+            "type": "boolean"
+          },
+          "category": {
+            "$ref": "#/components/schemas/AbsenceCategory"
+          },
+          "leaveStatus": {
+            "$ref": "#/components/schemas/LeaveStatus"
+          },
+          "source": {
+            "$ref": "#/components/schemas/AbsenceSource"
+          },
+          "registeredByName": {
+            "type": "string",
+            "nullable": true
+          },
           "reason": {
             "type": "string",
             "nullable": true
           },
-          "status": {
-            "$ref": "#/components/schemas/AbsenceStatus"
-          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "canCancel": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
       },
-      "AbsenceController_ReportAbsenceRequest": {
+      "AbsenceSource": {
+        "enum": [
+          "Parent",
+          "Staff"
+        ],
+        "type": "string"
+      },
+      "AbsentStudentRequest": {
         "required": [
-          "date",
+          "category",
           "studentId"
         ],
         "type": "object",
@@ -8327,29 +9335,23 @@
             "type": "string",
             "format": "uuid"
           },
-          "date": {
-            "type": "string",
-            "format": "date"
-          },
-          "endDate": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
-          },
-          "reason": {
-            "type": "string",
-            "nullable": true
+          "category": {
+            "$ref": "#/components/schemas/AbsenceCategory"
           }
         },
         "additionalProperties": false
       },
-      "AbsenceStatus": {
-        "enum": [
-          "Reported",
-          "Confirmed",
-          "Dismissed"
+      "AcceptDataProcessingAgreementRequest": {
+        "required": [
+          "version"
         ],
-        "type": "string"
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       },
       "AdminController_ModuleOverrideRequest": {
         "required": [
@@ -8359,6 +9361,173 @@
         "properties": {
           "module": {
             "$ref": "#/components/schemas/SubscriptionModule"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AffectedLessonDto": {
+        "required": [
+          "classId",
+          "className",
+          "courseName",
+          "date",
+          "endTime",
+          "schemaSlotId",
+          "seat",
+          "startTime"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "schemaSlotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "courseName": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "seat": {
+            "$ref": "#/components/schemas/SubstituteSeat"
+          },
+          "substituteId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "substituteName": {
+            "type": "string",
+            "nullable": true
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvailableStaffDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignAbsenceSubstituteRequest": {
+        "required": [
+          "date",
+          "schemaSlotId"
+        ],
+        "type": "object",
+        "properties": {
+          "schemaSlotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "staffId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignSubstituteRequest": {
+        "type": "object",
+        "properties": {
+          "substituteTeacherId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "substituteAideId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AttendanceCheckDto": {
+        "required": [
+          "takenAt"
+        ],
+        "type": "object",
+        "properties": {
+          "takenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "takenByName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AttendanceCheckpoint": {
+        "enum": [
+          "StartOfDay",
+          "EndOfDay"
+        ],
+        "type": "string"
+      },
+      "AttendanceOverviewDto": {
+        "required": [
+          "date",
+          "isSchoolDay"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "isSchoolDay": {
+            "type": "boolean"
+          },
+          "classes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassAttendanceStatusDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "AvailableStaffDto": {
+        "required": [
+          "id",
+          "name",
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/StaffRole"
           }
         },
         "additionalProperties": false
@@ -8728,6 +9897,31 @@
         ],
         "type": "string"
       },
+      "BusyStaffDto": {
+        "required": [
+          "conflictDescription",
+          "id",
+          "name",
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/StaffRole"
+          },
+          "conflictDescription": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "CalendarController_CalendarEntryDto": {
         "required": [
           "endDate",
@@ -8876,6 +10070,98 @@
           "Begivenhed"
         ],
         "type": "string"
+      },
+      "ClassAttendanceDto": {
+        "required": [
+          "canEdit",
+          "classId",
+          "className",
+          "date",
+          "isSchoolDay",
+          "requiresEndOfDay"
+        ],
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "isSchoolDay": {
+            "type": "boolean"
+          },
+          "requiresEndOfDay": {
+            "type": "boolean"
+          },
+          "canEdit": {
+            "type": "boolean"
+          },
+          "startOfDay": {
+            "$ref": "#/components/schemas/AttendanceCheckDto"
+          },
+          "endOfDay": {
+            "$ref": "#/components/schemas/AttendanceCheckDto"
+          },
+          "students": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentAttendanceDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassAttendanceStatusDto": {
+        "required": [
+          "absentCount",
+          "classId",
+          "className",
+          "complete",
+          "requiresEndOfDay",
+          "studentCount"
+        ],
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "gradeLevel": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "requiresEndOfDay": {
+            "type": "boolean"
+          },
+          "startOfDay": {
+            "$ref": "#/components/schemas/AttendanceCheckDto"
+          },
+          "endOfDay": {
+            "$ref": "#/components/schemas/AttendanceCheckDto"
+          },
+          "studentCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "absentCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "complete": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
       },
       "ClassChatController_ClassChatAttachmentDto": {
         "required": [
@@ -9099,6 +10385,40 @@
         },
         "additionalProperties": false
       },
+      "ClassCoverageDto": {
+        "required": [
+          "classId",
+          "className",
+          "gradeLevel"
+        ],
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "gradeLevel": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubjectCoverageDto"
+            }
+          },
+          "unexpectedGradeCategories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "ClassPermissionsController_ClassPermissionDto": {
         "required": [
           "grantedAt",
@@ -9130,6 +10450,53 @@
           "staffId": {
             "type": "string",
             "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClassQuarterStatsDto": {
+        "required": [
+          "absencePercent",
+          "classId",
+          "className",
+          "flaggedStudents",
+          "illnessDays",
+          "leaveDays",
+          "studentCount",
+          "unauthorizedDays"
+        ],
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "studentCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "illnessDays": {
+            "type": "number",
+            "format": "double"
+          },
+          "leaveDays": {
+            "type": "number",
+            "format": "double"
+          },
+          "unauthorizedDays": {
+            "type": "number",
+            "format": "double"
+          },
+          "absencePercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "flaggedStudents": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -9235,174 +10602,6 @@
             "items": {
               "$ref": "#/components/schemas/ClassesController_YearRollCreateEntry"
             }
-          }
-        },
-        "additionalProperties": false
-      },
-      "ComplianceCoverageController_ClassCoverageDto": {
-        "required": [
-          "classId",
-          "className",
-          "gradeLevel"
-        ],
-        "type": "object",
-        "properties": {
-          "classId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "className": {
-            "type": "string"
-          },
-          "gradeLevel": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "subjects": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ComplianceCoverageController_SubjectCoverageDto"
-            }
-          },
-          "unexpectedGradeCategories": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "additionalProperties": false
-      },
-      "ComplianceCoverageController_CoverageResponseDto": {
-        "required": [
-          "activeSchemaCount",
-          "classesMissingGradeLevel"
-        ],
-        "type": "object",
-        "properties": {
-          "classes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ComplianceCoverageController_ClassCoverageDto"
-            }
-          },
-          "classesMissingGradeLevel": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "activeSchemaCount": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ComplianceCoverageController_CreateSnapshotRequest": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "maxLength": 500,
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ComplianceCoverageController_SnapshotDetailDto": {
-        "required": [
-          "createdAt",
-          "createdByStaffName",
-          "id",
-          "schoolYear"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "schoolYear": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdByStaffName": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string",
-            "nullable": true
-          },
-          "data": {
-            "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ComplianceCoverageController_SnapshotSummaryDto": {
-        "required": [
-          "createdAt",
-          "createdByStaffName",
-          "id",
-          "schoolYear"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "schoolYear": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdByStaffName": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ComplianceCoverageController_SubjectCoverageDto": {
-        "required": [
-          "annualHours",
-          "category",
-          "status",
-          "vejledendeAnnualHours",
-          "vejledendeWeeklyHours",
-          "weeklyHours"
-        ],
-        "type": "object",
-        "properties": {
-          "category": {
-            "type": "string"
-          },
-          "weeklyHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "vejledendeWeeklyHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "annualHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "vejledendeAnnualHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "status": {
-            "type": "string"
           }
         },
         "additionalProperties": false
@@ -9768,6 +10967,165 @@
           },
           "category": {
             "$ref": "#/components/schemas/SubjectCategory"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CoverageResponseDto": {
+        "required": [
+          "activeSchemaCount",
+          "classesMissingGradeLevel"
+        ],
+        "type": "object",
+        "properties": {
+          "classes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassCoverageDto"
+            }
+          },
+          "classesMissingGradeLevel": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeSchemaCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CoverageSnapshotDetailDto": {
+        "required": [
+          "createdAt",
+          "createdByStaffName",
+          "id",
+          "schoolYear"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "schoolYear": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdByStaffName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/CoverageResponseDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CoverageSnapshotSummaryDto": {
+        "required": [
+          "createdAt",
+          "createdByStaffName",
+          "id",
+          "schoolYear"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "schoolYear": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdByStaffName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateCoverageSnapshotRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateTenantRequest": {
+        "required": [
+          "acceptDataProcessingAgreement",
+          "adminEmail",
+          "adminFirstName",
+          "adminLastName",
+          "adminPassword",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "adminEmail": {
+            "type": "string"
+          },
+          "adminFirstName": {
+            "type": "string"
+          },
+          "adminLastName": {
+            "type": "string"
+          },
+          "adminPassword": {
+            "type": "string"
+          },
+          "acceptDataProcessingAgreement": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DataProcessingAgreementStatusDto": {
+        "required": [
+          "acceptedCurrentVersion",
+          "currentVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "currentVersion": {
+            "type": "string"
+          },
+          "acceptedCurrentVersion": {
+            "type": "boolean"
+          },
+          "acceptedVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "acceptedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "acceptedByName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -10425,6 +11783,14 @@
         },
         "additionalProperties": false
       },
+      "LeaveStatus": {
+        "enum": [
+          "Pending",
+          "Approved",
+          "Rejected"
+        ],
+        "type": "string"
+      },
       "MessagesController_GroupPreviewDto": {
         "required": [
           "recipientCount"
@@ -10903,6 +12269,45 @@
         },
         "additionalProperties": false
       },
+      "MySubstitutionDto": {
+        "required": [
+          "absentStaffName",
+          "className",
+          "courseName",
+          "date",
+          "endTime",
+          "startTime"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time"
+          },
+          "className": {
+            "type": "string"
+          },
+          "courseName": {
+            "type": "string"
+          },
+          "roomName": {
+            "type": "string",
+            "nullable": true
+          },
+          "absentStaffName": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "NotificationPreferencesController_NotificationPreferenceDto": {
         "required": [
           "email",
@@ -10948,11 +12353,17 @@
           "NewMessage",
           "NewContactMessage",
           "WeekPlanChanged",
-          "AbsenceConfirmed",
-          "AbsenceDismissed",
+          "LeaveApproved",
+          "LeaveRejected",
           "VacationRegistrationOpened",
           "GroupMessage",
-          "ClassChatMessage"
+          "ClassChatMessage",
+          "UnauthorizedAbsence",
+          "AbsenceThreshold",
+          "AbsenceRetentionWarning",
+          "LeaveRequested",
+          "StaffAbsenceReported",
+          "SubstituteAssigned"
         ],
         "type": "string"
       },
@@ -11378,6 +12789,83 @@
         },
         "additionalProperties": false
       },
+      "PendingAttendanceDto": {
+        "required": [
+          "checkpoint",
+          "classId",
+          "className"
+        ],
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "checkpoint": {
+            "$ref": "#/components/schemas/AttendanceCheckpoint"
+          }
+        },
+        "additionalProperties": false
+      },
+      "QuarterStatsDto": {
+        "required": [
+          "quarter",
+          "quarterEnd",
+          "quarterStart",
+          "schoolDaysInQuarter",
+          "schoolDaysSoFar",
+          "year"
+        ],
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "quarter": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "quarterStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "quarterEnd": {
+            "type": "string",
+            "format": "date"
+          },
+          "schoolDaysInQuarter": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "schoolDaysSoFar": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "students": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentQuarterStatsDto"
+            }
+          },
+          "classes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassQuarterStatsDto"
+            }
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeekAbsenceDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "RecipientType": {
         "enum": [
           "Parent",
@@ -11385,6 +12873,74 @@
           "Board"
         ],
         "type": "string"
+      },
+      "ReportAbsenceRequest": {
+        "required": [
+          "category",
+          "date",
+          "studentId"
+        ],
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "category": {
+            "$ref": "#/components/schemas/AbsenceCategory"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReportStaffAbsenceRequest": {
+        "required": [
+          "date"
+        ],
+        "type": "object",
+        "properties": {
+          "staffId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
       },
       "RoomsController_RoomDto": {
         "required": [
@@ -11429,6 +12985,24 @@
           "description": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SaveAttendanceRequest": {
+        "required": [
+          "checkpoint"
+        ],
+        "type": "object",
+        "properties": {
+          "checkpoint": {
+            "$ref": "#/components/schemas/AttendanceCheckpoint"
+          },
+          "absent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AbsentStudentRequest"
+            }
           }
         },
         "additionalProperties": false
@@ -12017,8 +13591,6 @@
             "format": "int32"
           },
           "notes": {
-            "maxLength": 8000,
-            "minLength": 0,
             "type": "string",
             "nullable": true
           }
@@ -12048,6 +13620,112 @@
           "description": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "StaffAbsenceDetailDto": {
+        "type": "object",
+        "properties": {
+          "absence": {
+            "$ref": "#/components/schemas/StaffAbsenceDto"
+          },
+          "lessons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AffectedLessonDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "StaffAbsenceDto": {
+        "required": [
+          "affectedLessonCount",
+          "canDelete",
+          "coveredLessonCount",
+          "createdAt",
+          "date",
+          "id",
+          "role",
+          "staffId",
+          "staffName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "staffName": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/StaffRole"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "reportedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "affectedLessonCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "coveredLessonCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "canDelete": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StaffAvailabilityDto": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvailableStaffDto"
+            }
+          },
+          "busy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BusyStaffDto"
+            }
           }
         },
         "additionalProperties": false
@@ -12247,11 +13925,13 @@
         "required": [
           "classCount",
           "courseCount",
+          "missingAttendanceCount",
           "pendingAbsenceCount",
           "roomCount",
           "schemasComplete",
           "schemasTotal",
-          "staffCount"
+          "staffCount",
+          "uncoveredLessonCount"
         ],
         "type": "object",
         "properties": {
@@ -12301,6 +13981,10 @@
             "type": "integer",
             "format": "int32"
           },
+          "missingAttendanceCount": {
+            "type": "integer",
+            "format": "int32"
+          },
           "openVacationWindow": {
             "$ref": "#/components/schemas/StatsController_OpenVacationWindowDto"
           },
@@ -12313,6 +13997,10 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "uncoveredLessonCount": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -12392,6 +14080,19 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "pendingAttendance": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingAttendanceDto"
+            },
+            "nullable": true
+          },
+          "upcomingSubstitutions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MySubstitutionDto"
+            }
           }
         },
         "additionalProperties": false
@@ -12454,6 +14155,10 @@
           "roomName": {
             "type": "string",
             "nullable": true
+          },
+          "substituteName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -12480,6 +14185,91 @@
           },
           "hasSchema": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StudentAttendanceDto": {
+        "required": [
+          "name",
+          "studentId"
+        ],
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "morning": {
+            "$ref": "#/components/schemas/AbsenceMarkDto"
+          },
+          "endOfDay": {
+            "$ref": "#/components/schemas/AbsenceMarkDto"
+          },
+          "parentReport": {
+            "$ref": "#/components/schemas/AbsenceMarkDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StudentQuarterStatsDto": {
+        "required": [
+          "classId",
+          "className",
+          "flag",
+          "illnessDays",
+          "leaveDays",
+          "studentId",
+          "studentName",
+          "unauthorizedDays",
+          "unauthorizedPercent"
+        ],
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "illnessDays": {
+            "type": "number",
+            "format": "double"
+          },
+          "leaveDays": {
+            "type": "number",
+            "format": "double"
+          },
+          "unauthorizedDays": {
+            "type": "number",
+            "format": "double"
+          },
+          "unauthorizedPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "flag": {
+            "$ref": "#/components/schemas/AbsenceFlag"
+          },
+          "parentsInformedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -12585,6 +14375,41 @@
         },
         "additionalProperties": false
       },
+      "SubProcessorNoticeRequest": {
+        "required": [
+          "change",
+          "effectiveFrom"
+        ],
+        "type": "object",
+        "properties": {
+          "change": {
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubProcessorNoticeResultDto": {
+        "required": [
+          "recipientCount",
+          "schoolCount"
+        ],
+        "type": "object",
+        "properties": {
+          "schoolCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "recipientCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "SubjectCategory": {
         "enum": [
           "Dansk",
@@ -12608,6 +14433,42 @@
         ],
         "type": "string"
       },
+      "SubjectCoverageDto": {
+        "required": [
+          "annualHours",
+          "category",
+          "status",
+          "vejledendeAnnualHours",
+          "vejledendeWeeklyHours",
+          "weeklyHours"
+        ],
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "weeklyHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "vejledendeWeeklyHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "annualHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "vejledendeAnnualHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "SubscriptionModule": {
         "enum": [
           "ParentModule",
@@ -12625,27 +14486,51 @@
         ],
         "type": "string"
       },
-      "SubstituteController_AssignSubstituteRequest": {
+      "SubstituteAssignmentDto": {
+        "required": [
+          "id"
+        ],
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
           "substituteTeacherId": {
             "type": "string",
             "format": "uuid",
+            "nullable": true
+          },
+          "substituteTeacherName": {
+            "type": "string",
             "nullable": true
           },
           "substituteAideId": {
             "type": "string",
             "format": "uuid",
             "nullable": true
+          },
+          "substituteAideName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
       },
-      "SubstituteController_AvailableStaffDto": {
+      "SubstituteSeat": {
+        "enum": [
+          "Teacher",
+          "Aide"
+        ],
+        "type": "string"
+      },
+      "TenantCreatedDto": {
         "required": [
+          "accessToken",
+          "adminEmail",
+          "expiresIn",
           "id",
-          "name",
-          "role"
+          "name"
         ],
         "type": "object",
         "properties": {
@@ -12656,51 +14541,19 @@
           "name": {
             "type": "string"
           },
-          "role": {
-            "$ref": "#/components/schemas/StaffRole"
-          }
-        },
-        "additionalProperties": false
-      },
-      "SubstituteController_BusyStaffDto": {
-        "required": [
-          "conflictDescription",
-          "id",
-          "name",
-          "role"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
+          "adminEmail": {
+            "type": "string"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
             "type": "string",
-            "format": "uuid"
+            "nullable": true
           },
-          "name": {
-            "type": "string"
-          },
-          "role": {
-            "$ref": "#/components/schemas/StaffRole"
-          },
-          "conflictDescription": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "SubstituteController_StaffAvailabilityDto": {
-        "type": "object",
-        "properties": {
-          "available": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SubstituteController_AvailableStaffDto"
-            }
-          },
-          "busy": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SubstituteController_BusyStaffDto"
-            }
+          "expiresIn": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -12802,68 +14655,6 @@
             "nullable": true
           },
           "activeModuleCount": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "TenantsController_CreateTenantRequest": {
-        "required": [
-          "adminEmail",
-          "adminFirstName",
-          "adminLastName",
-          "adminPassword",
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "adminEmail": {
-            "type": "string"
-          },
-          "adminFirstName": {
-            "type": "string"
-          },
-          "adminLastName": {
-            "type": "string"
-          },
-          "adminPassword": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "TenantsController_TenantCreatedDto": {
-        "required": [
-          "accessToken",
-          "adminEmail",
-          "expiresIn",
-          "id",
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "adminEmail": {
-            "type": "string"
-          },
-          "accessToken": {
-            "type": "string"
-          },
-          "refreshToken": {
-            "type": "string",
-            "nullable": true
-          },
-          "expiresIn": {
             "type": "integer",
             "format": "int32"
           }
@@ -13050,6 +14841,38 @@
           },
           "isBreak": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateStaffAbsenceRequest": {
+        "required": [
+          "date"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -13284,6 +15107,39 @@
         ],
         "type": "string"
       },
+      "WeekAbsenceDto": {
+        "required": [
+          "illnessDays",
+          "isoWeek",
+          "leaveDays",
+          "unauthorizedDays",
+          "weekStart"
+        ],
+        "type": "object",
+        "properties": {
+          "weekStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "isoWeek": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "illnessDays": {
+            "type": "number",
+            "format": "double"
+          },
+          "leaveDays": {
+            "type": "number",
+            "format": "double"
+          },
+          "unauthorizedDays": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
       "WeekPlanController_AddFileToSlotRequest": {
         "required": [
           "schoolFileId"
@@ -13354,8 +15210,6 @@
         "type": "object",
         "properties": {
           "notes": {
-            "maxLength": 8000,
-            "minLength": 0,
             "type": "string",
             "nullable": true
           }
@@ -13600,6 +15454,9 @@
       "name": "Admin"
     },
     {
+      "name": "Attendance"
+    },
+    {
       "name": "Billing"
     },
     {
@@ -13634,6 +15491,9 @@
     },
     {
       "name": "Courses"
+    },
+    {
+      "name": "DataProcessingAgreement"
     },
     {
       "name": "DemoRequest"
@@ -13687,6 +15547,9 @@
       "name": "Staff"
     },
     {
+      "name": "StaffAbsence"
+    },
+    {
       "name": "StaffInvitations"
     },
     {
@@ -13709,6 +15572,9 @@
     },
     {
       "name": "SuperAdminEmailPreview"
+    },
+    {
+      "name": "SuperAdminSubProcessorNotice"
     },
     {
       "name": "SuperAdminTenants"

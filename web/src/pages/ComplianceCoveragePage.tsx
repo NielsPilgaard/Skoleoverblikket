@@ -11,9 +11,9 @@ import {
   postApiV1ComplianceCoverageSnapshotsMutation,
 } from '../api/generated/@tanstack/react-query.gen'
 import type {
-  ComplianceCoverageControllerSubjectCoverageDto,
-  ComplianceCoverageControllerCoverageResponseDto,
-  ComplianceCoverageControllerClassCoverageDto,
+  SubjectCoverageDto,
+  CoverageResponseDto,
+  ClassCoverageDto,
 } from '../api/generated/types.gen'
 
 const SNAPSHOTS_QUERY_KEY = [{ _id: 'getApiV1ComplianceCoverageSnapshots' }] as const
@@ -49,23 +49,29 @@ function formatDateTime(d: string | undefined) {
   })
 }
 
-function StatusDot({ subject }: { subject: ComplianceCoverageControllerSubjectCoverageDto }) {
+function StatusDot({ subject }: { subject: SubjectCoverageDto }) {
   const status = subject.status ?? 'missing'
   const colors: Record<string, string> = {
     green: 'bg-green-400',
     yellow: 'bg-yellow-400',
     red: 'bg-red-400',
     missing: 'bg-gray-200',
+    extra: 'bg-white border-2 border-gray-400',
   }
   const statusLabels: Record<string, string> = {
     green: 'Opfyldt',
     yellow: '75–99%',
     red: 'Under 75%',
     missing: 'Ikke planlagt',
+    extra: "Ud over UVM's fagrække",
   }
 
   const hoursSuffix =
-    status !== 'missing' ? ` · ${subject.annualHours}t / ${subject.vejledendeAnnualHours}t` : ''
+    status === 'missing'
+      ? ''
+      : status === 'extra'
+        ? ` · ${subject.annualHours}t`
+        : ` · ${subject.annualHours}t / ${subject.vejledendeAnnualHours}t`
 
   return (
     <span
@@ -75,17 +81,11 @@ function StatusDot({ subject }: { subject: ComplianceCoverageControllerSubjectCo
   )
 }
 
-function CoverageTable({
-  data,
-}: {
-  data: ComplianceCoverageControllerCoverageResponseDto | undefined
-}) {
+function CoverageTable({ data }: { data: CoverageResponseDto | undefined }) {
   const allCategories = [
     ...new Set(
-      (data?.classes ?? []).flatMap((c: ComplianceCoverageControllerClassCoverageDto) =>
-        (c.subjects ?? []).map(
-          (s: ComplianceCoverageControllerSubjectCoverageDto) => s.category ?? ''
-        )
+      (data?.classes ?? []).flatMap((c: ClassCoverageDto) =>
+        (c.subjects ?? []).map((s: SubjectCoverageDto) => s.category ?? '')
       )
     ),
   ].sort()
@@ -155,10 +155,11 @@ function CoverageTable({
                   <div>{cls.className}</div>
                   {unexpected.length > 0 && (
                     <div
-                      className="mt-0.5 text-xs text-amber-600"
-                      title={`${unexpected.map((c) => CATEGORY_LABELS[c] ?? c).join(', ')} er ikke en del af UVM's fagrække på dette klassetrin`}
+                      className="mt-0.5 text-xs font-normal text-gray-500"
+                      title="UVM har ikke timetal for disse fag på dette klassetrin. Det er tilladt at undervise i dem."
                     >
-                      ⚠ Uventet fag: {unexpected.map((c) => CATEGORY_LABELS[c] ?? c).join(', ')}
+                      Ud over UVM's fagrække:{' '}
+                      {unexpected.map((c) => CATEGORY_LABELS[c] ?? c).join(', ')}
                     </div>
                   )}
                 </td>
@@ -197,6 +198,10 @@ function CoverageLegend() {
       </span>
       <span className="flex items-center gap-1.5">
         <span className="inline-block w-3 h-3 rounded-full bg-gray-200" /> Ikke planlagt
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="inline-block w-3 h-3 rounded-full bg-white border-2 border-gray-400" /> Ud
+        over UVM's fagrække
       </span>
     </div>
   )

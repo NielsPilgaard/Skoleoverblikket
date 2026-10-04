@@ -9,15 +9,38 @@ namespace Skoleoverblikket.Api.Tenancy;
 /// </summary>
 public sealed class HttpTenantContext(IHttpContextAccessor accessor) : ITenantContext
 {
+	private Guid? _backgroundTenantId;
+
 	public Guid TenantId
 	{
 		get
 		{
+			if (_backgroundTenantId is { } backgroundTenantId)
+			{
+				return backgroundTenantId;
+			}
+
 			var claim = accessor.HttpContext?.User.FindFirstValue("tenant_id")
 				?? throw new MissingTenantClaimException();
 
 			return Guid.Parse(claim);
 		}
+	}
+
+	/// <summary>
+	/// Pins this scope to one tenant for work that runs outside a request (background jobs).
+	/// Every scoped service resolved from the same scope — AppDbContext's query filter included —
+	/// then sees this tenant. Never call it from request code: the JWT claim is the only trusted
+	/// tenant source there.
+	/// </summary>
+	public void UseBackgroundTenant(Guid tenantId)
+	{
+		if (accessor.HttpContext is not null)
+		{
+			throw new InvalidOperationException("A background tenant cannot be set inside an HTTP request.");
+		}
+
+		_backgroundTenantId = tenantId;
 	}
 }
 

@@ -8,6 +8,7 @@ using Skoleoverblikket.Api.Controllers;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using Skoleoverblikket.Api.Models;
+using Skoleoverblikket.Api.Services;
 
 namespace Skoleoverblikket.Api.IntegrationTests;
 
@@ -111,7 +112,7 @@ public sealed class StatsControllerTests(ApiFactory factory)
 		return student;
 	}
 
-	private async Task<Parent> CreateParentAsync(Guid tenantId, string keycloakSubject)
+	private async Task<Parent> CreateParentAsync(Guid tenantId, string keycloakSubject, Guid? studentId = null)
 	{
 		using var scope = _factory.Services.CreateScope();
 		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -123,26 +124,22 @@ public sealed class StatsControllerTests(ApiFactory factory)
 			Email = $"{keycloakSubject}@test.dk",
 			KeycloakSubject = keycloakSubject,
 		};
+		if (studentId is not null)
+		{
+			parent.Students.Add(await db.Students.IgnoreQueryFilters().FirstAsync(s => s.Id == studentId));
+		}
+
 		db.Parents.Add(parent);
 		await db.SaveChangesAsync();
 		return parent;
 	}
 
-	private async Task CreateAbsenceReportAsync(
-		Guid tenantId, Guid studentId, Guid parentId, AbsenceStatus status)
+	private static async Task ReportAbsenceAsync(
+		HttpClient parentClient, Guid studentId, AbsenceCategory category, DateOnly date)
 	{
-		using var scope = _factory.Services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-		db.AbsenceReports.Add(new AbsenceReport
-		{
-			Id = Guid.NewGuid(),
-			TenantId = tenantId,
-			StudentId = studentId,
-			ReportedByParentId = parentId,
-			Date = DateOnly.FromDateTime(DateTime.UtcNow),
-			Status = status,
-		});
-		await db.SaveChangesAsync();
+		var response = await parentClient.PostAsJsonAsync("/api/v1/absence",
+			new ReportAbsenceRequest(studentId, date, null, category, null), JsonOpts);
+		response.EnsureSuccessStatusCode();
 	}
 
 	private async Task<VacationRegistrationWindow> CreateWindowAsync(
@@ -225,17 +222,21 @@ public sealed class StatsControllerTests(ApiFactory factory)
 	// ── GET /stats/dashboard — attention alerts ──────────────────────────────────
 
 	[Test]
-	public async Task GetDashboard_CountsOnlyReportedAbsences()
+	public async Task GetDashboard_CountsOnlyPendingLeaveRequests()
 	{
 		var tenantId = await CreateTenantAsync();
 		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, tenantId);
 		var student = await CreateStudentAsync(tenantId, klass.Id);
-		var parent = await CreateParentAsync(tenantId, "stats-absence-parent");
+		await CreateParentAsync(tenantId, "stats-absence-parent", student.Id);
+		using var parentClient = CreateClient(tenantId, "parent", "stats-absence-parent");
+		// Reports covering only weekend days are rejected, so pin every date to a weekday.
+		var nextWeek = AbsenceTestKit.SchoolDayFrom(AbsenceTestKit.DanishToday().AddDays(7));
+		var dayAfter = AbsenceTestKit.SchoolDayFrom(nextWeek.AddDays(1));
 
-		await CreateAbsenceReportAsync(tenantId, student.Id, parent.Id, AbsenceStatus.Reported);
-		await CreateAbsenceReportAsync(tenantId, student.Id, parent.Id, AbsenceStatus.Reported);
-		await CreateAbsenceReportAsync(tenantId, student.Id, parent.Id, AbsenceStatus.Confirmed);
-		await CreateAbsenceReportAsync(tenantId, student.Id, parent.Id, AbsenceStatus.Dismissed);
+		// Two pending leave requests count; a sick report is final on submit and does not.
+		await ReportAbsenceAsync(parentClient, student.Id, AbsenceCategory.ExtraordinaryLeave, nextWeek);
+		await ReportAbsenceAsync(parentClient, student.Id, AbsenceCategory.ExtraordinaryLeave, dayAfter);
+		await ReportAbsenceAsync(parentClient, student.Id, AbsenceCategory.Illness, AbsenceTestKit.SickDay());
 
 		using var client = CreateClient(tenantId, "admin", "stats-admin");
 		var stats = await client.GetFromJsonAsync<StatsController.DashboardStats>(

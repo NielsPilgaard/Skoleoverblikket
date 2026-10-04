@@ -26,6 +26,7 @@ import { usePageTitle } from '../hooks/usePageTitle'
 import { DatePicker } from '../components/DatePicker'
 import { detectGradeLevel, GRADE_LEVEL_LABELS } from '../utils/gradeLevel'
 import { useAuth } from '../auth/useAuth'
+import { useSubscription } from '../hooks/useSubscription'
 
 interface CopySchemaModalProps {
   classId: string
@@ -647,6 +648,7 @@ function SchemaList({
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { isAdmin, staffId } = useAuth()
+  const { hasParentModule } = useSubscription()
   const [showCreate, setShowCreate] = useState(false)
 
   const { data: rawPermissions } = useQuery(
@@ -693,6 +695,16 @@ function SchemaList({
         <div className="flex items-center gap-3">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Skemaer</p>
         </div>
+        {canEditSchema && hasParentModule && (
+          <button
+            type="button"
+            onClick={() => navigate(`/fravaer/fremmoede/${classId}`)}
+            data-testid={`class-attendance-${classId}`}
+            className="ml-auto mr-4 text-xs font-medium text-brand-600 hover:text-brand-800 transition-colors"
+          >
+            Fremmøde
+          </button>
+        )}
         {canEditSchema && (
           <button
             onClick={() => setShowCreate(true)}

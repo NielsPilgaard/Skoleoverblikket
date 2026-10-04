@@ -19,10 +19,19 @@ interface NotificationItem {
 
 function typeIcon(type: NotificationType): string {
   switch (type) {
-    case 'AbsenceConfirmed':
+    case 'LeaveApproved':
       return '✅'
-    case 'AbsenceDismissed':
+    case 'LeaveRejected':
       return '❌'
+    case 'UnauthorizedAbsence':
+    case 'AbsenceThreshold':
+      return '⚠️'
+    case 'LeaveRequested':
+    case 'AbsenceRetentionWarning':
+      return '🗂️'
+    case 'StaffAbsenceReported':
+    case 'SubstituteAssigned':
+      return '🧑‍🏫'
     case 'NewMessage':
       return '💬'
     case 'NewContactMessage':
@@ -110,9 +119,20 @@ export default function NotificationBell({ variant = 'light' }: NotificationBell
         return '/beskeder'
       case 'WeekPlanChanged':
         return isParent ? '/foraeldrevisning/ugeplan' : '/mig/skema'
-      case 'AbsenceConfirmed':
-      case 'AbsenceDismissed':
-        return isParent ? '/foraeldrevisning/fravaer' : '/fravaer'
+      case 'LeaveApproved':
+      case 'LeaveRejected':
+      case 'UnauthorizedAbsence':
+        return isParent ? '/foraeldrevisning/fravaer' : '/fravaer?fane=register'
+      case 'LeaveRequested':
+        return '/fravaer?fane=fri'
+      case 'AbsenceThreshold':
+        return '/fravaer?fane=statistik'
+      case 'AbsenceRetentionWarning':
+        return '/fravaer'
+      case 'StaffAbsenceReported':
+        return n.referenceId ? `/vikardaekning/${n.referenceId}` : '/vikardaekning'
+      case 'SubstituteAssigned':
+        return isAdmin ? '/vikardaekning' : '/mig/fravaer'
       case 'VacationRegistrationOpened':
         return '/foraeldrevisning/ferieindmelding'
       default:
@@ -170,7 +190,11 @@ export default function NotificationBell({ variant = 'light' }: NotificationBell
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-lg border border-gray-200 z-50 flex flex-col max-h-[min(70vh,28rem)]">
+        // The dark bell sits in the sidebar (opens rightwards); the light one sits at the right
+        // edge of the mobile top bar, so it must open leftwards to stay on screen.
+        <div
+          className={`absolute ${variant === 'dark' ? 'left-0' : 'right-0'} top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-lg border border-gray-200 z-50 flex flex-col max-h-[min(70vh,28rem)]`}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
             <h3 className="text-sm font-semibold text-gray-800">Notifikationer</h3>

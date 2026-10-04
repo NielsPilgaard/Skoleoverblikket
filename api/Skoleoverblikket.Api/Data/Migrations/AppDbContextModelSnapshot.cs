@@ -43,36 +43,20 @@ namespace Skoleoverblikket.Api.Data.Migrations
                     b.ToTable("ParentStudents");
                 });
 
-            modelBuilder.Entity("Skoleoverblikket.Api.Models.AbsenceReport", b =>
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.AbsenceFollowUp", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateTimeOffset?>("ConfirmedAt")
+                    b.Property<DateTimeOffset?>("ParentsInformedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("ConfirmedByStaffId")
+                    b.Property<Guid?>("ParentsInformedByStaffId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateOnly>("Date")
+                    b.Property<DateOnly>("QuarterStart")
                         .HasColumnType("date");
-
-                    b.Property<DateOnly?>("EndDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Reason")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<Guid>("ReportedByParentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
 
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uuid");
@@ -80,9 +64,73 @@ namespace Skoleoverblikket.Api.Data.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("WarningSentAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("ConfirmedByStaffId");
+                    b.HasIndex("ParentsInformedByStaffId");
+
+                    b.HasIndex("StudentId", "QuarterStart")
+                        .IsUnique();
+
+                    b.ToTable("AbsenceFollowUps");
+                });
+
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.AbsenceReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DecidedByStaffId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("HalfDay")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("LeaveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("RegisteredByStaffId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ReportedByParentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DecidedByStaffId");
+
+                    b.HasIndex("RegisteredByStaffId");
 
                     b.HasIndex("ReportedByParentId");
 
@@ -90,9 +138,70 @@ namespace Skoleoverblikket.Api.Data.Migrations
 
                     b.HasIndex("TenantId", "Date");
 
-                    b.HasIndex("TenantId", "Status");
+                    b.HasIndex("TenantId", "LeaveStatus");
+
+                    b.HasIndex("TenantId", "StudentId", "Date");
 
                     b.ToTable("AbsenceReports");
+                });
+
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.AbsenceRetentionWarning", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SchoolYearStart")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("WarnedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "SchoolYearStart")
+                        .IsUnique();
+
+                    b.ToTable("AbsenceRetentionWarnings");
+                });
+
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.AttendanceCheck", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Checkpoint")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("TakenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("TakenByStaffId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TakenByStaffId");
+
+                    b.HasIndex("TenantId", "Date");
+
+                    b.HasIndex("ClassId", "Date", "Checkpoint")
+                        .IsUnique();
+
+                    b.ToTable("AttendanceChecks");
                 });
 
             modelBuilder.Entity("Skoleoverblikket.Api.Models.BoardFile", b =>
@@ -599,6 +708,45 @@ namespace Skoleoverblikket.Api.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Courses");
+                });
+
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.DataProcessingAgreementAcceptance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AcceptedByEmail")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("AcceptedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("AcceptedBySubject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("DataProcessingAgreementAcceptances");
                 });
 
             modelBuilder.Entity("Skoleoverblikket.Api.Models.GroupMessage", b =>
@@ -1281,6 +1429,51 @@ namespace Skoleoverblikket.Api.Data.Migrations
                     b.ToTable("Staff");
                 });
 
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.StaffAbsence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<TimeOnly?>("EndTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("ReportedByStaffId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("StaffId")
+                        .HasColumnType("uuid");
+
+                    b.Property<TimeOnly?>("StartTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReportedByStaffId");
+
+                    b.HasIndex("StaffId");
+
+                    b.HasIndex("TenantId", "Date");
+
+                    b.ToTable("StaffAbsences");
+                });
+
             modelBuilder.Entity("Skoleoverblikket.Api.Models.StaffInvitation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1367,12 +1560,18 @@ namespace Skoleoverblikket.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CanceledAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("now()");
 
                     b.Property<DateTimeOffset?>("CurrentPeriodEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("DeletionWarningSentAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Interval")
@@ -1754,18 +1953,12 @@ namespace Skoleoverblikket.Api.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Skoleoverblikket.Api.Models.AbsenceReport", b =>
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.AbsenceFollowUp", b =>
                 {
-                    b.HasOne("Skoleoverblikket.Api.Models.Staff", "ConfirmedByStaff")
+                    b.HasOne("Skoleoverblikket.Api.Models.Staff", "ParentsInformedByStaff")
                         .WithMany()
-                        .HasForeignKey("ConfirmedByStaffId")
+                        .HasForeignKey("ParentsInformedByStaffId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Skoleoverblikket.Api.Models.Parent", "ReportedByParent")
-                        .WithMany()
-                        .HasForeignKey("ReportedByParentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.HasOne("Skoleoverblikket.Api.Models.Student", "Student")
                         .WithMany()
@@ -1773,11 +1966,59 @@ namespace Skoleoverblikket.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ConfirmedByStaff");
+                    b.Navigation("ParentsInformedByStaff");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.AbsenceReport", b =>
+                {
+                    b.HasOne("Skoleoverblikket.Api.Models.Staff", "DecidedByStaff")
+                        .WithMany()
+                        .HasForeignKey("DecidedByStaffId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Skoleoverblikket.Api.Models.Staff", "RegisteredByStaff")
+                        .WithMany()
+                        .HasForeignKey("RegisteredByStaffId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Skoleoverblikket.Api.Models.Parent", "ReportedByParent")
+                        .WithMany()
+                        .HasForeignKey("ReportedByParentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Skoleoverblikket.Api.Models.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DecidedByStaff");
+
+                    b.Navigation("RegisteredByStaff");
 
                     b.Navigation("ReportedByParent");
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.AttendanceCheck", b =>
+                {
+                    b.HasOne("Skoleoverblikket.Api.Models.Class", "Class")
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Skoleoverblikket.Api.Models.Staff", "TakenByStaff")
+                        .WithMany()
+                        .HasForeignKey("TakenByStaffId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Class");
+
+                    b.Navigation("TakenByStaff");
                 });
 
             modelBuilder.Entity("Skoleoverblikket.Api.Models.BoardFile", b =>
@@ -2032,6 +2273,24 @@ namespace Skoleoverblikket.Api.Data.Migrations
                     b.Navigation("SfoShift");
 
                     b.Navigation("SfoWeekPlan");
+                });
+
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.StaffAbsence", b =>
+                {
+                    b.HasOne("Skoleoverblikket.Api.Models.Staff", "ReportedByStaff")
+                        .WithMany()
+                        .HasForeignKey("ReportedByStaffId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Skoleoverblikket.Api.Models.Staff", "Staff")
+                        .WithMany()
+                        .HasForeignKey("StaffId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReportedByStaff");
+
+                    b.Navigation("Staff");
                 });
 
             modelBuilder.Entity("Skoleoverblikket.Api.Models.StaffInvitation", b =>

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Skoleoverblikket.Api.Auth;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Models;
+using Skoleoverblikket.Api.Services;
 using Skoleoverblikket.Api.Tenancy;
 
 namespace Skoleoverblikket.Api.Controllers;
@@ -13,7 +14,7 @@ namespace Skoleoverblikket.Api.Controllers;
 [ApiController]
 [Route("api/v1/classes/{classId:guid}/week-plan")]
 [Authorize]
-public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, IAuthorizationService authz) : ControllerBase
+public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, IAuthorizationService authz, WeekPlanService weekPlans) : ControllerBase
 {
 	public record WeekPlanSlotFileDto(Guid Id, Guid SchoolFileId, string FileName, string Url);
 
@@ -64,7 +65,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 
 	public record AddFileToSlotRequest(Guid SchoolFileId);
 
-	public record UpdateNotesRequest([property: StringLength(8000)] string? Notes);
+	public record UpdateNotesRequest([StringLength(8000)] string? Notes);
 
 	public record NotesDto(string? Notes);
 
@@ -272,38 +273,11 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			}
 		}
 
-		var weekPlan = await db.WeekPlans
-			.FirstOrDefaultAsync(w => w.ClassId == classId && w.IsoYear == isoYear.Value && w.IsoWeek == isoWeek.Value, cancellationToken);
-
-		if (weekPlan is null)
+		var weekPlan = await weekPlans.GetOrCreateWeekPlanAsync(classId, isoYear.Value, isoWeek.Value, cancellationToken);
+		var slot = await weekPlans.GetOrAddSlotAsync(weekPlan, req.SchemaSlotId, cancellationToken);
+		if (db.Entry(slot).State != EntityState.Added)
 		{
-			weekPlan = new WeekPlan
-			{
-				Id = Guid.NewGuid(),
-				TenantId = tenant.TenantId,
-				ClassId = classId,
-				IsoYear = isoYear.Value,
-				IsoWeek = isoWeek.Value,
-			};
-			db.WeekPlans.Add(weekPlan);
-			await db.SaveChangesAsync(cancellationToken);
-		}
-
-		var slot = await db.WeekPlanSlots
-			.Include(s => s.Files).ThenInclude(f => f.SchoolFile)
-			.Include(s => s.OverrideCourse)
-			.FirstOrDefaultAsync(s => s.WeekPlanId == weekPlan.Id && s.SchemaSlotId == req.SchemaSlotId, cancellationToken);
-
-		if (slot is null)
-		{
-			slot = new WeekPlanSlot
-			{
-				Id = Guid.NewGuid(),
-				TenantId = tenant.TenantId,
-				WeekPlanId = weekPlan.Id,
-				SchemaSlotId = req.SchemaSlotId,
-			};
-			db.WeekPlanSlots.Add(slot);
+			await db.Entry(slot).Collection(s => s.Files).Query().Include(f => f.SchoolFile).LoadAsync(cancellationToken);
 		}
 
 		slot.Description = req.Description;
@@ -376,33 +350,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			return Forbid();
 		}
 
-		var weekPlan = await db.WeekPlans
-			.FirstOrDefaultAsync(w => w.ClassId == classId && w.IsoYear == isoYear.Value && w.IsoWeek == isoWeek.Value, cancellationToken);
-
-		if (weekPlan is null)
-		{
-			weekPlan = new WeekPlan
-			{
-				Id = Guid.NewGuid(),
-				TenantId = tenant.TenantId,
-				ClassId = classId,
-				IsoYear = isoYear.Value,
-				IsoWeek = isoWeek.Value,
-			};
-			db.WeekPlans.Add(weekPlan);
-
-			try
-			{
-				await db.SaveChangesAsync(cancellationToken);
-			}
-			catch (DbUpdateException)
-			{
-				// A concurrent request created the same class/week WeekPlan; reload and reuse it.
-				db.ChangeTracker.Clear();
-				weekPlan = await db.WeekPlans
-					.FirstAsync(w => w.ClassId == classId && w.IsoYear == isoYear.Value && w.IsoWeek == isoWeek.Value, cancellationToken);
-			}
-		}
+		var weekPlan = await weekPlans.GetOrCreateWeekPlanAsync(classId, isoYear.Value, isoWeek.Value, cancellationToken);
 
 		weekPlan.Notes = req.Notes;
 		await db.SaveChangesAsync(cancellationToken);

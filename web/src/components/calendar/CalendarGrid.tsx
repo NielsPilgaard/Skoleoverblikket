@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import type { CalendarEntryDto } from '../../api/client'
+import { capitalizeFirst } from '../../lib/absence'
 
 export const TYPE_LABELS: Record<string, string> = {
   Ferie: 'Ferie',
@@ -187,7 +188,7 @@ function DayPopover({
       role="dialog"
     >
       <div className="px-3 py-2 border-b border-gray-100">
-        <p className="text-xs font-medium text-gray-700 capitalize">{formattedDate}</p>
+        <p className="text-xs font-medium text-gray-700">{capitalizeFirst(formattedDate)}</p>
       </div>
       <div className="px-3 py-2 space-y-1">
         {dayEntries.length === 0 && (

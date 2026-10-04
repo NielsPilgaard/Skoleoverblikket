@@ -5,7 +5,7 @@ import { getApiV1ParentsMe } from '../../api/generated/sdk.gen'
 import type { ParentMeDto } from '../../api/client'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { WeekPlanList } from '../../components/weekplan/WeekPlanList'
-import { getISOWeek, getISOWeekYear, getISOWeeksInYear } from '../../utils/isoWeek'
+import { getISOWeek, getISOWeekYear, getISOWeeksInYear, getPlanningDate } from '../../utils/isoWeek'
 
 interface Slot {
   id: string
@@ -16,6 +16,8 @@ interface Slot {
   courseName: string
   description?: string | null
   lektier?: string | null
+  substituteTeacherName?: string | null
+  substituteAideName?: string | null
 }
 
 function ClassWeekPlan({
@@ -62,9 +64,8 @@ function ClassWeekPlan({
 export default function ParentWeekPlanPage() {
   usePageTitle('Ugeplan')
 
-  const now = new Date()
-  const [isoYear, setIsoYear] = useState(getISOWeekYear(now))
-  const [isoWeek, setIsoWeek] = useState(getISOWeek(now))
+  const [isoYear, setIsoYear] = useState(() => getISOWeekYear(getPlanningDate()))
+  const [isoWeek, setIsoWeek] = useState(() => getISOWeek(getPlanningDate()))
 
   const {
     data: meRes,
@@ -107,7 +108,11 @@ export default function ParentWeekPlanPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Ugeplan</h1>
         <div className="flex items-center gap-2">
-          <button onClick={prevWeek} className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100">
+          <button
+            onClick={prevWeek}
+            aria-label="Forrige uge"
+            className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100"
+          >
             <svg
               width="16"
               height="16"
@@ -122,7 +127,11 @@ export default function ParentWeekPlanPage() {
           <span className="text-sm font-medium text-gray-700">
             Uge {isoWeek}, {isoYear}
           </span>
-          <button onClick={nextWeek} className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100">
+          <button
+            onClick={nextWeek}
+            aria-label="Næste uge"
+            className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100"
+          >
             <svg
               width="16"
               height="16"

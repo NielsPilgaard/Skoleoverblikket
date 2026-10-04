@@ -42,7 +42,7 @@ public sealed class SfoWeekPlanController(AppDbContext db, ITenantContext tenant
 	public record UpdateSfoNotesRequest(
 		[Required] int IsoYear,
 		[Required] int IsoWeek,
-		[property: StringLength(8000)] string? Notes);
+		[StringLength(8000)] string? Notes);
 
 	public record NotesDto(string? Notes);
 

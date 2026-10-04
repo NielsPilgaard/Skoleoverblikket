@@ -71,7 +71,7 @@ public sealed class ParentInvitationService(
 		if (string.IsNullOrWhiteSpace(parent.Name))
 		{
 
-			throw new InvalidOperationException($"Cannot create Keycloak account for parent {parent.Email}: name is empty.");
+			throw new InvalidOperationException($"Cannot create Keycloak account for parent {parent.Id}: name is empty.");
 		}
 
 		var temporaryPassword = GenerateTemporaryPassword();

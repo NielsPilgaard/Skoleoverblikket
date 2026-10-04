@@ -2,10 +2,23 @@ import { Routes, Route } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
+import DemoPage from './pages/DemoPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import ChangelogPage from './pages/ChangelogPage'
+import DataProcessingAgreementPage from './pages/DataProcessingAgreementPage'
+import SubProcessorsPage from './pages/SubProcessorsPage'
 
 /** Marketing pages prerendered to static HTML at build time (see scripts/prerender.mjs). */
-export const PRERENDERED_PATHS = ['/', '/om', '/kontakt', '/privatlivspolitik']
+export const PRERENDERED_PATHS = [
+  '/',
+  '/om',
+  '/kontakt',
+  '/book-demo',
+  '/nyheder',
+  '/privatlivspolitik',
+  '/databehandleraftale',
+  '/underdatabehandlere',
+]
 
 /**
  * Marketing pages for build-time prerendering, so crawlers see content instead of a blank page.
@@ -18,7 +31,11 @@ export default function PublicRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="om" element={<AboutPage />} />
       <Route path="kontakt" element={<ContactPage />} />
+      <Route path="book-demo" element={<DemoPage />} />
+      <Route path="nyheder" element={<ChangelogPage />} />
       <Route path="privatlivspolitik" element={<PrivacyPolicyPage />} />
+      <Route path="databehandleraftale" element={<DataProcessingAgreementPage />} />
+      <Route path="underdatabehandlere" element={<SubProcessorsPage />} />
       <Route path="*" element={null} />
     </Routes>
   )

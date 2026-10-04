@@ -7,6 +7,7 @@ using Skoleoverblikket.Api.Controllers;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using Skoleoverblikket.Api.Models;
+using Skoleoverblikket.Api.Services;
 
 namespace Skoleoverblikket.Api.IntegrationTests;
 
@@ -23,8 +24,11 @@ public sealed class SubstituteTests(ApiFactory factory)
 	private readonly Guid _tenantId = Guid.NewGuid();
 	private HttpClient _client = null!;
 
-	private const int TestYear = 2025;
-	private const int TestWeek = 10;
+	// Busy checks use the schema active on the lektion's date, so test a week inside the test
+	// schema's range (TestDataBuilder schemas run from a month ago to 11 months ahead).
+	private static readonly DateTime NextWeek = DateTime.UtcNow.Date.AddDays(7);
+	private static readonly int TestYear = System.Globalization.ISOWeek.GetYear(NextWeek);
+	private static readonly int TestWeek = System.Globalization.ISOWeek.GetWeekOfYear(NextWeek);
 
 	[Before(Test)]
 	public async Task SetUp()
@@ -55,7 +59,7 @@ public sealed class SubstituteTests(ApiFactory factory)
 			$"/api/v1/staff/available?isoYear={TestYear}&isoWeek={TestWeek}&weekday=1&timeSlotId={timeSlot.Id}");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<SubstituteController.StaffAvailabilityDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<StaffAvailabilityDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 		await Assert.That(dto!.Available.Any(s => s.Id == freeTeacher.Id)).IsTrue();
 		await Assert.That(dto.Busy.Any(s => s.Id == busyTeacher.Id)).IsTrue();
@@ -97,14 +101,14 @@ public sealed class SubstituteTests(ApiFactory factory)
 		// Assign substitute
 		var assignResponse = await _client.PutAsJsonAsync(
 			$"/api/v1/week-plans/{weekPlanId}/slots/{weekPlanSlotId}/substitute",
-			new SubstituteController.AssignSubstituteRequest(substituteStaff.Id, null));
+			new AssignSubstituteRequest(substituteStaff.Id, null));
 		await Assert.That(assignResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
 		// Now check availability — substitute should be busy
 		var availResponse = await _client.GetAsync(
 			$"/api/v1/staff/available?isoYear={TestYear}&isoWeek={TestWeek}&weekday=2&timeSlotId={timeSlot.Id}");
 		await Assert.That(availResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var availability = await availResponse.Content.ReadFromJsonAsync<SubstituteController.StaffAvailabilityDto>(JsonOpts);
+		var availability = await availResponse.Content.ReadFromJsonAsync<StaffAvailabilityDto>(JsonOpts);
 		await Assert.That(availability!.Busy.Any(s => s.Id == substituteStaff.Id)).IsTrue();
 		await Assert.That(availability.Available.Any(s => s.Id == substituteStaff.Id)).IsFalse();
 	}
@@ -139,7 +143,7 @@ public sealed class SubstituteTests(ApiFactory factory)
 		// Assign substitute
 		var assignResponse = await _client.PutAsJsonAsync(
 			$"/api/v1/week-plans/{slotDto!.WeekPlanId}/slots/{slotDto.Id}/substitute",
-			new SubstituteController.AssignSubstituteRequest(substitute.Id, null));
+			new AssignSubstituteRequest(substitute.Id, null));
 		await Assert.That(assignResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
 		// GET week-plan — substitute should be visible on the slot
@@ -180,7 +184,7 @@ public sealed class SubstituteTests(ApiFactory factory)
 
 		var response = await _client.PutAsJsonAsync(
 			$"/api/v1/week-plans/{slotDto!.WeekPlanId}/slots/{slotDto.Id}/substitute",
-			new SubstituteController.AssignSubstituteRequest(substitute.Id, substitute.Id));
+			new AssignSubstituteRequest(substitute.Id, substitute.Id));
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 	}
@@ -215,13 +219,13 @@ public sealed class SubstituteTests(ApiFactory factory)
 		// Assign
 		var assignResponse = await _client.PutAsJsonAsync(
 			$"/api/v1/week-plans/{slotDto!.WeekPlanId}/slots/{slotDto.Id}/substitute",
-			new SubstituteController.AssignSubstituteRequest(substitute.Id, null));
+			new AssignSubstituteRequest(substitute.Id, null));
 		await Assert.That(assignResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
 		// Clear
 		var clearResponse = await _client.PutAsJsonAsync(
 			$"/api/v1/week-plans/{slotDto.WeekPlanId}/slots/{slotDto.Id}/substitute",
-			new SubstituteController.AssignSubstituteRequest(null, null));
+			new AssignSubstituteRequest(null, null));
 		await Assert.That(clearResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
 		// Verify cleared in GET
@@ -231,5 +235,88 @@ public sealed class SubstituteTests(ApiFactory factory)
 		var slot = planDto2!.Slots.First(s => s.SchemaSlotId == schemaSlotId);
 		await Assert.That(slot.SubstituteTeacherId).IsNull();
 		await Assert.That(slot.SubstituteTeacherName).IsNull();
+	}
+
+	/// <summary>
+	/// Assigning someone who teaches an overlapping lektion in another klasse is rejected with 409.
+	/// </summary>
+	[Test]
+	public async Task AssignSubstitute_StaffTeachingOverlappingLesson_Returns409()
+	{
+		var timeSlot = await TestDataBuilder.CreateTimeSlotAsync(_factory.Services, _tenantId,
+			new TimeOnly(13, 0), new TimeOnly(13, 45), sortOrder: 6);
+		var teacher = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Lærer C");
+		var busy = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Optaget C");
+		var course = await TestDataBuilder.CreateCourseAsync(_factory.Services, _tenantId, "Engelsk");
+		var (klass, schema) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "6.c");
+		var (_, otherSchema) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "7.c");
+
+		await _client.PutAsJsonAsync($"/api/v1/classes/{klass.Id}/schemas/{schema.Id}/slots",
+			new { timeSlotId = timeSlot.Id, weekday = (int)DayOfWeek.Monday, courseId = course.Id, teacherId = teacher.Id });
+		await TestDataBuilder.CreateSchemaSlotAsync(_factory.Services, _tenantId,
+			otherSchema.Id, timeSlot.Id, course.Id, busy.Id, DayOfWeek.Monday);
+
+		var planResponse = await _client.GetAsync(
+			$"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var planDto = await planResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
+		var schemaSlotId = planDto!.Slots[0].SchemaSlotId;
+
+		var upsertResponse = await _client.PutAsJsonAsync(
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			new WeekPlanController.UpsertWeekPlanSlotRequest(schemaSlotId, null, null, null));
+		upsertResponse.EnsureSuccessStatusCode();
+		var slotDto = await upsertResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
+
+		var response = await _client.PutAsJsonAsync(
+			$"/api/v1/week-plans/{slotDto!.WeekPlanId}/slots/{slotDto.Id}/substitute",
+			new AssignSubstituteRequest(busy.Id, null));
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+	}
+	[Test]
+	public async Task GetAvailable_AsParent_Returns403()
+	{
+		var timeSlot = await TestDataBuilder.CreateTimeSlotAsync(_factory.Services, _tenantId,
+			new TimeOnly(13, 0), new TimeOnly(13, 45), sortOrder: 6);
+		using var parent = _factory.CreateClient();
+		parent.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		parent.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
+
+		var response = await parent.GetAsync(
+			$"/api/v1/staff/available?isoYear={TestYear}&isoWeek={TestWeek}&weekday=1&timeSlotId={timeSlot.Id}");
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+	}
+
+	[Test]
+	public async Task AssignSubstitute_AsParent_Returns403()
+	{
+		var timeSlot = await TestDataBuilder.CreateTimeSlotAsync(_factory.Services, _tenantId,
+			new TimeOnly(14, 0), new TimeOnly(14, 45), sortOrder: 7);
+		var teacher = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Lærer C");
+		var substitute = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Vikar C", StaffRole.Substitute);
+		var course = await TestDataBuilder.CreateCourseAsync(_factory.Services, _tenantId, "Musik");
+		var (klass, schema) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, "6.a");
+		await TestDataBuilder.CreateSchemaSlotAsync(_factory.Services, _tenantId,
+			schema.Id, timeSlot.Id, course.Id, teacher.Id, DayOfWeek.Monday);
+
+		var planResponse = await _client.GetAsync(
+			$"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var planDto = await planResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanDto>(JsonOpts);
+		var upsertResponse = await _client.PutAsJsonAsync(
+			$"/api/v1/classes/{klass.Id}/week-plan/slots?isoYear={TestYear}&isoWeek={TestWeek}",
+			new WeekPlanController.UpsertWeekPlanSlotRequest(planDto!.Slots[0].SchemaSlotId, null, null, null));
+		var slotDto = await upsertResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
+
+		using var parent = _factory.CreateClient();
+		parent.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		parent.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
+		parent.DefaultRequestHeaders.Add("X-Test-Subject", "parent-sub-substitute");
+
+		var response = await parent.PutAsJsonAsync(
+			$"/api/v1/week-plans/{slotDto!.WeekPlanId}/slots/{slotDto.Id}/substitute",
+			new AssignSubstituteRequest(substitute.Id, null));
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
 	}
 }

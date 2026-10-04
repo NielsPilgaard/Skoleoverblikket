@@ -1,152 +1,141 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { usePageTitle } from '../hooks/usePageTitle'
-import {
-  getApiV1AbsenceOptions,
-  getApiV1ClassesOptions,
-  postApiV1AbsenceByIdConfirmMutation,
-  postApiV1AbsenceByIdDismissMutation,
-} from '../api/generated/@tanstack/react-query.gen'
-import type { AbsenceControllerAbsenceReportDto as AbsenceReportDto } from '../api/generated/types.gen'
-import { DatePicker } from '../components/DatePicker'
+import { useAuth } from '../auth/useAuth'
+import { getApiV1AbsenceLeaveRequestsOptions } from '../api/generated/@tanstack/react-query.gen'
+import { getApiV1AbsenceExport } from '../api/generated/sdk.gen'
+import { AttendanceTab } from '../components/absence/AttendanceTab'
+import { AbsenceRegisterTab } from '../components/absence/AbsenceRegisterTab'
+import { LeaveRequestsTab } from '../components/absence/LeaveRequestsTab'
+import { AbsenceStatsTab } from '../components/absence/AbsenceStatsTab'
+import { saveBlob, schoolYearLabel, schoolYearStart, todayIso } from '../lib/absence'
 
-function StatusBadge({ status }: { status: AbsenceReportDto['status'] }) {
-  const map = {
-    Reported: { label: 'Indmeldt', className: 'bg-yellow-100 text-yellow-800' },
-    Confirmed: { label: 'Bekræftet', className: 'bg-green-100 text-green-800' },
-    Dismissed: { label: 'Afvist', className: 'bg-red-100 text-red-800' },
+type Tab = 'fremmoede' | 'register' | 'fri' | 'statistik'
+
+/** Retention rule, the next deletion date, and (for admins) the school-year Excel download. */
+function RetentionNote({ isAdmin }: { isAdmin: boolean }) {
+  const current = schoolYearStart(todayIso())
+  const [year, setYear] = useState(current)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function download() {
+    setError(null)
+    setBusy(true)
+    try {
+      const { data } = await getApiV1AbsenceExport({
+        query: { schoolYear: year },
+        parseAs: 'blob',
+        throwOnError: true,
+      })
+      saveBlob(data as Blob, `fravaer-${schoolYearLabel(year).replace('/', '-')}.xlsx`)
+    } catch {
+      setError('Filen kunne ikke hentes. Prøv igen om lidt.')
+    } finally {
+      setBusy(false)
+    }
   }
-  const { label, className } = map[status!]
+
   return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${className}`}
+    <div
+      className="mt-10 flex flex-wrap items-center gap-3 border-t border-gray-200 pt-4 text-xs text-gray-500"
+      data-testid="absence-retention-note"
     >
-      {label}
-    </span>
+      <p className="flex-1 min-w-60">
+        Fraværsdata gemmes i indeværende og forrige skoleår. Skoleåret{' '}
+        {schoolYearLabel(current - 1)} slettes automatisk 1. august {current + 1}.
+      </p>
+      {isAdmin && (
+        <div className="flex items-center gap-2">
+          <select
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            className="px-2 py-1 border border-gray-300 rounded-lg text-xs text-gray-700"
+            aria-label="Skoleår"
+          >
+            {[current, current - 1].map((y) => (
+              <option key={y} value={y}>
+                {schoolYearLabel(y)}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={download}
+            disabled={busy}
+            data-testid="absence-download-school-year"
+            className="px-3 py-1.5 text-xs font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            {busy ? 'Henter…' : 'Download skoleår'}
+          </button>
+        </div>
+      )}
+      {error && <p className="w-full text-red-600">{error}</p>}
+    </div>
   )
 }
 
 export default function AbsencePage() {
   usePageTitle('Fravær')
-  const qc = useQueryClient()
-  const today = new Date().toISOString().slice(0, 10)
-  const monthStart = `${today.slice(0, 8)}01`
-  const [from, setFrom] = useState(monthStart)
-  const [to, setTo] = useState(today)
-  const [classId, setClassId] = useState<string>('')
-  const [actionError, setActionError] = useState<string | null>(null)
+  const { isAdmin } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requested = searchParams.get('fane')
 
-  const { data: classes = [] } = useQuery({
-    ...getApiV1ClassesOptions(),
-    select: (data) => data ?? [],
+  const { data: leaveRequests = [] } = useQuery({
+    ...getApiV1AbsenceLeaveRequestsOptions(),
+    enabled: isAdmin,
   })
+  const pendingLeave = leaveRequests.filter((r) => r.leaveStatus === 'Pending').length
 
-  const { data: reports = [], isLoading } = useQuery({
-    ...getApiV1AbsenceOptions({ query: { from, to, classId: classId || undefined } }),
-    select: (data) => data as AbsenceReportDto[],
-  })
-
-  const confirmMutation = useMutation({
-    ...postApiV1AbsenceByIdConfirmMutation(),
-    onSuccess: () => {
-      setActionError(null)
-      qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1Absence' }] })
-    },
-    onError: () => setActionError('Kunne ikke bekræfte fravær'),
-  })
-
-  const dismissMutation = useMutation({
-    ...postApiV1AbsenceByIdDismissMutation(),
-    onSuccess: () => {
-      setActionError(null)
-      qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1Absence' }] })
-    },
-    onError: () => setActionError('Kunne ikke afvise fravær'),
-  })
-
-  const unconfirmed = reports.filter((r) => r.status === 'Reported')
+  const tabs: { key: Tab; label: string; badge?: number }[] = [
+    { key: 'fremmoede', label: 'Fremmøde' },
+    { key: 'register', label: 'Fravær' },
+    ...(isAdmin ? [{ key: 'fri' as const, label: 'Anmodninger om fri', badge: pendingLeave }] : []),
+    { key: 'statistik', label: 'Statistik' },
+  ]
+  // An unknown ?fane= (or "fri" for non-admins) falls back to Fremmøde instead of an empty page.
+  const tab: Tab = tabs.find((t) => t.key === requested)?.key ?? 'fremmoede'
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-gray-900">Fravær</h1>
-          {unconfirmed.length > 0 && (
-            <p className="text-sm text-yellow-700 mt-1">
-              {unconfirmed.length} ubekræftet{unconfirmed.length !== 1 ? 'e' : ''}
-            </p>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2 items-center">
-          <select
-            value={classId}
-            onChange={(e) => setClassId(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <h1 className="font-display text-2xl font-semibold text-gray-900 mb-4">Fravær</h1>
+
+      {/* overflow-y-hidden: the tabs' -mb-px border would otherwise add a vertical scrollbar. */}
+      <div
+        className="flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="tablist"
+      >
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
+            onClick={() => setSearchParams({ fane: t.key }, { replace: true })}
+            data-testid={`absence-tab-${t.key}`}
+            className={`px-3 py-2 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
+              tab === t.key
+                ? 'border-brand-600 text-brand-700'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
           >
-            <option value="">Alle klasser</option>
-            {classes
-              .filter((c) => c.id != null && c.name != null)
-              .map((c) => (
-                <option key={c.id} value={c.id!}>
-                  {c.name}
-                </option>
-              ))}
-          </select>
-          <DatePicker value={from} onChange={setFrom} align="right" />
-          <span className="text-gray-400 text-sm">–</span>
-          <DatePicker value={to} onChange={setTo} align="right" />
-        </div>
-      </div>
-
-      {actionError && <p className="mb-4 text-sm text-red-600">{actionError}</p>}
-
-      {isLoading && (
-        <div className="flex justify-center py-16">
-          <div className="w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
-
-      {!isLoading && reports.length === 0 && (
-        <p className="text-sm text-gray-500 py-8">Ingen fravær i perioden.</p>
-      )}
-
-      <div className="space-y-3">
-        {reports.map((r) => (
-          <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-medium text-gray-900 text-sm">{r.studentName}</p>
-                <p className="text-sm text-gray-600 mt-0.5">
-                  {r.date}
-                  {r.endDate ? ` – ${r.endDate}` : ''}
-                  {r.reason ? ` · ${r.reason}` : ''}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <StatusBadge status={r.status} />
-                {r.status === 'Reported' && (
-                  <>
-                    <button
-                      onClick={() => confirmMutation.mutate({ path: { id: r.id! } })}
-                      disabled={confirmMutation.isPending}
-                      className="px-2.5 py-1 text-xs font-medium bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
-                    >
-                      Bekræft
-                    </button>
-                    <button
-                      onClick={() => dismissMutation.mutate({ path: { id: r.id! } })}
-                      disabled={dismissMutation.isPending}
-                      className="px-2.5 py-1 text-xs font-medium border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
-                    >
-                      Afvis
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+            {t.label}
+            {t.badge ? (
+              <span className="ml-1.5 inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-amber-100 text-amber-900 text-xs">
+                {t.badge}
+              </span>
+            ) : null}
+          </button>
         ))}
       </div>
+
+      {tab === 'fremmoede' && <AttendanceTab isAdmin={isAdmin} />}
+      {tab === 'register' && <AbsenceRegisterTab />}
+      {tab === 'fri' && isAdmin && <LeaveRequestsTab />}
+      {tab === 'statistik' && <AbsenceStatsTab isAdmin={isAdmin} />}
+
+      <RetentionNote isAdmin={isAdmin} />
     </div>
   )
 }

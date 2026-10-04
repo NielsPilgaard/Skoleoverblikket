@@ -19,11 +19,25 @@ export default function Footer() {
             Om Skoleoverblikket
           </Link>
           <Link
+            to="/nyheder"
+            data-testid="footer-link-nyheder"
+            className="hover:text-white transition-colors"
+          >
+            Nyheder
+          </Link>
+          <Link
             to="/privatlivspolitik"
             data-testid="footer-link-privatlivspolitik"
             className="hover:text-white transition-colors"
           >
             Privatlivspolitik
+          </Link>
+          <Link
+            to="/databehandleraftale"
+            data-testid="footer-link-databehandleraftale"
+            className="hover:text-white transition-colors"
+          >
+            Databehandleraftale
           </Link>
           <Link
             to="/kontakt"

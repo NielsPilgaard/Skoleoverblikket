@@ -1,13 +1,26 @@
 import { useState, useEffect, useRef } from 'react'
 import keycloak from '../../auth/keycloak'
 
-type EmailType = 'staff-invitation' | 'parent-invitation' | 'notification'
+type EmailType =
+  | 'staff-invitation'
+  | 'parent-invitation'
+  | 'notification'
+  | 'deletion-warning'
+  | 'sub-processor-notice'
 
 const EMAIL_TYPES: { value: EmailType; label: string }[] = [
   { value: 'staff-invitation', label: 'Medarbejder-invitation' },
   { value: 'parent-invitation', label: 'Forældre-invitation' },
   { value: 'notification', label: 'Notifikation' },
+  { value: 'deletion-warning', label: 'Varsel om sletning (7 dage før)' },
+  { value: 'sub-processor-notice', label: 'Varsel om underdatabehandlere' },
 ]
+
+/** `?type=deletion-warning` opens that preview directly, so it can be linked to. */
+function initialType(): EmailType {
+  const t = new URLSearchParams(window.location.search).get('type')
+  return EMAIL_TYPES.some((e) => e.value === t) ? (t as EmailType) : 'staff-invitation'
+}
 
 async function fetchEmailPreview(type: EmailType, params: Record<string, string>): Promise<string> {
   await keycloak.updateToken(30).catch(() => {
@@ -23,12 +36,15 @@ async function fetchEmailPreview(type: EmailType, params: Record<string, string>
 }
 
 export default function BackofficeEmailPreviewPage() {
-  const [type, setType] = useState<EmailType>('staff-invitation')
+  const [type, setType] = useState<EmailType>(initialType)
   const [name, setName] = useState('Mette Hansen')
   const [school, setSchool] = useState('Testskolen')
   const [withPassword, setWithPassword] = useState(true)
   const [notificationBody, setNotificationBody] = useState(
     'Dit barns skema er blevet opdateret for uge 22.'
+  )
+  const [change, setChange] = useState(
+    'Vi tilføjer Alexandra Instituttet (Danmark) til AI-forslag til skemaer.'
   )
   const [html, setHtml] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -38,6 +54,10 @@ export default function BackofficeEmailPreviewPage() {
     const params: Record<string, string> = {}
     if (type === 'notification') {
       params.body = notificationBody
+    } else if (type === 'deletion-warning') {
+      params.school = school
+    } else if (type === 'sub-processor-notice') {
+      params.change = change
     } else {
       params.name = name
       params.school = school
@@ -50,7 +70,9 @@ export default function BackofficeEmailPreviewPage() {
         setError(null)
       })
       .catch((e) => setError(String(e)))
-  }, [type, name, school, withPassword, notificationBody])
+  }, [type, name, school, withPassword, notificationBody, change])
+
+  const isInvitation = type === 'staff-invitation' || type === 'parent-invitation'
 
   useEffect(() => {
     if (iframeRef.current) {
@@ -82,36 +104,52 @@ export default function BackofficeEmailPreviewPage() {
             </select>
           </div>
 
-          {type !== 'notification' && (
-            <>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Navn</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Skole</label>
-                <input
-                  type="text"
-                  value={school}
-                  onChange={(e) => setSchool(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <label className="flex items-center gap-2 text-sm text-gray-700 pb-1.5">
-                <input
-                  type="checkbox"
-                  checked={withPassword}
-                  onChange={(e) => setWithPassword(e.target.checked)}
-                  className="rounded"
-                />
-                Med midlertidig adgangskode
-              </label>
-            </>
+          {isInvitation && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Navn</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
+
+          {(isInvitation || type === 'deletion-warning') && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Skole</label>
+              <input
+                type="text"
+                value={school}
+                onChange={(e) => setSchool(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
+
+          {isInvitation && (
+            <label className="flex items-center gap-2 text-sm text-gray-700 pb-1.5">
+              <input
+                type="checkbox"
+                checked={withPassword}
+                onChange={(e) => setWithPassword(e.target.checked)}
+                className="rounded"
+              />
+              Med midlertidig adgangskode
+            </label>
+          )}
+
+          {type === 'sub-processor-notice' && (
+            <div className="flex-1 min-w-64">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Ændringen</label>
+              <input
+                type="text"
+                value={change}
+                onChange={(e) => setChange(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
           )}
 
           {type === 'notification' && (

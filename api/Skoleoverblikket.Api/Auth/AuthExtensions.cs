@@ -28,6 +28,9 @@ public static class AuthExtensions
 					jwt.Audience = kc.Value.Audience;
 					jwt.RequireHttpsMetadata = kc.Value.RequireHttpsMetadata;
 					jwt.MapInboundClaims = false;
+					// User.Identity.Name is the Keycloak id, not a person's name, so error logs
+					// (elmah.io, stored in the US) identify the user by id only.
+					jwt.TokenValidationParameters.NameClaimType = "sub";
 
 					if (!string.IsNullOrEmpty(kc.Value.MetadataAddress))
 					{

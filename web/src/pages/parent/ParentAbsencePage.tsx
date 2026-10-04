@@ -7,105 +7,81 @@ import {
   postApiV1AbsenceMutation,
   deleteApiV1AbsenceByIdMutation,
 } from '../../api/generated/@tanstack/react-query.gen'
-import type {
-  AbsenceControllerAbsenceReportDto as AbsenceReportDto,
-  ParentMeControllerParentStudentDto as ParentStudentDto,
-  ParentMeControllerParentMeDto as ParentMeResponse,
-  AbsenceStatus,
-} from '../../api/generated/types.gen'
+import type { AbsenceCategory } from '../../api/generated/types.gen'
 import { DatePicker } from '../../components/DatePicker'
+import { CategoryBadge } from '../../components/absence/AbsenceRegisterTab'
+import {
+  addDaysIso,
+  formatDateRange,
+  onlyWeekendDays,
+  todayIso,
+  weekdayFrom,
+} from '../../lib/absence'
+import { problemDetail } from '../../lib/problem'
 
-const REASON_OPTIONS = ['Syg', 'Ferie', 'Hentes tidligt', 'Møder sent', 'Andet']
-
-function formatDate(iso: string): string {
-  const [y, m, d] = iso.split('-')
-  return `${d}-${m}-${y}`
-}
-
-function todayIso(): string {
-  const now = new Date()
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-}
-
-function StatusBadge({ status }: { status: AbsenceStatus | undefined }) {
-  const map: Record<AbsenceStatus, { label: string; className: string }> = {
-    Reported: { label: 'Indmeldt', className: 'bg-yellow-100 text-yellow-800' },
-    Confirmed: { label: 'Bekræftet', className: 'bg-green-100 text-green-800' },
-    Dismissed: { label: 'Afvist', className: 'bg-red-100 text-red-800' },
-  }
-  const { label, className } = map[status ?? 'Reported']
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${className}`}
-    >
-      {label}
-    </span>
-  )
-}
+type Kind = Extract<AbsenceCategory, 'Illness' | 'ExtraordinaryLeave'>
 
 export default function ParentAbsencePage() {
   usePageTitle('Fravær')
   const qc = useQueryClient()
   const today = todayIso()
+  // At the weekend the next school day is the one a parent is reporting for.
+  const firstDay = weekdayFrom(today)
   const [showForm, setShowForm] = useState(false)
+  const [kind, setKind] = useState<Kind>('Illness')
   const [studentId, setStudentId] = useState('')
-  const [date, setDate] = useState(today)
-  const [endDate, setEndDate] = useState(today)
+  const [date, setDate] = useState(firstDay)
+  const [endDate, setEndDate] = useState(firstDay)
   const [reason, setReason] = useState('')
-  const [customReason, setCustomReason] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
-  const { data: meData } = useQuery({
-    ...getApiV1ParentsMeOptions(),
-    select: (data) => data as ParentMeResponse,
-  })
+  const { data: me } = useQuery(getApiV1ParentsMeOptions())
+  const { data: records = [] } = useQuery(getApiV1AbsenceMineOptions())
 
-  const { data: reports = [] } = useQuery({
-    ...getApiV1AbsenceMineOptions(),
-    select: (data) => data as AbsenceReportDto[],
-  })
+  const mineKey = [{ _id: 'getApiV1AbsenceMine' }] as const
 
-  const absenceMineQueryKey = [{ _id: 'getApiV1AbsenceMine' }] as const
+  function resetForm() {
+    setShowForm(false)
+    setKind('Illness')
+    setStudentId('')
+    setDate(firstDay)
+    setEndDate(firstDay)
+    setReason('')
+  }
 
-  const reportMutation = useMutation({
+  const report = useMutation({
     ...postApiV1AbsenceMutation(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: absenceMineQueryKey })
-      setShowForm(false)
-      setStudentId('')
-      setDate(today)
-      setEndDate(today)
-      setReason('')
-      setCustomReason(false)
+      qc.invalidateQueries({ queryKey: mineKey })
+      resetForm()
     },
   })
 
-  const deleteMutation = useMutation({
+  const cancel = useMutation({
     ...deleteApiV1AbsenceByIdMutation(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: absenceMineQueryKey }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: mineKey }),
   })
 
-  const children: ParentStudentDto[] = meData?.students ?? []
+  const children = me?.students ?? []
+  const weekendOnly = onlyWeekendDays(date, endDate)
+  const deleteTarget = records.find((r) => r.id === deleteTargetId)
+  const deleteTargetRejected = deleteTarget?.leaveStatus === 'Rejected'
 
   function handleDateChange(value: string) {
     setDate(value)
-    if (endDate && endDate < value) {
-      setEndDate(value)
-    }
+    if (endDate < value) setEndDate(value)
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!studentId || !date) {
-      return
-    }
-    reportMutation.mutate({
+    if (!studentId || !date || weekendOnly) return
+    report.mutate({
       body: {
         studentId,
         date,
         endDate: endDate && endDate !== date ? endDate : null,
-        reason: reason || null,
+        category: kind,
+        reason: reason.trim() || null,
       },
     })
   }
@@ -115,10 +91,12 @@ export default function ParentAbsencePage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-2xl font-semibold text-gray-900">Fravær</h1>
         <button
-          onClick={() => setShowForm((v) => !v)}
+          type="button"
+          onClick={() => (showForm ? resetForm() : setShowForm(true))}
+          data-testid="parent-absence-new"
           className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
         >
-          Indmeld fravær
+          Meld fravær
         </button>
       </div>
 
@@ -127,13 +105,48 @@ export default function ParentAbsencePage() {
           onSubmit={handleSubmit}
           className="bg-white border border-gray-200 rounded-xl p-5 mb-6 space-y-4"
         >
-          <h2 className="font-semibold text-gray-900 text-sm">Nyt fravær</h2>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                ['Illness', 'Syg'],
+                ['ExtraordinaryLeave', 'Fri'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={kind === value}
+                onClick={() => {
+                  setKind(value)
+                  if (value === 'ExtraordinaryLeave' && date < today) handleDateChange(today)
+                }}
+                data-testid={`parent-absence-kind-${value}`}
+                className={`h-12 rounded-lg border text-sm font-medium ${
+                  kind === value
+                    ? 'border-brand-600 bg-brand-50 text-brand-800'
+                    : 'border-gray-300 text-gray-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {kind === 'ExtraordinaryLeave' && (
+            <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+              Skolens leder skal godkende fri. Søg i god tid, før den første dag.
+            </p>
+          )}
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Barn</label>
+            <label htmlFor="absence-child" className="block text-sm font-medium text-gray-700 mb-1">
+              Barn
+            </label>
             <select
+              id="absence-child"
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
               required
+              data-testid="parent-absence-child"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value="">Vælg barn</option>
@@ -146,129 +159,161 @@ export default function ParentAbsencePage() {
           </div>
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fra dato</label>
-              <DatePicker value={date} onChange={handleDateChange} />
+              <span className="block text-sm font-medium text-gray-700 mb-1">Fra dato</span>
+              <DatePicker
+                value={date}
+                onChange={handleDateChange}
+                min={kind === 'ExtraordinaryLeave' ? today : addDaysIso(today, -14)}
+              />
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Til dato (valgfrit)
-              </label>
-              <DatePicker value={endDate} onChange={setEndDate} min={date} />
+              <span className="block text-sm font-medium text-gray-700 mb-1">Til dato</span>
+              <DatePicker value={endDate} onChange={setEndDate} min={date} align="right" />
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Årsag (valgfrit)</label>
-            <select
-              value={customReason ? 'Andet' : reason}
-              onChange={(e) => {
-                if (e.target.value === 'Andet') {
-                  setCustomReason(true)
-                  setReason('')
-                } else {
-                  setCustomReason(false)
-                  setReason(e.target.value)
-                }
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          {weekendOnly && (
+            <p
+              className="text-sm text-amber-900 bg-amber-50 rounded-lg p-3"
+              data-testid="parent-absence-weekend"
             >
-              <option value="">Vælg årsag</option>
-              {REASON_OPTIONS.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-            {customReason && (
-              <input
-                type="text"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Uddyb årsag..."
-                autoFocus
-                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            )}
+              Der er ikke skole i weekenden. Vælg en hverdag.
+            </p>
+          )}
+          <div>
+            <label
+              htmlFor="absence-reason"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              {kind === 'ExtraordinaryLeave'
+                ? 'Hvorfor skal barnet have fri?'
+                : 'Besked til skolen (valgfrit)'}
+            </label>
+            <input
+              id="absence-reason"
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              maxLength={500}
+              data-testid="parent-absence-reason"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {kind === 'ExtraordinaryLeave'
+                ? 'Skriv kort, hvad fri er til, fx familiebegivenhed.'
+                : 'Skriv ikke diagnoser. Det er nok, at barnet er sygt.'}
+            </p>
           </div>
           <div className="flex gap-3">
             <button
               type="submit"
-              disabled={reportMutation.isPending}
+              disabled={report.isPending || weekendOnly}
+              data-testid="parent-absence-submit"
               className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50"
             >
-              {reportMutation.isPending ? 'Sender…' : 'Indmeld'}
+              {report.isPending
+                ? 'Sender…'
+                : kind === 'ExtraordinaryLeave'
+                  ? 'Søg om fri'
+                  : 'Meld syg'}
             </button>
             <button
               type="button"
-              onClick={() => setShowForm(false)}
+              onClick={resetForm}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               Annuller
             </button>
           </div>
-          {reportMutation.isError && (
-            <p className="text-sm text-red-600">Der opstod en fejl. Prøv igen.</p>
+          {report.isError && (
+            <p className="text-sm text-red-600">
+              {problemDetail(report.error) ?? 'Der opstod en fejl. Prøv igen.'}
+            </p>
           )}
         </form>
       )}
 
-      {reports.length === 0 && (
-        <p className="text-sm text-gray-500 py-8">Der er ikke indmeldt fravær endnu.</p>
+      {records.length === 0 && (
+        <p className="text-sm text-gray-500 py-8">Der er ikke registreret fravær.</p>
       )}
 
-      <div className="space-y-3">
-        {reports.map((r) => (
-          <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
+      <ul className="space-y-3">
+        {records.map((r) => (
+          <li
+            key={r.id}
+            className="bg-white border border-gray-200 rounded-xl p-4"
+            data-testid={`parent-absence-record-${r.id}`}
+          >
+            {/* On phones the badge sits on its own row, so it doesn't squeeze the name and date. */}
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+              <div className="min-w-0">
                 <p className="font-medium text-gray-900 text-sm">{r.studentName}</p>
                 <p className="text-sm text-gray-600 mt-0.5">
-                  {formatDate(r.date!)}
-                  {r.endDate ? ` – ${formatDate(r.endDate)}` : ''}
+                  {formatDateRange(r.date, r.endDate)}
                   {r.reason ? ` · ${r.reason}` : ''}
                 </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {r.source === 'Parent' ? 'Meldt af jer' : 'Noteret af skolen'}
+                </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <StatusBadge status={r.status} />
-                {r.status === 'Reported' && (
+              <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 shrink-0">
+                <CategoryBadge record={r} />
+                {r.canCancel && (
                   <button
-                    onClick={() => r.id && setDeleteTargetId(r.id)}
-                    className="text-xs text-gray-400 hover:text-red-600 transition-colors"
+                    type="button"
+                    onClick={() => setDeleteTargetId(r.id)}
+                    data-testid={`parent-absence-cancel-${r.id}`}
+                    className="text-xs text-gray-500 hover:text-red-600 transition-colors"
                   >
-                    Annuller
+                    {r.leaveStatus === 'Rejected' ? 'Fjern' : 'Annuller'}
                   </button>
                 )}
               </div>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
+
+      <p className="mt-8 text-xs text-gray-500" data-testid="parent-absence-retention">
+        Vi gemmer fravær i indeværende og forrige skoleår.
+      </p>
 
       {deleteTargetId && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-5 max-w-sm w-full space-y-4">
             <p className="text-sm text-gray-900">
-              Er du sikker på, at du vil annullere denne fraværsindmeldelse?
+              {deleteTargetRejected
+                ? 'Vil du fjerne den afviste anmodning fra listen?'
+                : 'Vil du annullere dette fravær?'}
             </p>
+            {cancel.isError && (
+              <p className="text-sm text-red-600">
+                {problemDetail(cancel.error) ?? 'Fraværet kunne ikke annulleres.'}
+              </p>
+            )}
             <div className="flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setDeleteTargetId(null)}
+                onClick={() => {
+                  cancel.reset()
+                  setDeleteTargetId(null)
+                }}
                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
               >
                 Fortryd
               </button>
               <button
                 type="button"
-                disabled={deleteMutation.isPending}
-                onClick={() => {
-                  deleteMutation.mutate(
+                disabled={cancel.isPending}
+                data-testid="parent-absence-cancel-confirm"
+                onClick={() =>
+                  cancel.mutate(
                     { path: { id: deleteTargetId } },
                     { onSuccess: () => setDeleteTargetId(null) }
                   )
-                }}
+                }
                 className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                {deleteMutation.isPending ? 'Annullerer…' : 'Ja, annuller'}
+                {cancel.isPending ? 'Gemmer…' : deleteTargetRejected ? 'Ja, fjern' : 'Ja, annuller'}
               </button>
             </div>
           </div>

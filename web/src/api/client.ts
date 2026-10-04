@@ -83,7 +83,7 @@ export type {
   ConflictType,
   DayOfWeek,
   StaffRole,
-  AbsenceStatus,
+  AbsenceCategory,
   SubscriptionStatus,
   BillingInterval,
   NotificationType,
