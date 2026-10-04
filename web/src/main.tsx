@@ -1,5 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot, hydrateRoot } from 'react-dom/client'
+// Fonts are self-hosted: loading them from Google would send every visitor's IP address to the US.
+import '@fontsource/lato/latin-400.css'
+import '@fontsource/lato/latin-700.css'
+import '@fontsource/playfair-display/latin-600.css'
 import './index.css'
 import './api/client'
 import App from './App.tsx'
