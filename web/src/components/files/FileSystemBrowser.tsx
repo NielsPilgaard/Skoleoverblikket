@@ -5,16 +5,19 @@ import {
   getApiV1CoursesOptions,
   getApiV1FilesOptions,
   getApiV1FilesQueryKey,
-  deleteApiV1FilesByIdMutation,
-  deleteApiV1FilesFoldersByIdMutation,
-  patchApiV1FilesFoldersByIdMutation,
   getApiV1BoardFilesOptions,
   getApiV1BoardFilesQueryKey,
-  deleteApiV1BoardFilesByIdMutation,
-  deleteApiV1BoardFilesFoldersByIdMutation,
-  patchApiV1BoardFilesFoldersByIdMutation,
 } from '../../api/generated/@tanstack/react-query.gen'
-import { postApiV1BoardFilesFolders, postApiV1FilesFolders } from '../../api/generated'
+import {
+  deleteApiV1BoardFilesById,
+  deleteApiV1BoardFilesFoldersById,
+  deleteApiV1FilesById,
+  deleteApiV1FilesFoldersById,
+  patchApiV1BoardFilesFoldersById,
+  patchApiV1FilesFoldersById,
+  postApiV1BoardFilesFolders,
+  postApiV1FilesFolders,
+} from '../../api/generated'
 import { uploadFile, uploadBoardFile } from '../../api/upload'
 import type { CourseDto, FolderDto } from '../../api/client'
 import type { BoardFilesControllerBoardFolderDto } from '../../api/generated/types.gen'
@@ -617,15 +620,11 @@ function InlineRename({ variant, folder, onDone }: InlineRenameProps) {
   const [value, setValue] = useState(folder.name ?? '')
 
   const filesQueryKey = variant === 'board' ? getApiV1BoardFilesQueryKey() : getApiV1FilesQueryKey()
-  const { mutationFn: renameStaffFn } = patchApiV1FilesFoldersByIdMutation()
-  const { mutationFn: renameBoardFn } = patchApiV1BoardFilesFoldersByIdMutation()
-
   const mutation = useMutation({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mutationFn: (args: { id: string; name: string }) =>
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
       variant === 'board'
-        ? (renameBoardFn as any)({ path: { id: args.id }, body: { name: args.name } })
-        : (renameStaffFn as any)({ path: { id: args.id }, body: { name: args.name } }),
+        ? patchApiV1BoardFilesFoldersById({ path: { id }, body: { name }, throwOnError: true })
+        : patchApiV1FilesFoldersById({ path: { id }, body: { name }, throwOnError: true }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: filesQueryKey })
       onDone()
@@ -747,25 +746,19 @@ export function FileSystemBrowser({
 
   const filesQueryKey = variant === 'board' ? getApiV1BoardFilesQueryKey() : getApiV1FilesQueryKey()
 
-  const { mutationFn: deleteStaffFileFn } = deleteApiV1FilesByIdMutation()
-  const { mutationFn: deleteBoardFileFn } = deleteApiV1BoardFilesByIdMutation()
   const deleteMutation = useMutation({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mutationFn: (id: string) =>
       variant === 'board'
-        ? (deleteBoardFileFn as any)({ path: { id } })
-        : (deleteStaffFileFn as any)({ path: { id } }),
+        ? deleteApiV1BoardFilesById({ path: { id }, throwOnError: true })
+        : deleteApiV1FilesById({ path: { id }, throwOnError: true }),
     onSuccess: () => qc.invalidateQueries({ queryKey: filesQueryKey }),
   })
 
-  const { mutationFn: deleteStaffFolderFn } = deleteApiV1FilesFoldersByIdMutation()
-  const { mutationFn: deleteBoardFolderFn } = deleteApiV1BoardFilesFoldersByIdMutation()
   const deleteFolderMutation = useMutation({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mutationFn: (id: string) =>
       variant === 'board'
-        ? (deleteBoardFolderFn as any)({ path: { id } })
-        : (deleteStaffFolderFn as any)({ path: { id } }),
+        ? deleteApiV1BoardFilesFoldersById({ path: { id }, throwOnError: true })
+        : deleteApiV1FilesFoldersById({ path: { id }, throwOnError: true }),
     onSuccess: () => qc.invalidateQueries({ queryKey: filesQueryKey }),
   })
 
