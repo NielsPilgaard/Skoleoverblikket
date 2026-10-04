@@ -19,13 +19,22 @@ test('office reports a teacher absent and assigns a vikar to a lektion', async (
   await page.goto('/vikardaekning')
   await expect(page.getByRole('heading', { name: 'Vikardækning' })).toBeVisible({ timeout: 15_000 })
 
-  // Pick a teacher who has lektioner; the seed gives most teachers a full week.
+  // Pick a teacher who has lektioner (the seed gives most teachers a full week) and isn't already
+  // absent today: a second absence for the same day is rejected, so reruns need a fresh teacher.
   const staff = await api<{ id: string; name: string; role: string }[]>(page, '/staff')
-  const teacher = staff.find((s) => s.role === 'Teacher' && s.name !== 'Debug Admin')
-  test.skip(!teacher, 'The seeded school has no teachers.')
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Copenhagen' }).format(new Date())
+  const absences = await api<{ staffId: string }[]>(
+    page,
+    `/staff-absences?from=${today}&to=${today}`
+  )
+  const absentIds = new Set(absences.map((a) => a.staffId))
+  const teacher = staff.find(
+    (s) => s.role === 'Teacher' && s.name !== 'Debug Admin' && !absentIds.has(s.id)
+  )
+  test.skip(!teacher, 'The seeded school has no teacher who is free today.')
 
   await page.getByTestId('cover-report-for-staff').click()
-  await page.getByTestId('cover-staff').selectOption(teacher!.id)
+  await page.getByTestId('cover-report-staff').selectOption(teacher!.id)
   await page.getByTestId('cover-report-submit').click()
 
   const absence = page.locator('[data-testid^="cover-absence-"]').filter({ hasText: teacher!.name }).first()

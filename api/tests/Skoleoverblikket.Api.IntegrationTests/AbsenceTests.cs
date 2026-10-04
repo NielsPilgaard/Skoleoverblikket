@@ -40,8 +40,7 @@ public sealed class AbsenceTests(ApiFactory factory)
 	[Test]
 	public async Task ParentSickReport_IsFinalAndInRegister()
 	{
-		var today = DanishToday();
-		var response = await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, today, reason: "Feber");
+		var response = await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, SchoolDayFrom(DanishToday()), reason: "Feber");
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
 
 		var record = (await RegisterAsync(_admin)).Single(r => r.StudentId == _student.Id);
@@ -58,7 +57,7 @@ public sealed class AbsenceTests(ApiFactory factory)
 	public async Task ParentReport_ForSomeoneElsesChild_Returns403()
 	{
 		var other = await _kit.CreateStudentAsync(_classId, "Anden Elev");
-		var response = await ReportAsync(_parent, other.Id, AbsenceCategory.Illness, DanishToday());
+		var response = await ReportAsync(_parent, other.Id, AbsenceCategory.Illness, SickDay());
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
 	}
 
@@ -82,12 +81,26 @@ public sealed class AbsenceTests(ApiFactory factory)
 		await Assert.That(endBeforeStart.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 	}
 
+	[Test]
+	public async Task ParentReport_OnlyWeekendDays_Returns400_RangeWithSchoolDayIsFine()
+	{
+		var saturday = Enumerable.Range(1, 7).Select(DanishToday().AddDays).First(d => d.DayOfWeek == DayOfWeek.Saturday);
+
+		var sickWeekend = await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, saturday, saturday.AddDays(1));
+		var leaveSaturday = await ReportAsync(_parent, _student.Id, AbsenceCategory.ExtraordinaryLeave, saturday);
+		var leaveIntoMonday = await ReportAsync(_parent, _student.Id, AbsenceCategory.ExtraordinaryLeave, saturday, saturday.AddDays(2));
+
+		await Assert.That(sickWeekend.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+		await Assert.That(leaveSaturday.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+		await Assert.That(leaveIntoMonday.StatusCode).IsEqualTo(HttpStatusCode.Created);
+	}
+
 	// ── Leave requests ───────────────────────────────────────────────────────────
 
 	[Test]
 	public async Task LeaveRequest_ApprovedByAdmin_ParentSeesApproved()
 	{
-		var nextWeek = DanishToday().AddDays(7);
+		var nextWeek = SchoolDayFrom(DanishToday().AddDays(7));
 		await ReportAsync(_parent, _student.Id, AbsenceCategory.ExtraordinaryLeave, nextWeek, nextWeek.AddDays(2), "Bryllup");
 
 		var pending = await _admin.GetFromJsonAsync<List<AbsenceRecordDto>>("/api/v1/absence/leave-requests", JsonOpts);
@@ -108,7 +121,7 @@ public sealed class AbsenceTests(ApiFactory factory)
 	[Test]
 	public async Task LeaveRequest_Rejected_ParentSeesRejectedAndCanRemoveIt()
 	{
-		var nextWeek = DanishToday().AddDays(7);
+		var nextWeek = SchoolDayFrom(DanishToday().AddDays(7));
 		await ReportAsync(_parent, _student.Id, AbsenceCategory.ExtraordinaryLeave, nextWeek);
 		var id = (await ParentRecordsAsync(_parent)).Single().Id;
 
@@ -123,7 +136,7 @@ public sealed class AbsenceTests(ApiFactory factory)
 	[Test]
 	public async Task LeaveDecision_ByTeacher_Returns403()
 	{
-		await ReportAsync(_parent, _student.Id, AbsenceCategory.ExtraordinaryLeave, DanishToday().AddDays(7));
+		await ReportAsync(_parent, _student.Id, AbsenceCategory.ExtraordinaryLeave, SchoolDayFrom(DanishToday().AddDays(7)));
 		var id = (await ParentRecordsAsync(_parent)).Single().Id;
 		var (teacher, _) = await _kit.TeacherAsync("leave-teacher");
 
@@ -135,7 +148,12 @@ public sealed class AbsenceTests(ApiFactory factory)
 	public async Task ParentCancel_PastSickDay_Returns400()
 	{
 		var yesterday = DanishToday().AddDays(-1);
-		await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, yesterday);
+		while (yesterday.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+		{
+			yesterday = yesterday.AddDays(-1);
+		}
+
+		(await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, yesterday)).EnsureSuccessStatusCode();
 		var record = (await ParentRecordsAsync(_parent)).Single();
 		await Assert.That(record.CanCancel).IsFalse();
 
@@ -192,7 +210,7 @@ public sealed class AbsenceTests(ApiFactory factory)
 	[Test]
 	public async Task ChangeCategory_ParentRecord_Returns400()
 	{
-		await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, DanishToday());
+		await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, SickDay());
 		var id = (await RegisterAsync(_admin)).Single().Id;
 
 		var response = await _admin.PutAsJsonAsync($"/api/v1/absence/{id}/category",
@@ -203,7 +221,7 @@ public sealed class AbsenceTests(ApiFactory factory)
 	[Test]
 	public async Task ChangeCategory_TeacherWithoutClassPermission_Returns403()
 	{
-		await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, DanishToday());
+		await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, SickDay());
 		var id = (await RegisterAsync(_admin)).Single().Id;
 		var (_, owner) = await _kit.TeacherAsync("class-owner", "Klassens Lærer");
 		await _kit.RestrictClassToAsync(_classId, owner.Id);
@@ -222,8 +240,8 @@ public sealed class AbsenceTests(ApiFactory factory)
 		var otherClassId = await _kit.CreateClassAsync(_admin, "9.b");
 		var otherStudent = await _kit.CreateStudentAsync(otherClassId, "Elev i 9.b");
 		var otherParent = await _kit.ParentOfAsync(otherStudent.Id, $"parent-{Guid.NewGuid()}");
-		await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, DanishToday());
-		await ReportAsync(otherParent, otherStudent.Id, AbsenceCategory.Illness, DanishToday());
+		await ReportAsync(_parent, _student.Id, AbsenceCategory.Illness, SickDay());
+		await ReportAsync(otherParent, otherStudent.Id, AbsenceCategory.Illness, SickDay());
 
 		var (teacher, staff) = await _kit.TeacherAsync("restricted-teacher");
 		var (_, otherTeacher) = await _kit.TeacherAsync("ninth-grade-teacher", "9.b Lærer");
@@ -242,7 +260,7 @@ public sealed class AbsenceTests(ApiFactory factory)
 	{
 		var sibling = await _kit.CreateStudentAsync(_classId, "Klassekammerat");
 		var otherParent = await _kit.ParentOfAsync(sibling.Id, $"parent-{Guid.NewGuid()}");
-		await ReportAsync(otherParent, sibling.Id, AbsenceCategory.Illness, DanishToday());
+		await ReportAsync(otherParent, sibling.Id, AbsenceCategory.Illness, SickDay());
 
 		await Assert.That((await ParentRecordsAsync(_parent)).Count).IsEqualTo(0);
 		var staffList = await _parent.GetFromJsonAsync<List<AbsenceRecordDto>>("/api/v1/absence", JsonOpts);
@@ -252,7 +270,7 @@ public sealed class AbsenceTests(ApiFactory factory)
 	[Test]
 	public async Task OtherTenant_CannotSeeOrChangeRecords()
 	{
-		await ReportAsync(_parent, _student.Id, AbsenceCategory.ExtraordinaryLeave, DanishToday().AddDays(7));
+		await ReportAsync(_parent, _student.Id, AbsenceCategory.ExtraordinaryLeave, SchoolDayFrom(DanishToday().AddDays(7)));
 		var id = (await RegisterAsync(_admin)).Single().Id;
 
 		var otherKit = new AbsenceTestKit(factory);

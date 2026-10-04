@@ -7,8 +7,8 @@ import {
   getApiV1StaffOptions,
   postApiV1StaffAbsencesMutation,
 } from '../api/generated/@tanstack/react-query.gen'
-import { DatePicker } from '../components/DatePicker'
-import { addDaysIso, formatDateRange, todayIso } from '../lib/absence'
+import { StaffAbsenceForm } from '../components/absence/StaffAbsenceForm'
+import { formatDateTimeRange, todayIso } from '../lib/absence'
 import { problemDetail } from '../lib/problem'
 
 /** Admin: staff fravær and how much of it has vikar cover. */
@@ -17,10 +17,6 @@ export default function SubstituteCoverPage() {
   const qc = useQueryClient()
   const today = todayIso()
   const [showForm, setShowForm] = useState(false)
-  const [staffId, setStaffId] = useState('')
-  const [date, setDate] = useState(today)
-  const [endDate, setEndDate] = useState(today)
-  const [reason, setReason] = useState('')
 
   const { data: staff = [] } = useQuery(getApiV1StaffOptions())
   const { data: absences = [], isLoading } = useQuery(getApiV1StaffAbsencesOptions())
@@ -29,14 +25,17 @@ export default function SubstituteCoverPage() {
     ...postApiV1StaffAbsencesMutation(),
     onSuccess: () => {
       setShowForm(false)
-      setStaffId('')
-      setReason('')
       qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1StaffAbsences' }] })
     },
   })
 
-  const upcoming = absences.filter((a) => (a.endDate ?? a.date) >= today)
-  const past = absences.filter((a) => (a.endDate ?? a.date) < today)
+  // Soonest first for what's coming, most recent first for what's over.
+  const upcoming = absences
+    .filter((a) => (a.endDate ?? a.date) >= today)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.staffName.localeCompare(b.staffName, 'da'))
+  const past = absences
+    .filter((a) => (a.endDate ?? a.date) < today)
+    .sort((a, b) => b.date.localeCompare(a.date))
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
@@ -53,95 +52,21 @@ export default function SubstituteCoverPage() {
       </div>
 
       {showForm && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (!staffId) return
-            report.mutate({
-              body: {
-                staffId,
-                date,
-                endDate: endDate !== date ? endDate : null,
-                reason: reason.trim() || null,
-              },
-            })
-          }}
-          className="bg-white border border-gray-200 rounded-xl p-5 space-y-4"
-        >
-          <div>
-            <label htmlFor="cover-staff" className="block text-sm font-medium text-gray-700 mb-1">
-              Medarbejder
-            </label>
-            <select
-              id="cover-staff"
-              value={staffId}
-              onChange={(e) => setStaffId(e.target.value)}
-              required
-              data-testid="cover-staff"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            >
-              <option value="">Vælg medarbejder</option>
-              {staff.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <span className="block text-sm font-medium text-gray-700 mb-1">Fra dato</span>
-              <DatePicker
-                value={date}
-                onChange={(v) => {
-                  setDate(v)
-                  if (endDate < v) setEndDate(v)
-                }}
-                min={addDaysIso(today, -14)}
-              />
-            </div>
-            <div className="flex-1">
-              <span className="block text-sm font-medium text-gray-700 mb-1">Til dato</span>
-              <DatePicker value={endDate} onChange={setEndDate} min={date} />
-            </div>
-          </div>
-          <div>
-            <label htmlFor="cover-reason" className="block text-sm font-medium text-gray-700 mb-1">
-              Note (valgfrit)
-            </label>
-            <input
-              id="cover-reason"
-              type="text"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              maxLength={500}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-            <p className="text-xs text-gray-500 mt-1">Skriv ikke diagnoser.</p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              disabled={report.isPending}
-              data-testid="cover-report-submit"
-              className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50"
-            >
-              {report.isPending ? 'Gemmer…' : 'Meld fravær'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
-            >
-              Annuller
-            </button>
-          </div>
-          {report.isError && (
-            <p className="text-sm text-red-600">
-              {problemDetail(report.error) ?? 'Fraværet kunne ikke gemmes.'}
-            </p>
-          )}
-        </form>
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <StaffAbsenceForm
+            staff={staff}
+            submitLabel="Meld fravær"
+            pendingLabel="Gemmer…"
+            reasonLabel="Note (valgfrit)"
+            isPending={report.isPending}
+            error={
+              report.isError ? (problemDetail(report.error) ?? 'Fraværet kunne ikke gemmes.') : null
+            }
+            onSubmit={(v) => report.mutate({ body: v })}
+            onCancel={() => setShowForm(false)}
+            testIdPrefix="cover-report"
+          />
+        </div>
       )}
 
       {isLoading && <p className="text-sm text-gray-400">Indlæser…</p>}
@@ -172,6 +97,8 @@ function AbsenceList({
     staffName: string
     date: string
     endDate?: string | null
+    startTime?: string | null
+    endTime?: string | null
     reason?: string | null
     affectedLessonCount: number
     coveredLessonCount: number
@@ -191,7 +118,7 @@ function AbsenceList({
               <div>
                 <p className="text-sm font-medium text-gray-900">{a.staffName}</p>
                 <p className="text-sm text-gray-600">
-                  {formatDateRange(a.date, a.endDate)}
+                  {formatDateTimeRange(a.date, a.endDate, a.startTime, a.endTime)}
                   {a.reason ? ` · ${a.reason}` : ''}
                 </p>
               </div>

@@ -34,6 +34,7 @@ public sealed class AbsenceController(
 			ParentReportResult.Created => CreatedAtAction(nameof(GetMine), new { }, null),
 			ParentReportResult.NotYourChild => Forbid(),
 			ParentReportResult.InvalidCategory => Problem("Vælg syg eller fri", statusCode: 400),
+			ParentReportResult.NoSchoolDays => Problem("Der er ingen skoledage i den valgte periode. Vælg en hverdag uden ferie eller lukkedag.", statusCode: 400),
 			_ => Problem("Ugyldige datoer. Fri skal søges før den første dag, og sygdom kan meldes op til 14 dage tilbage.", statusCode: 400),
 		};
 	}

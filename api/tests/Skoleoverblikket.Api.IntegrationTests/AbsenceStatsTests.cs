@@ -175,7 +175,7 @@ public sealed class AbsenceStatsTests(ApiFactory factory)
 	[Test]
 	public async Task SchoolYearExcel_AdminOnly_RetainedYearsOnly_OwnTenantOnly()
 	{
-		var today = DanishToday();
+		var today = SickDay();
 		var schoolYear = today.Month >= 8 ? today.Year : today.Year - 1;
 		var classId = await _kit.CreateClassAsync(_admin, "4.b", 4);
 		var student = await _kit.CreateStudentAsync(classId, "Egen Elev");

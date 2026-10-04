@@ -112,6 +112,34 @@ public sealed class AbsenceTestKit(ApiFactory factory)
 
 	private static bool IsWeekday(DateOnly d) => d.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday);
 
+	/// <summary>The first weekday on or after <paramref name="date"/>. Parents can't report for a weekend.</summary>
+	public static DateOnly SchoolDayFrom(DateOnly date)
+	{
+		while (!IsWeekday(date))
+		{
+			date = date.AddDays(1);
+		}
+
+		return date;
+	}
+
+	/// <summary>
+	/// A weekday a parent can report sick for: the latest one up to today, or the next one if going
+	/// back would cross into the previous school year (1 August).
+	/// </summary>
+	public static DateOnly SickDay()
+	{
+		var today = DanishToday();
+		var day = today;
+		while (!IsWeekday(day))
+		{
+			day = day.AddDays(-1);
+		}
+
+		var schoolYear = (DateOnly d) => d.Month >= 8 ? d.Year : d.Year - 1;
+		return schoolYear(day) == schoolYear(today) ? day : SchoolDayFrom(today);
+	}
+
 	/// <summary>
 	/// The latest weekday up to today in the current quarter — a day fremmøde can be noted for — or
 	/// null in the rare case the quarter so far is only a weekend.

@@ -6840,6 +6840,46 @@
           }
         }
       },
+      "put": {
+        "tags": [
+          "StaffAbsence"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStaffAbsenceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStaffAbsenceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStaffAbsenceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
       "delete": {
         "tags": [
           "StaffAbsence"
@@ -12880,6 +12920,16 @@
           "reason": {
             "type": "string",
             "nullable": true
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -13618,6 +13668,16 @@
             "format": "date",
             "nullable": true
           },
+          "startTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
           "reason": {
             "type": "string",
             "nullable": true
@@ -13862,7 +13922,8 @@
           "roomCount",
           "schemasComplete",
           "schemasTotal",
-          "staffCount"
+          "staffCount",
+          "uncoveredLessonCount"
         ],
         "type": "object",
         "properties": {
@@ -13928,6 +13989,10 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "uncoveredLessonCount": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -14732,6 +14797,38 @@
           },
           "isBreak": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateStaffAbsenceRequest": {
+        "required": [
+          "date"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

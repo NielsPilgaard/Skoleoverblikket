@@ -17,3 +17,15 @@ export function getISOWeeksInYear(year: number): number {
   const dec31 = new Date(Date.UTC(year, 11, 31)).getUTCDay()
   return jan1 === 4 || dec31 === 4 ? 53 : 52
 }
+
+/**
+ * The day whose week a ugeplan opens on: today, or the coming Monday on a Saturday or Sunday,
+ * when parents and staff are getting ready for next week. Admin and parent views must agree.
+ */
+export function getPlanningDate(now: Date = new Date()): Date {
+  const day = now.getDay()
+  if (day !== 0 && day !== 6) return now
+  const monday = new Date(now)
+  monday.setDate(now.getDate() + (day === 6 ? 2 : 1))
+  return monday
+}

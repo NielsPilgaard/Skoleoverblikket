@@ -38,6 +38,19 @@ export default function PrivacyPolicyPage() {
             skemaer.
           </Li>
           <Li>
+            <strong>Elever og forældre:</strong> navne, klasse og de kontaktoplysninger, skolen
+            eller forældrene selv indtaster.
+          </Li>
+          <Li>
+            <strong>Fravær og fremmøde:</strong> elevers daglige fremmøde og fravær med kategorien
+            sygdom, ekstraordinær frihed eller ulovligt fravær, forældres sygemeldinger og
+            anmodninger om fri samt skolens afgørelser. Vi beder om, at der ikke skrives diagnoser.
+          </Li>
+          <Li>
+            <strong>Medarbejderfravær og vikardækning:</strong> hvornår en medarbejder er
+            fraværende, en valgfri note og hvilke vikarer der dækker de berørte lektioner.
+          </Li>
+          <Li>
             <strong>Uploadede filer:</strong> filer der uploades pr. skole, og som kun er
             tilgængelige for den pågældende skoles brugere.
           </Li>
@@ -110,6 +123,7 @@ export default function PrivacyPolicyPage() {
           Elevers fravær og fremmøde gemmes i indeværende og forrige skoleår. Skoleåret skifter 1.
           august, og så slettes fravær fra det ældste skoleår automatisk. Skolen får besked 1. juli,
           så den kan hente fraværet som Excel-fil først. Fravær slettes også, når en elev slettes.
+          Medarbejderfravær følger samme regel.
         </p>
       </Section>
 

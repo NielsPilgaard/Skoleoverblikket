@@ -56,6 +56,24 @@ export function formatDateRange(date: string, endDate?: string | null): string {
     : formatShortDate(date)
 }
 
+/** A date range plus the time window of a partial day: "3. okt. kl. 08.00–10.30". */
+export function formatDateTimeRange(
+  date: string,
+  endDate?: string | null,
+  startTime?: string | null,
+  endTime?: string | null
+): string {
+  const range = formatDateRange(date, endDate)
+  return startTime && endTime
+    ? `${range} kl. ${formatClock(startTime)}–${formatClock(endTime)}`
+    : range
+}
+
+/** "08:00:00" → "08.00", the Danish clock format. */
+export function formatClock(time: string): string {
+  return time.slice(0, 5).replace(':', '.')
+}
+
 /** yyyy-mm-dd → "fredag 3. oktober". */
 export function formatLongDate(iso: string): string {
   return new Date(`${iso}T12:00:00`).toLocaleDateString('da-DK', {
@@ -63,6 +81,35 @@ export function formatLongDate(iso: string): string {
     day: 'numeric',
     month: 'long',
   })
+}
+
+/**
+ * Upper-cases only the first letter: "mandag 5. oktober" → "Mandag 5. oktober". Use this, not the
+ * Tailwind `capitalize` class, which would also give "Oktober".
+ */
+export function capitalizeFirst(text: string): string {
+  return text.charAt(0).toLocaleUpperCase('da-DK') + text.slice(1)
+}
+
+/** Saturday or Sunday. Holidays come from the school calendar, so only the server knows those. */
+export function isWeekend(iso: string): boolean {
+  const day = new Date(`${iso}T12:00:00`).getDay()
+  return day === 0 || day === 6
+}
+
+/** The first weekday on or after the date: a sensible default for a report made at the weekend. */
+export function weekdayFrom(iso: string): string {
+  let d = iso
+  while (isWeekend(d)) d = addDaysIso(d, 1)
+  return d
+}
+
+/** True when every day in [date, endDate] falls on a weekend. */
+export function onlyWeekendDays(date: string, endDate: string): boolean {
+  for (let d = date; d <= endDate; d = addDaysIso(d, 1)) {
+    if (!isWeekend(d)) return false
+  }
+  return true
 }
 
 export function addDaysIso(iso: string, days: number): string {
@@ -86,6 +133,11 @@ export function schoolYearLabel(start: number): string {
 export function currentQuarter(iso: string): { year: number; quarter: number } {
   const [y, m] = iso.split('-').map(Number)
   return { year: y, quarter: Math.floor((m - 1) / 3) + 1 }
+}
+
+/** "1 dag", "2,5 dage". */
+export function formatDayCount(days: number): string {
+  return `${formatDays(days)} ${days === 1 ? 'dag' : 'dage'}`
 }
 
 /** Days with one decimal, Danish comma: 2.5 → "2,5". */
