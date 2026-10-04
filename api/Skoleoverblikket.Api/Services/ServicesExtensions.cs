@@ -16,6 +16,7 @@ public static class ServicesExtensions
 		services.AddScoped<SubscriptionService>();
 		services.AddScoped<FileUploadService>();
 		services.AddScoped<ClassMembershipService>();
+		services.AddScoped<ComplianceCoverageService>();
 		services.AddScoped<AbsenceService>();
 		services.AddScoped<AbsenceStatsService>();
 		services.AddScoped<StaffAbsenceService>();

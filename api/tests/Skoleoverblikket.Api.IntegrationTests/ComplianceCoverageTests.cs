@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
-using Skoleoverblikket.Api.Controllers;
+using Skoleoverblikket.Api.Services;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using Skoleoverblikket.Api.Models;
@@ -136,7 +136,7 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 
 		var classDto = dto!.Classes.FirstOrDefault(c => c.ClassId == klass.Id);
@@ -163,7 +163,7 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 		await Assert.That(dto!.Classes.Any(c => c.ClassId == klass.Id)).IsFalse();
 	}
@@ -185,7 +185,7 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 
 		var classDto = dto!.Classes.FirstOrDefault(c => c.ClassId == klass.Id);
@@ -219,7 +219,7 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 
 		var classDto = dto!.Classes.FirstOrDefault(c => c.ClassId == klass.Id);
@@ -253,7 +253,7 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 
 		var classDto = dto!.Classes.FirstOrDefault(c => c.ClassId == klass.Id);
@@ -273,7 +273,7 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 
 		var sortTestClasses = dto!.Classes
@@ -301,11 +301,44 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		var dto = await response.Content.ReadFromJsonAsync<ComplianceCoverageController.CoverageResponseDto>(JsonOpts);
+		var dto = await response.Content.ReadFromJsonAsync<CoverageResponseDto>(JsonOpts);
 		await Assert.That(dto).IsNotNull();
 
 		var classDto = dto!.Classes.FirstOrDefault(c => c.ClassId == klass.Id);
 		await Assert.That(classDto).IsNotNull();
 		await Assert.That(classDto!.UnexpectedGradeCategories).Contains(SubjectCategory.Tysk.ToString());
+
+		// The scheduled hours still show up in the Tysk column instead of an empty "—"
+		var tyskSubject = classDto.Subjects.FirstOrDefault(s => s.Category == SubjectCategory.Tysk.ToString());
+		await Assert.That(tyskSubject).IsNotNull();
+		await Assert.That(tyskSubject!.Status).IsEqualTo("extra");
+		await Assert.That(tyskSubject.WeeklyHours).IsEqualTo(1.0);
+		await Assert.That(tyskSubject.VejledendeWeeklyHours).IsEqualTo(0.0);
+	}
+
+	[Test]
+	public async Task GetCoverage_SubjectTaughtInBoernehaveklasse_NotFlaggedButShownAsExtra()
+	{
+		// Børnehaveklassen has no fagrække, so Dansk there must not raise a warning
+		var (klass, schema) = await CreateGradedClassWithActiveSchemaAsync(0, "0.dansk-test");
+		var danskCourse = await CreateCourseWithCategoryAsync(SubjectCategory.Dansk, "Dansk i 0. klasse");
+		var staff = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId);
+		var timeSlot = await TestDataBuilder.CreateTimeSlotAsync(
+			_factory.Services, _tenantId,
+			new TimeOnly(8, 0), new TimeOnly(9, 0));
+		await TestDataBuilder.CreateSchemaSlotAsync(
+			_factory.Services, _tenantId,
+			schema.Id, timeSlot.Id, danskCourse.Id, staff.Id);
+
+		var response = await _adminClient.GetAsync("/api/v1/compliance-coverage/coverage");
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+		var dto = await response.Content.ReadFromJsonAsync<CoverageResponseDto>(JsonOpts);
+		var classDto = dto!.Classes.FirstOrDefault(c => c.ClassId == klass.Id);
+		await Assert.That(classDto).IsNotNull();
+		await Assert.That(classDto!.UnexpectedGradeCategories).IsEmpty();
+		var danskSubject = classDto.Subjects.FirstOrDefault(s => s.Category == SubjectCategory.Dansk.ToString());
+		await Assert.That(danskSubject).IsNotNull();
+		await Assert.That(danskSubject!.Status).IsEqualTo("extra");
 	}
 }

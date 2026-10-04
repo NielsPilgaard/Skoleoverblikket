@@ -334,6 +334,14 @@ export type ClassChatControllerPresignAttachmentResponse = {
     contentType: string;
 };
 
+export type ClassCoverageDto = {
+    classId: string;
+    className: string;
+    gradeLevel: number;
+    subjects?: Array<SubjectCoverageDto>;
+    unexpectedGradeCategories?: Array<string>;
+};
+
 export type ClassPermissionsControllerClassPermissionDto = {
     staffId: string;
     staffName: string;
@@ -382,50 +390,6 @@ export type ClassesControllerYearRollRequest = {
     renames?: Array<ClassesControllerYearRollRenameEntry>;
     archive?: Array<string>;
     create?: Array<ClassesControllerYearRollCreateEntry>;
-};
-
-export type ComplianceCoverageControllerClassCoverageDto = {
-    classId: string;
-    className: string;
-    gradeLevel: number;
-    subjects?: Array<ComplianceCoverageControllerSubjectCoverageDto>;
-    unexpectedGradeCategories?: Array<string>;
-};
-
-export type ComplianceCoverageControllerCoverageResponseDto = {
-    classes?: Array<ComplianceCoverageControllerClassCoverageDto>;
-    classesMissingGradeLevel: number;
-    activeSchemaCount: number;
-};
-
-export type ComplianceCoverageControllerCreateSnapshotRequest = {
-    reason?: string | null;
-};
-
-export type ComplianceCoverageControllerSnapshotDetailDto = {
-    id: string;
-    schoolYear: string;
-    createdAt: string;
-    createdByStaffName: string;
-    reason?: string | null;
-    data?: ComplianceCoverageControllerCoverageResponseDto;
-};
-
-export type ComplianceCoverageControllerSnapshotSummaryDto = {
-    id: string;
-    schoolYear: string;
-    createdAt: string;
-    createdByStaffName: string;
-    reason?: string | null;
-};
-
-export type ComplianceCoverageControllerSubjectCoverageDto = {
-    category: string;
-    weeklyHours: number;
-    vejledendeWeeklyHours: number;
-    annualHours: number;
-    vejledendeAnnualHours: number;
-    status: string;
 };
 
 export type ConflictInfo = {
@@ -520,6 +484,33 @@ export type CoursesControllerUpsertCourseRequest = {
     description?: string | null;
     color?: string | null;
     category?: SubjectCategory;
+};
+
+export type CoverageResponseDto = {
+    classes?: Array<ClassCoverageDto>;
+    classesMissingGradeLevel: number;
+    activeSchemaCount: number;
+};
+
+export type CoverageSnapshotDetailDto = {
+    id: string;
+    schoolYear: string;
+    createdAt: string;
+    createdByStaffName: string;
+    reason?: string | null;
+    data?: CoverageResponseDto;
+};
+
+export type CoverageSnapshotSummaryDto = {
+    id: string;
+    schoolYear: string;
+    createdAt: string;
+    createdByStaffName: string;
+    reason?: string | null;
+};
+
+export type CreateCoverageSnapshotRequest = {
+    reason?: string | null;
 };
 
 export type CreateTenantRequest = {
@@ -1392,6 +1383,15 @@ export type SubProcessorNoticeResultDto = {
 };
 
 export type SubjectCategory = 'Dansk' | 'Matematik' | 'Engelsk' | 'Naturfag' | 'Historie' | 'Musik' | 'Idraet' | 'Kristendomskundskab' | 'Billedkunst' | 'HaandvaerkOgDesign' | 'Tysk' | 'Fransk' | 'Geografi' | 'Biologi' | 'FysikKemi' | 'Samfundsfag' | 'Fri' | 'Madkundskab';
+
+export type SubjectCoverageDto = {
+    category: string;
+    weeklyHours: number;
+    vejledendeWeeklyHours: number;
+    annualHours: number;
+    vejledendeAnnualHours: number;
+    status: string;
+};
 
 export type SubscriptionModule = 'ParentModule' | 'BoardModule';
 
@@ -2704,7 +2704,7 @@ export type GetApiV1ComplianceCoverageCoverageResponses = {
     /**
      * OK
      */
-    200: ComplianceCoverageControllerCoverageResponseDto;
+    200: CoverageResponseDto;
 };
 
 export type GetApiV1ComplianceCoverageCoverageResponse = GetApiV1ComplianceCoverageCoverageResponses[keyof GetApiV1ComplianceCoverageCoverageResponses];
@@ -2720,13 +2720,13 @@ export type GetApiV1ComplianceCoverageSnapshotsResponses = {
     /**
      * OK
      */
-    200: Array<ComplianceCoverageControllerSnapshotSummaryDto>;
+    200: Array<CoverageSnapshotSummaryDto>;
 };
 
 export type GetApiV1ComplianceCoverageSnapshotsResponse = GetApiV1ComplianceCoverageSnapshotsResponses[keyof GetApiV1ComplianceCoverageSnapshotsResponses];
 
 export type PostApiV1ComplianceCoverageSnapshotsData = {
-    body?: ComplianceCoverageControllerCreateSnapshotRequest;
+    body?: CreateCoverageSnapshotRequest;
     path?: never;
     query?: never;
     url: '/api/v1/compliance-coverage/snapshots';
@@ -2736,7 +2736,7 @@ export type PostApiV1ComplianceCoverageSnapshotsResponses = {
     /**
      * OK
      */
-    200: ComplianceCoverageControllerSnapshotSummaryDto;
+    200: CoverageSnapshotSummaryDto;
 };
 
 export type PostApiV1ComplianceCoverageSnapshotsResponse = PostApiV1ComplianceCoverageSnapshotsResponses[keyof PostApiV1ComplianceCoverageSnapshotsResponses];
@@ -2770,7 +2770,7 @@ export type GetApiV1ComplianceCoverageSnapshotsByIdResponses = {
     /**
      * OK
      */
-    200: ComplianceCoverageControllerSnapshotDetailDto;
+    200: CoverageSnapshotDetailDto;
 };
 
 export type GetApiV1ComplianceCoverageSnapshotsByIdResponse = GetApiV1ComplianceCoverageSnapshotsByIdResponses[keyof GetApiV1ComplianceCoverageSnapshotsByIdResponses];

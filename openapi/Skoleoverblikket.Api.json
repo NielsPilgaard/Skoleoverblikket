@@ -2475,17 +2475,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+                  "$ref": "#/components/schemas/CoverageResponseDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+                  "$ref": "#/components/schemas/CoverageResponseDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
+                  "$ref": "#/components/schemas/CoverageResponseDto"
                 }
               }
             }
@@ -2502,17 +2502,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ComplianceCoverageController_CreateSnapshotRequest"
+                "$ref": "#/components/schemas/CreateCoverageSnapshotRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ComplianceCoverageController_CreateSnapshotRequest"
+                "$ref": "#/components/schemas/CreateCoverageSnapshotRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ComplianceCoverageController_CreateSnapshotRequest"
+                "$ref": "#/components/schemas/CreateCoverageSnapshotRequest"
               }
             }
           }
@@ -2523,17 +2523,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                  "$ref": "#/components/schemas/CoverageSnapshotSummaryDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                  "$ref": "#/components/schemas/CoverageSnapshotSummaryDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                  "$ref": "#/components/schemas/CoverageSnapshotSummaryDto"
                 }
               }
             }
@@ -2552,7 +2552,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                    "$ref": "#/components/schemas/CoverageSnapshotSummaryDto"
                   }
                 }
               },
@@ -2560,7 +2560,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                    "$ref": "#/components/schemas/CoverageSnapshotSummaryDto"
                   }
                 }
               },
@@ -2568,7 +2568,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotSummaryDto"
+                    "$ref": "#/components/schemas/CoverageSnapshotSummaryDto"
                   }
                 }
               }
@@ -2599,17 +2599,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotDetailDto"
+                  "$ref": "#/components/schemas/CoverageSnapshotDetailDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotDetailDto"
+                  "$ref": "#/components/schemas/CoverageSnapshotDetailDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ComplianceCoverageController_SnapshotDetailDto"
+                  "$ref": "#/components/schemas/CoverageSnapshotDetailDto"
                 }
               }
             }
@@ -10385,6 +10385,40 @@
         },
         "additionalProperties": false
       },
+      "ClassCoverageDto": {
+        "required": [
+          "classId",
+          "className",
+          "gradeLevel"
+        ],
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "gradeLevel": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubjectCoverageDto"
+            }
+          },
+          "unexpectedGradeCategories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "ClassPermissionsController_ClassPermissionDto": {
         "required": [
           "grantedAt",
@@ -10568,174 +10602,6 @@
             "items": {
               "$ref": "#/components/schemas/ClassesController_YearRollCreateEntry"
             }
-          }
-        },
-        "additionalProperties": false
-      },
-      "ComplianceCoverageController_ClassCoverageDto": {
-        "required": [
-          "classId",
-          "className",
-          "gradeLevel"
-        ],
-        "type": "object",
-        "properties": {
-          "classId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "className": {
-            "type": "string"
-          },
-          "gradeLevel": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "subjects": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ComplianceCoverageController_SubjectCoverageDto"
-            }
-          },
-          "unexpectedGradeCategories": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "additionalProperties": false
-      },
-      "ComplianceCoverageController_CoverageResponseDto": {
-        "required": [
-          "activeSchemaCount",
-          "classesMissingGradeLevel"
-        ],
-        "type": "object",
-        "properties": {
-          "classes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ComplianceCoverageController_ClassCoverageDto"
-            }
-          },
-          "classesMissingGradeLevel": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "activeSchemaCount": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ComplianceCoverageController_CreateSnapshotRequest": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "maxLength": 500,
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ComplianceCoverageController_SnapshotDetailDto": {
-        "required": [
-          "createdAt",
-          "createdByStaffName",
-          "id",
-          "schoolYear"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "schoolYear": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdByStaffName": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string",
-            "nullable": true
-          },
-          "data": {
-            "$ref": "#/components/schemas/ComplianceCoverageController_CoverageResponseDto"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ComplianceCoverageController_SnapshotSummaryDto": {
-        "required": [
-          "createdAt",
-          "createdByStaffName",
-          "id",
-          "schoolYear"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "schoolYear": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdByStaffName": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ComplianceCoverageController_SubjectCoverageDto": {
-        "required": [
-          "annualHours",
-          "category",
-          "status",
-          "vejledendeAnnualHours",
-          "vejledendeWeeklyHours",
-          "weeklyHours"
-        ],
-        "type": "object",
-        "properties": {
-          "category": {
-            "type": "string"
-          },
-          "weeklyHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "vejledendeWeeklyHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "annualHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "vejledendeAnnualHours": {
-            "type": "number",
-            "format": "double"
-          },
-          "status": {
-            "type": "string"
           }
         },
         "additionalProperties": false
@@ -11101,6 +10967,104 @@
           },
           "category": {
             "$ref": "#/components/schemas/SubjectCategory"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CoverageResponseDto": {
+        "required": [
+          "activeSchemaCount",
+          "classesMissingGradeLevel"
+        ],
+        "type": "object",
+        "properties": {
+          "classes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassCoverageDto"
+            }
+          },
+          "classesMissingGradeLevel": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeSchemaCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CoverageSnapshotDetailDto": {
+        "required": [
+          "createdAt",
+          "createdByStaffName",
+          "id",
+          "schoolYear"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "schoolYear": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdByStaffName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/CoverageResponseDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CoverageSnapshotSummaryDto": {
+        "required": [
+          "createdAt",
+          "createdByStaffName",
+          "id",
+          "schoolYear"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "schoolYear": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdByStaffName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateCoverageSnapshotRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -14468,6 +14432,42 @@
           "Madkundskab"
         ],
         "type": "string"
+      },
+      "SubjectCoverageDto": {
+        "required": [
+          "annualHours",
+          "category",
+          "status",
+          "vejledendeAnnualHours",
+          "vejledendeWeeklyHours",
+          "weeklyHours"
+        ],
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "weeklyHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "vejledendeWeeklyHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "annualHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "vejledendeAnnualHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       },
       "SubscriptionModule": {
         "enum": [
