@@ -77,7 +77,7 @@ status: 'Proposed'
 
 - [ ] [ImportPage.tsx](../web/src/pages/ImportPage.tsx): one line at the top: "Kommer I fra et andet system? Vi sætter jeres skema op gratis. [Få hjælp]" → `/book-demo?emne=flytning`. `data-testid="import-migration-help-link"`.
 - [ ] [SchoolSetupWizardPage.tsx](../web/src/pages/SchoolSetupWizardPage.tsx): the same line on the first step.
-- [ ] Founder welcome email ([task 52](52-founder-welcome-email.md)): add one sentence if that task isn't done yet, otherwise a follow-up.
+- [ ] Founder welcome email ([task 52](completed/52-founder-welcome-email.md)): add one sentence if that task isn't done yet, otherwise a follow-up.
 
 ### 6. Runbook: `docs/MIGRATION_HELP.md`
 
