@@ -6,9 +6,16 @@ import {
   getApiV1StaffAbsencesMineOptions,
   getApiV1SubstitutionsMineOptions,
   postApiV1StaffAbsencesMutation,
+  putApiV1StaffAbsencesByIdMutation,
 } from '../api/generated/@tanstack/react-query.gen'
-import { DatePicker } from '../components/DatePicker'
-import { addDaysIso, formatDateRange, formatLongDate, todayIso } from '../lib/absence'
+import { StaffAbsenceForm } from '../components/absence/StaffAbsenceForm'
+import {
+  addDaysIso,
+  capitalizeFirst,
+  formatDateTimeRange,
+  formatLongDate,
+  todayIso,
+} from '../lib/absence'
 import { problemDetail } from '../lib/problem'
 
 /** Staff: report yourself absent, see your reports, and see the lektioner you cover as vikar. */
@@ -16,10 +23,9 @@ export default function StaffAbsencePage() {
   usePageTitle('Mit fravær')
   const qc = useQueryClient()
   const today = todayIso()
-  const [date, setDate] = useState(today)
-  const [endDate, setEndDate] = useState(today)
-  const [reason, setReason] = useState('')
   const [sent, setSent] = useState(false)
+  const [formKey, setFormKey] = useState(0)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const { data: absences = [] } = useQuery(getApiV1StaffAbsencesMineOptions())
   const { data: substitutions = [] } = useQuery(getApiV1SubstitutionsMineOptions())
@@ -28,7 +34,15 @@ export default function StaffAbsencePage() {
     ...postApiV1StaffAbsencesMutation(),
     onSuccess: () => {
       setSent(true)
-      setReason('')
+      setFormKey((k) => k + 1)
+      qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1StaffAbsencesMine' }] })
+    },
+  })
+
+  const update = useMutation({
+    ...putApiV1StaffAbsencesByIdMutation(),
+    onSuccess: () => {
+      setEditingId(null)
       qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1StaffAbsencesMine' }] })
     },
   })
@@ -38,82 +52,39 @@ export default function StaffAbsencePage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1StaffAbsencesMine' }] }),
   })
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setSent(false)
-    report.mutate({
-      body: {
-        date,
-        endDate: endDate !== date ? endDate : null,
-        reason: reason.trim() || null,
-      },
-    })
-  }
-
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
       <h1 className="font-display text-2xl font-semibold text-gray-900">Mit fravær</h1>
 
-      <form onSubmit={submit} className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
         <h2 className="text-sm font-semibold text-gray-900">Meld fravær</h2>
         <p className="text-sm text-gray-600">
           Kontoret får besked med det samme og finder vikarer til dine lektioner.
         </p>
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <span className="block text-sm font-medium text-gray-700 mb-1">Fra dato</span>
-            <DatePicker
-              value={date}
-              onChange={(v) => {
-                setDate(v)
-                if (endDate < v) setEndDate(v)
-              }}
-              min={addDaysIso(today, -14)}
-            />
-          </div>
-          <div className="flex-1">
-            <span className="block text-sm font-medium text-gray-700 mb-1">Til dato</span>
-            <DatePicker value={endDate} onChange={setEndDate} min={date} />
-          </div>
-        </div>
-        <div>
-          <label
-            htmlFor="staff-absence-reason"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Besked til kontoret (valgfrit)
-          </label>
-          <input
-            id="staff-absence-reason"
-            type="text"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            maxLength={500}
-            placeholder="Fx syg, kursus, barns første sygedag"
-            data-testid="staff-absence-reason"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-          />
-          <p className="text-xs text-gray-500 mt-1">Skriv ikke diagnoser.</p>
-        </div>
-        <button
-          type="submit"
-          disabled={report.isPending}
-          data-testid="staff-absence-submit"
-          className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50"
-        >
-          {report.isPending ? 'Sender…' : 'Meld fravær'}
-        </button>
+        <StaffAbsenceForm
+          key={formKey}
+          submitLabel="Meld fravær"
+          pendingLabel="Sender…"
+          reasonLabel="Besked til kontoret (valgfrit)"
+          reasonPlaceholder="Fx syg, kursus, barns første sygedag"
+          isPending={report.isPending}
+          error={
+            report.isError
+              ? (problemDetail(report.error) ?? 'Fraværet kunne ikke meldes. Prøv igen.')
+              : null
+          }
+          onSubmit={({ staffId: _, ...body }) => {
+            setSent(false)
+            report.mutate({ body })
+          }}
+          testIdPrefix="staff-absence"
+        />
         {sent && (
           <p className="text-sm text-green-700" data-testid="staff-absence-sent">
             Fraværet er meldt. God bedring, hvis du er syg.
           </p>
         )}
-        {report.isError && (
-          <p className="text-sm text-red-600">
-            {problemDetail(report.error) ?? 'Fraværet kunne ikke meldes. Prøv igen.'}
-          </p>
-        )}
-      </form>
+      </div>
 
       <section>
         <h2 className="text-sm font-semibold text-gray-900 mb-2">Dine vikartimer</h2>
@@ -126,8 +97,9 @@ export default function StaffAbsencePage() {
                 key={`${s.date}-${s.startTime}-${s.className}`}
                 className="bg-white border border-gray-200 rounded-xl px-4 py-3"
               >
-                <p className="text-sm font-medium text-gray-900 capitalize">
-                  {formatLongDate(s.date)} · {s.startTime.slice(0, 5)}–{s.endTime.slice(0, 5)}
+                <p className="text-sm font-medium text-gray-900">
+                  {capitalizeFirst(formatLongDate(s.date))} · {s.startTime.slice(0, 5)}–
+                  {s.endTime.slice(0, 5)}
                 </p>
                 <p className="text-sm text-gray-600">
                   {s.className} · {s.courseName}
@@ -145,35 +117,79 @@ export default function StaffAbsencePage() {
           <p className="text-sm text-gray-500">Du har ikke meldt fravær.</p>
         ) : (
           <ul className="space-y-2">
-            {absences.map((a) => (
-              <li
-                key={a.id}
-                className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-start justify-between gap-3"
-                data-testid={`staff-absence-${a.id}`}
-              >
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {formatDateRange(a.date, a.endDate)}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {a.affectedLessonCount === 0
-                      ? 'Ingen lektioner berørt'
-                      : `${a.coveredLessonCount} af ${a.affectedLessonCount} lektioner har vikar`}
-                    {a.reason ? ` · ${a.reason}` : ''}
-                  </p>
-                </div>
-                {a.canDelete && (
-                  <button
-                    type="button"
-                    onClick={() => remove.mutate({ path: { id: a.id } })}
-                    disabled={remove.isPending}
-                    className="text-xs text-gray-500 hover:text-red-600"
-                  >
-                    Annuller
-                  </button>
-                )}
-              </li>
-            ))}
+            {absences.map((a) =>
+              editingId === a.id ? (
+                <li
+                  key={a.id}
+                  className="bg-white border border-brand-300 rounded-xl p-4"
+                  data-testid={`staff-absence-${a.id}`}
+                >
+                  <StaffAbsenceForm
+                    initial={a}
+                    minDate={addDaysIso(today, 1)}
+                    submitLabel="Gem ændringer"
+                    pendingLabel="Gemmer…"
+                    reasonLabel="Besked til kontoret (valgfrit)"
+                    isPending={update.isPending}
+                    error={
+                      update.isError
+                        ? (problemDetail(update.error) ?? 'Ændringen kunne ikke gemmes.')
+                        : null
+                    }
+                    onSubmit={({ staffId: _, ...body }) =>
+                      update.mutate({ path: { id: a.id }, body })
+                    }
+                    onCancel={() => setEditingId(null)}
+                    testIdPrefix="staff-absence-edit"
+                  />
+                </li>
+              ) : (
+                <li
+                  key={a.id}
+                  className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-start justify-between gap-3"
+                  data-testid={`staff-absence-${a.id}`}
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {formatDateTimeRange(a.date, a.endDate, a.startTime, a.endTime)}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {a.affectedLessonCount === 0
+                        ? 'Ingen lektioner berørt'
+                        : `${a.coveredLessonCount} af ${a.affectedLessonCount} lektioner har vikar`}
+                      {a.reason ? ` · ${a.reason}` : ''}
+                    </p>
+                  </div>
+                  {a.canDelete && (
+                    <div className="flex gap-3 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          update.reset()
+                          setEditingId(a.id)
+                        }}
+                        data-testid={`staff-absence-edit-${a.id}`}
+                        className="text-xs text-brand-700 hover:text-brand-800"
+                      >
+                        Ret
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('Annuller fraværet?')) {
+                            remove.mutate({ path: { id: a.id } })
+                          }
+                        }}
+                        disabled={remove.isPending}
+                        className="text-xs text-gray-500 hover:text-red-600"
+                      >
+                        Annuller
+                      </button>
+                    </div>
+                  )}
+                </li>
+              )
+            )}
           </ul>
         )}
       </section>

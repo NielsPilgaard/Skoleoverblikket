@@ -14,7 +14,16 @@ function time(check: AttendanceCheckDto): string {
   return new Date(check.takenAt).toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' })
 }
 
-function CheckCell({ check, label }: { check?: AttendanceCheckDto | null; label: string }) {
+function CheckCell({
+  check,
+  label,
+  schoolDay,
+}: {
+  check?: AttendanceCheckDto | null
+  label: string
+  schoolDay: boolean
+}) {
+  if (!check && !schoolDay) return null
   return check ? (
     <span className="inline-flex items-center gap-1 text-xs text-green-800">
       <span aria-hidden>✓</span> {label} {time(check)}
@@ -37,6 +46,7 @@ function AttendanceOverview() {
   const [date, setDate] = useState(todayIso())
   const { data, isLoading } = useQuery(getApiV1AttendanceOverviewOptions({ query: { date } }))
   const classes = data?.classes ?? []
+  const schoolDay = data?.isSchoolDay ?? true
   const missing = classes.filter((c) => !c.complete).length
 
   return (
@@ -67,11 +77,15 @@ function AttendanceOverview() {
             >
               {c.className}
             </Link>
-            <CheckCell check={c.startOfDay} label="Morgen" />
-            {c.requiresEndOfDay && <CheckCell check={c.endOfDay} label="Slut" />}
-            <span className="ml-auto text-xs text-gray-500">
-              {c.absentCount} af {c.studentCount} fraværende
-            </span>
+            <CheckCell check={c.startOfDay} label="Morgen" schoolDay={schoolDay} />
+            {c.requiresEndOfDay && (
+              <CheckCell check={c.endOfDay} label="Slut" schoolDay={schoolDay} />
+            )}
+            {schoolDay && (
+              <span className="ml-auto text-xs text-gray-500">
+                {c.absentCount} af {c.studentCount} fraværende
+              </span>
+            )}
           </li>
         ))}
         {!isLoading && classes.length === 0 && (

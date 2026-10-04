@@ -8,10 +8,20 @@ using Skoleoverblikket.Api.Tenancy;
 namespace Skoleoverblikket.Api.Services;
 
 /// <param name="StaffId">Who is absent. Null = the caller. Only admins may report for someone else.</param>
+/// <param name="StartTime">Partial day: first time out. Set together with <paramref name="EndTime"/>, single day only.</param>
 public sealed record ReportStaffAbsenceRequest(
 	Guid? StaffId,
 	DateOnly Date,
 	DateOnly? EndDate,
+	[StringLength(500)] string? Reason,
+	TimeOnly? StartTime = null,
+	TimeOnly? EndTime = null);
+
+public sealed record UpdateStaffAbsenceRequest(
+	DateOnly Date,
+	DateOnly? EndDate,
+	TimeOnly? StartTime,
+	TimeOnly? EndTime,
 	[StringLength(500)] string? Reason);
 
 public sealed record StaffAbsenceDto(
@@ -21,6 +31,8 @@ public sealed record StaffAbsenceDto(
 	StaffRole Role,
 	DateOnly Date,
 	DateOnly? EndDate,
+	TimeOnly? StartTime,
+	TimeOnly? EndTime,
 	string? Reason,
 	string? ReportedByName,
 	DateTimeOffset CreatedAt,
@@ -45,7 +57,9 @@ public sealed record StaffAbsenceDetailDto(StaffAbsenceDto Absence, IReadOnlyLis
 
 public sealed record AssignAbsenceSubstituteRequest(Guid SchemaSlotId, DateOnly Date, Guid? StaffId);
 
-public enum StaffAbsenceReportResult { Created, NoStaffRecord, StaffNotFound, NotAllowed, InvalidDates }
+public enum StaffAbsenceReportResult { Created, NoStaffRecord, StaffNotFound, NotAllowed, InvalidDates, Overlaps }
+
+public enum StaffAbsenceUpdateResult { Updated, NotFound, NotAllowed, InvalidDates, Overlaps }
 
 public enum StaffAbsenceDeleteResult { Deleted, NotFound, NotAllowed }
 
@@ -69,6 +83,19 @@ public sealed class StaffAbsenceService(
 		Guid SchemaSlotId, Guid ClassId, string ClassName, string CourseName,
 		DayOfWeek Weekday, TimeOnly StartTime, TimeOnly EndTime, DateOnly? SchemaStart, DateOnly? SchemaEnd,
 		SubstituteSeat Seat);
+
+	/// <summary>A validated range: <see cref="EndDate"/> null for one day, times only on a single day.</summary>
+	private sealed record Range(DateOnly Date, DateOnly? EndDate, TimeOnly? StartTime, TimeOnly? EndTime)
+	{
+		public DateOnly Last => EndDate ?? Date;
+	}
+
+	private sealed record LoadedLesson(DateOnly Date, LessonRow Lesson, Guid? SubstituteId);
+
+	private sealed record LoadedAbsence(
+		Guid Id, Guid StaffId, string StaffName, StaffRole Role, DateOnly Date, DateOnly? EndDate,
+		TimeOnly? StartTime, TimeOnly? EndTime, string? Reason, string? ReportedByName, DateTimeOffset CreatedAt,
+		List<LoadedLesson> Lessons);
 
 	public async Task<(StaffAbsenceReportResult Result, Guid? Id)> ReportAsync(
 		string? subject, bool isAdminRole, ReportStaffAbsenceRequest req, CancellationToken cancellationToken)
@@ -101,12 +128,15 @@ public sealed class StaffAbsenceService(
 			return (StaffAbsenceReportResult.StaffNotFound, null);
 		}
 
-		var endDate = req.EndDate is { } end && end != req.Date ? end : (DateOnly?)null;
-		var lastDay = endDate ?? req.Date;
-		var today = SchoolDayCalendar.Today();
-		if (lastDay < req.Date || req.Date < today.AddDays(-14) || lastDay.DayNumber - req.Date.DayNumber >= MaxAbsenceDays)
+		var range = ValidateRange(req.Date, req.EndDate, req.StartTime, req.EndTime);
+		if (range is null)
 		{
 			return (StaffAbsenceReportResult.InvalidDates, null);
+		}
+
+		if (await OverlapsAsync(staffId.Value, range, excludeId: null, cancellationToken))
+		{
+			return (StaffAbsenceReportResult.Overlaps, null);
 		}
 
 		var absence = new StaffAbsence
@@ -115,25 +145,99 @@ public sealed class StaffAbsenceService(
 			TenantId = tenant.TenantId,
 			StaffId = staffId.Value,
 			ReportedByStaffId = caller?.Id,
-			Date = req.Date,
-			EndDate = endDate,
+			Date = range.Date,
+			EndDate = range.EndDate,
+			StartTime = range.StartTime,
+			EndTime = range.EndTime,
 			Reason = string.IsNullOrWhiteSpace(req.Reason) ? null : req.Reason.Trim(),
 		};
 		db.StaffAbsences.Add(absence);
 		await db.SaveChangesAsync(cancellationToken);
 
-		// Admins need to find vikarer — tell them, except the one who just filed it.
-		var callerId = caller?.Id;
-		var adminIds = await db.Staff
-			.Where(s => s.IsAdmin && s.Id != callerId)
-			.Select(s => s.Id)
-			.ToListAsync(cancellationToken);
-		var body = $"{absentName} er meldt fraværende {FormatRange(absence.Date, absence.EndDate)}";
-		await notifications.CreateBatchAsync(
-			adminIds.Select(id => new NotificationRequest(id, RecipientType.Staff, NotificationType.StaffAbsenceReported, absence.Id, body)),
-			cancellationToken);
+		// They can't cover for anyone while out: free their vikar bookings so those lektioner show as uncovered.
+		var released = await substitutes.ReleaseBookingsAsync(
+			absence.StaffId, range.Date, range.Last, range.StartTime, range.EndTime, cancellationToken);
+
+		await NotifyAdminsAsync(absence.Id, caller?.Id, $"{absentName} er meldt fraværende {FormatRange(range)}", released, cancellationToken);
 
 		return (StaffAbsenceReportResult.Created, absence.Id);
+	}
+
+	/// <summary>
+	/// Changes dates, times or reason. Same permission as <see cref="DeleteAsync"/>. Vikar cover on
+	/// lektioner the absence no longer touches is removed: the teacher is there after all.
+	/// </summary>
+	public async Task<StaffAbsenceUpdateResult> UpdateAsync(
+		Guid id, string? subject, bool isAdminRole, UpdateStaffAbsenceRequest req, CancellationToken cancellationToken)
+	{
+		var absence = await db.StaffAbsences
+			.Include(a => a.Staff)
+			.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+		if (absence is null)
+		{
+			return StaffAbsenceUpdateResult.NotFound;
+		}
+
+		var caller = await db.Staff
+			.AsNoTracking()
+			.Where(s => s.KeycloakSubject == subject)
+			.Select(s => new { s.Id, s.IsAdmin })
+			.FirstOrDefaultAsync(cancellationToken);
+
+		var today = SchoolDayCalendar.Today();
+		var isAdmin = isAdminRole || caller?.IsAdmin == true;
+		if (!isAdmin && (caller?.Id != absence.StaffId || absence.Date <= today))
+		{
+			return StaffAbsenceUpdateResult.NotAllowed;
+		}
+
+		var range = ValidateRange(req.Date, req.EndDate, req.StartTime, req.EndTime);
+		if (range is null || (!isAdmin && range.Date <= today))
+		{
+			return StaffAbsenceUpdateResult.InvalidDates;
+		}
+
+		if (await OverlapsAsync(absence.StaffId, range, excludeId: absence.Id, cancellationToken))
+		{
+			return StaffAbsenceUpdateResult.Overlaps;
+		}
+
+		var before = await GetAffectedLessonsAsync(
+			absence.StaffId, new Range(absence.Date, absence.EndDate, absence.StartTime, absence.EndTime), cancellationToken);
+		var after = (await GetAffectedLessonsAsync(absence.StaffId, range, cancellationToken))
+			.Select(l => (l.Date, l.Lesson.SchemaSlotId, l.Lesson.Seat))
+			.ToHashSet();
+		await ClearCoverAsync(
+			absence.StaffId,
+			absence.Id,
+			before.Where(l => l.Date >= today && !after.Contains((l.Date, l.Lesson.SchemaSlotId, l.Lesson.Seat))).ToList(),
+			cancellationToken);
+
+		absence.Date = range.Date;
+		absence.EndDate = range.EndDate;
+		absence.StartTime = range.StartTime;
+		absence.EndTime = range.EndTime;
+		absence.Reason = string.IsNullOrWhiteSpace(req.Reason) ? null : req.Reason.Trim();
+		await db.SaveChangesAsync(cancellationToken);
+
+		var released = await substitutes.ReleaseBookingsAsync(
+			absence.StaffId, range.Date, range.Last, range.StartTime, range.EndTime, cancellationToken);
+
+		await NotifyAdminsAsync(absence.Id, caller?.Id, $"Fravær for {absence.Staff.Name} er ændret til {FormatRange(range)}", released, cancellationToken);
+
+		return StaffAbsenceUpdateResult.Updated;
+	}
+
+	/// <summary>
+	/// Lektioner from today through the next <paramref name="days"/> - 1 days that an absence leaves
+	/// without a vikar: the dashboard's "mangler vikar" number.
+	/// </summary>
+	public async Task<int> CountUncoveredLessonsAsync(int days, CancellationToken cancellationToken)
+	{
+		var from = SchoolDayCalendar.Today();
+		var to = from.AddDays(days - 1);
+		var absences = await LoadAsync(a => a.Date <= to && (a.EndDate ?? a.Date) >= from, cancellationToken);
+		return absences.Sum(a => a.Lessons.Count(l => l.Date >= from && l.Date <= to && l.SubstituteId is null));
 	}
 
 	public async Task<List<StaffAbsenceDto>> GetMineAsync(string? subject, CancellationToken cancellationToken)
@@ -159,7 +263,8 @@ public sealed class StaffAbsenceService(
 		}
 
 		var absence = list[0];
-		var lessons = await GetAffectedLessonsAsync(absence.StaffId, absence.Date, absence.EndDate, cancellationToken);
+		var lessons = await GetAffectedLessonsAsync(
+			absence.StaffId, new Range(absence.Date, absence.EndDate, absence.StartTime, absence.EndTime), cancellationToken);
 		var assignments = await substitutes.GetAssignmentsAsync(lessons.Select(l => l.Lesson.SchemaSlotId).Distinct().ToList(), cancellationToken);
 
 		var result = new List<AffectedLessonDto>();
@@ -187,7 +292,8 @@ public sealed class StaffAbsenceService(
 			return AbsenceSubstituteResult.NotFound;
 		}
 
-		var lessons = await GetAffectedLessonsAsync(absence.StaffId, req.Date, req.Date, cancellationToken);
+		var lessons = await GetAffectedLessonsAsync(
+			absence.StaffId, new Range(req.Date, null, absence.StartTime, absence.EndTime), cancellationToken);
 		var match = lessons.FirstOrDefault(l => l.Lesson.SchemaSlotId == req.SchemaSlotId);
 		if (match.Lesson is null || req.Date < absence.Date || req.Date > (absence.EndDate ?? absence.Date))
 		{
@@ -229,19 +335,12 @@ public sealed class StaffAbsenceService(
 			return StaffAbsenceDeleteResult.NotAllowed;
 		}
 
-		var from = absence.Date > today ? absence.Date : today;
-		var lessons = await GetAffectedLessonsAsync(absence.StaffId, from, absence.EndDate ?? absence.Date, cancellationToken);
-		var assignments = await substitutes.GetAssignmentsAsync(lessons.Select(l => l.Lesson.SchemaSlotId).Distinct().ToList(), cancellationToken);
+		var lessons = await GetAffectedLessonsAsync(
+			absence.StaffId, new Range(absence.Date, absence.EndDate, absence.StartTime, absence.EndTime), cancellationToken);
 
 		// Clear cover first: if a clear fails the absence survives and the delete can be retried,
 		// instead of leaving vikarer booked for an absence that no longer exists.
-		foreach (var (date, lesson) in lessons)
-		{
-			if (CurrentSubstitute(assignments, date, lesson).Id is not null)
-			{
-				await substitutes.AssignForLessonAsync(date, lesson.SchemaSlotId, lesson.Seat, null, cancellationToken);
-			}
-		}
+		await ClearCoverAsync(absence.StaffId, absence.Id, lessons.Where(l => l.Date >= today).ToList(), cancellationToken);
 
 		db.StaffAbsences.Remove(absence);
 		await db.SaveChangesAsync(cancellationToken);
@@ -253,6 +352,21 @@ public sealed class StaffAbsenceService(
 		System.Linq.Expressions.Expression<Func<StaffAbsence, bool>> filter,
 		bool isAdmin,
 		Guid? callerStaffId,
+		CancellationToken cancellationToken)
+	{
+		var today = SchoolDayCalendar.Today();
+		return (await LoadAsync(filter, cancellationToken))
+			.Select(a => new StaffAbsenceDto(
+				a.Id, a.StaffId, a.StaffName, a.Role, a.Date, a.EndDate, a.StartTime, a.EndTime,
+				a.Reason, a.ReportedByName, a.CreatedAt,
+				a.Lessons.Count, a.Lessons.Count(l => l.SubstituteId is not null),
+				isAdmin || (a.StaffId == callerStaffId && a.Date > today)))
+			.ToList();
+	}
+
+	/// <summary>Absences matching <paramref name="filter"/>, newest first, each with its affected lektioner and their current vikar.</summary>
+	private async Task<List<LoadedAbsence>> LoadAsync(
+		System.Linq.Expressions.Expression<Func<StaffAbsence, bool>> filter,
 		CancellationToken cancellationToken)
 	{
 		var rows = await db.StaffAbsences
@@ -268,6 +382,8 @@ public sealed class StaffAbsenceService(
 				a.Staff.Role,
 				a.Date,
 				a.EndDate,
+				a.StartTime,
+				a.EndTime,
 				a.Reason,
 				ReportedByName = a.ReportedByStaff != null ? a.ReportedByStaff.Name : null,
 				a.CreatedAt,
@@ -279,36 +395,130 @@ public sealed class StaffAbsenceService(
 		foreach (var group in rows.GroupBy(a => a.StaffId))
 		{
 			lessonsByStaff[group.Key] = await GetAffectedLessonsAsync(
-				group.Key, group.Min(a => a.Date), group.Max(a => a.EndDate ?? a.Date), cancellationToken);
+				group.Key, new Range(group.Min(a => a.Date), group.Max(a => a.EndDate ?? a.Date), null, null), cancellationToken);
 		}
 
 		var assignments = await substitutes.GetAssignmentsAsync(
 			lessonsByStaff.Values.SelectMany(l => l).Select(l => l.Lesson.SchemaSlotId).Distinct().ToList(), cancellationToken);
 
-		var today = SchoolDayCalendar.Today();
-		var result = new List<StaffAbsenceDto>(rows.Count);
-		foreach (var a in rows)
-		{
-			var last = a.EndDate ?? a.Date;
-			var lessons = lessonsByStaff[a.StaffId].Where(l => l.Date >= a.Date && l.Date <= last).ToList();
-			var covered = lessons.Count(l => CurrentSubstitute(assignments, l.Date, l.Lesson).Id is not null);
-			result.Add(new StaffAbsenceDto(
-				a.Id, a.StaffId, a.StaffName, a.Role, a.Date, a.EndDate, a.Reason, a.ReportedByName, a.CreatedAt,
-				lessons.Count, covered,
-				isAdmin || (a.StaffId == callerStaffId && a.Date > today)));
-		}
-
-		return result;
+		return rows
+			.Select(a =>
+			{
+				var range = new Range(a.Date, a.EndDate, a.StartTime, a.EndTime);
+				var lessons = lessonsByStaff[a.StaffId]
+					.Where(l => l.Date >= range.Date && l.Date <= range.Last && InWindow(l.Lesson, range))
+					.Select(l => new LoadedLesson(l.Date, l.Lesson, CurrentSubstitute(assignments, l.Date, l.Lesson).Id))
+					.ToList();
+				return new LoadedAbsence(
+					a.Id, a.StaffId, a.StaffName, a.Role, a.Date, a.EndDate, a.StartTime, a.EndTime,
+					a.Reason, a.ReportedByName, a.CreatedAt, lessons);
+			})
+			.ToList();
 	}
 
 	/// <summary>
+	/// Null when the dates are invalid: end before start, 90 days or more, more than 14 days back, or a
+	/// time window that is half set, empty, or on a multi-day absence.
+	/// </summary>
+	private static Range? ValidateRange(DateOnly date, DateOnly? endDate, TimeOnly? startTime, TimeOnly? endTime)
+	{
+		var end = endDate is { } e && e != date ? e : (DateOnly?)null;
+		var last = end ?? date;
+		if (last < date || date < SchoolDayCalendar.Today().AddDays(-14) || last.DayNumber - date.DayNumber >= MaxAbsenceDays)
+		{
+			return null;
+		}
+
+		if (startTime.HasValue != endTime.HasValue || startTime >= endTime || (startTime.HasValue && end.HasValue))
+		{
+			return null;
+		}
+
+		return new Range(date, end, startTime, endTime);
+	}
+
+	/// <summary>Another absence for the same person touches the range. Two partial days only clash when their windows overlap.</summary>
+	private async Task<bool> OverlapsAsync(Guid staffId, Range range, Guid? excludeId, CancellationToken cancellationToken)
+	{
+		var others = await db.StaffAbsences
+			.AsNoTracking()
+			.Where(a => a.StaffId == staffId && a.Id != excludeId)
+			.Where(a => a.Date <= range.Last && (a.EndDate ?? a.Date) >= range.Date)
+			.Select(a => new { a.StartTime, a.EndTime })
+			.ToListAsync(cancellationToken);
+
+		return others.Any(o => o.StartTime is null || o.EndTime is null || range.StartTime is null || range.EndTime is null
+			|| (o.StartTime < range.EndTime && range.StartTime < o.EndTime));
+	}
+
+	/// <summary>
+	/// Removes vikar cover from <paramref name="lessons"/>, except where another absence for the same person
+	/// still covers the lektion: two partial days on one date can both touch it.
+	/// </summary>
+	private async Task ClearCoverAsync(
+		Guid staffId, Guid absenceId, List<(DateOnly Date, LessonRow Lesson)> lessons, CancellationToken cancellationToken)
+	{
+		if (lessons.Count == 0)
+		{
+			return;
+		}
+
+		var first = lessons.Min(l => l.Date);
+		var last = lessons.Max(l => l.Date);
+		var others = (await db.StaffAbsences
+			.AsNoTracking()
+			.Where(a => a.StaffId == staffId && a.Id != absenceId)
+			.Where(a => a.Date <= last && (a.EndDate ?? a.Date) >= first)
+			.Select(a => new { a.Date, a.EndDate, a.StartTime, a.EndTime })
+			.ToListAsync(cancellationToken))
+			.Select(a => new Range(a.Date, a.EndDate, a.StartTime, a.EndTime))
+			.ToList();
+		lessons = lessons
+			.Where(l => !others.Any(o => l.Date >= o.Date && l.Date <= o.Last && InWindow(l.Lesson, o)))
+			.ToList();
+
+		var assignments = await substitutes.GetAssignmentsAsync(lessons.Select(l => l.Lesson.SchemaSlotId).Distinct().ToList(), cancellationToken);
+		foreach (var (date, lesson) in lessons)
+		{
+			if (CurrentSubstitute(assignments, date, lesson).Id is not null)
+			{
+				await substitutes.AssignForLessonAsync(date, lesson.SchemaSlotId, lesson.Seat, null, cancellationToken);
+			}
+		}
+	}
+
+	/// <summary>Admins need to find vikarer. Tell them, except the one who just filed it.</summary>
+	private async Task NotifyAdminsAsync(Guid absenceId, Guid? callerId, string body, int released, CancellationToken cancellationToken)
+	{
+		if (released > 0)
+		{
+			body += released == 1
+				? ". 1 lektion, hvor de var vikar, mangler nu en ny vikar"
+				: $". {released} lektioner, hvor de var vikar, mangler nu en ny vikar";
+		}
+
+		var adminIds = await db.Staff
+			.Where(s => s.IsAdmin && s.Id != callerId)
+			.Select(s => s.Id)
+			.ToListAsync(cancellationToken);
+		await notifications.CreateBatchAsync(
+			adminIds.Select(id => new NotificationRequest(id, RecipientType.Staff, NotificationType.StaffAbsenceReported, absenceId, body)),
+			cancellationToken);
+	}
+
+	private static bool InWindow(LessonRow lesson, Range range) =>
+		range.StartTime is not { } start || range.EndTime is not { } end
+		|| (lesson.StartTime < end && start < lesson.EndTime);
+
+	/// <summary>
 	/// Every lektion the staff member teaches or assists on school days in the range, using the
-	/// schema active on each date.
+	/// schema active on each date. A partial day only counts lektioner overlapping its window.
 	/// </summary>
 	private async Task<List<(DateOnly Date, LessonRow Lesson)>> GetAffectedLessonsAsync(
-		Guid staffId, DateOnly from, DateOnly? to, CancellationToken cancellationToken)
+		Guid staffId, Range range, CancellationToken cancellationToken)
 	{
-		var last = to ?? from;
+		var from = range.Date;
+		var last = range.Last;
 		var lessons = await db.SchemaSlots
 			.AsNoTracking()
 			.Where(s => s.TeacherId == staffId || s.AideId == staffId)
@@ -337,7 +547,8 @@ public sealed class StaffAbsenceService(
 			result.AddRange(lessons
 				.Where(l => l.Weekday == date.DayOfWeek
 						 && (l.SchemaStart == null || l.SchemaStart <= date)
-						 && (l.SchemaEnd == null || l.SchemaEnd >= date))
+						 && (l.SchemaEnd == null || l.SchemaEnd >= date)
+						 && InWindow(l, range))
 				.OrderBy(l => l.StartTime)
 				.Select(l => (date, l)));
 		}
@@ -359,8 +570,12 @@ public sealed class StaffAbsenceService(
 		return lesson.Seat == SubstituteSeat.Teacher ? (a.TeacherId, a.TeacherName) : (a.AideId, a.AideName);
 	}
 
-	private static string FormatRange(DateOnly date, DateOnly? endDate) =>
-		endDate is { } end && end != date
-			? $"{date.ToString("d. MMMM", Danish)}–{end.ToString("d. MMMM", Danish)}"
-			: date.ToString("d. MMMM", Danish);
+	private static string FormatRange(Range range) =>
+		range switch
+		{
+			{ EndDate: { } end } => $"{range.Date.ToString("d. MMMM", Danish)}–{end.ToString("d. MMMM", Danish)}",
+			{ StartTime: { } start, EndTime: { } stop } =>
+				$"{range.Date.ToString("d. MMMM", Danish)} kl. {start:HH\\:mm}–{stop:HH\\:mm}",
+			_ => range.Date.ToString("d. MMMM", Danish),
+		};
 }

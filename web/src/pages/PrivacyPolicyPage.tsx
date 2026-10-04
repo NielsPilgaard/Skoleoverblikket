@@ -17,7 +17,7 @@ export default function PrivacyPolicyPage() {
           <h1 className="font-display text-4xl sm:text-5xl font-semibold text-brand-900 leading-tight mb-2">
             Privatlivspolitik
           </h1>
-          <p className="text-sm text-gray-400 mb-10">Senest opdateret: april 2026</p>
+          <p className="text-sm text-gray-400 mb-10">Senest opdateret: oktober 2026</p>
 
           <div className="space-y-10 text-gray-700 leading-relaxed">
             <Section title="1. Dataansvarlig">
@@ -45,6 +45,20 @@ export default function PrivacyPolicyPage() {
                 <Li>
                   <strong>Skoledata:</strong> klassenavne, medarbejdernavne, fagnavne, lokalenavne
                   og skemaer.
+                </Li>
+                <Li>
+                  <strong>Elever og forældre:</strong> navne, klasse og de kontaktoplysninger,
+                  skolen eller forældrene selv indtaster.
+                </Li>
+                <Li>
+                  <strong>Fravær og fremmøde:</strong> elevers daglige fremmøde og fravær med
+                  kategorien sygdom, ekstraordinær frihed eller ulovligt fravær, forældres
+                  sygemeldinger og anmodninger om fri samt skolens afgørelser. Vi beder om, at der
+                  ikke skrives diagnoser.
+                </Li>
+                <Li>
+                  <strong>Medarbejderfravær og vikardækning:</strong> hvornår en medarbejder er
+                  fraværende, en valgfri note og hvilke vikarer der dækker de berørte lektioner.
                 </Li>
                 <Li>
                   <strong>Uploadede filer:</strong> filer der uploades pr. skole, og som kun er
@@ -103,7 +117,7 @@ export default function PrivacyPolicyPage() {
                 Elevers fravær og fremmøde gemmes i indeværende og forrige skoleår. Skoleåret
                 skifter 1. august, og så slettes fravær fra det ældste skoleår automatisk. Skolen
                 får besked 1. juli, så den kan hente fraværet som Excel-fil først. Fravær slettes
-                også, når en elev slettes.
+                også, når en elev slettes. Medarbejderfravær følger samme regel.
               </p>
               <p className="mt-3 text-sm text-gray-500">
                 Bemærk: automatisk sletning efter opsigelse er endnu ikke implementeret. Indtil

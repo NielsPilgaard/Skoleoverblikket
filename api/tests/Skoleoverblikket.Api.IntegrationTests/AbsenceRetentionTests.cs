@@ -33,7 +33,7 @@ public sealed class AbsenceRetentionTests(ApiFactory factory)
 		var classId = await kit.CreateClassAsync(admin, "5.a", 5);
 		var student = await kit.CreateStudentAsync(classId);
 		var parent = await kit.ParentOfAsync(student.Id, $"parent-{Guid.NewGuid()}");
-		(await ReportAsync(parent, student.Id, AbsenceCategory.Illness, DanishToday())).EnsureSuccessStatusCode();
+		(await ReportAsync(parent, student.Id, AbsenceCategory.Illness, SickDay())).EnsureSuccessStatusCode();
 
 		var (_, teacher) = await kit.TeacherAsync($"retention-teacher-{kit.TenantId}");
 		(await admin.PostAsJsonAsync("/api/v1/staff-absences",

@@ -17,6 +17,7 @@ import {
   CATEGORY_LABEL,
   CHART_CATEGORY_ORDER,
   currentQuarter,
+  formatDayCount,
   formatDays,
   formatPercent,
   formatShortDate,
@@ -103,7 +104,7 @@ function WeeklyAbsenceChart({ weeks }: { weeks: WeekAbsenceDto[] }) {
                 </div>
                 <div className="pointer-events-none absolute bottom-full mb-1 hidden group-hover:block z-10 w-44 rounded-lg bg-gray-900 text-white text-xs p-2 shadow-lg">
                   <p className="font-medium mb-1">
-                    Uge {w.isoWeek} · {formatDays(total)} dage
+                    Uge {w.isoWeek} · {formatDayCount(total)}
                   </p>
                   {CHART_CATEGORY_ORDER.map((c) => (
                     <p key={c} className="flex items-center gap-1.5">
@@ -267,7 +268,9 @@ export function AbsenceStatsTab({ isAdmin }: { isAdmin: boolean }) {
                 </p>
                 <p className="text-2xl font-semibold text-gray-900 mt-1">
                   {formatDays(totals[c])}{' '}
-                  <span className="text-sm font-normal text-gray-500">dage</span>
+                  <span className="text-sm font-normal text-gray-500">
+                    {totals[c] === 1 ? 'dag' : 'dage'}
+                  </span>
                 </p>
               </div>
             ))}

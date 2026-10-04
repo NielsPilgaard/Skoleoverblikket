@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getApiV1AbsenceLeaveRequestsOptions,
@@ -11,6 +12,7 @@ import { CategoryBadge } from './AbsenceRegisterTab'
 /** Admin: parents' requests for ekstraordinær frihed, pending first, then the last 30 days' decisions. */
 export function LeaveRequestsTab() {
   const qc = useQueryClient()
+  const [confirmRejectId, setConfirmRejectId] = useState<string | null>(null)
   const { data: requests = [], isLoading } = useQuery(getApiV1AbsenceLeaveRequestsOptions())
 
   const onSuccess = () => {
@@ -19,11 +21,20 @@ export function LeaveRequestsTab() {
     qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1StatsDashboard' }] })
   }
   const approve = useMutation({ ...postApiV1AbsenceByIdApproveMutation(), onSuccess })
-  const reject = useMutation({ ...postApiV1AbsenceByIdRejectMutation(), onSuccess })
+  const reject = useMutation({
+    ...postApiV1AbsenceByIdRejectMutation(),
+    onSuccess: () => {
+      setConfirmRejectId(null)
+      onSuccess()
+    },
+  })
   const error = approve.error ?? reject.error
 
   const pending = requests.filter((r) => r.leaveStatus === 'Pending')
-  const decided = requests.filter((r) => r.leaveStatus !== 'Pending')
+  // Most recent first. Pending keeps the API order: soonest first.
+  const decided = requests
+    .filter((r) => r.leaveStatus !== 'Pending')
+    .sort((a, b) => b.date.localeCompare(a.date))
 
   return (
     <div className="space-y-6">
@@ -53,26 +64,50 @@ export function LeaveRequestsTab() {
                   {r.reason ? ` · ${r.reason}` : ''}
                 </p>
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => approve.mutate({ path: { id: r.id } })}
-                  disabled={approve.isPending || reject.isPending}
-                  data-testid={`leave-approve-${r.id}`}
-                  className="px-3 py-1.5 text-sm font-medium bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
-                >
-                  Godkend
-                </button>
-                <button
-                  type="button"
-                  onClick={() => reject.mutate({ path: { id: r.id } })}
-                  disabled={approve.isPending || reject.isPending}
-                  data-testid={`leave-reject-${r.id}`}
-                  className="px-3 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Afvis
-                </button>
-              </div>
+              {confirmRejectId === r.id ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-gray-700">
+                    Afvis anmodningen? Forældrene får besked.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => reject.mutate({ path: { id: r.id } })}
+                    disabled={reject.isPending}
+                    data-testid={`leave-reject-confirm-${r.id}`}
+                    className="px-3 py-1.5 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {reject.isPending ? 'Afviser…' : 'Ja, afvis'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmRejectId(null)}
+                    className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900"
+                  >
+                    Fortryd
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => approve.mutate({ path: { id: r.id } })}
+                    disabled={approve.isPending || reject.isPending}
+                    data-testid={`leave-approve-${r.id}`}
+                    className="px-3 py-1.5 text-sm font-medium bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
+                  >
+                    Godkend
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmRejectId(r.id)}
+                    disabled={approve.isPending || reject.isPending}
+                    data-testid={`leave-reject-${r.id}`}
+                    className="px-3 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Afvis
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

@@ -977,6 +977,8 @@ export type ReportStaffAbsenceRequest = {
     date: string;
     endDate?: string | null;
     reason?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
 };
 
 export type RoomsControllerRoomDto = {
@@ -1173,6 +1175,8 @@ export type StaffAbsenceDto = {
     role: StaffRole;
     date: string;
     endDate?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
     reason?: string | null;
     reportedByName?: string | null;
     createdAt: string;
@@ -1255,6 +1259,7 @@ export type StatsControllerDashboardStats = {
     openVacationWindow?: StatsControllerOpenVacationWindowDto;
     unreadMessageCount?: number | null;
     unreadKontaktbogCount?: number | null;
+    uncoveredLessonCount: number;
 };
 
 export type StatsControllerHoursPerCourse = {
@@ -1457,6 +1462,14 @@ export type TimeSlotsControllerUpsertTimeSlotRequest = {
     endTime: string;
     label?: string | null;
     isBreak: boolean;
+};
+
+export type UpdateStaffAbsenceRequest = {
+    date: string;
+    endDate?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
+    reason?: string | null;
 };
 
 export type VacationRegistrationControllerCreateWindowRequest = {
@@ -4454,6 +4467,22 @@ export type GetApiV1StaffAbsencesByIdResponses = {
 };
 
 export type GetApiV1StaffAbsencesByIdResponse = GetApiV1StaffAbsencesByIdResponses[keyof GetApiV1StaffAbsencesByIdResponses];
+
+export type PutApiV1StaffAbsencesByIdData = {
+    body?: UpdateStaffAbsenceRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/staff-absences/{id}';
+};
+
+export type PutApiV1StaffAbsencesByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
 
 export type PutApiV1StaffAbsencesByIdSubstituteData = {
     body?: AssignAbsenceSubstituteRequest;

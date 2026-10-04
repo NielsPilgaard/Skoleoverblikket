@@ -14,6 +14,11 @@ namespace Skoleoverblikket.Api.Controllers;
 [Authorize]
 public sealed class StaffAbsenceController(StaffAbsenceService staffAbsences) : ControllerBase
 {
+	private const string InvalidDatesMessage =
+		"Ugyldige datoer. Fravær kan højst dække 90 dage, og et tidsrum skal ligge inden for én dag.";
+
+	private const string OverlapsMessage = "Medarbejderen er allerede meldt fraværende i den periode.";
+
 	[HttpPost]
 	public async Task<IActionResult> Report([FromBody] ReportStaffAbsenceRequest req, CancellationToken cancellationToken)
 	{
@@ -30,7 +35,8 @@ public sealed class StaffAbsenceController(StaffAbsenceService staffAbsences) : 
 			StaffAbsenceReportResult.Created => CreatedAtAction(nameof(GetMine), new { }, new { id }),
 			StaffAbsenceReportResult.StaffNotFound => NotFound(),
 			StaffAbsenceReportResult.NoStaffRecord => Problem("Vælg den medarbejder, der er fraværende.", statusCode: 400),
-			StaffAbsenceReportResult.InvalidDates => Problem("Ugyldige datoer. Fravær kan højst dække 90 dage.", statusCode: 400),
+			StaffAbsenceReportResult.InvalidDates => Problem(InvalidDatesMessage, statusCode: 400),
+			StaffAbsenceReportResult.Overlaps => Problem(OverlapsMessage, statusCode: 409),
 			_ => Forbid(),
 		};
 	}
@@ -85,6 +91,26 @@ public sealed class StaffAbsenceController(StaffAbsenceService staffAbsences) : 
 			AbsenceSubstituteResult.CandidateNotFound => Problem("Vikaren findes ikke", statusCode: 400),
 			_ => Problem("Vikaren er lige blevet optaget i samme tidsrum. Vælg en anden.", statusCode: 409),
 		};
+
+	/// <summary>Changes dates, times or reason. Admins can edit any absence; staff their own until it starts.</summary>
+	[HttpPut("{id:guid}")]
+	public async Task<IActionResult> Update(
+		Guid id, [FromBody] UpdateStaffAbsenceRequest req, CancellationToken cancellationToken)
+	{
+		if (IsParentOrBoard())
+		{
+			return Forbid();
+		}
+
+		return await staffAbsences.UpdateAsync(id, User.GetKeycloakSubject(), User.IsInRole(Roles.Admin), req, cancellationToken) switch
+		{
+			StaffAbsenceUpdateResult.Updated => NoContent(),
+			StaffAbsenceUpdateResult.NotFound => NotFound(),
+			StaffAbsenceUpdateResult.InvalidDates => Problem(InvalidDatesMessage, statusCode: 400),
+			StaffAbsenceUpdateResult.Overlaps => Problem(OverlapsMessage, statusCode: 409),
+			_ => Forbid(),
+		};
+	}
 
 	[HttpDelete("{id:guid}")]
 	public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)

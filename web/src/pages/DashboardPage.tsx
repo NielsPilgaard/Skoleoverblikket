@@ -132,8 +132,10 @@ function AlertsSection({ data }: { data: StatsControllerDashboardStats }) {
   const vacationWindow = data.openVacationWindow
   const unreadMessages = data.unreadMessageCount ?? 0
   const unreadKontaktbog = data.unreadKontaktbogCount ?? 0
+  const uncoveredLessons = data.uncoveredLessonCount ?? 0
 
   const hasAny =
+    uncoveredLessons > 0 ||
     pendingAbsence > 0 ||
     missingAttendance > 0 ||
     !!vacationWindow ||
@@ -153,6 +155,14 @@ function AlertsSection({ data }: { data: StatsControllerDashboardStats }) {
     <div className="space-y-3" data-testid="dashboard-alerts">
       <h2 className="text-sm font-semibold text-gray-700">Kræver din opmærksomhed</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {uncoveredLessons > 0 && (
+          <AlertTile
+            to="/vikardaekning"
+            testId="alert-uncovered-lessons"
+            label="Lektioner uden vikar"
+            detail={`${uncoveredLessons} ${uncoveredLessons === 1 ? 'lektion' : 'lektioner'} de næste 7 dage`}
+          />
+        )}
         {pendingAbsence > 0 && (
           <AlertTile
             to="/fravaer?fane=fri"
@@ -408,11 +418,11 @@ export default function DashboardPage() {
             <StatCard label="Fag" value={data!.courseCount ?? 0} />
             <StatCard label="Lokaler" value={data!.roomCount ?? 0} />
             <StatCard
-              label="Skemaer"
+              label="Færdige skemaer"
               value={
                 data!.schemasTotal === 0 ? '–' : `${data!.schemasComplete} / ${data!.schemasTotal}`
               }
-              sub={data!.schemasTotal === 0 ? 'Ingen skemaer oprettet' : 'færdige'}
+              sub={data!.schemasTotal === 0 ? 'Ingen skemaer oprettet' : 'af de oprettede skemaer'}
             />
             <StatCard
               label="Klasser u. skema"

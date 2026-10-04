@@ -5,10 +5,12 @@ import { usePageTitle } from '../hooks/usePageTitle'
 import {
   deleteApiV1StaffAbsencesByIdMutation,
   getApiV1StaffAbsencesByIdOptions,
+  putApiV1StaffAbsencesByIdMutation,
   putApiV1StaffAbsencesByIdSubstituteMutation,
 } from '../api/generated/@tanstack/react-query.gen'
 import type { AffectedLessonDto } from '../api/generated/types.gen'
-import { formatDateRange, formatLongDate } from '../lib/absence'
+import { StaffAbsenceForm } from '../components/absence/StaffAbsenceForm'
+import { capitalizeFirst, formatDateTimeRange, formatLongDate } from '../lib/absence'
 import { problemDetail } from '../lib/problem'
 
 const ROLE_LABEL = { Teacher: 'Lærer', Aide: 'Pædagog', Substitute: 'Vikar' } as const
@@ -20,6 +22,7 @@ export default function SubstituteCoverDetailPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [error, setError] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
 
   const options = getApiV1StaffAbsencesByIdOptions({ path: { id } })
   const { data, isLoading, isError } = useQuery(options)
@@ -35,6 +38,15 @@ export default function SubstituteCoverDetailPage() {
       setError(problemDetail(err) ?? 'Vikaren kunne ikke tildeles.')
       // A 409 means someone else just booked the candidate — refresh the lists.
       qc.invalidateQueries({ queryKey: options.queryKey })
+    },
+  })
+
+  const update = useMutation({
+    ...putApiV1StaffAbsencesByIdMutation(),
+    onSuccess: () => {
+      setEditing(false)
+      qc.invalidateQueries({ queryKey: options.queryKey })
+      qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1StaffAbsences' }] })
     },
   })
 
@@ -83,13 +95,37 @@ export default function SubstituteCoverDetailPage() {
           {absence.staffName}
         </h1>
         <p className="text-sm text-gray-600">
-          {ROLE_LABEL[absence.role]} · {formatDateRange(absence.date, absence.endDate)}
+          {ROLE_LABEL[absence.role]} ·{' '}
+          {formatDateTimeRange(absence.date, absence.endDate, absence.startTime, absence.endTime)}
           {absence.reason ? ` · ${absence.reason}` : ''}
         </p>
         {absence.reportedByName && (
           <p className="text-xs text-gray-400 mt-0.5">Meldt af {absence.reportedByName}</p>
         )}
       </div>
+
+      {editing && (
+        <div className="bg-white border border-brand-300 rounded-xl p-5">
+          <StaffAbsenceForm
+            initial={absence}
+            submitLabel="Gem ændringer"
+            pendingLabel="Gemmer…"
+            reasonLabel="Note (valgfrit)"
+            isPending={update.isPending}
+            error={
+              update.isError
+                ? (problemDetail(update.error) ?? 'Ændringen kunne ikke gemmes.')
+                : null
+            }
+            onSubmit={({ staffId: _, ...body }) => update.mutate({ path: { id }, body })}
+            onCancel={() => setEditing(false)}
+            testIdPrefix="cover-edit"
+          />
+          <p className="text-xs text-gray-500 mt-3">
+            Vikarer på lektioner, som fraværet ikke længere rammer, fjernes.
+          </p>
+        </div>
+      )}
 
       {error && (
         <p className="text-sm text-red-600" data-testid="cover-error">
@@ -103,8 +139,8 @@ export default function SubstituteCoverDetailPage() {
 
       {Object.entries(byDate).map(([date, dayLessons]) => (
         <section key={date}>
-          <h2 className="text-sm font-semibold text-gray-900 mb-2 capitalize">
-            {formatLongDate(date)}
+          <h2 className="text-sm font-semibold text-gray-900 mb-2">
+            {capitalizeFirst(formatLongDate(date))}
           </h2>
           <ul className="space-y-2">
             {dayLessons.map((l) => (
@@ -166,7 +202,20 @@ export default function SubstituteCoverDetailPage() {
       ))}
 
       {absence.canDelete && (
-        <div className="pt-4 border-t border-gray-200">
+        <div className="pt-4 border-t border-gray-200 flex gap-6">
+          {!editing && (
+            <button
+              type="button"
+              onClick={() => {
+                update.reset()
+                setEditing(true)
+              }}
+              data-testid="cover-edit-open"
+              className="text-sm text-brand-700 hover:text-brand-800"
+            >
+              Ret datoer eller tidsrum
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {

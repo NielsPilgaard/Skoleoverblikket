@@ -12,6 +12,7 @@ import type {
   VacationRegistrationGranularity,
 } from '../../api/generated/types.gen'
 import { getISOWeek } from '../../utils/isoWeek'
+import { capitalizeFirst } from '../../lib/absence'
 
 // ── Date utilities ────────────────────────────────────────────────────────────
 
@@ -83,7 +84,9 @@ function weekLabel(monday: string): string {
 
 function dayLabel(iso: string): string {
   const d = parseDate(iso)
-  return d.toLocaleDateString('da-DK', { weekday: 'short', day: 'numeric', month: 'short' })
+  return capitalizeFirst(
+    d.toLocaleDateString('da-DK', { weekday: 'short', day: 'numeric', month: 'short' })
+  )
 }
 
 function formatDate(d: string | undefined) {
@@ -219,7 +222,7 @@ function DayPicker({
                     onChange={() => toggle(d)}
                     className="accent-brand-600"
                   />
-                  <span className="text-sm text-gray-700 capitalize">{dayLabel(d)}</span>
+                  <span className="text-sm text-gray-700">{dayLabel(d)}</span>
                 </label>
               ))}
             </div>

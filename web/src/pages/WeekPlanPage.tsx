@@ -19,7 +19,7 @@ import type { ClassDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { FilePicker } from '../components/files/FilePicker'
 import { AssignSubstitutePanel } from '../components/substitute/AssignSubstitutePanel'
-import { getISOWeek, getISOWeekYear, getISOWeeksInYear } from '../utils/isoWeek'
+import { getISOWeek, getISOWeekYear, getISOWeeksInYear, getPlanningDate } from '../utils/isoWeek'
 
 // ─── Local types ─────────────────────────────────────────────────────────────
 
@@ -585,8 +585,8 @@ export default function WeekPlanPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
-  const [isoYear, setIsoYear] = useState(() => getISOWeekYear(new Date()))
-  const [isoWeek, setIsoWeek] = useState(() => getISOWeek(new Date()))
+  const [isoYear, setIsoYear] = useState(() => getISOWeekYear(getPlanningDate()))
+  const [isoWeek, setIsoWeek] = useState(() => getISOWeek(getPlanningDate()))
   const [editingSchemaSlotId, setEditingSchemaSlotId] = useState<string | null>(null)
   const [substituteSchemaSlotId, setSubstituteSchemaSlotId] = useState<string | null>(null)
   const [showParentPreview, setShowParentPreview] = useState(false)
@@ -612,7 +612,7 @@ export default function WeekPlanPage() {
   }
 
   function goToThisWeek() {
-    const now = new Date()
+    const now = getPlanningDate()
     setIsoYear(getISOWeekYear(now))
     setIsoWeek(getISOWeek(now))
   }
@@ -715,12 +715,14 @@ export default function WeekPlanPage() {
         <div className="flex items-center gap-1">
           <button
             onClick={prevWeek}
+            aria-label="Forrige uge"
             className="text-sm text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
           >
             ←
           </button>
           <select
             value={`${isoYear}-${isoWeek}`}
+            aria-label="Vælg uge"
             onChange={(e) => {
               const [y, w] = e.target.value.split('-').map(Number)
               setIsoYear(y)
@@ -736,6 +738,7 @@ export default function WeekPlanPage() {
           </select>
           <button
             onClick={nextWeek}
+            aria-label="Næste uge"
             className="text-sm text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
           >
             →
@@ -813,7 +816,7 @@ export default function WeekPlanPage() {
               const weekday = WEEKDAY_KEYS[i]
               const date = weekStartDate ? new Date(weekStartDate.getTime() + i * 86400000) : null
               const dateLabel = date
-                ? date.toLocaleDateString('da-DK', { day: '2-digit', month: 'short' })
+                ? date.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })
                 : ''
               const holidayDay = (weekPlanData.holidayDays ?? []).find((h) => h.weekday === weekday)
               return (

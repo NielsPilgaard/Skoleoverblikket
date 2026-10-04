@@ -100,7 +100,11 @@ export default function AbsencePage() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="font-display text-2xl font-semibold text-gray-900 mb-4">Fravær</h1>
 
-      <div className="flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto" role="tablist">
+      {/* overflow-y-hidden: the tabs' -mb-px border would otherwise add a vertical scrollbar. */}
+      <div
+        className="flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="tablist"
+      >
         {tabs.map((t) => (
           <button
             key={t.key}

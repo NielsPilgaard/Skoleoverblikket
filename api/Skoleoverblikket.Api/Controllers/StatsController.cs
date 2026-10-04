@@ -17,9 +17,11 @@ public sealed class StatsController(
 	SubscriptionService subscriptionService,
 	ITenantContext tenantContext,
 	AbsenceService absence,
-	SubstituteService substitutes) : ControllerBase
+	SubstituteService substitutes,
+	StaffAbsenceService staffAbsences) : ControllerBase
 {
 	private const int SchoolDaysPerWeek = 5; // Mon–Fri
+	private const int UncoveredLessonDays = 7; // today and the next 6 days
 	public record DashboardStats(
 		int ClassCount,
 		int StaffCount,
@@ -34,7 +36,8 @@ public sealed class StatsController(
 		int MissingAttendanceCount,
 		OpenVacationWindowDto? OpenVacationWindow,
 		int? UnreadMessageCount,
-		int? UnreadKontaktbogCount);
+		int? UnreadKontaktbogCount,
+		int UncoveredLessonCount);
 
 	public record HoursPerCourse(Guid CourseId, string CourseName, Guid ClassId, string ClassName, double Hours);
 	public record HoursPerStaff(Guid StaffId, string StaffName, StaffRole Role, double Hours);
@@ -154,6 +157,7 @@ public sealed class StatsController(
 		// Attention alerts — leave requests, missing fremmøde and open vacation window are not module-gated.
 		var pendingAbsenceCount = await absence.CountPendingLeaveRequestsAsync(cancellationToken);
 		var missingAttendanceCount = await absence.CountClassesMissingAttendanceTodayAsync(cancellationToken);
+		var uncoveredLessonCount = await staffAbsences.CountUncoveredLessonsAsync(UncoveredLessonDays, cancellationToken);
 
 		var openVacationWindow = await db.VacationRegistrationWindows
 			.AsNoTracking()
@@ -170,7 +174,7 @@ public sealed class StatsController(
 			schemasComplete, schemasTotal,
 			hoursPerCourse, hoursPerStaff, unassigned,
 			pendingAbsenceCount, missingAttendanceCount, openVacationWindow,
-			unreadMessages, unreadKontaktbog));
+			unreadMessages, unreadKontaktbog, uncoveredLessonCount));
 	}
 
 	/// <summary>

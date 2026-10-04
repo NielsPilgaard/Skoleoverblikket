@@ -10,7 +10,13 @@ import {
 import type { AbsenceCategory } from '../../api/generated/types.gen'
 import { DatePicker } from '../../components/DatePicker'
 import { CategoryBadge } from '../../components/absence/AbsenceRegisterTab'
-import { addDaysIso, formatDateRange, todayIso } from '../../lib/absence'
+import {
+  addDaysIso,
+  formatDateRange,
+  onlyWeekendDays,
+  todayIso,
+  weekdayFrom,
+} from '../../lib/absence'
 import { problemDetail } from '../../lib/problem'
 
 type Kind = Extract<AbsenceCategory, 'Illness' | 'ExtraordinaryLeave'>
@@ -19,11 +25,13 @@ export default function ParentAbsencePage() {
   usePageTitle('Fravær')
   const qc = useQueryClient()
   const today = todayIso()
+  // At the weekend the next school day is the one a parent is reporting for.
+  const firstDay = weekdayFrom(today)
   const [showForm, setShowForm] = useState(false)
   const [kind, setKind] = useState<Kind>('Illness')
   const [studentId, setStudentId] = useState('')
-  const [date, setDate] = useState(today)
-  const [endDate, setEndDate] = useState(today)
+  const [date, setDate] = useState(firstDay)
+  const [endDate, setEndDate] = useState(firstDay)
   const [reason, setReason] = useState('')
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
@@ -36,8 +44,8 @@ export default function ParentAbsencePage() {
     setShowForm(false)
     setKind('Illness')
     setStudentId('')
-    setDate(today)
-    setEndDate(today)
+    setDate(firstDay)
+    setEndDate(firstDay)
     setReason('')
   }
 
@@ -55,6 +63,9 @@ export default function ParentAbsencePage() {
   })
 
   const children = me?.students ?? []
+  const weekendOnly = onlyWeekendDays(date, endDate)
+  const deleteTarget = records.find((r) => r.id === deleteTargetId)
+  const deleteTargetRejected = deleteTarget?.leaveStatus === 'Rejected'
 
   function handleDateChange(value: string) {
     setDate(value)
@@ -63,7 +74,7 @@ export default function ParentAbsencePage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!studentId || !date) return
+    if (!studentId || !date || weekendOnly) return
     report.mutate({
       body: {
         studentId,
@@ -157,9 +168,17 @@ export default function ParentAbsencePage() {
             </div>
             <div className="flex-1">
               <span className="block text-sm font-medium text-gray-700 mb-1">Til dato</span>
-              <DatePicker value={endDate} onChange={setEndDate} min={date} />
+              <DatePicker value={endDate} onChange={setEndDate} min={date} align="right" />
             </div>
           </div>
+          {weekendOnly && (
+            <p
+              className="text-sm text-amber-900 bg-amber-50 rounded-lg p-3"
+              data-testid="parent-absence-weekend"
+            >
+              Der er ikke skole i weekenden. Vælg en hverdag.
+            </p>
+          )}
           <div>
             <label
               htmlFor="absence-reason"
@@ -179,13 +198,15 @@ export default function ParentAbsencePage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Skriv ikke diagnoser. Det er nok, at barnet er sygt.
+              {kind === 'ExtraordinaryLeave'
+                ? 'Skriv kort, hvad fri er til, fx familiebegivenhed.'
+                : 'Skriv ikke diagnoser. Det er nok, at barnet er sygt.'}
             </p>
           </div>
           <div className="flex gap-3">
             <button
               type="submit"
-              disabled={report.isPending}
+              disabled={report.isPending || weekendOnly}
               data-testid="parent-absence-submit"
               className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50"
             >
@@ -242,7 +263,7 @@ export default function ParentAbsencePage() {
                     data-testid={`parent-absence-cancel-${r.id}`}
                     className="text-xs text-gray-500 hover:text-red-600 transition-colors"
                   >
-                    Annuller
+                    {r.leaveStatus === 'Rejected' ? 'Fjern' : 'Annuller'}
                   </button>
                 )}
               </div>
@@ -258,7 +279,11 @@ export default function ParentAbsencePage() {
       {deleteTargetId && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-5 max-w-sm w-full space-y-4">
-            <p className="text-sm text-gray-900">Vil du annullere dette fravær?</p>
+            <p className="text-sm text-gray-900">
+              {deleteTargetRejected
+                ? 'Vil du fjerne den afviste anmodning fra listen?'
+                : 'Vil du annullere dette fravær?'}
+            </p>
             {cancel.isError && (
               <p className="text-sm text-red-600">
                 {problemDetail(cancel.error) ?? 'Fraværet kunne ikke annulleres.'}
@@ -287,7 +312,7 @@ export default function ParentAbsencePage() {
                 }
                 className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                {cancel.isPending ? 'Annullerer…' : 'Ja, annuller'}
+                {cancel.isPending ? 'Gemmer…' : deleteTargetRejected ? 'Ja, fjern' : 'Ja, annuller'}
               </button>
             </div>
           </div>

@@ -24,6 +24,10 @@ public sealed class StaffAbsence : ITenantScoped, IEntityTypeConfiguration<Staff
 	public DateOnly Date { get; set; }
 	public DateOnly? EndDate { get; set; }
 
+	/// <summary>Partial day: the window the staff member is out. Both null = the whole day. Only set on single-day absences.</summary>
+	public TimeOnly? StartTime { get; set; }
+	public TimeOnly? EndTime { get; set; }
+
 	[StringLength(500)]
 	public string? Reason { get; set; }
 

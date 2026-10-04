@@ -195,6 +195,136 @@ public sealed class StaffAbsenceTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task Delete_KeepsCoverStillNeededByOtherPartialDay()
+	{
+		var (_, absent) = await _kit.TeacherAsync("two-partial-days");
+		var vikar = await TestDataBuilder.CreateStaffAsync(factory.Services, _kit.TenantId, "Vikar Holm", StaffRole.Substitute);
+		var (_, slots) = await TeachesOnMondayAsync(absent, "8.a", _first);
+
+		// Windows touch at 8:20 without overlapping; the 8:00–8:45 lektion falls in both.
+		async Task<Guid> PartialAsync(TimeOnly start, TimeOnly end)
+		{
+			var response = await _admin.PostAsJsonAsync("/api/v1/staff-absences",
+				new ReportStaffAbsenceRequest(absent.Id, _monday, null, null, start, end), JsonOpts);
+			await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+			return (await response.Content.ReadFromJsonAsync<CreatedDto>(JsonOpts))!.Id;
+		}
+
+		var morning = await PartialAsync(new TimeOnly(7, 30), new TimeOnly(8, 20));
+		var later = await PartialAsync(new TimeOnly(8, 20), new TimeOnly(10, 0));
+		await Assert.That((await AssignAsync(morning, slots[0].Id, vikar.Id)).StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+		await Assert.That((await _admin.DeleteAsync($"/api/v1/staff-absences/{morning}")).StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+		await Assert.That((await DetailAsync(later)).Lessons.Single().SubstituteId).IsEqualTo(vikar.Id);
+	}
+
+	private async Task<HttpResponseMessage> ReportPartialAsync(HttpClient client, Guid? staffId, TimeOnly start, TimeOnly end) =>
+		await client.PostAsJsonAsync("/api/v1/staff-absences",
+			new ReportStaffAbsenceRequest(staffId, _monday, null, null, start, end), JsonOpts);
+
+	[Test]
+	public async Task Report_OverlappingSamePerson_Returns409()
+	{
+		var (_, absent) = await _kit.TeacherAsync("overlap-absent");
+		await ReportAsync(_admin, absent.Id, _monday);
+
+		var sameDay = await _admin.PostAsJsonAsync("/api/v1/staff-absences",
+			new ReportStaffAbsenceRequest(absent.Id, _monday.AddDays(-1), _monday.AddDays(1), null), JsonOpts);
+		var partial = await ReportPartialAsync(_admin, absent.Id, new TimeOnly(8, 0), new TimeOnly(9, 0));
+
+		await Assert.That(sameDay.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+		await Assert.That(partial.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+	}
+
+	[Test]
+	public async Task PartialDay_OnlyLessonsInWindowAreAffected()
+	{
+		var (_, absent) = await _kit.TeacherAsync("partial-absent");
+		await TeachesOnMondayAsync(absent, "1.a", _first, _second);
+
+		var response = await ReportPartialAsync(_admin, absent.Id, new TimeOnly(8, 50), new TimeOnly(10, 0));
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+		var id = (await response.Content.ReadFromJsonAsync<CreatedDto>(JsonOpts))!.Id;
+
+		var detail = await DetailAsync(id);
+		await Assert.That(detail.Absence.StartTime).IsEqualTo(new TimeOnly(8, 50));
+		await Assert.That(detail.Lessons.Single().StartTime).IsEqualTo(_second.StartTime);
+
+		var multiDayWithTimes = await _admin.PostAsJsonAsync("/api/v1/staff-absences",
+			new ReportStaffAbsenceRequest(absent.Id, _monday.AddDays(1), _monday.AddDays(2), null, new TimeOnly(8, 0), new TimeOnly(9, 0)), JsonOpts);
+		await Assert.That(multiDayWithTimes.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+	}
+
+	[Test]
+	public async Task Update_ToPartialDay_ClearsCoverOnLessonNoLongerAffected()
+	{
+		var (teacherClient, absent) = await _kit.TeacherAsync("edit-absent");
+		var vikar = await TestDataBuilder.CreateStaffAsync(factory.Services, _kit.TenantId, "Vikar Berg", StaffRole.Substitute);
+		var (classId, slots) = await TeachesOnMondayAsync(absent, "9.a", _first, _second);
+		var id = await ReportAsync(teacherClient, null, _monday);
+		await Assert.That((await AssignAsync(id, slots[0].Id, vikar.Id)).StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+		// The teacher is only out from 8:50, so the 8:00 lektion no longer needs a vikar.
+		var update = await teacherClient.PutAsJsonAsync($"/api/v1/staff-absences/{id}",
+			new UpdateStaffAbsenceRequest(_monday, null, new TimeOnly(8, 50), new TimeOnly(10, 0), "Tandlæge"), JsonOpts);
+		await Assert.That(update.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+		var detail = await DetailAsync(id);
+		await Assert.That(detail.Absence.Reason).IsEqualTo("Tandlæge");
+		await Assert.That(detail.Lessons.Single().SchemaSlotId).IsEqualTo(slots[1].Id);
+		var isoDate = _monday.ToDateTime(TimeOnly.MinValue);
+		var plan = await _admin.GetFromJsonAsync<WeekPlanController.WeekPlanDto>(
+			$"/api/v1/classes/{classId}/week-plan?isoYear={ISOWeek.GetYear(isoDate)}&isoWeek={ISOWeek.GetWeekOfYear(isoDate)}", JsonOpts);
+		await Assert.That(plan!.Slots.Single(s => s.SchemaSlotId == slots[0].Id).SubstituteTeacherId).IsNull();
+
+		var (colleagueClient, _) = await _kit.TeacherAsync("edit-colleague", "Kollega");
+		var foreign = await colleagueClient.PutAsJsonAsync($"/api/v1/staff-absences/{id}",
+			new UpdateStaffAbsenceRequest(_monday, null, null, null, null), JsonOpts);
+		await Assert.That(foreign.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+	}
+
+	[Test]
+	public async Task VikarReportedAbsent_TheirBookingsAreReleased()
+	{
+		var (_, absent) = await _kit.TeacherAsync("released-absent", "Bent Lærer");
+		var (vikarClient, vikar) = await _kit.TeacherAsync("released-vikar", "Allan Vikar");
+		var (_, slots) = await TeachesOnMondayAsync(absent, "4.c", _first);
+		var bentAbsence = await ReportAsync(_admin, absent.Id, _monday);
+		await AssignAsync(bentAbsence, slots[0].Id, vikar.Id);
+
+		await ReportAsync(vikarClient, null, _monday);
+
+		await Assert.That((await DetailAsync(bentAbsence)).Lessons.Single().SubstituteId).IsNull();
+		var list = await _admin.GetFromJsonAsync<List<StaffAbsenceDto>>(
+			$"/api/v1/staff-absences?from={_monday:yyyy-MM-dd}&to={_monday:yyyy-MM-dd}", JsonOpts);
+		await Assert.That(list!.Single(a => a.Id == bentAbsence).CoveredLessonCount).IsEqualTo(0);
+	}
+
+	[Test]
+	public async Task Dashboard_CountsLessonsWithoutVikar()
+	{
+		// A weekday in the dashboard's window of today and the next 6 days.
+		var soon = Enumerable.Range(0, 7).Select(DanishToday().AddDays)
+			.First(d => d.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday));
+		var (_, absent) = await _kit.TeacherAsync("dashboard-absent");
+		var vikar = await TestDataBuilder.CreateStaffAsync(factory.Services, _kit.TenantId, "Vikar Dahl", StaffRole.Substitute);
+		var (_, schema) = await TestDataBuilder.CreateClassWithSchemaAsync(factory.Services, _kit.TenantId, "3.d");
+		var slot = await TestDataBuilder.CreateSchemaSlotAsync(
+			factory.Services, _kit.TenantId, schema.Id, _first.Id, _course.Id, absent.Id, soon.DayOfWeek);
+		var id = await ReportAsync(_admin, absent.Id, soon);
+
+		async Task<int> UncoveredAsync() =>
+			(await _admin.GetFromJsonAsync<StatsController.DashboardStats>("/api/v1/stats/dashboard", JsonOpts))!.UncoveredLessonCount;
+
+		await Assert.That(await UncoveredAsync()).IsEqualTo(1);
+
+		await _admin.PutAsJsonAsync($"/api/v1/staff-absences/{id}/substitute",
+			new AssignAbsenceSubstituteRequest(slot.Id, soon, vikar.Id), JsonOpts);
+		await Assert.That(await UncoveredAsync()).IsEqualTo(0);
+	}
+
+	[Test]
 	public async Task Authorization_StaffOnlyOwnAbsence_AdminOnlyCover()
 	{
 		var (teacherClient, teacher) = await _kit.TeacherAsync("auth-teacher");

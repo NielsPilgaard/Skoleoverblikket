@@ -82,7 +82,7 @@ public sealed record AttendanceOverviewDto(DateOnly Date, bool IsSchoolDay, IRea
 
 public sealed record PendingAttendanceDto(Guid ClassId, string ClassName, AttendanceCheckpoint Checkpoint);
 
-public enum ParentReportResult { Created, NotYourChild, InvalidCategory, InvalidDates }
+public enum ParentReportResult { Created, NotYourChild, InvalidCategory, InvalidDates, NoSchoolDays }
 
 public enum ParentCancelResult { Cancelled, NotFound, NotCancellable }
 
@@ -160,6 +160,12 @@ public sealed class AbsenceService(
 			return (ParentReportResult.InvalidDates, null);
 		}
 
+		var calendar = await SchoolDayCalendar.LoadAsync(db, req.Date, lastDay, cancellationToken);
+		if (calendar.CountSchoolDays(req.Date, lastDay) == 0)
+		{
+			return (ParentReportResult.NoSchoolDays, null);
+		}
+
 		var report = new AbsenceReport
 		{
 			Id = Guid.NewGuid(),
@@ -207,8 +213,8 @@ public sealed class AbsenceService(
 	}
 
 	/// <summary>
-	/// A parent may withdraw a parent-filed report until the day it starts, and a pending or rejected
-	/// leave request at any time. Staff registrations are never parent-cancellable.
+	/// A parent may withdraw a sick report until the day it starts, approved fri until the day before,
+	/// and a pending or rejected leave request at any time. Staff registrations are never parent-cancellable.
 	/// </summary>
 	public async Task<ParentCancelResult> CancelByParentAsync(
 		string? parentSubject, Guid id, CancellationToken cancellationToken)
@@ -223,9 +229,11 @@ public sealed class AbsenceService(
 			return ParentCancelResult.NotFound;
 		}
 
+		// Approved fri can be given back until its first day; a sick report until the day itself.
+		var today = SchoolDayCalendar.Today();
 		var cancellable = report.RegisteredByStaffId == null
 			&& (report.LeaveStatus is LeaveStatus.Pending or LeaveStatus.Rejected
-				|| report.Date >= SchoolDayCalendar.Today());
+				|| (report.LeaveStatus == LeaveStatus.Approved ? report.Date > today : report.Date >= today));
 
 		if (!cancellable)
 		{
@@ -1122,7 +1130,8 @@ public sealed class AbsenceService(
 			a.CreatedAt,
 			a.UpdatedAt,
 			parentView && a.RegisteredByStaffId == null
-				&& (a.LeaveStatus == LeaveStatus.Pending || a.LeaveStatus == LeaveStatus.Rejected || a.Date >= today)));
+				&& (a.LeaveStatus == LeaveStatus.Pending || a.LeaveStatus == LeaveStatus.Rejected
+					|| (a.LeaveStatus == LeaveStatus.Approved ? a.Date > today : a.Date >= today))));
 
 	private static string FormatRange(DateOnly date, DateOnly? endDate) =>
 		endDate is { } end && end != date

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { useAuth } from '../auth/useAuth'
 import {
   getApiV1AttendanceClassesByClassIdOptions,
   putApiV1AttendanceClassesByClassIdMutation,
@@ -17,6 +18,7 @@ import {
   CATEGORY_LABEL,
   LEAVE_STATUS_LABEL,
   addDaysIso,
+  capitalizeFirst,
   formatLongDate,
   todayIso,
 } from '../lib/absence'
@@ -56,26 +58,32 @@ export default function AttendancePage() {
     searchParams.get('trin') === 'slut' ? 'EndOfDay' : 'StartOfDay'
   )
   const [selection, setSelection] = useState<Selection>(new Map())
+  // Set on the first tap. A background refetch must never wipe taps that aren't saved yet.
+  const [dirty, setDirty] = useState(false)
   const [saved, setSaved] = useState(false)
   const qc = useQueryClient()
+  // The superadmin "Vis som" toolbar floats over the bottom of the screen.
+  const { isSuperAdmin } = useAuth()
 
   const options = getApiV1AttendanceClassesByClassIdOptions({ path: { classId }, query: { date } })
   const { data, isLoading, isError } = useQuery(options)
 
-  // Seed the selection from what is saved whenever the class, date or step changes.
+  // Seed the selection from what is saved, unless the user has started tapping. After a save the
+  // selection already matches what was saved, so it stays dirty until the class, date or step changes.
   useEffect(() => {
-    if (!data) return
+    if (!data || dirty) return
     const next: Selection = new Map()
     for (const s of data.students ?? []) {
       const mark = checkpoint === 'StartOfDay' ? s.morning : s.endOfDay
       if (mark && mark.source === 'Staff') next.set(s.studentId, mark.category)
     }
     setSelection(next)
-  }, [data, checkpoint])
+  }, [data, checkpoint, dirty])
 
   // Not keyed on data: the refetch after a save must not hide the confirmation.
   useEffect(() => {
     setSaved(false)
+    setDirty(false)
   }, [classId, date, checkpoint])
 
   const save = useMutation({
@@ -102,6 +110,7 @@ export default function AttendancePage() {
   function toggle(studentId: string) {
     if (readOnly) return
     setSaved(false)
+    setDirty(true)
     setSelection((prev) => {
       const next = new Map(prev)
       if (next.has(studentId)) next.delete(studentId)
@@ -112,6 +121,7 @@ export default function AttendancePage() {
 
   function setCategory(studentId: string, category: AbsenceCategory) {
     setSaved(false)
+    setDirty(true)
     setSelection((prev) => new Map(prev).set(studentId, category))
   }
 
@@ -172,11 +182,10 @@ export default function AttendancePage() {
         >
           ‹
         </button>
-        <span
-          className="text-sm font-medium text-gray-900 capitalize"
-          data-testid="attendance-date"
-        >
-          {date === today ? `I dag · ${formatLongDate(date)}` : formatLongDate(date)}
+        <span className="text-sm font-medium text-gray-900" data-testid="attendance-date">
+          {date === today
+            ? `I dag · ${formatLongDate(date)}`
+            : capitalizeFirst(formatLongDate(date))}
         </span>
         <button
           type="button"
@@ -223,13 +232,19 @@ export default function AttendancePage() {
         </p>
       )}
 
-      <p className="text-sm text-gray-600 mt-4 mb-2">
-        {checkpoint === 'StartOfDay'
-          ? 'Tryk på de elever, der ikke er her.'
-          : 'Tryk på de elever, der er gået i løbet af dagen.'}
-      </p>
+      {!readOnly && (
+        <p className="text-sm text-gray-600 mt-4 mb-2">
+          {checkpoint === 'StartOfDay'
+            ? 'Tryk på de elever, der ikke er her.'
+            : 'Tryk på de elever, der er gået i løbet af dagen.'}
+        </p>
+      )}
 
-      <ul className="space-y-2" data-testid="attendance-student-list">
+      {/* Nothing to note on a non-school day, so the list would only invite tapping. */}
+      <ul
+        className={`space-y-2 ${readOnly ? 'mt-4' : ''} ${data.isSchoolDay ? '' : 'hidden'}`}
+        data-testid="attendance-student-list"
+      >
         {students.map((s) => {
           const locked = checkpoint === 'StartOfDay' ? lockedLabel(s) : null
           const absentAllDay =
@@ -312,12 +327,16 @@ export default function AttendancePage() {
         })}
       </ul>
 
-      {students.length === 0 && (
+      {students.length === 0 && data.isSchoolDay && (
         <p className="text-sm text-gray-500 py-6">Der er ingen elever i klassen.</p>
       )}
 
       {!readOnly && (
-        <div className="sticky bottom-0 -mx-4 mt-6 bg-white border-t border-gray-200 px-4 py-3">
+        <div
+          className={`sticky bottom-0 -mx-4 mt-6 bg-white border-t border-gray-200 px-4 pt-3 ${
+            isSuperAdmin ? 'pb-16' : 'pb-3'
+          }`}
+        >
           <div>
             {save.isError && (
               <p className="text-sm text-red-600 mb-2">
@@ -334,6 +353,7 @@ export default function AttendancePage() {
                 type="button"
                 onClick={() => {
                   setSaved(false)
+                  setDirty(true)
                   setSelection(new Map())
                 }}
                 data-testid="attendance-all-present"

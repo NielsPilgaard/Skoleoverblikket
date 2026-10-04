@@ -321,6 +321,62 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 			.ToList();
 	}
 
+	/// <summary>
+	/// Removes every vikar booking <paramref name="staffId"/> holds from <paramref name="from"/> through
+	/// <paramref name="to"/> — used when the vikar is themself reported absent, so the lektioner they
+	/// were covering show up as uncovered again. With a time window, only lektioner overlapping it are
+	/// released. Returns how many bookings were removed.
+	/// </summary>
+	public async Task<int> ReleaseBookingsAsync(
+		Guid staffId, DateOnly from, DateOnly to, TimeOnly? start, TimeOnly? end, CancellationToken cancellationToken)
+	{
+		// ISO years can straddle calendar years by a few days, hence the ±1 margin.
+		var minYear = from.Year - 1;
+		var maxYear = to.Year + 1;
+		var slots = await db.WeekPlanSlots
+			.Include(s => s.WeekPlan)
+			.Include(s => s.SchemaSlot).ThenInclude(ss => ss.TimeSlot)
+			.Where(s => s.SubstituteTeacherId == staffId || s.SubstituteAideId == staffId)
+			.Where(s => s.WeekPlan.IsoYear >= minYear && s.WeekPlan.IsoYear <= maxYear)
+			.ToListAsync(cancellationToken);
+
+		var released = 0;
+		foreach (var slot in slots)
+		{
+			var date = DateOnly.FromDateTime(ISOWeek.ToDateTime(slot.WeekPlan.IsoYear, slot.WeekPlan.IsoWeek, slot.SchemaSlot.Weekday));
+			if (date < from || date > to)
+			{
+				continue;
+			}
+
+			if (start is { } s && end is { } e
+				&& !(slot.SchemaSlot.TimeSlot.StartTime < e && s < slot.SchemaSlot.TimeSlot.EndTime))
+			{
+				continue;
+			}
+
+			if (slot.SubstituteTeacherId == staffId)
+			{
+				slot.SubstituteTeacherId = null;
+			}
+
+			if (slot.SubstituteAideId == staffId)
+			{
+				slot.SubstituteAideId = null;
+			}
+
+			slot.UpdatedAt = DateTimeOffset.UtcNow;
+			released++;
+		}
+
+		if (released > 0)
+		{
+			await db.SaveChangesAsync(cancellationToken);
+		}
+
+		return released;
+	}
+
 	/// <summary>Staff id → why they are busy for a time range on a date.</summary>
 	private async Task<Dictionary<Guid, string>> GetConflictsAsync(
 		DateOnly date, TimeOnly start, TimeOnly end, CancellationToken cancellationToken, Guid? ignoreSchemaSlotId = null)
@@ -328,9 +384,11 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 		var conflicts = new Dictionary<Guid, string>();
 		var weekday = date.DayOfWeek;
 
+		// A partial-day absence only makes them busy when its window overlaps the lektion.
 		var absentStaffIds = await db.StaffAbsences
 			.AsNoTracking()
 			.Where(a => a.Date <= date && (a.EndDate ?? a.Date) >= date)
+			.Where(a => a.StartTime == null || a.EndTime == null || (a.StartTime < end && start < a.EndTime))
 			.Select(a => a.StaffId)
 			.ToListAsync(cancellationToken);
 
