@@ -1,8 +1,8 @@
 ---
 title: 'Personal founder welcome email at signup'
-purpose: 'Spec for a plain, personal-looking welcome email from the founder that is sent automatically when a school signs up, and openly says so.'
+purpose: 'Spec for a plain, personal-looking welcome email from the founder that is sent automatically a day after a school signs up, and openly says so.'
 description: >-
-  When a school completes self-serve signup, send the new admin a short email
+  A day after a school completes self-serve signup, send the new admin a short email
   written by Niels in his own voice: plain text look, sent from his name, replies
   go straight to his inbox. The email openly says it was sent automatically but
   written by hand. Modelled on the onboarding emails from PingPuffin and Alunta.
@@ -13,7 +13,7 @@ status: 'Proposed'
 
 ## TL;DR
 
-After `SchoolSignupService.CreateAsync` succeeds, send one email to the new admin. It looks like a personal email, not a newsletter: no logo, no branded card, no button. From "Niels", `Reply-To` `niels@skoleoverblikket.dk`. First paragraph admits it is sent automatically. It ends with an open question so people reply. A failed send must never fail signup.
+About 24 hours after `SchoolSignupService.CreateAsync` succeeds, send one email to the new admin. It looks like a personal email, not a newsletter: no logo, no branded card, no button. From "Niels", `Reply-To` `niels@skoleoverblikket.dk`. First paragraph admits it is sent automatically. It ends with an open question so people reply. A failed send must never fail signup.
 
 ## Context
 
@@ -25,7 +25,7 @@ That fits us well. Our buyer is Hanne or a principal at a small friskole. A real
 
 ### In scope
 
-1. **Trigger**: send once, after the school, admin and DPA acceptance are saved in `SchoolSignupService.CreateAsync`. Not on any failure path (`EmailTaken`, `AccountFailed`, `SaveFailed`). Send even when the auto-login (`LoginFailed`) fails, since the school exists by then.
+1. **Trigger**: send once, about 24 hours after signup. `SchoolSignupService.CreateAsync` sets `School.WelcomeEmailDueAt` to signup + 24h when the school is saved, and the hourly `WelcomeEmailJob` sends due emails and clears the field. Not on any failure path (`EmailTaken`, `AccountFailed`, `SaveFailed`), since no school is saved. Existing schools have no due time and are never emailed.
 2. **Recipient**: `req.AdminEmail`, greeted by `req.AdminFirstName`.
 3. **Sender**:
    - Display name `Niels`.
@@ -34,12 +34,11 @@ That fits us well. Our buyer is Hanne or a principal at a small friskole. A real
    - No phone number in the signature.
 4. **Look**: plain-text body plus a minimal HTML body (paragraphs and line breaks, default font, no `EmailTemplate.Wrap`, no logo, no images, no tracking pixels). It should look like it was typed in a mail client.
 5. **Honesty**: the email says, in the first or second paragraph, that it was sent automatically and that Niels wrote it himself and reads replies.
-6. **Failure handling**: catch and log send exceptions. Signup returns success regardless.
+6. **Failure handling**: signup never sends, so it cannot fail on email. A failed send is logged and retried every hour, and given up after 3 days.
 
 ### Out of scope
 
 - Drip sequences, follow-ups during the trial, or any marketing automation.
-- Delayed sending. Send right away, like Alunta ("lige efter du har oprettet dig").
 - Welcome emails for invited staff, parents or board members. They already get invitation emails.
 - Unsubscribe handling. This is a one-off transactional email tied to account creation.
 
@@ -54,7 +53,7 @@ Hej {Fornavn},
 
 Jeg hedder Niels, og det er mig, der har bygget Skoleoverblikket.
 
-For at være ærlig: Den her mail bliver sendt automatisk, når en skole bliver oprettet. Men jeg har skrevet den selv, og hvis du svarer, lander dit svar direkte i min indbakke. Jeg læser og svarer på alle mails personligt, oftest samme dag.
+For at være ærlig: Den her mail bliver sendt automatisk dagen efter, at en skole er blevet oprettet. Men jeg har skrevet den selv, og hvis du svarer, lander dit svar direkte i min indbakke. Jeg læser og svarer på alle mails personligt, oftest samme dag.
 
 Tak, fordi I har oprettet {Skolenavn}. Jeg har lavet Skoleoverblikket, fordi skoler bruger alt for meget tid og alt for mange penge på administration. Den tid skulle hellere bruges på eleverne.
 
@@ -74,14 +73,14 @@ Skoleoverblikket
 - **`EmailMessage`** ([IEmailSender.cs](../api/Skoleoverblikket.Api/Email/IEmailSender.cs)): add optional `FromName` and `ReplyTo`. `MailKitEmailSender` uses `FromName ?? _options.FromName` and sets `mime.ReplyTo` when given. Existing callers stay unchanged.
 - **`WelcomeEmail.cs`** in `api/Skoleoverblikket.Api/Email/`, next to `StaffInvitationEmail.cs` and `ParentInvitationEmail.cs`. A static builder returning an `EmailMessage` with both bodies. Sender name and reply-to address are constants here, not config. They are not tenant-specific and there is one founder.
 - **`SchoolSignupService`**: inject `IEmailSender` and `ILogger`. Send after the save, following the service rule "load, check, change, save once, then trigger side effects". Wrap in try/catch so an SMTP outage cannot turn a created school into a signup error.
-- **No migration, no frontend change, no new config.** If the reply-to address does end up in config, add it to [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md).
+- **Migration** for `School.WelcomeEmailDueAt`. No new config. The email is in the backoffice email preview (`/api/v1/admin/email-preview/welcome`).
 - **Landing page / changelog**: not a user-facing feature card. Use a `feat:` commit subject that reads well in `/nyheder` anyway, or `chore:` if it shouldn't appear there.
 
 ## Tests
 
 API integration tests through HTTP, using `RecordingEmailSender` ([RecordingEmailSender.cs](../api/tests/Skoleoverblikket.Api.IntegrationTests/Infrastructure/RecordingEmailSender.cs)). Put them in the existing signup test file if there is one, otherwise a new `SchoolSignupWelcomeEmailTests.cs`.
 
-- Successful signup records exactly one email to the admin address, with the founder `ReplyTo`, the first name in the body, and no `EmailTemplate` markup.
+- Successful signup records no email at once and none before 24 hours, then exactly one email to the admin address (never twice), with the founder `ReplyTo`, the first name in the body, and no `EmailTemplate` markup.
 - Signup with an email that is already taken records no welcome email.
 - The body contains the automated-sending disclosure. One assertion on a stable phrase is enough, so copy edits don't break the test.
 
@@ -93,7 +92,8 @@ No Playwright test. Hanne isn't blocked if this email breaks.
 - [ ] The email says it is sent automatically, written by Niels, and that replies reach him.
 - [ ] Replying in Gmail/Outlook addresses `niels@skoleoverblikket.dk`, not `kontakt@`.
 - [ ] Email renders as plain text in Gmail, Outlook and Apple Mail (no card, logo or button).
-- [ ] An SMTP failure is logged and signup still succeeds.
+- [ ] The email goes out about 24 hours after signup, not at signup.
+- [ ] An SMTP failure is logged and retried; signup never fails on email.
 - [ ] Integration tests above pass. `/verify` passes.
 
 ## Decisions
