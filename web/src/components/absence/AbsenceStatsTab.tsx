@@ -234,18 +234,6 @@ export function AbsenceStatsTab({ isAdmin }: { isAdmin: boolean }) {
             </option>
           ))}
         </select>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value as AbsenceCategory | '')}
-          className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-        >
-          <option value="">Alle kategorier</option>
-          {CHART_CATEGORY_ORDER.map((c) => (
-            <option key={c} value={c}>
-              {CATEGORY_LABEL[c]}
-            </option>
-          ))}
-        </select>
       </div>
 
       {isLoading && <p className="text-sm text-gray-400">Indlæser…</p>}
@@ -375,9 +363,31 @@ export function AbsenceStatsTab({ isAdmin }: { isAdmin: boolean }) {
           )}
 
           <section>
-            <h2 className="text-sm font-semibold text-gray-900 mb-2">Elever</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <h2 className="text-sm font-semibold text-gray-900">Elever</h2>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                Vis elever med
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as AbsenceCategory | '')}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900"
+                  data-testid="absence-stats-category"
+                >
+                  <option value="">Alt fravær</option>
+                  {CHART_CATEGORY_ORDER.map((c) => (
+                    <option key={c} value={c}>
+                      {CATEGORY_LABEL[c]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
             {visibleStudents.length === 0 ? (
-              <p className="text-sm text-gray-500">Intet fravær i kvartalet.</p>
+              <p className="text-sm text-gray-500">
+                {category === ''
+                  ? 'Intet fravær i kvartalet.'
+                  : `Ingen elever med ${CATEGORY_LABEL[category].toLowerCase()} i kvartalet.`}
+              </p>
             ) : (
               <div className="overflow-x-auto bg-white border border-gray-200 rounded-xl">
                 <table className="w-full text-sm" data-testid="absence-stats-students">

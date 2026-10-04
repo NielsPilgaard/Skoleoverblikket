@@ -10,6 +10,7 @@ import { DatePicker } from '../DatePicker'
 import {
   CATEGORY_BADGE,
   CATEGORY_LABEL,
+  LEAVE_STATUS_BADGE,
   LEAVE_STATUS_LABEL,
   addDaysIso,
   formatDateRange,
@@ -23,10 +24,9 @@ export function CategoryBadge({
   record: Pick<AbsenceRecordDto, 'category' | 'leaveStatus' | 'halfDay'>
 }) {
   const leave = record.category === 'ExtraordinaryLeave' && record.leaveStatus
+  const colors = leave ? LEAVE_STATUS_BADGE[record.leaveStatus!] : CATEGORY_BADGE[record.category]
   return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${CATEGORY_BADGE[record.category]}`}
-    >
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colors}`}>
       {CATEGORY_LABEL[record.category]}
       {record.halfDay ? ' · halv dag' : ''}
       {leave ? ` · ${LEAVE_STATUS_LABEL[record.leaveStatus!].toLowerCase()}` : ''}
@@ -91,9 +91,12 @@ export function AbsenceRegisterTab() {
             </option>
           ))}
         </select>
-        <DatePicker value={from} onChange={setFrom} />
-        <span className="text-gray-400 text-sm">–</span>
-        <DatePicker value={to} onChange={setTo} min={from} />
+        {/* One unit, so the range wraps as a whole instead of leaving a lone dash behind. */}
+        <div className="flex items-center gap-2">
+          <DatePicker value={from} onChange={setFrom} />
+          <span className="text-gray-400 text-sm">–</span>
+          <DatePicker value={to} onChange={setTo} min={from} />
+        </div>
       </div>
 
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}

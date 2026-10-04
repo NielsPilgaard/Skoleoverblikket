@@ -73,7 +73,7 @@ function AttendanceOverview() {
           >
             <Link
               to={attendanceLink(c.classId, date)}
-              className="font-medium text-gray-900 hover:text-brand-700 w-24"
+              className="font-medium text-gray-900 hover:text-brand-700 min-w-24 sm:w-40 break-words"
             >
               {c.className}
             </Link>

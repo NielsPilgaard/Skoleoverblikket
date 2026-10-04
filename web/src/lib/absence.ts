@@ -34,6 +34,13 @@ export const LEAVE_STATUS_LABEL: Record<LeaveStatus, string> = {
   Rejected: 'Afvist',
 }
 
+/** Leave requests are coloured by decision, so "afvist" never looks like "godkendt". */
+export const LEAVE_STATUS_BADGE: Record<LeaveStatus, string> = {
+  Pending: 'bg-amber-50 text-amber-800',
+  Approved: CATEGORY_BADGE.ExtraordinaryLeave,
+  Rejected: 'bg-red-50 text-red-700',
+}
+
 /** Today in Danish local time as yyyy-mm-dd. */
 export function todayIso(): string {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Copenhagen' }).format(new Date())

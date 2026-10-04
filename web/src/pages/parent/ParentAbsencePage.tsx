@@ -243,8 +243,9 @@ export default function ParentAbsencePage() {
             className="bg-white border border-gray-200 rounded-xl p-4"
             data-testid={`parent-absence-record-${r.id}`}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div>
+            {/* On phones the badge sits on its own row, so it doesn't squeeze the name and date. */}
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+              <div className="min-w-0">
                 <p className="font-medium text-gray-900 text-sm">{r.studentName}</p>
                 <p className="text-sm text-gray-600 mt-0.5">
                   {formatDateRange(r.date, r.endDate)}
@@ -254,7 +255,7 @@ export default function ParentAbsencePage() {
                   {r.source === 'Parent' ? 'Meldt af jer' : 'Noteret af skolen'}
                 </p>
               </div>
-              <div className="flex flex-col items-end gap-2 shrink-0">
+              <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 shrink-0">
                 <CategoryBadge record={r} />
                 {r.canCancel && (
                   <button

@@ -80,8 +80,7 @@ export default function AbsencePage() {
   usePageTitle('Fravær')
   const { isAdmin } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
-  const requested = searchParams.get('fane') as Tab | null
-  const tab: Tab = requested === 'fri' && !isAdmin ? 'fremmoede' : (requested ?? 'fremmoede')
+  const requested = searchParams.get('fane')
 
   const { data: leaveRequests = [] } = useQuery({
     ...getApiV1AbsenceLeaveRequestsOptions(),
@@ -95,6 +94,8 @@ export default function AbsencePage() {
     ...(isAdmin ? [{ key: 'fri' as const, label: 'Anmodninger om fri', badge: pendingLeave }] : []),
     { key: 'statistik', label: 'Statistik' },
   ]
+  // An unknown ?fane= (or "fri" for non-admins) falls back to Fremmøde instead of an empty page.
+  const tab: Tab = tabs.find((t) => t.key === requested)?.key ?? 'fremmoede'
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
