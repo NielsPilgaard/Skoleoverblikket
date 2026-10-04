@@ -24,7 +24,7 @@ public sealed class TenantsController(SchoolSignupService signup) : ControllerBa
 			null => Ok(result.Created),
 			Failure.EmailTaken => Problem(
 				title: "E-mailen er allerede i brug",
-				detail: "Der findes allerede en bruger med den e-mail. Log ind i stedet, eller brug en anden e-mail.",
+				detail: "Der findes allerede en bruger med den e-mail. En bruger kan kun høre til én skole, så brug en anden e-mail til den nye skole.",
 				statusCode: StatusCodes.Status409Conflict),
 			Failure.AccountFailed => Problem(title: "Kunne ikke oprette brugerkonto", detail: result.Detail, statusCode: 502),
 			Failure.SaveFailed => Problem(title: "Kunne ikke oprette skole", detail: result.Detail, statusCode: 502),

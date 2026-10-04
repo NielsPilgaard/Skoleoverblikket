@@ -82,7 +82,7 @@ export default function SignupPage() {
         setErrors({
           adminEmail:
             problemDetail(error) ??
-            'Der findes allerede en bruger med den e-mail. Log ind i stedet.',
+            'Der findes allerede en bruger med den e-mail. En bruger kan kun høre til én skole, så brug en anden e-mail til den nye skole.',
         })
       } else if (response.status === 502) {
         setErrors({ general: 'Der opstod en fejl ved oprettelse af brugerkonto. Prøv igen.' })

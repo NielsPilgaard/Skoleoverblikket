@@ -70,7 +70,8 @@ public sealed class SchoolSignupService(
 		}
 		catch (KeycloakUserExistsException)
 		{
-			// Never touch the existing account: not linked to this school, and not deleted on cleanup.
+			// A login belongs to one school (tenant_id is single-valued in Keycloak), so an existing
+			// account cannot become this school's admin. Never touch it: not linked, not deleted on cleanup.
 			return new Result(null, Failure.EmailTaken);
 		}
 		catch (KeycloakException ex)
