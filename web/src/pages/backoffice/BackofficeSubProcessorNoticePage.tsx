@@ -24,7 +24,8 @@ export default function BackofficeSubProcessorNoticePage() {
   function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!window.confirm('Sende varslet til administratorerne på alle skoler?')) return
-    send.mutate({ body: { change, effectiveFrom } })
+    // Clearing the text disables the button, so a second click can't send the notice twice.
+    send.mutate({ body: { change, effectiveFrom } }, { onSuccess: () => setChange('') })
   }
 
   return (
