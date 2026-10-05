@@ -12,6 +12,18 @@ interface ChangelogEntry {
  */
 export const changelog: ChangelogEntry[] = [
   {
+    date: '2026-10-05',
+    title: 'Fravær og vikardækning',
+    changes: [
+      'Fravær: læreren registrerer dagens fremmøde for klassen, også fra telefonen, forældre kan søge om fri, og kontoret ser fraværet pr. kvartal med markering ved 10 % og 15 % ulovligt fravær.',
+      'Vikardækning: medarbejdere melder selv fravær under "Mit fravær", og kontoret ser hver lektion, der mangler dækning, med ledige kolleger foreslået, og kan sætte en vikar på, som får besked.',
+      'Stå mål med: fag uden vejledende timetal på et klassetrin, fx dansk i 0. klasse, vises nu som ekstra timer i stedet for en advarsel.',
+      'Databehandleraftalen kan nu godkendes direkte i Skoleoverblikket, og hvis skolen opsiger abonnementet, slettes alle skolens data efter 90 dage med en advarsel på e-mail 7 dage før.',
+      'Nye skoler får nu 30 dages gratis prøveperiode i stedet for 14.',
+      'Notifikationsklokken og fraværssiderne fungerer nu bedre på telefonen.',
+    ],
+  },
+  {
     date: '2026-09-13',
     title: 'Klassechat og forsider efter rolle',
     changes: [
