@@ -144,11 +144,11 @@ function StepTimeSlots({ onNext, onSkip }: { onNext: () => void; onSkip: () => v
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Skoledag starter</label>
-          <TimeInput value={dayStart} onChange={setDayStart} />
+          <TimeInput label="Skoledag starter" value={dayStart} onChange={setDayStart} />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Skoledag slutter</label>
-          <TimeInput value={dayEnd} onChange={setDayEnd} />
+          <TimeInput label="Skoledag slutter" value={dayEnd} onChange={setDayEnd} />
         </div>
       </div>
 
@@ -184,7 +184,11 @@ function StepTimeSlots({ onNext, onSkip }: { onNext: () => void; onSkip: () => v
               <div className="flex-1 grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs text-gray-500 mb-0.5">Starttidspunkt</label>
-                  <TimeInput value={b.startTime} onChange={(v) => updateBreak(i, 'startTime', v)} />
+                  <TimeInput
+                    label={`Pause ${i + 1}, starttidspunkt`}
+                    value={b.startTime}
+                    onChange={(v) => updateBreak(i, 'startTime', v)}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 mb-0.5">Varighed (min)</label>
@@ -193,6 +197,7 @@ function StepTimeSlots({ onNext, onSkip }: { onNext: () => void; onSkip: () => v
                     min={5}
                     max={60}
                     value={b.durationMinutes}
+                    aria-label={`Pause ${i + 1}, varighed (min)`}
                     onChange={(e) => updateBreak(i, 'durationMinutes', Number(e.target.value))}
                     onFocus={(e) => e.target.select()}
                     className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
@@ -201,6 +206,7 @@ function StepTimeSlots({ onNext, onSkip }: { onNext: () => void; onSkip: () => v
               </div>
               <button
                 onClick={() => removeBreak(i)}
+                aria-label={`Fjern pause ${i + 1}`}
                 className="mt-4 p-1.5 text-gray-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-colors"
               >
                 <svg
