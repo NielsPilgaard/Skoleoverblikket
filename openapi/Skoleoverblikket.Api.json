@@ -5828,6 +5828,47 @@
         }
       }
     },
+    "/api/v1/exports/school.zip/link": {
+      "post": {
+        "tags": [
+          "SchoolExport"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolExportController_ExportLinkDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolExportController_ExportLinkDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolExportController_ExportLinkDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/exports/school.zip/download": {
+      "get": {
+        "tags": [
+          "SchoolExport"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/exports/school.zip": {
       "get": {
         "tags": [
@@ -13337,6 +13378,18 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SchoolExportController_ExportLinkDto": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
           }
         },
         "additionalProperties": false

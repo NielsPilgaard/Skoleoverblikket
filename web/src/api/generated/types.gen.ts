@@ -1088,6 +1088,10 @@ export type SchemasControllerUpsertSlotRequest = {
     aideId?: string | null;
 };
 
+export type SchoolExportControllerExportLinkDto = {
+    url: string;
+};
+
 export type SchoolsControllerOnboardingStatusDto = {
     hasLogo: boolean;
     staffCount: number;
@@ -4084,6 +4088,36 @@ export type GetApiV1ClassesByClassIdSchemasBySchemaIdConflictsResponses = {
 };
 
 export type GetApiV1ClassesByClassIdSchemasBySchemaIdConflictsResponse = GetApiV1ClassesByClassIdSchemasBySchemaIdConflictsResponses[keyof GetApiV1ClassesByClassIdSchemasBySchemaIdConflictsResponses];
+
+export type PostApiV1ExportsSchoolZipLinkData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/exports/school.zip/link';
+};
+
+export type PostApiV1ExportsSchoolZipLinkResponses = {
+    /**
+     * OK
+     */
+    200: SchoolExportControllerExportLinkDto;
+};
+
+export type PostApiV1ExportsSchoolZipLinkResponse = PostApiV1ExportsSchoolZipLinkResponses[keyof PostApiV1ExportsSchoolZipLinkResponses];
+
+export type GetApiV1ExportsSchoolZipDownloadData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/exports/school.zip/download';
+};
+
+export type GetApiV1ExportsSchoolZipDownloadResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
 
 export type GetApiV1ExportsSchoolZipData = {
     body?: never;

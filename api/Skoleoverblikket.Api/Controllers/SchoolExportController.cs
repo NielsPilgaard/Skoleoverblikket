@@ -2,14 +2,35 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Skoleoverblikket.Api.Auth;
 using Skoleoverblikket.Api.Services;
+using Skoleoverblikket.Api.Tenancy;
 
 namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/exports")]
 [Authorize(Roles = Roles.Admin)]
-public sealed class SchoolExportController(SchoolExportService exports) : ControllerBase
+public sealed class SchoolExportController(SchoolExportService exports, ExportLinkTokens links, ITenantContext tenant) : ControllerBase
 {
+	public sealed record ExportLinkDto(string Url);
+
+	/// <summary>
+	/// POST /api/v1/exports/school.zip/link — a one-minute, single-use link to <see cref="DownloadSchoolZip"/>,
+	/// so the browser can download the ZIP natively instead of holding all of it in memory.
+	/// </summary>
+	[HttpPost("school.zip/link")]
+	public ActionResult<ExportLinkDto> CreateSchoolZipLink() =>
+		User.GetKeycloakSubject() is { } subject
+			? Ok(new ExportLinkDto($"/api/v1/exports/school.zip/download?token={Uri.EscapeDataString(links.Create(tenant.TenantId, subject))}"))
+			: Forbid();
+
+	/// <summary>GET /api/v1/exports/school.zip/download?token=… — <see cref="GetSchoolZip"/> for a link from <see cref="CreateSchoolZipLink"/>.</summary>
+	[HttpGet("school.zip/download")]
+	[Authorize(AuthenticationSchemes = ExportLinkAuthHandler.SchemeName)]
+	[Produces("application/zip")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	public Task<IResult> DownloadSchoolZip(CancellationToken cancellationToken) =>
+		GetSchoolZip(cancellationToken);
+
 	/// <summary>
 	/// GET /api/v1/exports/school.zip — all the school's data: a CSV per table plus every uploaded file.
 	/// Streamed as it is built, so an error after the first bytes ends the download instead of returning ProblemDetails.

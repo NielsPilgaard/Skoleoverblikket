@@ -1,8 +1,10 @@
 using System.IO.Compression;
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Skoleoverblikket.Api.Controllers;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using Skoleoverblikket.Api.Models;
@@ -15,7 +17,7 @@ namespace Skoleoverblikket.Api.IntegrationTests;
 /// "Download everything" ZIP on /eksporter (GET /api/v1/exports/school.zip). Covers: a CSV per table
 /// including archived rows and message bodies, files under their folder and file names, other
 /// storage objects under andre-filer, invitation tokens left out, no rows from another school,
-/// and admin-only access.
+/// admin-only access, and the single-use download link the browser downloads natively.
 /// </summary>
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
 public sealed class SchoolExportTests(ApiFactory factory)
@@ -156,6 +158,52 @@ public sealed class SchoolExportTests(ApiFactory factory)
 		var invitations = Text(entries["data/StaffInvitations.csv"]);
 		await Assert.That(invitations).Contains($"thomas-{schoolId:N}@skole.dk");
 		await Assert.That(entries.Values.Any(bytes => Text(bytes).Contains(token, StringComparison.Ordinal))).IsFalse();
+	}
+
+	[Test]
+	public async Task DownloadLink_WorksOnceForTheAdminsSchool()
+	{
+		var schoolId = await SeedSchoolAsync("Mikkel Linksen", $"tok-{Guid.NewGuid():N}");
+		await SeedSchoolAsync("Anna Linkskole", $"tok-{Guid.NewGuid():N}");
+
+		var linkResponse = await Client(schoolId, "admin").PostAsync("/api/v1/exports/school.zip/link", null);
+		await Assert.That(linkResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+		var link = await linkResponse.Content.ReadFromJsonAsync<SchoolExportController.ExportLinkDto>();
+
+		// A browser download sends no bearer token, only the link.
+		var browser = factory.CreateClient();
+		var response = await browser.GetAsync(link!.Url);
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+		var students = Text((await ReadZipAsync(response))["data/Students.csv"]);
+		await Assert.That(students).Contains("Mikkel Linksen");
+		await Assert.That(students).DoesNotContain("Anna Linkskole");
+
+		var again = await browser.GetAsync(link.Url);
+		await Assert.That(again.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+	}
+
+	[Test]
+	public async Task DownloadLink_WithForgedOrMissingToken_IsUnauthorized()
+	{
+		var browser = factory.CreateClient();
+
+		var forged = await browser.GetAsync("/api/v1/exports/school.zip/download?token=CfDJ8forged");
+		var missing = await browser.GetAsync("/api/v1/exports/school.zip/download");
+
+		await Assert.That(forged.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+		await Assert.That(missing.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+	}
+
+	[Test]
+	public async Task NonAdmin_CannotCreateDownloadLink()
+	{
+		var schoolId = Guid.NewGuid();
+		await TestDataBuilder.CreateSchoolAsync(factory.Services, schoolId);
+
+		var response = await Client(schoolId, "staff").PostAsync("/api/v1/exports/school.zip/link", null);
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
 	}
 
 	[Test]

@@ -5,7 +5,7 @@ description: >-
   Follow-up from task 06. Canceled schools get a warning 7 days before all
   data is deleted, with a link to /eksporter. That page only exports hours
   reports and the schema as CSV. Add one "download everything" ZIP.
-status: 'Proposed'
+status: 'Completed'
 ---
 
 # Full data export before deletion

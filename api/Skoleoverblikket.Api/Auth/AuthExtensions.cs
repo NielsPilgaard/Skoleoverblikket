@@ -18,7 +18,9 @@ public static class AuthExtensions
 			   .AddJwtBearer(options =>
 			   {
 				   // Resolve options at configuration time via IOptions<KeycloakOptions>
-			   });
+			   })
+			   .AddScheme<AuthenticationSchemeOptions, ExportLinkAuthHandler>(ExportLinkAuthHandler.SchemeName, null);
+		services.AddSingleton<ExportLinkTokens>();
 
 		// Configure JwtBearerOptions from KeycloakOptions after the options graph is built
 		services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { usePageTitle } from '../hooks/usePageTitle'
 import keycloak from '../auth/keycloak'
+import { postApiV1ExportsSchoolZipLink } from '../api/generated/sdk.gen'
 
 interface ExportCard {
   title: string
@@ -37,7 +38,7 @@ const EXPORTS: ExportCard[] = [
   },
 ]
 
-const FULL_EXPORT = { path: '/exports/school.zip', filename: 'skolens-data.zip' }
+const FULL_EXPORT_KEY = 'full-export'
 
 function DownloadIcon() {
   return (
@@ -107,6 +108,21 @@ export default function ExportsPage() {
     }
   }
 
+  // The ZIP can be large, so the browser downloads it itself from a one-minute, single-use link
+  // instead of holding it all in memory like the small exports above.
+  async function downloadAll() {
+    setError(null)
+    setDownloading(FULL_EXPORT_KEY)
+    try {
+      const { data } = await postApiV1ExportsSchoolZipLink({ throwOnError: true })
+      window.location.assign(data.url)
+    } catch {
+      setError('Filen kunne ikke hentes. Prøv igen om lidt.')
+    } finally {
+      setDownloading(null)
+    }
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-8">
       {/* Header */}
@@ -141,11 +157,11 @@ export default function ExportsPage() {
           type="button"
           data-testid="full-export-download"
           disabled={downloading !== null}
-          onClick={() => download(FULL_EXPORT.path, FULL_EXPORT.filename)}
+          onClick={downloadAll}
           className="shrink-0 inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {downloading === FULL_EXPORT.filename ? <Spinner /> : <DownloadIcon />}
-          {downloading === FULL_EXPORT.filename ? 'Henter…' : 'Hent alt'}
+          {downloading === FULL_EXPORT_KEY ? <Spinner /> : <DownloadIcon />}
+          {downloading === FULL_EXPORT_KEY ? 'Henter…' : 'Hent alt'}
         </button>
       </div>
 
