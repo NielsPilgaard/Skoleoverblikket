@@ -95,17 +95,20 @@ New folder `infrastructure/postgres/`:
 
 - [ ] `Dockerfile`: `FROM postgres:<major>` + `pgbackrest` from the PGDG apt repo. It must be the same image that runs Postgres, because `archive_command` runs inside that container.
 - [ ] `postgresql.conf` overrides: `archive_mode = on`, `archive_command = 'pgbackrest --stanza=main archive-push %p'`, `archive_timeout = 300`, `wal_level = replica`, memory settings sized for the new VPS (`shared_buffers` ≈ 25% of the RAM given to Postgres).
-- [ ] `pgbackrest.conf`: `repo1-type=s3` on a **new, separate** OVH bucket (not the files bucket, not the old dump bucket), `repo1-cipher-type=aes-256-cbc`, `repo1-retention-full-type=time`, `repo1-retention-full=14`, `archive-async=y`, `archive-push-queue-max=4GiB`, `archive-copy=y` (each backup carries the WAL it needs, so it restores on its own), `start-fast=y`, `compress-type=zst`. S3 keys and cipher pass come from env vars (`PGBACKREST_REPO1_S3_KEY` etc.), never from the file.
+- [ ] `pgbackrest.conf`: `repo1-type=s3` on a **new, separate** OVH bucket (not the files bucket, not the old dump bucket), `repo1-cipher-type=aes-256-cbc`, `repo1-retention-full-type=time`, `repo1-retention-full=13` (see the retention note), `archive-async=y`, `archive-push-queue-max=4GiB`, `archive-copy=y` (each backup carries the WAL it needs, so it restores on its own), `start-fast=y`, `compress-type=zst`. S3 keys and cipher pass come from env vars (`PGBACKREST_REPO1_S3_KEY` etc.), never from the file.
 - [ ] Init script (`/docker-entrypoint-initdb.d/`): create roles `skoleoverblikket` (app), `keycloak` and `restore_drill` (only `CONNECT`, for 53), and both databases.
 - [ ] CI: build and push `ghcr.io/nielspilgaard/skoleoverblikket-postgres` like the other `publish-*` jobs. Pin it to a tag in compose. Don't use `latest` for the database.
-- Retention note: with daily full backups and 14 days time retention, the oldest restorable data is at most ~15 days old. That's what the 53 drill enforces. Weekly fulls would keep up to 21 days and break the DPA's 14-day promise.
+- Retention note: full backups **must** run daily (§3), and no restorable data may be older than 14 days, which is the DPA limit and what the 53 drill enforces. Time retention keeps the newest full that is at least N days old, so N=14 would keep data up to ~15 days. N=13 with daily fulls keeps the oldest full between 13 and 14 days old. Weekly fulls would keep up to 20 days and break the DPA promise.
+- [ ] **Full archive queue.** When `archive-push-queue-max` is hit, pgBackRest **drops** WAL and tells Postgres it was archived, so Postgres keeps running but the WAL chain now has a gap. PITR can't cross that gap until a new full backup is taken, so the 15-minute RPO no longer holds from the last archived WAL until that backup finishes.
+  - Alert: the 53 `--check-wal` heartbeat goes `Unhealthy` when the newest WAL in the repo is > 15 min old or pgBackRest's log has a dropped-WAL warning. Also alert at 50% of the queue (2 GiB in the spool dir), before anything is dropped.
+  - Recovery (goes in `docs/RESTORE.md`): fix the cause (S3 key, bucket, network), run `pgbackrest check` until it passes, then run `pgbackrest backup --type=full` right away. Log the gap window (last WAL before the drop → end of the new backup). Restores into that window can only go to the last backup before it.
 
 ### 2. Compose changes
 
 [docker-compose.prod.yml](../infrastructure/docker/docker-compose.prod.yml):
 
 - [ ] `postgres` service: the custom image, named volume `pgdata`, healthcheck `pg_isready`, **no `ports:`**, memory limit so a restore drill can't starve it.
-- [ ] `migrate` service (53 Phase 5): API image, runs `Skoleoverblikket.Api migrate` (small branch in `Program.cs`: `Database.MigrateAsync()` and exit), `restart: "no"`.
+- [ ] `migrate` service (53 Phase 5): API image, runs `Skoleoverblikket.Api migrate` (small branch in `Program.cs`: `Database.MigrateAsync()` and exit), `restart: "no"`, `depends_on: postgres (service_healthy)` so it never runs against a database that isn't up yet.
 - [ ] `api`: `depends_on: postgres (service_healthy), migrate (service_completed_successfully)`. `keycloak`: `depends_on: postgres (service_healthy)`.
 - [ ] Connection strings point at `postgres:5432`. Remove the "Do not add a postgres service here" comment and update the header's env var list.
 - [ ] Confirm the Dokploy compose type is **Docker Compose**, not Stack. Swarm ignores `depends_on` conditions and one-shot services, and the `deploy:` blocks only mean anything in Stack mode. Drop or keep them deliberately.
@@ -169,7 +172,7 @@ No tUnit or Playwright tests: this is infrastructure ([TESTING.md](../docs/TESTI
 
 - [ ] `pgbackrest check` passes, and `pgbackrest info` shows WAL archived within the last 5 minutes.
 - [ ] Point-in-time restore during the rehearsal lands within 5 minutes of the target time.
-- [ ] Block archiving on purpose (wrong S3 key on a scratch stanza): Postgres keeps running, the queue limit kicks in, the alert fires.
+- [ ] Block archiving on purpose (wrong S3 key on a scratch stanza): Postgres keeps running, the queue limit kicks in, WAL is dropped, and the alert fires. Then confirm PITR can't cross the gap (a restore target inside it fails or stops short), follow the recovery procedure, and confirm PITR works again only from the new full backup onwards. Until then the 15-minute RPO is exceeded.
 - [ ] A deliberately failing migration on staging: `migrate` exits non-zero and `api` doesn't start.
 - [ ] From outside: `nc -zv <new-ip> 5432` and `nc -zv <new-ip> 3000` fail.
 - [ ] After cutover: one CD deploy goes all the way through to the new box.

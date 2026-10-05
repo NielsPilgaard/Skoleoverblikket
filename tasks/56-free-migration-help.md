@@ -38,7 +38,7 @@ status: 'Proposed'
 - **D4 — Handover of the current schema: e-mail is fine, child data isn't.** The form says: "Send os jeres nuværende skema (Excel, PDF eller skærmbillede). Send ikke elev- eller forældrelister — dem sætter I selv ind." Received files are deleted from the mailbox when the job is done. Never pasted into Claude/ChatGPT.
 - **D5 — Request form = demo form with a topic.** `/book-demo?emne=flytning` shows a different heading and an extra field "Hvilket system bruger I i dag?" (free text). No new page or route. Backend: optional `Topic` and `CurrentSystem` on the request. Subject becomes `Flyttehjælp: {skole} (fra {system})`. Since this changes the endpoint's logic, move the email building into `DemoRequestService` ([AGENTS.md](../AGENTS.md#encapsulation-thin-controllers-feature-services)).
 - **D6 — Done means checked by the school.** We email: "Skemaet er sat op. Tjek det, og fjern så Skoleoverblikket Support under Medarbejdere." If our user is still there after 14 days, we remove it ourselves.
-- **D7 — Name competitors on the page, neutrally.** "Fra fx Skoleintra, Docendo, Skoleplan eller Excel." Comparative mention is allowed under markedsføringsloven § 5 if it's factual. No logos, no claims about them.
+- **D7 — Name competitors on the page, neutrally.** "Fra fx Skoleintra, Docendo, Skoleplan eller Excel." Naming a competitor makes it comparative advertising under [markedsføringsloven § 21](https://danskelove.dk/markedsf%C3%B8ringsloven/21). Being factual is not enough: it must meet all the § 21 conditions, among them not misleading, objective and documentable, and not discrediting or riding on the competitor's name. "Flyt fra X" names a source system and compares nothing, so it stays within that. No logos, no claims about them.
 
 ## Scope
 
@@ -85,7 +85,7 @@ The runbook is a must-have. Whoever does a migration follows it step by step, wi
 
 1. **Reply** within 1–2 working days, using a reply template in the runbook. Ask for the current schema and ringetider. Include the invite instructions (D3) with the exact e-mail `support+<slug>@skoleoverblikket.dk`.
 2. **Check preconditions**: the school has accepted the DPA (signup does this), and the invite has arrived in the `support@` mailbox in Zoho. Only then do we work in their tenant.
-3. **Receive files** into a local folder outside the repo, `~/skoleoverblikket-migrations/<slug>/`, on an encrypted disk. Never in the repo, never pasted into Claude/ChatGPT.
+3. **Receive files** into a local folder outside the repo, `~/skoleoverblikket-migrations/<slug>/`, on an encrypted disk. Never in the repo, never pasted into Claude/ChatGPT. The workstation is in the EU, and the folder is excluded from any sync or backup that isn't EU-based (OneDrive, iCloud, Google Drive, Dropbox and similar US services are out, unless set to EU data residency).
 4. **Set up** in this order: ringetider → lokaler → fag → medarbejdere → klasser → schema. Use `/import` wherever it has a tab.
 5. **Check**: the conflict panel on each class schema is empty, and the hours report matches the source roughly.
 6. **Optional call**: book the 30-minute call for the students/parents paste import.

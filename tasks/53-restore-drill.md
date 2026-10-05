@@ -40,7 +40,7 @@ Constraints (vendor and cost rules, [ai-data-boundary](../docs/adr/ai-data-bound
 - **D1 — Drill runs on the VPS**, as a Dokploy scheduled job. Restoring children's fravær data on a GitHub runner would move personal data to the US and into public logs. GitHub only builds the drill image and triggers the pre-migration backup through the Dokploy API. No personal data goes through GitHub.
 - **D2 — Weekly automated + quarterly manual.** Weekly proves the dump restores and is complete. Quarterly proves we can rebuild everything with the VPS gone and measures how long it takes. Replaces the ADR's monthly drill.
 - **D3 — Fail loud via elmah.io Heartbeats.** Elmah.io (Danish, already our error log) has Heartbeats: the job POSTs `Healthy` or `Unhealthy` with a reason, and elmah.io alerts on `Unhealthy` **and** when no heartbeat arrives within the interval (dead-man's switch). A drill that silently stops running also alerts. No new vendor, no SMTP code in the drill. The `reason` is a PII-free summary (check name, counts), never row content. Heartbeats are included in our elmah.io plan.
-- **D4 — Retention 14 days** in Dokploy, matching the DPA. The drill **fails** if a backup is older than 15 days, because then we keep data longer than we've told customers.
+- **D4 — Retention 14 days** in Dokploy, matching the DPA. The drill **fails** if any backup is older than 14 days, because then we keep data longer than we've told customers. With daily backups and 14 kept, the oldest is at most 14 days old just before the next backup expires it.
 - **D5 — Off-site copy is encrypted client-side** (rclone `crypt`) and the bucket uses Object Lock, so neither Scaleway nor someone who takes over the VPS can read or delete it. The crypt password lives in the password manager. The drill decrypts every week, so we find out right away if the key is lost.
 - **D6 — Targets.** Now: RPO 24h (daily dumps, plus one before every migration). From 5 paying schools: **RPO 15 min** (Phase 4). RTO 4h for a full rebuild. Phase 3 measures the real RTO.
 - **D7 — Migrations run inside docker compose, not from CI** (Phase 5). A one-shot `migrate` service on `dokploy-network` applies migrations before `api` starts. Postgres then only needs to be reachable on the Docker network, and its public port closes.
@@ -73,7 +73,7 @@ New folder `infrastructure/restore-drill/`:
 
 - `Dockerfile`: `FROM postgres:<prod major>` + `rclone` (S3 access, later crypt) + `curl` (heartbeat). One image, no other runtime.
 - `drill.sh` (bash, `set -euo pipefail`), two modes:
-  - `--check-only` (daily, ~seconds): list both DBs' backups → assert newest < 26h old, oldest ≤ 15 days, count ≥ 10. No download.
+  - `--check-only` (daily, ~seconds): list both DBs' backups → assert newest < 26h old, oldest ≤ 14 days, count ≥ 10. No download.
   - default (weekly): the checks above, then per DB:
     1. Download the newest dump to tmpfs. Check gzip integrity (`gzip -t`).
     2. Start Postgres inside the container on tmpfs (`PGDATA` on `--tmpfs`). Restore with `pg_restore --exit-on-error` (or `psql -v ON_ERROR_STOP=1` if Dokploy writes plain SQL; confirm the format on the first run).
@@ -158,7 +158,7 @@ Daily dumps are fine while we're small. With 5+ schools, losing a day of fravær
   - [ ] Retention: base backups and WAL older than 14 days get deleted (`wal-g delete retain FIND_FULL …`), so the DPA promise still holds.
   - [ ] Keep Dokploy's daily `pg_dump` too. Logical dumps don't depend on the WAL chain, so a broken WAL chain doesn't leave us with nothing.
   - [ ] **Disk risk**: if archiving fails, WAL piles up on the VPS until Postgres stops. Alert on `pg_stat_archiver.failed_count` increasing and on disk usage > 80%.
-- [ ] New `--check-wal` mode, every 15 min: `pg_stat_archiver.last_archived_time` < 15 min old, no new failures. Own elmah.io heartbeat, interval 30 min.
+- [ ] New `--check-wal` mode, every 15 min: the newest WAL segment **in the repository** is < 15 min old (list it in the bucket, or `wal-g wal-show` / `pgbackrest info` for the archive max), and `pg_stat_archiver` shows no new failures. `pg_stat_archiver.last_archived_time` alone is not proof that WAL reached the repository: with async archiving (pgBackRest `archive-async` + `archive-push-queue-max`) Postgres sees success once WAL is queued locally, or even when the queue is full and WAL is dropped. With pgBackRest, also go `Unhealthy` when its log reports dropped WAL. Own elmah.io heartbeat, interval 30 min.
 - [ ] Weekly drill adds a **point-in-time restore**: newest base backup + WAL up to "now − 30 min", and checks that the restored DB reached that time (`pg_last_xact_replay_timestamp()` within 15 min of the target).
 - [ ] Update the DPA page text from "dagligt" to "løbende (højst 15 minutters datatab)", and RPO in the runbook.
 
