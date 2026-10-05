@@ -164,12 +164,18 @@ public sealed class SchoolSignupService(
 			return;
 		}
 
-		// Signup stores the admin's email as the school's contact email. If that admin is gone by
-		// now, there is nobody to welcome.
-		var adminName = school.ContactEmail is null
+		// The signup acceptance is the first one and holds the admin's login and email as given at
+		// signup. The school's contact email is an editable setting, so it is not used here.
+		var signup = await db.DataProcessingAgreementAcceptances.AsNoTracking()
+			.OrderBy(a => a.AcceptedAt)
+			.Select(a => new { a.AcceptedBySubject, a.AcceptedByEmail })
+			.FirstOrDefaultAsync(cancellationToken);
+
+		// If that admin is gone by now, there is nobody to welcome.
+		var adminName = signup?.AcceptedByEmail is null
 			? null
 			: await db.Staff.AsNoTracking()
-				.Where(s => s.Email == school.ContactEmail)
+				.Where(s => s.KeycloakSubject == signup.AcceptedBySubject)
 				.Select(s => s.Name)
 				.FirstOrDefaultAsync(cancellationToken);
 
@@ -179,7 +185,7 @@ public sealed class SchoolSignupService(
 			{
 				// Signup saves "first last" as one name; the first word is the first name.
 				var firstName = adminName.Split(' ', 2)[0];
-				await email.SendAsync(WelcomeEmail.Build(school.ContactEmail!, firstName, school.Name), cancellationToken);
+				await email.SendAsync(WelcomeEmail.Build(signup!.AcceptedByEmail!, firstName, school.Name), cancellationToken);
 			}
 			catch (Exception ex) when (ex is not OperationCanceledException && dueAt + WelcomeEmailGiveUpAfter < now)
 			{

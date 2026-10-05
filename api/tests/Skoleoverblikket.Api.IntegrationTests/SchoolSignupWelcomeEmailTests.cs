@@ -77,6 +77,31 @@ public sealed class SchoolSignupWelcomeEmailTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task ChangedContactEmail_StillWelcomesAdminAtSignupEmail()
+	{
+		var email = $"founder-{Guid.NewGuid():N}@skole.dk";
+		var office = $"kontor-{Guid.NewGuid():N}@skole.dk";
+		await using var signupFactory = SignupFactory();
+
+		var response = await signupFactory.CreateClient().PostAsJsonAsync("/api/v1/tenants", Signup(email));
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+		var created = await response.Content.ReadFromJsonAsync<TenantCreatedDto>();
+
+		var admin = factory.CreateClient();
+		admin.DefaultRequestHeaders.Add("X-Test-TenantId", created!.Id.ToString());
+		admin.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
+		admin.DefaultRequestHeaders.Add("X-Test-Subject", "settings-admin");
+		var update = await admin.PutAsJsonAsync("/api/v1/schools/settings",
+			new { name = "Velkomst Friskole", contactEmail = office });
+		await Assert.That(update.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+		await RunJobAsync(TimeSpan.FromHours(25));
+
+		await Assert.That(factory.Emails.To(email).Count).IsEqualTo(1);
+		await Assert.That(factory.Emails.To(office).Count).IsEqualTo(0);
+	}
+
+	[Test]
 	public async Task Signup_WithEmailThatAlreadyHasLogin_SendsNoWelcomeEmail()
 	{
 		var email = $"taken-{Guid.NewGuid():N}@skole.dk";
