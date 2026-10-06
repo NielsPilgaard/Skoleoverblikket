@@ -166,13 +166,14 @@ Parents log in to view their children's schedule and communicate with school sta
 - Parent invitation flow (email invite → Keycloak account)
 - Read-only views: class schema, school calendar, SFO week plan
 - **Kontaktbog**: per-child message thread between parents and class teacher
+- **Klassechat**: one group thread per klasse for its parents, the staff on its schema, and admins, with file attachments — replaces the per-klasse Facebook group
 - **Fraværsregistrering**: a full student absence register following BEK 1063/2019. Teachers note fremmøde from their phone at the start of the day (and at the end for 7.–10. klasse, giving half days). Every absence has a legal category: sygdom, ekstraordinær frihed or ulovligt fravær. Parents report sickness (final on submit) or request fri (the principal approves). Staff-noted absence defaults to ulovligt, and parents are told the same day. Stats per calendar quarter flag 10% and 15% ulovligt fravær, with a "forældre orienteret" mark and a CSV of 15% students. Data is kept for the current and previous school year, downloadable as Excel, with a 1 July warning before deletion.
 - **Kontakt directory**: role-filtered directory of parents (respects ShareContactInfo consent)
 - **Beskeder**: flat inbox — any tenant user can message any other (parent → staff always; parent → parent requires consent)
 - **Notifications**: in-app bell + email alerts for new messages, absence confirmations, contact book replies. Per-type opt-out in settings.
 - **Contact info onboarding**: parent provides phone, address, and consent during invite acceptance
 - **Avatar uploads**: optional profile photo for parents, staff, and students
-- **Ferieindmelding**: parents submit vacation requests for their children via `ParentFerieindmeldingPage`; admin creates registration windows (with week/day granularity and a deadline), views all submissions, and exports responses to CSV; windows can be opened/closed independently
+- **Ferieindmelding**: parents submit vacation requests for their children via `ParentVacationRegistrationPage`; admin creates registration windows (with week/day granularity and a deadline), views all submissions, and exports responses to CSV; windows can be opened/closed independently
 
 ### Payments and billing
 
