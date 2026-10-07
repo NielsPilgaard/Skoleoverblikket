@@ -238,6 +238,7 @@ export const sidebarRouteFeatures = {
   '/lokaler': null,
   '/elever': null,
   '/foraeldre': 'parentModule',
+  '/bestyrelsesmedlemmer': 'board',
   '/import': 'import',
   '/filer': 'files',
   '/eksporter': 'reports',
