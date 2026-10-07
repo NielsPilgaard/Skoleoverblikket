@@ -93,7 +93,7 @@ This is the "easy to forget" list. Most items cost an outage if missed.
 
 ### 1. Postgres image and pgBackRest config
 
-**Do [task 60](60-backup-console.md) Phase 0 (the spike) first.** It decides between streamed WAL (below) and the spool-copy fallback.
+**Do [task 60](60-backup-console.md) Phase 0 (the spike) first.** It decides between streamed WAL (below) and the spool-copy fallback. The fallback only covers WAL delivery. If the read-only base backup fails, this task waits until Phase 0 passes or task 60 defines a separate base-backup fix.
 
 New folder `infrastructure/postgres/` (Postgres only, no backup tooling):
 
@@ -113,7 +113,7 @@ New folder `infrastructure/postgres/` (Postgres only, no backup tooling):
 [docker-compose.prod.yml](../infrastructure/docker/docker-compose.prod.yml):
 
 - [ ] `postgres` service: the custom image, data volume `${PG_VOLUME:-pgdata-a}` (A/B volumes `pgdata-a` and `pgdata-b`, so a restore can go into the spare one, task 60 D5), `pg-socket` volume, healthcheck `pg_isready`, **no `ports:`**, memory limit.
-- [ ] `backup-agent` service (task 60): own network (not `dokploy-network`), `ports: ["127.0.0.1:9090:9090"]`, `pg-socket`, live data volume read-only, spare data volume read-write, memory limit so a drill can't starve Postgres.
+- [ ] `backup-agent` service (task 60): own network (not `dokploy-network`), `ports: ["127.0.0.1:9090:9090"]`, `pg-socket`, live data volume read-only, spare data volume read-write, memory limit so a drill can't starve Postgres. With streamed WAL, also a named volume `wal-receive` mounted at the `pg_receivewal -D` directory: it is the only copy of received WAL until `archive-push` succeeds, so it must survive recreating the agent (task 60 D2a). Pin its name like the `pgdata-*` volumes and never delete it while it holds segments.
 - [ ] `migrate` service (53 Phase 5): API image, runs `Skoleoverblikket.Api migrate` (small branch in `Program.cs`: `Database.MigrateAsync()` and exit), `restart: "no"`, `depends_on: postgres (service_healthy)` so it never runs against a database that isn't up yet.
 - [ ] `api`: `depends_on: postgres (service_healthy), migrate (service_completed_successfully)`. `keycloak`: `depends_on: postgres (service_healthy)`.
 - [ ] Connection strings point at `postgres:5432`. Remove the "Do not add a postgres service here" comment and update the header's env var list.
@@ -177,7 +177,8 @@ No tUnit or Playwright tests: this is infrastructure ([TESTING.md](../docs/TESTI
 
 - [ ] `pgbackrest check` passes, and `pgbackrest info` shows WAL archived within the last 5 minutes.
 - [ ] Point-in-time restore during the rehearsal lands within 5 minutes of the target time.
-- [ ] Block WAL pushing on purpose (wrong S3 key on a scratch stanza, or stop the agent): Postgres keeps running, the slot fills to `max_slot_wal_keep_size` and goes `lost`, and the alert fires. Then confirm PITR can't cross the gap (a restore target inside it fails or stops short), follow the recovery procedure, and confirm PITR works again only from the new full backup onwards. Until then the 15-minute RPO is exceeded.
+- [ ] **Slot loss**: stop the agent long enough for WAL to pass `max_slot_wal_keep_size`. Postgres keeps running, the slot goes `lost`, and the alert fires. Then confirm PITR can't cross the gap (a restore target inside it fails or stops short), follow the recovery procedure, and confirm PITR works again only from the new full backup onwards. Until then the 15-minute RPO is exceeded.
+- [ ] **Archive-push failure**: set a wrong S3 key on a scratch stanza with the agent running. `archive-push` fails, unpushed WAL in `wal-receive` grows (the slot keeps advancing, so this is not slot loss), and the WAL heartbeat alerts before the 4 GB cap. Fix the key and confirm the held segments are pushed with no gap.
 - [ ] A deliberately failing migration on staging: `migrate` exits non-zero and `api` doesn't start.
 - [ ] From outside: `nc -zv <new-ip> 5432` and `nc -zv <new-ip> 3000` fail.
 - [ ] After cutover: one CD deploy goes all the way through to the new box.
