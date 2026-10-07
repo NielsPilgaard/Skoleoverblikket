@@ -171,6 +171,7 @@ Formatting never fails CI: a pre-commit hook (`.githooks/`, enabled by `npm inst
 - `/verify` — runs steps 1–4 (TypeScript build, dotnet format, dotnet build, API integration tests, ryni)
 - `/test` — runs step 5 (Playwright e2e)
 - `/add-migration` — generates a new EF Core migration after model changes
+- `/ci-failure` — diagnoses a red CI, PR e2e, Staging or deploy run from its logs and artifacts
 
 ## Documentation map
 

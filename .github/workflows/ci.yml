@@ -91,6 +91,17 @@ jobs:
         shell: pwsh
         run: pwsh scripts/verify.ps1 -SkipFrontend -SkipDotnet
 
+  # Playwright against the compose stack, built from the PR's code. Runs in parallel with the
+  # API job and takes about as long (~4 min), so it adds little wall-clock time.
+  # Pushes to main get the same suite in Staging, against the published images, before deploy.
+  e2e:
+    name: E2E
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/e2e.yml
+
   # Self-healing formatting: run the formatters and commit the result back to the branch.
   # [skip ci] + GITHUB_TOKEN means the fix commit starts no new CI run or deploy;
   # a formatting-only change doesn't need one. Fork PRs can't be pushed to, so they're skipped.

@@ -1,0 +1,169 @@
+name: E2E
+
+# Runs the full Playwright suite against the docker-compose staging stack on the runner.
+# Called from CI on pull requests (images built here from the PR's code) and from Staging
+# on main (images published by CI for that commit). The suite itself takes ~30s; most of
+# the job is building or pulling images and booting Keycloak.
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: "Tag of the published API and Keycloak images (e.g. sha-<commit>). Empty: build them from the checked-out code."
+        type: string
+        default: ""
+      ref:
+        description: "Commit to check out. Empty: the triggering commit."
+        type: string
+        default: ""
+
+env:
+  COMPOSE_FILE: infrastructure/docker/docker-compose.staging.yml
+
+jobs:
+  e2e:
+    name: E2E tests against staging stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    env:
+      API_IMAGE: ${{ inputs.image_tag && format('ghcr.io/nielspilgaard/skoleoverblikket-api:{0}', inputs.image_tag) || 'skoleoverblikket-api-e2e:latest' }}
+      KEYCLOAK_IMAGE: ${{ inputs.image_tag && format('ghcr.io/nielspilgaard/skoleoverblikket-keycloak:{0}', inputs.image_tag) || 'skoleoverblikket-keycloak-e2e:latest' }}
+      WEB_IMAGE: skoleoverblikket-web-e2e:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('web/package-lock.json') }}
+          restore-keys: playwright-chromium-
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+
+      - name: Install Playwright system deps
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+        working-directory: web
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: inputs.image_tag != ''
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull published API and Keycloak images
+        if: inputs.image_tag != ''
+        timeout-minutes: 15
+        run: docker compose pull api keycloak
+
+      - name: Build API image
+        if: inputs.image_tag == ''
+        timeout-minutes: 10
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: api/Dockerfile
+          load: true
+          tags: ${{ env.API_IMAGE }}
+          cache-from: type=gha,scope=e2e-api
+          cache-to: type=gha,scope=e2e-api,mode=max
+
+      - name: Build Keycloak image
+        if: inputs.image_tag == ''
+        timeout-minutes: 10
+        uses: docker/build-push-action@v6
+        with:
+          context: infrastructure/keycloak
+          file: infrastructure/keycloak/Dockerfile
+          load: true
+          tags: ${{ env.KEYCLOAK_IMAGE }}
+          cache-from: type=gha,scope=e2e-keycloak
+          cache-to: type=gha,scope=e2e-keycloak,mode=max
+
+      # The published web image has the production Keycloak URL baked in, so the e2e web
+      # image is always built here with http://localhost:8080.
+      - name: Build web image with local Keycloak URL
+        timeout-minutes: 10
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: web/Dockerfile
+          load: true
+          tags: ${{ env.WEB_IMAGE }}
+          build-args: |
+            VITE_KEYCLOAK_URL=http://localhost:8080
+          cache-from: type=gha,scope=e2e-web
+          cache-to: type=gha,scope=e2e-web,mode=max
+
+      - name: Start staging stack
+        timeout-minutes: 5
+        run: docker compose up -d --wait
+
+      - name: Run Playwright e2e tests
+        env:
+          SKIP_ASPIRE: "1"
+          PLAYWRIGHT_BASE_URL: http://localhost:5173
+          KEYCLOAK_ADMIN_PASSWORD: staging-admin-password
+        run: npx playwright test --reporter=line,html
+        working-directory: web
+
+      # The stack only lives on this runner, so its server-side logs are gone once the job ends.
+      # Print the API tail into the job log (visible via `gh run view --log-failed`) and keep
+      # the full logs as an artifact.
+      - name: Dump stack logs
+        if: failure()
+        run: |
+          mkdir -p stack-logs
+          for service in api keycloak web; do
+            docker compose logs --no-color --timestamps "$service" > "stack-logs/$service.log" 2>&1 || true
+          done
+          echo "::group::API log (last 200 lines)"
+          tail -n 200 stack-logs/api.log
+          echo "::endgroup::"
+
+      - name: Upload stack logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stack-logs
+          path: stack-logs/
+          retention-days: 7
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report/
+            web/test-results/
+          retention-days: 7
+
+      - name: Tear down staging stack
+        if: always()
+        run: docker compose down -v
