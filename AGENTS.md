@@ -40,6 +40,7 @@ Never bypass this filter. Never trust a slug string as an authorization signal �
 - Fravær / student absence register (`AbsenceController`, `AttendanceController`, `AbsenceService`, `AbsenceStatsService`) — daily fremmøde per class, three legal categories, parent sick reports and leave requests, quarterly stats with 10%/15% ulovligt flags, retention of current + previous school year (`AbsenceRetentionJob`)
 - Kontakt directory (`ContactDirectoryController`) — role-filtered parent directory with `ShareContactInfo` consent
 - Kontaktbog (`ContactThreadsController`) — per-child parent↔teacher message threads
+- Klassechat (`ClassChatController`, `ClassChatAttachmentSweeper`) — one group thread per klasse for its parents, schema staff and admins, with file attachments; membership is derived via `ClassMembershipService`, never stored
 - Beskeder (`MessagesController`) — flat inbox for all tenant users with consent rules
 - Notifications (`NotificationsController`) — in-app + email, per-type opt-out via `NotificationPreference`
 - Calendar with recurrence (`CalendarController`) — school calendar events with recurrence and excluded dates
