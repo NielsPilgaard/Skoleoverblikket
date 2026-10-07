@@ -64,14 +64,16 @@ Everything in this task uses `GITHUB_TOKEN`. The GitHub App moved to [task 47](f
 - `cd.yml` permissions: `contents: write` (revert branch), `pull-requests: write`, `issues: write` (freeze issue), `deployments: write` (`production-verified`), `actions: write` (dispatch CI).
 - Repo setting **"Allow GitHub Actions to create and approve pull requests"** on, so `GITHUB_TOKEN` can open the revert PR.
 - PRs opened with `GITHUB_TOKEN` don't trigger `pull_request` workflows, but `workflow_dispatch` is exempt. So after opening the revert PR, the rollback job runs `gh workflow run ci.yml --ref rollback/<sha>`. The dispatched run's check runs land on the PR's head commit and satisfy the required checks by name.
-- `ci.yml` gets an `on: workflow_dispatch` trigger. Nothing else changes: `migrate` and `publish-*` already require `github.event_name == 'push'`, `autofix` doesn't run on dispatch, and Staging's `workflow_run` is filtered to `branches: [main]`, so a dispatched CI on `rollback/*` can never migrate, publish or deploy.
+- `ci.yml` gets an `on: workflow_dispatch` trigger. Nothing else changes: `migrate` and `publish-*` already require `github.event_name == 'push'`, and Staging's `workflow_run` is filtered to `branches: [main]`, so a dispatched CI on `rollback/*` can never migrate, publish or deploy.
 - **Verify once** (part of the rollback test in Testing): the dispatched checks show as passed on the revert PR and the ruleset allows merge. If they don't count, fall back to a fine-grained PAT secret for this one step.
 
 ### 3. Branch ruleset on `main`
 
-- Require status checks: `API — build & test`, `Web — build & lint` (and `ai-fix-guard` once task 47 lands).
-- Bypass: repository admin only (owner keeps direct pushes). `github-actions` and the Claude app cannot bypass.
-- Configure via `gh api` and document the command in this task when done.
+Set up for phone fixes via Claude cloud sessions (see "Cloud sessions" in AGENTS.md). This task only adds `ai-fix-guard` once task 47 lands.
+
+- Require a pull request (0 approvals; solo owner can't approve own PRs) and status checks: `API — build & test`, `Web — build & lint`, `Docs — ryni`, `E2E / E2E tests against staging stack`, `Migration review`.
+- No bypass, not even for the admin: the merge button in the GitHub mobile app must not be able to skip CI. `github-actions` and the Claude app can't bypass either, which is why CI has no auto-format job.
+- Configured as a repository ruleset via `gh api -X POST repos/NielsPilgaard/Skoleoverblikket/rulesets`, once the `E2E` and `Migration review` checks exist on `main` (a required check that never runs blocks every PR).
 
 ### 4. Smoke tenant
 

@@ -165,7 +165,7 @@ After finishing any feature or fix, run **all of the following** before declarin
 
 Do not report a task as complete until all five pass.
 
-Formatting never fails CI: a pre-commit hook (`.githooks/`, enabled by `npm install` in `web/`) formats staged files, and the `autofix` job in `ci.yml` commits any formatting left over. Biome lint rules and TypeScript errors still fail CI; on PRs, `ci-fix.yml` lets Claude try one fix.
+Formatting never fails CI: a pre-commit hook (`.githooks/`, enabled by `npm install` in `web/`) formats staged files, also in cloud sessions. There is no CI auto-format job: `main` is branch-protected, so CI can't push fixes. Biome lint rules and TypeScript errors still fail CI; on PRs, `ci-fix.yml` lets Claude try one fix.
 
 **Use the skills instead of running commands manually:**
 - `/verify` — runs steps 1–4 (TypeScript build, dotnet format, dotnet build, API integration tests, ryni)

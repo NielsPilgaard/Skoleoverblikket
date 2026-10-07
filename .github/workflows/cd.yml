@@ -2,8 +2,8 @@ name: CD
 run-name: "CD: ${{ inputs.image_tag }}"
 
 # Called by Staging after e2e passes, with the image tag CI actually published.
-# Staging must pass the tag: its own head_sha can be a later [skip ci] commit (e.g. the
-# autofix formatting commit) that never got images built.
+# Staging must pass the tag: its own head_sha can be a later [skip ci] commit that never
+# got images built.
 # workflow_dispatch is for manual deploys and rollbacks.
 on:
   workflow_call:
