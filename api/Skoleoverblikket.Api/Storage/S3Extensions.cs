@@ -17,19 +17,20 @@ public static class S3Extensions
 		services.AddSingleton<IAmazonS3>(sp =>
 		{
 			var opts = sp.GetRequiredService<IOptions<S3Options>>().Value;
-			var config = new AmazonS3Config
-			{
-				ServiceURL = opts.ServiceUrl,
-				ForcePathStyle = true,
-			};
-
-			return new AmazonS3Client(new BasicAWSCredentials(opts.AccessKey, opts.SecretKey), config);
+			return CreateClient(opts, opts.ServiceUrl);
 		});
 
 		services.AddScoped<IObjectStorage, S3ObjectStorage>();
 
 		return services;
 	}
+
+	public static AmazonS3Client CreateClient(S3Options opts, string serviceUrl) =>
+		new(new BasicAWSCredentials(opts.AccessKey, opts.SecretKey), new AmazonS3Config
+		{
+			ServiceURL = serviceUrl,
+			ForcePathStyle = true,
+		});
 
 	/// <summary>Ensures the configured S3 bucket exists and has a CORS policy that allows browser PUT uploads.</summary>
 	public static async Task EnsureS3BucketAsync(this IServiceProvider services)
