@@ -33,7 +33,7 @@ public static class S3Extensions
 		});
 
 	/// <summary>Ensures the configured S3 bucket exists and has a CORS policy that allows browser PUT uploads.</summary>
-	public static async Task EnsureS3BucketAsync(this IServiceProvider services)
+	public static async Task EnsureS3BucketAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
 	{
 		var s3 = services.GetRequiredService<IAmazonS3>();
 		var opts = services.GetRequiredService<IOptions<S3Options>>().Value;
@@ -45,7 +45,7 @@ public static class S3Extensions
 			await s3.PutBucketAsync(new PutBucketRequest
 			{
 				BucketName = opts.DefaultBucketName,
-			});
+			}, cancellationToken);
 		}
 
 		await s3.PutCORSConfigurationAsync(new PutCORSConfigurationRequest
@@ -64,6 +64,6 @@ public static class S3Extensions
 					}
 				]
 			}
-		});
+		}, cancellationToken);
 	}
 }
