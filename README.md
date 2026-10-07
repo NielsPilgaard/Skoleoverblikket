@@ -146,12 +146,11 @@ Migrations live in `api/Skoleoverblikket.Api/Data/Migrations/`. Never edit an ex
 When the API has changed, regenerate the typed TypeScript client:
 
 ```powershell
-# 1. Build the API (emits openapi spec to web/openapi/v1.json)
-dotnet build api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj
-
-# 2. Run codegen
+# Builds the API (emits openapi/Skoleoverblikket.Api.json), then generates web/src/api/generated
 cd web && npm run codegen
 ```
+
+The API build goes to `bin/codegen/`, so it works while the Aspire stack is running.
 
 ## Documentation
 

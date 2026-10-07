@@ -132,7 +132,7 @@ Before finishing API work, check whether any controller you touched still writes
 
 ### Frontend (React / TypeScript)
 
-- **API client**: always use the generated typed client (hey-api/openapi-ts). Never hand-write fetch calls to API endpoints that are in the spec.
+- **API client**: always use the generated typed client (hey-api/openapi-ts). Never hand-write fetch calls to API endpoints that are in the spec. Regenerate with `/codegen`. Never read, grep or diff `web/src/api/generated/` or `openapi/`: their lines are 12k+ characters. Find hook names from usages in `web/src/pages` instead.
 - **Styling**: Tailwind utility classes only. No CSS-in-JS, no inline `style` props, no separate `.css` files for component styles.
 - **Components**: functional components with hooks only. No class components.
 - **Landing page features**: the feature cards come from `web/src/content/features.tsx`. Every sidebar route must be mapped there in `sidebarRouteFeatures` (to a feature or `null`), or `tsc` fails. When you add a user-facing feature, add or update its card in the same PR. The `/nyheder` changelog (`web/src/content/changelog.ts`) is drafted weekly by `.github/workflows/changelog.yml` from `feat` commits, so write `feat:` subjects that describe what the user gets.
