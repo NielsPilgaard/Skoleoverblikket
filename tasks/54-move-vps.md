@@ -4,8 +4,9 @@ purpose: 'Plan and checklist for moving the prod Dokploy instance to a new, bigg
 description: >-
   Fresh Dokploy install on a bigger OVH VPS in France. Postgres moves from
   Dokploy Database resources into docker-compose.prod.yml as one cluster (app +
-  Keycloak DBs) with pgBackRest WAL archiving to Object Storage (15-min RPO,
-  point-in-time restore). Migrations run as a one-shot compose service, so
+  Keycloak DBs). A separate backup-agent container (task 60) streams WAL and
+  runs pgBackRest to Object Storage (15-min RPO, point-in-time restore), so
+  backup problems can't take Postgres down. Migrations run as a one-shot compose service, so
   Postgres has no public port. Cutover is a rehearsed dump/restore with a short
   maintenance window. Pulls Phase 4 and 5 of task 53 forward.
 status: 'Proposed'
@@ -15,7 +16,7 @@ status: 'Proposed'
 
 ## TL;DR
 
-Stand up a new, bigger OVH VPS (France) with a **fresh** Dokploy install. Don't clone the old one. Postgres becomes a service in `docker-compose.prod.yml`: one cluster holding both the app DB and the Keycloak DB, on a custom image with **pgBackRest** that continuously archives WAL to OVH Object Storage, encrypted. Migrations become a one-shot `migrate` service, so CI no longer talks to the DB and port 5432 closes. Rehearse the whole move on the new VPS first. Then cut over: stop old → final dump → restore → start new → DNS. Keep the old VPS stopped but intact for 7 days, then wipe it. This also counts as the first full-rebuild drill from [task 53](53-restore-drill.md) Phase 3.
+Stand up a new, bigger OVH VPS (France) with a **fresh** Dokploy install. Don't clone the old one. Postgres becomes a service in `docker-compose.prod.yml`: one cluster holding both the app DB and the Keycloak DB. The Postgres image stays free of backup tooling. A separate `backup-agent` container ([task 60](60-backup-console.md)) streams WAL over a shared socket and runs **pgBackRest** to OVH Object Storage, encrypted. Migrations become a one-shot `migrate` service, so CI no longer talks to the DB and port 5432 closes. Rehearse the whole move on the new VPS first. Then cut over: stop old → final dump → restore → start new → DNS. Keep the old VPS stopped but intact for 7 days, then wipe it. This also counts as the first full-rebuild drill from [task 53](53-restore-drill.md) Phase 3.
 
 ## Context
 
@@ -35,7 +36,8 @@ Constraints ([vendor rules](../docs/adr/ai-data-boundary.md)): data stays in the
 
 - **D1: Fresh Dokploy install, not a Dokploy restore.** The architecture changes (DB resources → compose services), so restoring Dokploy's own backup would bring back config we're removing. Rebuilding by hand from a written inventory also proves the inventory is complete.
 - **D2: One Postgres cluster, two databases.** `skoleoverblikket` and `keycloak` live in the same cluster with separate roles. One pgBackRest stanza and one WAL stream means a restore brings app and Keycloak back to **the same point in time**. That removes the "user exists in Keycloak but not the app DB" reconcile step from the 53 runbook.
-- **D3: pgBackRest instead of WAL-G** (supersedes the WAL-G suggestion in 53 Phase 4). It supports several repos natively (OVH now, Scaleway as `repo2` for 53 Phase 2), has built-in AES-256 encryption, `verify` and `check` commands, and `archive-push-queue-max`, which stops a broken archive from filling the disk and taking prod down.
+- **D3: pgBackRest instead of WAL-G** (supersedes the WAL-G suggestion in 53 Phase 4). It supports several repos natively (OVH now, Scaleway as `repo2` for 53 Phase 2), and has built-in AES-256 encryption and `verify` and `check` commands.
+- **D3a: pgBackRest runs in a separate `backup-agent` container, and WAL is streamed, not archived** ([task 60](60-backup-console.md) D1–D2). Postgres has no `archive_command`. With one, a broken pgBackRest makes archiving fail, `pg_wal` fills the disk and prod stops. Instead the agent runs `pg_receivewal` against a replication slot over a shared socket volume, with `max_slot_wal_keep_size = 4GB`. If the agent is down too long, Postgres drops the slot and keeps running: a WAL gap and an alert, not an outage. Task 60 Phase 0 is a spike that proves this before §1 is built, with a capped spool-copy `archive_command` as the fallback.
 - **D4: Postgres has no published port.** It is only on the compose network. Migrations run in a one-shot `migrate` service (53 Phase 5, done here). Important: Docker-published ports bypass `ufw`, so the only safe port is no port.
 - **D5: Same Postgres major as prod, or upgrade during the move.** The cutover uses `pg_dump`/`pg_restore`, which can move to a newer major. pgBackRest physical restores can't. If we want Postgres 17 → 18, this move is the cheap moment to do it.
 - **D6: Stay with OVH in France.** Then the DPA and sub-processor list don't change and no 30-day notice is needed. Moving to another country or vendor would require the notice ([task 48](completed/48-databehandleraftale.md)).
@@ -67,7 +69,7 @@ This is the "easy to forget" list. Most items cost an outage if missed.
 - [ ] Keycloak keeps its realm signing keys and sessions in its DB. Restoring the Keycloak DB keeps existing logins and tokens valid. A fresh realm import would log everyone out and change the admin client secret. `--import-realm` skips a realm that already exists, so it's safe to leave on.
 - [ ] Stripe webhooks that fail during the window are retried automatically for up to 3 days. After cutover, check *Developers → Webhooks* for failed deliveries and resend if needed.
 - [ ] Files in Object Storage don't move. Only the keys in env vars matter.
-- [ ] **Named volumes are the database now.** Deleting the compose app in Dokploy with "delete volumes" ticked, or `docker compose down -v`, wipes prod. Pin the volume name and write this in the runbook.
+- [ ] **Named volumes are the database now.** Deleting the compose app in Dokploy with "delete volumes" ticked, or `docker compose down -v`, wipes prod. Pin the volume names (`pgdata-a`, `pgdata-b`) and write this in the runbook. `PG_VOLUME` says which one is live, and the other is the restore target (task 60), so never "clean up" the spare one without checking.
 
 **TLS and DNS:**
 
@@ -89,39 +91,42 @@ This is the "easy to forget" list. Most items cost an outage if missed.
 
 ## Scope
 
-### 1. Postgres image with pgBackRest
+### 1. Postgres image and pgBackRest config
 
-New folder `infrastructure/postgres/`:
+**Do [task 60](60-backup-console.md) Phase 0 (the spike) first.** It decides between streamed WAL (below) and the spool-copy fallback.
 
-- [ ] `Dockerfile`: `FROM postgres:<major>` + `pgbackrest` from the PGDG apt repo. It must be the same image that runs Postgres, because `archive_command` runs inside that container.
-- [ ] `postgresql.conf` overrides: `archive_mode = on`, `archive_command = 'pgbackrest --stanza=main archive-push %p'`, `archive_timeout = 300`, `wal_level = replica`, memory settings sized for the new VPS (`shared_buffers` ≈ 25% of the RAM given to Postgres).
-- [ ] `pgbackrest.conf`: `repo1-type=s3` on a **new, separate** OVH bucket (not the files bucket, not the old dump bucket), `repo1-cipher-type=aes-256-cbc`, `repo1-retention-full-type=time`, `repo1-retention-full=13` (see the retention note), `archive-async=y`, `archive-push-queue-max=4GiB`, `archive-copy=y` (each backup carries the WAL it needs, so it restores on its own), `start-fast=y`, `compress-type=zst`. S3 keys and cipher pass come from env vars (`PGBACKREST_REPO1_S3_KEY` etc.), never from the file.
-- [ ] Init script (`/docker-entrypoint-initdb.d/`): create roles `skoleoverblikket` (app), `keycloak` and `restore_drill` (only `CONNECT`, for 53), and both databases.
+New folder `infrastructure/postgres/` (Postgres only, no backup tooling):
+
+- [ ] `Dockerfile`: `FROM postgres:<major>` + config and init script. No pgBackRest: it lives in the `backup-agent` image (task 60).
+- [ ] `postgresql.conf` overrides: `wal_level = replica`, `max_wal_senders = 5`, `max_replication_slots = 5`, `max_slot_wal_keep_size = 4GB`, **no `archive_command`**, memory settings sized for the new VPS (`shared_buffers` ≈ 25% of the RAM given to Postgres). Socket dir `/var/run/postgresql` on a named volume `pg-socket` shared with the agent.
+- [ ] `pg_hba.conf`: `local replication backup_agent` and `local all backup_agent` (socket only, no TCP).
+- [ ] `pgbackrest.conf` (in the agent image, task 60): `repo1-type=s3` on a **new, separate** OVH bucket (not the files bucket, not the old dump bucket, not the ops bucket), `repo1-cipher-type=aes-256-cbc`, `repo1-retention-full-type=time`, `repo1-retention-full=13` (see the retention note), `archive-copy=y` (each backup carries the WAL it needs, so it restores on its own), `start-fast=y`, `compress-type=zst`, `pg1-path` on the read-only `pgdata` mount, `pg1-socket-path=/var/run/postgresql`. S3 keys and cipher pass come from env vars (`PGBACKREST_REPO1_S3_KEY` etc.), never from the file.
+- [ ] Init script (`/docker-entrypoint-initdb.d/`): create roles `skoleoverblikket` (app), `keycloak`, `restore_drill` (only `CONNECT`, for 53) and `backup_agent` (`REPLICATION`, plus what pgBackRest needs for backups), both databases, and the physical replication slot `agent`.
 - [ ] CI: build and push `ghcr.io/nielspilgaard/skoleoverblikket-postgres` like the other `publish-*` jobs. Pin it to a tag in compose. Don't use `latest` for the database.
 - Retention note: full backups **must** run daily (§3), and no restorable data may be older than 14 days, which is the DPA limit and what the 53 drill enforces. Time retention keeps the newest full that is at least N days old, so N=14 would keep data up to ~15 days. N=13 with daily fulls keeps the oldest full between 13 and 14 days old, **but only while fulls succeed**: expiry runs after a successful backup, and time retention never expires the newest full. If fulls keep failing, the data kept just gets older. Control: the 53 heartbeat goes `Unhealthy` when the newest full is > 26h old, and a daily check fails when the oldest backup in `pgbackrest info` is > 14 days old. If that happens and a new full can't be taken, the DPA limit wins: expire the stale backups by hand (`pgbackrest expire --set=<label>`, or `stanza-delete` if it is the only one) even though that **leaves no restorable backup** until the next full succeeds. Log it. Weekly fulls would keep up to 20 days and break the DPA promise.
-- [ ] **Full archive queue.** When `archive-push-queue-max` is hit, pgBackRest **drops** WAL and tells Postgres it was archived, so Postgres keeps running but the WAL chain now has a gap. PITR can't cross that gap until a new full backup is taken, so the 15-minute RPO no longer holds from the last archived WAL until that backup finishes.
-  - Alert: the 53 `--check-wal` heartbeat goes `Unhealthy` when the newest WAL in the repo is > 15 min old or pgBackRest's log has a dropped-WAL warning. Also alert at 50% of the queue (2 GiB of WAL waiting in `pg_wal`, which is where the queue lives, not the spool dir), before anything is dropped.
-  - Recovery (goes in `docs/RESTORE.md`): fix the cause (S3 key, bucket, network), run `pgbackrest check` until it passes, then run `pgbackrest backup --type=full` right away. Log the gap window (last WAL before the drop → end of the new backup). Restores into that window can only go to the last backup before it.
+- [ ] **Lost slot (WAL gap).** When the agent falls more than `max_slot_wal_keep_size` behind (agent down, S3 down), Postgres invalidates the slot (`pg_replication_slots.wal_status = 'lost'`) and removes the WAL. Postgres keeps running, but the WAL chain now has a gap. PITR can't cross that gap until a new full backup is taken, so the 15-minute RPO no longer holds from the last pushed WAL until that backup finishes.
+  - Alert: the task 60 WAL heartbeat goes `Unhealthy` when the newest WAL in the repo is > 15 min old or the slot is `lost`. Also alert when the slot holds 2 GB (`pg_wal_lsn_diff` on `restart_lsn`), before anything is lost.
+  - Recovery (goes in `docs/RESTORE.md`, and the console guides it): fix the cause (S3 key, bucket, network, agent), recreate the slot, restart `pg_receivewal`, run `pgbackrest backup --type=full` right away. Log the gap window (last WAL before the gap → end of the new backup). Restores into that window can only go to the last backup before it.
 
 ### 2. Compose changes
 
 [docker-compose.prod.yml](../infrastructure/docker/docker-compose.prod.yml):
 
-- [ ] `postgres` service: the custom image, named volume `pgdata`, healthcheck `pg_isready`, **no `ports:`**, memory limit so a restore drill can't starve it.
+- [ ] `postgres` service: the custom image, data volume `${PG_VOLUME:-pgdata-a}` (A/B volumes `pgdata-a` and `pgdata-b`, so a restore can go into the spare one, task 60 D5), `pg-socket` volume, healthcheck `pg_isready`, **no `ports:`**, memory limit.
+- [ ] `backup-agent` service (task 60): own network (not `dokploy-network`), `ports: ["127.0.0.1:9090:9090"]`, `pg-socket`, live data volume read-only, spare data volume read-write, memory limit so a drill can't starve Postgres.
 - [ ] `migrate` service (53 Phase 5): API image, runs `Skoleoverblikket.Api migrate` (small branch in `Program.cs`: `Database.MigrateAsync()` and exit), `restart: "no"`, `depends_on: postgres (service_healthy)` so it never runs against a database that isn't up yet.
 - [ ] `api`: `depends_on: postgres (service_healthy), migrate (service_completed_successfully)`. `keycloak`: `depends_on: postgres (service_healthy)`.
 - [ ] Connection strings point at `postgres:5432`. Remove the "Do not add a postgres service here" comment and update the header's env var list.
 - [ ] Confirm the Dokploy compose type is **Docker Compose**, not Stack. Swarm ignores `depends_on` conditions and one-shot services, and the `deploy:` blocks only mean anything in Stack mode. Drop or keep them deliberately.
-- [ ] Staging compose: use the same `postgres` image with `archive_mode = off`, plus the `migrate` service, so e2e tests the migration before prod sees it.
+- [ ] Staging compose: use the same `postgres` image, plus the `migrate` service, so e2e tests the migration before prod sees it. Whether staging gets its own agent and ops bucket is open in task 60.
 - [ ] `ci.yml`: remove the `migrate` job and `publish-api`'s `needs: migrate`. Delete the `DATABASE_URL` GitHub secret.
 - [ ] Coordinate with [task 44](44-auto-rollback.md): its rollback check reads `__EFMigrationsHistory` through `DATABASE_URL` from GitHub. Switch it to the image-label approach in 53 Phase 5, whichever task lands second.
 
-### 3. Backup schedules (Dokploy, by hand)
+### 3. Backup schedules (in the agent)
 
-- [ ] After first start: `pgbackrest --stanza=main stanza-create`, then `pgbackrest check` (proves `archive_command` works end to end).
-- [ ] Dokploy schedule on the `postgres` service: daily 02:00 `pgbackrest --stanza=main backup --type=full`. Note whether Dokploy schedules run in UTC or server time.
-- [ ] Weekly `pgbackrest --stanza=main verify`.
-- [ ] Failures go to elmah.io heartbeats (53 D3). Until the drill exists: Dokploy notification on failed schedule → email.
+- [ ] After first start, from the agent: `pgbackrest --stanza=main stanza-create`, then `pgbackrest check` (proves WAL reaches the repo end to end).
+- [ ] The agent's own scheduler runs the daily 02:00 full backup and the weekly `verify` ([task 60](60-backup-console.md) Phase A). No Dokploy schedules for backups.
+- [ ] Failures go to elmah.io heartbeats (53 D3).
 - Pre-migration backup (53 Phase 1 §2) is no longer needed: with continuous WAL, restore to the second before `migrate` started. The `migrate` service logs its start time, which becomes the `--target` time.
 
 ### 4. New VPS and Dokploy
@@ -163,7 +168,7 @@ Weekend evening, outside school hours, not at the time of a scheduled job. Tell 
 
 - [ ] New ADR that supersedes the backup part of [self-hosted-postgres-backups](../docs/adr/self-hosted-postgres-backups.md): Postgres in compose, one cluster, pgBackRest, 15-min RPO, 14-day retention. Update [INDEX.md](../docs/adr/INDEX.md).
 - [ ] [DEPLOYMENT.md](../docs/DEPLOYMENT.md): new env vars (pgBackRest S3 keys, cipher pass, Postgres role passwords), and remove `DATABASE_URL` as a GitHub secret.
-- [ ] Update [task 53](53-restore-drill.md): the drill restores pgBackRest backups (`pgbackrest restore` into tmpfs) instead of Dokploy dumps. Phases 4 and 5 are done here. Phase 2 becomes `repo2` (Scaleway) in `pgbackrest.conf` for the DB, rclone only for files. Its runbook loses the Keycloak/app reconcile step.
+- [ ] Re-check [task 53](53-restore-drill.md) against what was built. It already assumes the drill runs in the `backup-agent` ([task 60](60-backup-console.md)) and restores pgBackRest backups, that Phases 4 and 5 are done here, and that Phase 2 is `repo2` (Scaleway) for the DB with rclone only for files. Its runbook loses the Keycloak/app reconcile step.
 - [ ] `docs/RESTORE.md` (53): add the inventory list above as "where everything lives", and the measured rebuild time.
 
 ## Testing
@@ -172,7 +177,7 @@ No tUnit or Playwright tests: this is infrastructure ([TESTING.md](../docs/TESTI
 
 - [ ] `pgbackrest check` passes, and `pgbackrest info` shows WAL archived within the last 5 minutes.
 - [ ] Point-in-time restore during the rehearsal lands within 5 minutes of the target time.
-- [ ] Block archiving on purpose (wrong S3 key on a scratch stanza): Postgres keeps running, the queue limit kicks in, WAL is dropped, and the alert fires. Then confirm PITR can't cross the gap (a restore target inside it fails or stops short), follow the recovery procedure, and confirm PITR works again only from the new full backup onwards. Until then the 15-minute RPO is exceeded.
+- [ ] Block WAL pushing on purpose (wrong S3 key on a scratch stanza, or stop the agent): Postgres keeps running, the slot fills to `max_slot_wal_keep_size` and goes `lost`, and the alert fires. Then confirm PITR can't cross the gap (a restore target inside it fails or stops short), follow the recovery procedure, and confirm PITR works again only from the new full backup onwards. Until then the 15-minute RPO is exceeded.
 - [ ] A deliberately failing migration on staging: `migrate` exits non-zero and `api` doesn't start.
 - [ ] From outside: `nc -zv <new-ip> 5432` and `nc -zv <new-ip> 3000` fail.
 - [ ] After cutover: one CD deploy goes all the way through to the new box.

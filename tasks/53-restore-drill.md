@@ -10,12 +10,17 @@ description: >-
   off-site copy (DB and uploaded files), a quarterly manual full-rebuild drill,
   15-minute RPO via WAL archiving once we have 5 schools, and migrations moved
   into docker compose so prod Postgres is no longer reachable from the internet.
+  Since 2026-10-07 the drill and schedules live in the backup-agent (task 60)
+  and Phases 4–5 in task 54; this task keeps the runbook, off-site copy and
+  quarterly drill.
 status: 'Proposed'
 ---
 
 # Backup restore drill and data safety net
 
 ## TL;DR
+
+**Update 2026-10-07: after [54](54-move-vps.md) and [60](60-backup-console.md), much of this task moved.** The drill no longer runs as a separate container on a Dokploy schedule. It's code in the `backup-agent` ([task 60](60-backup-console.md) Phase A) and restores pgBackRest backups instead of Dokploy dumps. Phase 1 §3–4 (drill image, schedules) and the drill checks now live in 60. §2 (pre-migration backup) is dropped, because continuous WAL lets you restore to just before `migrate`. Phases 4 and 5 are done in 54. Still owned here: §1 (Dokploy config on the old box until 54 cuts over), §5 runbook, §6 docs, Phase 2 off-site copy (run by the agent), Phase 3 quarterly drill (logged in the 60 console). The text below is the original plan. Where it says "drill image" or "Dokploy schedule", read "backup-agent".
 
 A backup nobody has restored is a hope, not a backup. Phase 1: a small `restore-drill` container (built in CI, run by a Dokploy schedule **on the VPS**, never in GitHub Actions) restores the newest dump of the app DB and the Keycloak DB into a tmpfs Postgres every Sunday night, checks the result and reports to an **elmah.io heartbeat**. Elmah.io alerts on an unhealthy result and on a missing one. A `--check-only` mode runs daily to catch a stopped backup within 24h. CI takes a backup before it applies migrations. Retention set to 14 days to match the DPA. A written restore runbook. Phase 2: encrypted off-site copy of DB dumps **and uploaded files** at Scaleway (EU, 75 GB free), write-protected with Object Lock; the drill restores from there. Phase 3: quarterly manual drill that rebuilds prod from nothing and times it. Phase 4 (trigger: 5 paying schools): RPO from 24h down to 15 min with continuous WAL archiving. Phase 5: migrations run as a one-shot service in docker compose, CI's `migrate` job goes away and the Postgres port closes to the internet.
 
@@ -37,7 +42,7 @@ Constraints (vendor and cost rules, [ai-data-boundary](../docs/adr/ai-data-bound
 
 ## Decisions (proposed)
 
-- **D1 — Drill runs on the VPS**, as a Dokploy scheduled job. Restoring children's fravær data on a GitHub runner would move personal data to the US and into public logs. GitHub only builds the drill image and triggers the pre-migration backup through the Dokploy API. No personal data goes through GitHub.
+- **D1 — Drill runs on the VPS**, inside the `backup-agent` ([task 60](60-backup-console.md); originally a Dokploy scheduled job). Restoring children's fravær data on a GitHub runner would move personal data to the US and into public logs. GitHub only builds the drill image and triggers the pre-migration backup through the Dokploy API. No personal data goes through GitHub.
 - **D2 — Weekly automated + quarterly manual.** Weekly proves the dump restores and is complete. Quarterly proves we can rebuild everything with the VPS gone and measures how long it takes. Replaces the ADR's monthly drill.
 - **D3 — Fail loud via elmah.io Heartbeats.** Elmah.io (Danish, already our error log) has Heartbeats: the job POSTs `Healthy` or `Unhealthy` with a reason, and elmah.io alerts on `Unhealthy` **and** when no heartbeat arrives within the interval (dead-man's switch). A drill that silently stops running also alerts. No new vendor, no SMTP code in the drill. The `reason` is a PII-free summary (check name, counts), never row content. Heartbeats are included in our elmah.io plan.
 - **D4 — Retention 14 days** in Dokploy, matching the DPA. The drill **fails** if any backup is older than 14 days, because then we keep data longer than we've told customers. With daily backups and 14 kept, the oldest is at most 14 days old just before the next backup expires it.
@@ -61,6 +66,8 @@ Constraints (vendor and cost rules, [ai-data-boundary](../docs/adr/ai-data-bound
 
 #### 2. Pre-migration backup (CI)
 
+> Dropped once [54](54-move-vps.md) ships: with continuous WAL, restore to just before `migrate` started. Only build this if 54 slips and a risky migration has to go out on the old box first.
+
 - [ ] In `ci.yml` `migrate`, before `psql`: call the Dokploy API `backup.manualBackupPostgres` for the app DB backup and wait until a new object shows up in the bucket (list by key prefix, compare timestamps; time out after 10 min → fail the job, don't migrate).
 - [ ] Skip the call if `migration_script.sql` applies no new migrations (compare against `__EFMigrationsHistory`), so normal deploys stay fast. Only a timestamp and object key come back to GitHub, no data.
 - [ ] Use a **separate Dokploy backup config** for the app DB with prefix `pre-migration/`, no regular schedule, keep latest 14. Dokploy's retention counts backups, so manual dumps in the daily config would push out daily ones.
@@ -68,6 +75,8 @@ Constraints (vendor and cost rules, [ai-data-boundary](../docs/adr/ai-data-bound
 - This is temporary: Phase 5 moves the trigger into `deploy.mjs` once migrations leave CI.
 
 #### 3. Drill image
+
+> Moved to [task 60](60-backup-console.md) Phase A. The checks and heartbeat rules below stay the spec for the drill. The restore step becomes `pgbackrest restore` into tmpfs.
 
 New folder `infrastructure/restore-drill/`:
 
@@ -92,6 +101,8 @@ New folder `infrastructure/restore-drill/`:
 - CI: build and push `ghcr.io/nielspilgaard/skoleoverblikket-restore-drill` on push to `main` when `infrastructure/restore-drill/**` changes. Same pattern as the other `publish-*` jobs.
 
 #### 4. Schedule it (Dokploy, by hand)
+
+> Moved to [task 60](60-backup-console.md): the agent schedules the drill itself. The env file items become the agent's env in Dokploy.
 
 - [ ] Env file `/etc/skoleoverblikket/restore-drill.env` (root, `0600`): read-only S3 key, `restore_drill` connection strings (app + Keycloak), elmah.io heartbeat key, log ID and heartbeat IDs.
 - [ ] Create the heartbeats in elmah.io and turn on email alerts for them.
@@ -126,7 +137,7 @@ Also in the runbook: where every secret lives (password manager entry names), ho
 
 - [ ] Scaleway Object Storage bucket (fr-par), **versioning + Object Lock** with a default retention of `BACKUP_RETENTION_DAYS − 1` days (compliance mode). Lifecycle: expire current objects under `db/` after 14 days, noncurrent versions after 14 days. That fits the 14-day DPA promise for deleted data.
 - [ ] Scaleway API key scoped to that bucket only, with a bucket policy that denies permanent version deletion. Even if someone takes over the VPS, they can't wipe the copy.
-- [ ] Nightly Dokploy server schedule (03:00), same drill image, `--offsite` mode:
+- [ ] DB: add Scaleway as pgBackRest `repo2` ([54](54-move-vps.md) D3). Files: nightly (03:00) job in the `backup-agent` ([60](60-backup-console.md)), shown in its console. Original plan:
   - `rclone copy` new DB dumps (both DBs) from OVH → `scaleway-crypt:db/`.
   - `rclone sync` the uploaded-files bucket → `scaleway-crypt:files/`. Sync deletes are only delete markers, and the locked versions survive 14 days.
   - Reports to its own elmah.io heartbeat.
@@ -149,6 +160,8 @@ Pretend the VPS is gone. Use only the runbook, the password manager and the off-
 
 ### Phase 4 — 15-minute RPO (trigger: 5 paying schools)
 
+> Done in [54](54-move-vps.md) (pgBackRest, decision D3) and [60](60-backup-console.md) (streamed WAL in the agent, `--check-wal` becomes the agent's WAL heartbeat). Kept for history.
+
 Daily dumps are fine while we're small. With 5+ schools, losing a day of fravær, beskeder and ugeplaner is too much. Start the work when school 4 signs up, so it's live by school 5.
 
 - [ ] **Decide first, with real numbers**: WAL-G on our own Postgres, or OVH managed Postgres (PITR built in, ~€44/month). With 5 schools paying, €44 may be cheaper than owning WAL archiving. Record the decision as a new ADR that supersedes the backup part of [self-hosted-postgres-backups](../docs/adr/self-hosted-postgres-backups.md), which rules out custom backup tooling.
@@ -163,6 +176,8 @@ Daily dumps are fine while we're small. With 5+ schools, losing a day of fravær
 - [ ] Update the DPA page text from "dagligt" to "løbende (højst 15 minutters datatab)", and RPO in the runbook.
 
 ### Phase 5 — Migrations in docker compose, close the Postgres port
+
+> Done in [54](54-move-vps.md) §2. Kept for history.
 
 Today CI runs `psql` against prod from GitHub runners. That keeps the DB open to the internet, puts `DATABASE_URL` in GitHub secrets, and migrates prod **before** staging e2e has passed.
 
