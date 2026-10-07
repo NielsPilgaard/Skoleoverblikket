@@ -173,6 +173,16 @@ Formatting never fails CI: a pre-commit hook (`.githooks/`, enabled by `npm inst
 - `/add-migration` — generates a new EF Core migration after model changes
 - `/ci-failure` — diagnoses a red CI, PR e2e, Staging or deploy run from its logs and artifacts
 
+### Cloud sessions
+
+In a Claude Code cloud session (`CLAUDE_CODE_REMOTE=true`, e.g. started from the Claude app), there is no Docker, so the five steps above don't apply. `scripts/cloud-setup.sh` installs the .NET SDK and web dependencies at session start. Instead:
+
+1. Run the checks that need no Docker: `npm --prefix web run lint`, `npm --prefix web run build`, `dotnet build api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj`, and `dotnet format api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj`.
+2. Commit to a branch and open a PR. Never push to `main`. PR CI runs the integration tests and e2e and is the gate before merge.
+3. In the PR description, list which checks you ran and state that integration tests and e2e were left to CI. Never claim tests passed that you did not run.
+4. A PR that adds or changes files in `api/Skoleoverblikket.Api/Data/Migrations/` fails the `Migration review` check until the `migration-reviewed` label is set. Don't set that label yourself; it is the owner's sign-off.
+5. Diagnosing a prod issue: work from the error text or stack trace the user pastes. There is no Grafana access in cloud sessions.
+
 ## Documentation map
 
 | Doc | Read it for |
