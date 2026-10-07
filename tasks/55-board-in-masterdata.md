@@ -26,7 +26,7 @@ Hanne looks for the board in the same place as staff and parents: **Stamdata**. 
 ## Decisions
 
 - **D1 — Route `/bestyrelsesmedlemmer`**, admin only (`AdminRoute`). Not `/bestyrelse`, which is the board user's own area.
-- **D2 — Sidebar label "Bestyrelse"**, group `Stamdata`, `order: 24.5` (after Forældre, before Importer data), `adminOnly: true`, **not** `moduleGated`. The board module isn't gated today; keep it that way.
+- **D2 — Sidebar label "Bestyrelse"**, group `Stamdata`, `order: 24.5` (after Forældre, before Importer data), `adminOnly: true`, `module: 'board'`: hidden unless the school has `BoardModule` (sold at 300 kr/md, trial counts as active). Sidebar `moduleGated` became `module: 'parent' | 'board'`. Opening the URL without the module shows the page with invites disabled and a link to Abonnement. Server-side enforcement is [58](58-enforce-board-module.md).
 - **D3 — Remove the card from Skoleindstillinger.** No duplicate, no "moved to" notice. One place for each thing.
 - **D4 — Frontend only.** Moving the UI doesn't change endpoint logic, so per [AGENTS.md](../AGENTS.md#encapsulation-thin-controllers-feature-services) extracting a `BoardMemberService` is not required here. `BoardMembersController` still writes to `AppDbContext` directly; that stays a separate refactor.
 

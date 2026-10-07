@@ -27,6 +27,7 @@ status: 'Active'
 | # | Task | Size | Owner | Depends on | Why this spot |
 |---|---|---|---|---|---|
 | 1 | [55 Bestyrelse under Stamdata](55-board-in-masterdata.md) | S | Agent | — | Frontend only, fully specced, already staged. Hanne can't find the board today. |
+| 2 | [58 Enforce paid modules in the API](58-enforce-board-module.md) | M | Agent | 55 | BoardModule and ParentModule are sold at 300 kr/md each but no endpoint checks them, so buying one unlocks nothing and every school gets both free. |
 | 3 | [54 Move prod to bigger VPS](54-move-vps.md) | L | Niels + agent | — | VPS could use better speccs for higher volume, prod Postgres is reachable (but secure) from the internet, RPO is 24h. Absorbs 53 phases 3–5, so do it before 53 to avoid building a drill twice. |
 | 4 | [53 Restore drill and off-site backup](53-restore-drill.md) | M | Niels + agent | 54 | Proves backups restore, adds alerts and an off-site copy of DB and files. Losing a school's data would end the company. Phase 2 waits for the 30-day sub-processor notice. |
 | 5 | [44 Auto-rollback and deploy safety net](44-auto-rollback.md) | M | Agent | — (coordinate migration check with 54) | A bad deploy currently stays live until someone notices. Prerequisite for the feedback chain (45–47). |
@@ -40,6 +41,7 @@ status: 'Active'
 | 14 | [46 Feedback AI triage](feedback/46-feedback-ai-triage.md) | M | Niels + agent | 45, Alexandra pricing | Only pays off once 45 produces real report volume. |
 | 15 | [47 Feedback AI fix PRs](feedback/47-feedback-ai-fix-prs.md) | M | Agent | 44, 46 | Last link in the feedback chain. Auto-merge ships disabled. |
 | 16 | [21 AI schema suggestions](21-ai-suggestions-for-schema.md) | M | Agent | Shared LLM client (25 or 46) | Nice to have. Hanne builds a schema once a year, and 25 covers the switching case. |
+| 17 | [59 Microsoft and Google login](59-microsoft-google-login.md) | M | Niels + agent | Ask schools which accounts staff use | Free replacement for UNI•Login (07, parked over STIL fees). One password fewer for staff. Niels checks with schools first. |
 
 ## Folkeskole track (blocked on STIL / Aula)
 
@@ -47,8 +49,8 @@ Secondary market. Runs in parallel with the list above because the calendar time
 
 | Task | Size | Owner | Blocked on |
 |---|---|---|---|
-| [07 UNI•Login SSO](07-uni-login.md) | L | Niels + agent | STIL udbyder registration (MitID Erhverv). Agent prep work in the task file can start any time. |
-| [23 STIL user data import](23-stil-userdata-import.md) | L | Niels + agent | 07, client certificate, a data agreement per school |
+| [07 UNI•Login SSO](07-uni-login.md) | L | Niels + agent | **Parked 2026-10-07.** STIL charges 7,500 kr. setup + 7,500 kr./year. Don't order a tjeneste until a paying folkeskole asks or there are ~10+ paying schools. Use 59 meanwhile. |
+| [23 STIL user data import](23-stil-userdata-import.md) | L | Niels + agent | 07 (parked), client certificate, a data agreement per school |
 | [22 Aula widget](22-info-screen-module-aula-widget.md) | M | Niels + agent | Aula supplier access |
 
 ## Later
