@@ -32,6 +32,7 @@ builder.Services.AddKeycloakAdmin();
 builder.Services.AddOpenApi();
 builder.Services.AddEmail();
 builder.Services.AddObjectStorage();
+builder.Services.AddS3DataProtection();
 builder.Services.AddStripe();
 builder.Services.AddDomainServices();
 builder.Services.AddApiRateLimiting();
