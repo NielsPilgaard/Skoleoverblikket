@@ -25,6 +25,7 @@ jobs:
         run: |
           dotnet restore api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj
           dotnet restore api/tests/Skoleoverblikket.Api.IntegrationTests/Skoleoverblikket.Api.IntegrationTests.csproj
+          dotnet restore infrastructure/backup-agent/Skoleoverblikket.BackupAgent.csproj
 
       - name: Verify (format + build)
         shell: pwsh
@@ -132,6 +133,7 @@ jobs:
         run: |
           dotnet format api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj || true
           dotnet format api/tests/Skoleoverblikket.Api.IntegrationTests/Skoleoverblikket.Api.IntegrationTests.csproj || true
+          dotnet format infrastructure/backup-agent/Skoleoverblikket.BackupAgent.csproj || true
 
       - name: Commit fixes
         run: |
@@ -209,6 +211,56 @@ jobs:
             ghcr.io/nielspilgaard/skoleoverblikket-web:sha-${{ github.sha }}
           build-args: |
             VITE_KEYCLOAK_URL=https://auth.skoleoverblikket.dk
+
+  # Task 54/60. Not deployed by deploy.mjs: compose pins POSTGRES_IMAGE and BACKUP_AGENT_IMAGE to a
+  # sha tag in Dokploy, so a normal deploy never restarts the database.
+  publish-postgres:
+    name: Publish Postgres image
+    runs-on: ubuntu-latest
+    needs: [api]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: infrastructure/postgres
+          file: infrastructure/postgres/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/nielspilgaard/skoleoverblikket-postgres:latest
+            ghcr.io/nielspilgaard/skoleoverblikket-postgres:sha-${{ github.sha }}
+
+  publish-backup-agent:
+    name: Publish backup agent image
+    runs-on: ubuntu-latest
+    needs: [api]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/backup-agent/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/nielspilgaard/skoleoverblikket-backup-agent:latest
+            ghcr.io/nielspilgaard/skoleoverblikket-backup-agent:sha-${{ github.sha }}
 
   publish-keycloak:
     name: Publish Keycloak image

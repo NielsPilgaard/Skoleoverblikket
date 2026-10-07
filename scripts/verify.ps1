@@ -70,12 +70,16 @@ if (-not $SkipDotnet) {
         Step "dotnet format" {
             Set-Location $RepoRoot
             dotnet format api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj --verify-no-changes
+            if ($LASTEXITCODE -ne 0) { return }
+            dotnet format infrastructure/backup-agent/Skoleoverblikket.BackupAgent.csproj --verify-no-changes
         }
     } else {
         Write-Host "`n==> dotnet format (auto-fix)" -ForegroundColor Cyan
         Set-Location $RepoRoot
         dotnet format api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj > $null 2>&1
         $fmtExit = $LASTEXITCODE
+        dotnet format infrastructure/backup-agent/Skoleoverblikket.BackupAgent.csproj > $null 2>&1
+        if ($LASTEXITCODE -ne 0) { $fmtExit = $LASTEXITCODE }
         if ($fmtExit -ne 0) {
             $script:Errors += "FAIL [dotnet format]`n(output suppressed — run with -NoFix to see violations)"
             $script:StepResults += @{ Name = "dotnet format"; Pass = $false }
@@ -89,6 +93,8 @@ if (-not $SkipDotnet) {
     Step "dotnet build" {
         Set-Location $RepoRoot
         dotnet build api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj --configuration Release -p:CI=true
+        if ($LASTEXITCODE -ne 0) { return }
+        dotnet build infrastructure/backup-agent/Skoleoverblikket.BackupAgent.csproj --configuration Release
     }
 
     if (-not $SkipTests) {
