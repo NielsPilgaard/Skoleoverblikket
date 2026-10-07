@@ -13,8 +13,13 @@ public sealed class MailKitEmailSender(IOptionsMonitor<SmtpOptions> options) : I
 	public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
 	{
 		var mime = new MimeMessage();
-		mime.From.Add(new MailboxAddress(_options.FromName, _options.FromAddress));
+		mime.From.Add(new MailboxAddress(message.FromName ?? _options.FromName, _options.FromAddress));
 		mime.To.Add(MailboxAddress.Parse(message.To));
+		if (message.ReplyTo is not null)
+		{
+			mime.ReplyTo.Add(MailboxAddress.Parse(message.ReplyTo));
+		}
+
 		mime.Subject = message.Subject;
 
 		if (message.Bcc is { Count: > 0 })

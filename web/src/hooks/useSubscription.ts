@@ -4,10 +4,11 @@ import { useAuth } from '../auth/useAuth'
 
 export function useSubscription() {
   const { authenticated } = useAuth()
-  const { data } = useQuery({ ...getApiV1ModulesOptions(), enabled: authenticated })
+  const { data, isLoading } = useQuery({ ...getApiV1ModulesOptions(), enabled: authenticated })
   const modules: string[] = Array.isArray(data) ? (data as string[]) : []
   return {
     hasParentModule: modules.includes('ParentModule'),
     hasBoardModule: modules.includes('BoardModule'),
+    isLoading,
   }
 }

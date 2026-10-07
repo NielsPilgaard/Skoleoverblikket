@@ -55,6 +55,12 @@ public sealed class SuperAdminEmailPreviewController(IOptions<ApplicationOptions
 		return Content(html, "text/html");
 	}
 
+	/// <summary>The founder's personal welcome email a new school's admin gets a day after signup.</summary>
+	[HttpGet("welcome")]
+	[Produces("text/html")]
+	public ContentResult Welcome([FromQuery] string name = "Mette", [FromQuery] string school = "Testskolen") =>
+		Content(WelcomeEmail.Build("preview@skoleoverblikket.dk", name, school).HtmlBody, "text/html");
+
 	/// <summary>The warning a canceled school's admins get 7 days before all its data is deleted.</summary>
 	[HttpGet("deletion-warning")]
 	[Produces("text/html")]

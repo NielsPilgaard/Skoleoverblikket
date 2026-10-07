@@ -19,7 +19,8 @@ interface NavItem {
   adminOnly?: boolean
   parentOnly?: boolean
   boardOnly?: boolean
-  moduleGated?: boolean
+  /** Paid add-on the school must have active for the item to show. */
+  module?: 'parent' | 'board'
   /** Alternate target for non-admin staff. When set, the item also shows for staff. */
   staffTo?: string
   /** Label shown to non-admin staff when it differs from the admin label. */
@@ -311,7 +312,7 @@ const navItemDefinitions = [
     to: '/elever',
     label: 'Elever',
     adminOnly: true,
-    moduleGated: true,
+    module: 'parent',
     group: 'Stamdata',
     order: 23,
     icon: (
@@ -336,7 +337,7 @@ const navItemDefinitions = [
     to: '/foraeldre',
     label: 'Forældre',
     adminOnly: true,
-    moduleGated: true,
+    module: 'parent',
     group: 'Stamdata',
     order: 24,
     icon: (
@@ -354,6 +355,33 @@ const navItemDefinitions = [
         <circle cx="12" cy="7" r="4" />
         <path d="M12 11v4" />
         <path d="M9 14h6" />
+      </svg>
+    ),
+  },
+  {
+    to: '/bestyrelsesmedlemmer',
+    label: 'Bestyrelse',
+    adminOnly: true,
+    module: 'board',
+    group: 'Stamdata',
+    order: 24.5,
+    icon: (
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <circle cx="5" cy="9" r="2.5" />
+        <circle cx="12" cy="7" r="2.5" />
+        <circle cx="19" cy="9" r="2.5" />
+        <path d="M1 20v-1.5A3.5 3.5 0 0 1 4.5 15h1" />
+        <path d="M8 20v-2a4 4 0 0 1 8 0v2" />
+        <path d="M23 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-1" />
       </svg>
     ),
   },
@@ -637,7 +665,7 @@ const navItemDefinitions = [
     to: '/klassechat',
     label: 'Klassechat',
     parentOnly: true,
-    moduleGated: true,
+    module: 'parent',
     group: 'Kontakt',
     order: 70.5,
     icon: (
@@ -680,7 +708,7 @@ const navItemDefinitions = [
   {
     to: '/fravaer',
     label: 'Fravær',
-    moduleGated: true,
+    module: 'parent',
     group: 'Kontakt',
     order: 72,
     icon: (
@@ -703,7 +731,7 @@ const navItemDefinitions = [
   {
     to: '/kontaktbog',
     label: 'Kontaktbog',
-    moduleGated: true,
+    module: 'parent',
     group: 'Kontakt',
     order: 73,
     icon: (
@@ -724,7 +752,7 @@ const navItemDefinitions = [
   {
     to: '/klassechat',
     label: 'Klassechat',
-    moduleGated: true,
+    module: 'parent',
     group: 'Kontakt',
     order: 73.5,
     icon: (
@@ -746,7 +774,7 @@ const navItemDefinitions = [
   {
     to: '/beskeder',
     label: 'Beskeder',
-    moduleGated: true,
+    module: 'parent',
     group: 'Kontakt',
     order: 74,
     icon: (
@@ -769,7 +797,7 @@ const navItemDefinitions = [
     to: '/beskeder',
     label: 'Beskeder',
     parentOnly: true,
-    moduleGated: true,
+    module: 'parent',
     group: 'Kontakt',
     order: 74,
     icon: (
@@ -802,6 +830,7 @@ function NavItemLink({ item, onClose }: { item: NavItem; onClose: () => void }) 
     <NavLink
       to={item.to}
       onClick={onClose}
+      data-testid={`nav-link${item.to.replace(/\//g, '-')}`}
       className={({ isActive }) =>
         `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
           isActive
@@ -868,7 +897,7 @@ const NAV_EXPANDED_GROUPS_KEY = 'nav-expanded-groups'
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const { logout, userName, isAdmin, isParent, isBoard } = useAuth()
-  const { hasParentModule } = useSubscription()
+  const { hasParentModule, hasBoardModule } = useSubscription()
   const { pathname } = useLocation()
   const { data: school } = useQuery({
     ...getApiV1SchoolsSettingsOptions(),
@@ -896,7 +925,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           if (item.boardOnly) return false
           if (isParent) return item.parentOnly === true
           if (item.parentOnly) return false
-          if (item.moduleGated && !hasParentModule) return false
+          if (item.module === 'parent' && !hasParentModule) return false
+          if (item.module === 'board' && !hasBoardModule) return false
           if (item.staffTo) return true
           return !item.adminOnly || isAdmin
         })
@@ -905,7 +935,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             ? { ...item, to: item.staffTo, label: item.staffLabel ?? item.label }
             : item
         ),
-    [isAdmin, isParent, isBoard, hasParentModule]
+    [isAdmin, isParent, isBoard, hasParentModule, hasBoardModule]
   )
 
   const navBlocks = useMemo(() => buildNavBlocks(visibleNavItems), [visibleNavItems])
@@ -1025,6 +1055,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                 <button
                   type="button"
                   onClick={() => toggleGroup(block.group)}
+                  aria-expanded={!isCollapsed}
+                  data-testid={`nav-group-${block.group}`}
                   className="flex items-center justify-between w-full px-3 pt-3 pb-1 rounded-md text-xs font-semibold uppercase tracking-wider text-white/70 hover:text-white select-none hover:bg-brand-800"
                 >
                   {block.group}

@@ -24,6 +24,7 @@ public static class ServicesExtensions
 		services.AddScoped<WeekPlanService>();
 		services.AddScoped<RoomService>();
 		services.AddScoped<SchoolDeletionService>();
+		services.AddScoped<SchoolExportService>();
 		services.AddScoped<DataProcessingAgreementService>();
 		services.AddScoped<SchoolSignupService>();
 		services.AddScoped<INotificationService, NotificationService>();
@@ -32,6 +33,7 @@ public static class ServicesExtensions
 		services.AddHostedService<ClassChatAttachmentSweeper>();
 		services.AddHostedService<AbsenceRetentionJob>();
 		services.AddHostedService<SchoolRetentionJob>();
+		services.AddHostedService<WelcomeEmailJob>();
 
 		services.AddOptions<ApplicationOptions>()
 			.BindConfiguration(ApplicationOptions.SectionName)

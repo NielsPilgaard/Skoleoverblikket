@@ -19,7 +19,7 @@ Schools are data controllers; we are their processor. GDPR Art. 28 requires a wr
 
 ## Context
 
-Surfaced while planning the feedback system ([ai-data-boundary](../docs/adr/ai-data-boundary.md)), which adds Alexandra Instituttet and Scaleway transcription as processors of personal data. Friskole boards will ask for this document; folkeskoler (kommuner) will require it outright.
+Surfaced while planning the feedback system ([ai-data-boundary](../../docs/adr/ai-data-boundary.md)), which adds Alexandra Instituttet and Scaleway transcription as processors of personal data. Friskole boards will ask for this document; folkeskoler (kommuner) will require it outright.
 
 ## Scope
 

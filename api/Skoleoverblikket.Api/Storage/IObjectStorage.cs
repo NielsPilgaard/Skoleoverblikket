@@ -15,6 +15,12 @@ public interface IObjectStorage
 
 	Task DeleteAsync(string key, CancellationToken cancellationToken = default);
 
+	/// <summary>Opens the object at <paramref name="key"/> for reading, or returns null if it does not exist.</summary>
+	Task<Stream?> OpenReadAsync(string key, CancellationToken cancellationToken = default);
+
+	/// <summary>Every object key that starts with <paramref name="prefix"/>.</summary>
+	IAsyncEnumerable<string> ListKeysAsync(string prefix, CancellationToken cancellationToken = default);
+
 	/// <summary>Deletes every object whose key starts with <paramref name="prefix"/>. Returns how many were deleted.</summary>
 	Task<int> DeleteByPrefixAsync(string prefix, CancellationToken cancellationToken = default);
 

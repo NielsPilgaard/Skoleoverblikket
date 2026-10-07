@@ -5828,6 +5828,69 @@
         }
       }
     },
+    "/api/v1/exports/school.zip/link": {
+      "post": {
+        "tags": [
+          "SchoolExport"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolExportController_ExportLinkDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolExportController_ExportLinkDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolExportController_ExportLinkDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/exports/school.zip/download": {
+      "get": {
+        "tags": [
+          "SchoolExport"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/exports/school.zip": {
+      "get": {
+        "tags": [
+          "SchoolExport"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/schools/settings": {
       "get": {
         "tags": [
@@ -7860,6 +7923,36 @@
             "schema": {
               "type": "string",
               "default": "Du har fået en ny besked i kontaktbogen."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/email-preview/welcome": {
+      "get": {
+        "tags": [
+          "SuperAdminEmailPreview"
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "Mette"
+            }
+          },
+          {
+            "name": "school",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "Testskolen"
             }
           }
         ],
@@ -13299,6 +13392,18 @@
         },
         "additionalProperties": false
       },
+      "SchoolExportController_ExportLinkDto": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "SchoolsController_OnboardingStatusDto": {
         "required": [
           "classCount",
@@ -15533,6 +15638,9 @@
     },
     {
       "name": "Schemas"
+    },
+    {
+      "name": "SchoolExport"
     },
     {
       "name": "Schools"

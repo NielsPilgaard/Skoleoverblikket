@@ -47,6 +47,7 @@ const WeekPlanPage = lazy(() => import('./pages/WeekPlanPage'))
 const SfoPage = lazy(() => import('./pages/SfoPage'))
 const StudentsPage = lazy(() => import('./pages/StudentsPage'))
 const ParentsPage = lazy(() => import('./pages/ParentsPage'))
+const BoardMembersPage = lazy(() => import('./pages/BoardMembersPage'))
 const YearRollPage = lazy(() => import('./pages/ClassRolloverPage'))
 const ParentSchemaPage = lazy(() => import('./pages/parent/ParentSchemaPage'))
 const ParentCalendarPage = lazy(() => import('./pages/parent/ParentCalendarPage'))
@@ -336,6 +337,14 @@ export default function App() {
                     element={
                       <AdminRoute>
                         <ParentsPage />
+                      </AdminRoute>
+                    }
+                  />
+                  <Route
+                    path="bestyrelsesmedlemmer"
+                    element={
+                      <AdminRoute>
+                        <BoardMembersPage />
                       </AdminRoute>
                     }
                   />
