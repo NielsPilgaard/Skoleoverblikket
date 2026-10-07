@@ -6,11 +6,27 @@ description: >-
   federated OIDC identity provider in Keycloak, mapping UNI•Login users to
   existing staff records. Requires STIL vendor registration via MitID Erhverv.
   Tasks are split into steps only Niels can do (MitID, portal submissions) and
-  prep work an agent can do ahead of STIL approval.
-status: 'In progress'
+  prep work an agent can do ahead of STIL approval. Parked 2026-10-07: STIL
+  charges 7,500 kr. setup plus 7,500 kr./year, too much at current revenue.
+status: 'Parked'
 ---
 
 # UNI•Login SSO Integration (Extra Module)
+
+## Parked (2026-10-07)
+
+STIL charges every tjenesteudbyder for the connection ([Servicebeskrivelse, Priser](https://viden.stil.dk/spaces/OFFSKOLELOGIN/pages/103678068/Servicebeskrivelse#tab-Priser), all ex. moms):
+
+| | Etablering | Årsabonnement |
+|---|---|---|
+| First tjeneste, under 2,000 logins/week (our case) | 7,500 kr. | 7,500 kr. |
+| First tjeneste incl. 100 projekter | 15,000 kr. | 15,000 kr. |
+
+Etablering is invoiced 3 months after bestilling, the årsabonnement starts 9 months after bestilling. STIL (Dennis, case reply 2026-10-07) says creating a system in production starts billing. Roughly 15,000 kr. the first year and 7,500 kr./year after, which would eat the revenue from about two schools with every module.
+
+- Skoleoverblikket is created as udbyder **D00740**. Don't request "Unilogin broker" on tilslutning.stil.dk and don't create any tjeneste until this is unparked. We asked STIL to confirm that the udbyder registration alone isn't billed.
+- Free alternative for staff SSO: [59 Microsoft and Google login](59-microsoft-google-login.md). The staff-linking design below (invite link or "Forbind konto", no email matching, no auto-created accounts) carries over.
+- Unpark when a folkeskole or kommune will pay for the add-on, or at roughly 10+ paying schools.
 
 ## TL;DR
 
@@ -114,7 +130,8 @@ Template file `docs/stil/prod_oidc_metadata.template.json` with redirect URI, po
 
 - [x] Get MitID Erhverv login to tilslutning.stil.dk working (2026-10-04)
 - [x] Confirm MitID Erhverv access to udbyderportal.stil.dk (2026-10-04). Use the **Tjenester** tab; **Lokal IdP** is for organisations plugging their own IdP into the Broker, not for us
-- [x] Ask STIL support to create Skoleoverblikket as udbyder in Tilslutning (filed 2026-10-04, waiting for STIL)
+- [x] Ask STIL support to create Skoleoverblikket as udbyder in Tilslutning (filed 2026-10-04, created as D00740 on 2026-10-07)
+- [ ] Get STIL to confirm in writing that the udbyder registration alone isn't billed
 - [ ] Register on tilslutning.stil.dk — request "Unilogin Broker OIDC" (use texts from `docs/stil/`)
 - [ ] Create test OIDC service on udbyderportal.stil.dk; paste test client ID/secret into config
 - [ ] File production support case at stil.dk/support (Mon–Fri 08–14) with metadata JSON + declaration
