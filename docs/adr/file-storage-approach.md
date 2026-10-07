@@ -52,4 +52,5 @@ Files are stored in OVHCloud Object Storage (S3-compatible API), enabling standa
 ## Related Decisions
 
 - [self-hosted-postgres-backups](self-hosted-postgres-backups.md) — shares the same OVHCloud Object Storage destination
+- [postgres-backup-agent](postgres-backup-agent.md) — the pgBackRest repo and the ops bucket are separate OVH buckets next to the files bucket
 - [school-based-pricing](school-based-pricing.md) — storage quota is one of the cost-based tier differentiators this decision references; see [docs/PRICING.md](../PRICING.md) for current numbers rather than duplicating them here

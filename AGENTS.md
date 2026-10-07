@@ -54,7 +54,8 @@ Never bypass this filter. Never trust a slug string as an authorization signal �
 - Module billing (`SubscriptionModulesController`) — parent module gated behind Stripe subscription
 - Backoffice (`SuperAdminTenantsController`, `SuperAdminEmailPreviewController`) — isSuperAdmin role, view-as mode
 - Avatar uploads — presign+confirm pattern for Parent, Staff, Student avatars stored in OVHCloud
-- Data retention (`SchoolDeletionService`, `SchoolRetentionJob`) — 90 days after Stripe cancellation, admins are warned 7 days ahead and then all school data (rows, files, Keycloak logins) is permanently deleted
+- Data retention (`SchoolDeletionService`, `SchoolRetentionJob`) — 90 days after Stripe cancellation, admins are warned 7 days ahead and then all school data (rows, files, Keycloak logins) is permanently deleted. Each deletion leaves a `SchoolDeletionRecords` row for 14 days, so the backup console knows which schools a restore would bring back
+- Backup agent and break-glass console (`infrastructure/backup-agent/`, `infrastructure/postgres/`) — separate .NET container next to Postgres: streams WAL into pgBackRest, daily backups, weekly drill, restore wizard into a spare A/B volume, SSH-tunnel-only console. The backoffice only gets a read-only status card (`SuperAdminBackupStatusController`). See [postgres-backup-agent](docs/adr/postgres-backup-agent.md) and [docs/RESTORE.md](docs/RESTORE.md)
 - Databehandleraftale (`DataProcessingAgreementController`, `SuperAdminSubProcessorNoticeController`) — GDPR art. 28 agreement accepted at signup or via an admin banner, public `/databehandleraftale` and `/underdatabehandlere` pages, 30-day sub-processor change notice from the backoffice
 - Vacation registration / ferieindmelding (`VacationRegistrationController`) — admin creates registration windows with granularity (weeks/days) and deadlines; parents submit vacation requests via `ParentVacationRegistrationPage`; admin reviews all entries and manages windows via `VacationRegistrationPage` / `VacationRegistrationDetailPage`; full CRUD on windows with open/closed toggle and CSV export of responses
 
@@ -186,6 +187,7 @@ Formatting never fails CI: a pre-commit hook (`.githooks/`, enabled by `npm inst
 | [docs/TESTING.md](docs/TESTING.md) | Test strategy — what layer to write a test in and what to skip |
 | [docs/PRICING.md](docs/PRICING.md) | Billing model — Basis tier, module add-ons, trial, intervals |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Required environment variables for production |
+| [docs/RESTORE.md](docs/RESTORE.md) | Incident runbook: backup console, restore wizard, A/B volume flip, WAL gaps, VPS gone |
 | [docs/STRIPE_LOCAL.md](docs/STRIPE_LOCAL.md) | Testing Stripe subscription flows locally with the Stripe CLI |
 
 ## What agents must never do

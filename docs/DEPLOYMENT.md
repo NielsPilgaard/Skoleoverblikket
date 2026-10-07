@@ -54,6 +54,30 @@ These have non-empty values in `appsettings.json` that are correct for productio
 | `Keycloak__MetadataAddress` | _(empty — auto-discovered)_ | Override only if your Keycloak OIDC discovery endpoint is at a non-standard path.           |
 | `ElmahIo__ApiKey`           | _(empty — disabled)_        | elmah.io API key. Error logging to elmah.io activates only when both this and `ElmahIo__LogId` are set. In `docker-compose.prod.yml`, set the host-side variable `ElmahIo_ApiKey` (single underscore) — Compose maps it to the container config key `ElmahIo__ApiKey`. |
 | `ElmahIo__LogId`            | _(empty — disabled)_        | elmah.io log ID (GUID). Only errors (uncaught request exceptions and `LogLevel.Error`+) are sent. In `docker-compose.prod.yml`, set the host-side variable `ElmahIo_LogId` (single underscore) — Compose maps it to the container config key `ElmahIo__LogId`. |
+| `BackupStatus__AccessKey`   | _(empty — card says "ikke sat op")_ | Key for the backup agent's ops bucket, used by the backoffice backup card. Must only be able to **read** `skoleoverblikket-ops`, never write or delete. In `docker-compose.prod.yml`: `BackupStatus_AccessKey`. |
+| `BackupStatus__SecretKey`   | _(empty)_                   | Secret for the key above. In `docker-compose.prod.yml`: `BackupStatus_SecretKey`. `BackupStatus__ServiceUrl` and `BackupStatus__BucketName` default to OVH RBX and `skoleoverblikket-ops`. |
+
+---
+
+## Self-hosted Postgres and the backup agent
+
+From the task [54](../tasks/54-move-vps.md) cutover, Postgres and the backup agent run in `docker-compose.prod.yml` behind the `selfhosted-db` profile ([postgres-backup-agent](adr/postgres-backup-agent.md)). Until then these variables are unused. Runbook: [RESTORE.md](RESTORE.md).
+
+| Variable (Dokploy env) | Description |
+| --- | --- |
+| `COMPOSE_PROFILES` | `selfhosted-db` starts `postgres` and `backup-agent`. Leave unset until the cutover. |
+| `POSTGRES_IMAGE`, `BACKUP_AGENT_IMAGE` | Pinned `sha-…` tags of `skoleoverblikket-postgres` and `skoleoverblikket-backup-agent`. The defaults don't exist, so forgetting them fails loudly instead of pulling `latest`. Not changed by `deploy.mjs`, so a normal deploy never restarts the database. |
+| `POSTGRES_PASSWORD` | Superuser password. Only used by the init script and by hand. |
+| `APP_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD` | Passwords of the `skoleoverblikket` and `keycloak` roles, created on first start. `DATABASE_URL` and `KEYCLOAK_DB_PASSWORD` for Keycloak use the same values, host `postgres`. |
+| `PG_VOLUME`, `PG_SPARE_VOLUME` | Live data volume (default `pgdata-a`) and restore target (default `pgdata-b`). Going live with a restore = swap both and redeploy. |
+| `PG_SHARED_BUFFERS`, `PG_EFFECTIVE_CACHE_SIZE`, `POSTGRES_MEMORY` | Sized for the VPS (about 25% of Postgres' memory for shared buffers). |
+| `BACKUP_AGENT_MEMORY`, `DRILL_TMPFS_SIZE` | The drill restores into tmpfs, which counts against the agent's memory limit. Size from the first drill. |
+| `PGBACKREST_REPO1_S3_ENDPOINT`, `PGBACKREST_REPO1_S3_REGION`, `PGBACKREST_REPO1_S3_BUCKET` | The pgBackRest repo: its own OVH bucket, not the files bucket and not the ops bucket. |
+| `PGBACKREST_REPO1_S3_KEY`, `PGBACKREST_REPO1_S3_KEY_SECRET` | Read-write key for the repo bucket only. |
+| `PGBACKREST_REPO1_CIPHER_PASS` | Encrypts every backup and WAL file. Keep it in the password manager: without it the backups are unreadable. Generate with `openssl rand -base64 48`. |
+| `OpsBucket_ServiceUrl`, `OpsBucket_AccessKey`, `OpsBucket_SecretKey` | The agent's **read-write** key for `skoleoverblikket-ops` (status, history, deleted-schools ledger). Give the API a separate read-only key (`BackupStatus_*` above). Lifecycle rule: delete `history/` after 400 days. |
+| `Heartbeats_ApiKey`, `Heartbeats_LogId`, `Heartbeats_WalId`, `Heartbeats_BackupId`, `Heartbeats_DrillId`, `Heartbeats_VerifyId` | elmah.io heartbeats. A key with only *Heartbeats – Write*, not the app's logging key. The WAL heartbeat carries the agent's overall health every 5 minutes (interval 30 min in elmah.io), backup daily, drill and verify weekly. |
+| `BACKUP_CONSOLE_SSH` | Shown in the console and the backoffice card, e.g. `ssh -L 9090:127.0.0.1:9090 ubuntu@<vps>`. |
 
 ---
 

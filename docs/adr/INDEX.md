@@ -15,7 +15,8 @@ status: 'Living'
 | Monorepo layout, OpenAPI type sharing, typed client generation | [monorepo-openapi](monorepo-openapi.md) |
 | Tenant routing (`/{slug}`), slug rules, slug immutability | [path-based-tenant-routing](path-based-tenant-routing.md) |
 | Laptop-first admin UI, phone-friendly staff views | [responsive-ui](responsive-ui.md) |
-| PostgreSQL hosting and backup strategy | [self-hosted-postgres-backups](self-hosted-postgres-backups.md) |
+| PostgreSQL self-hosting (not managed DBaaS) | [self-hosted-postgres-backups](self-hosted-postgres-backups.md) |
+| PostgreSQL backups — compose Postgres, backup agent, streamed WAL, A/B restore volumes, Phase 0 results | [postgres-backup-agent](postgres-backup-agent.md) |
 | Transactional email provider (Scaleway TEM) | [transactional-email](transactional-email.md) |
 | Pricing model — flat fee per school, not per student | [school-based-pricing](school-based-pricing.md) |
 | Billing flow — Stripe Checkout, self-serve, no manual invoicing | [stripe-checkout-billing](stripe-checkout-billing.md) |
