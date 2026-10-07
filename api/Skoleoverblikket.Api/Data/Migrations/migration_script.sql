@@ -2539,3 +2539,46 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261007104115_AddSchoolDeletionRecords') THEN
+    CREATE TABLE "SchoolDeletionRecords" (
+        "Id" uuid NOT NULL,
+        "SchoolId" uuid NOT NULL,
+        "SchoolName" character varying(200) NOT NULL,
+        "DeletedAt" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_SchoolDeletionRecords" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261007104115_AddSchoolDeletionRecords') THEN
+    CREATE INDEX "IX_SchoolDeletionRecords_DeletedAt" ON "SchoolDeletionRecords" ("DeletedAt");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261007104115_AddSchoolDeletionRecords') THEN
+    DO $$
+    BEGIN
+        IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'backup_agent') THEN
+            GRANT SELECT ON "SchoolDeletionRecords", "__EFMigrationsHistory" TO backup_agent;
+        END IF;
+    END $$;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261007104115_AddSchoolDeletionRecords') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261007104115_AddSchoolDeletionRecords', '10.0.7');
+    END IF;
+END $EF$;
+COMMIT;
+

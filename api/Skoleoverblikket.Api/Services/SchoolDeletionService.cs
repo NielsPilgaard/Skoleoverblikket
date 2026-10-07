@@ -94,6 +94,16 @@ public sealed class SchoolDeletionService(
 		return await DeleteSchoolAsync(now, cancellationToken);
 	}
 
+	/// <summary>
+	/// Deletes <see cref="SchoolDeletionRecord"/> rows for schools that can no longer be in any
+	/// backup. Not tenant-scoped, so this spans every school.
+	/// </summary>
+	public Task<int> PruneDeletionRecordsAsync(DateTimeOffset now, CancellationToken cancellationToken)
+	{
+		var cutoff = (now - SchoolDeletionRecord.BackupRetention).ToUniversalTime();
+		return db.SchoolDeletionRecords.Where(r => r.DeletedAt < cutoff).ExecuteDeleteAsync(cancellationToken);
+	}
+
 	private static bool IsDeletionDue(DateTimeOffset canceledAt, DateTimeOffset warnedAt, DateTimeOffset now) =>
 		canceledAt <= now - RetentionPeriod && warnedAt <= now - WarningNotice;
 
@@ -169,7 +179,19 @@ public sealed class SchoolDeletionService(
 			.Where(m => db.Subscriptions.Any(s => s.Id == m.SubscriptionId && s.SchoolId == schoolId))
 			.ExecuteDeleteAsync(cancellationToken);
 		await db.Subscriptions.Where(s => s.SchoolId == schoolId).ExecuteDeleteAsync(cancellationToken);
+		var schoolName = await db.Schools.IgnoreQueryFilters().Where(s => s.Id == schoolId).Select(s => s.Name).SingleAsync(cancellationToken);
 		await db.Schools.IgnoreQueryFilters().Where(s => s.Id == schoolId).ExecuteDeleteAsync(cancellationToken);
+
+		// Same transaction as the delete: the backup console must know about every school a restore
+		// would bring back, and never about one that wasn't deleted.
+		db.SchoolDeletionRecords.Add(new SchoolDeletionRecord
+		{
+			Id = Guid.NewGuid(),
+			SchoolId = schoolId,
+			SchoolName = schoolName,
+			DeletedAt = now.ToUniversalTime(),
+		});
+		await db.SaveChangesAsync(cancellationToken);
 		await transaction.CommitAsync(cancellationToken);
 
 		logger.LogInformation("Deleted school {SchoolId} and all its data at {DeletedAt:O}", schoolId, DateTimeOffset.UtcNow);
@@ -213,7 +235,10 @@ public sealed class SchoolDeletionService(
 
 		foreach (var entityType in model.GetEntityTypes().Where(t => !IsTenantScoped(t)))
 		{
-			var handledExplicitly = entityType.ClrType == typeof(Subscription) || entityType.ClrType == typeof(SubscriptionModuleItem);
+			// SchoolDeletionRecord outlives the school on purpose; PruneDeletionRecordsAsync removes it.
+			var handledExplicitly = entityType.ClrType == typeof(Subscription)
+				|| entityType.ClrType == typeof(SubscriptionModuleItem)
+				|| entityType.ClrType == typeof(SchoolDeletionRecord);
 			var cascades = entityType.GetForeignKeys().Any(fk =>
 				fk.IsRequired && fk.DeleteBehavior == DeleteBehavior.Cascade && IsTenantScoped(fk.PrincipalEntityType));
 			if (!handledExplicitly && !cascades)
