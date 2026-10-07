@@ -1,0 +1,374 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "folder": "Skoleoverblikket",
+      "interval": "1m",
+      "name": "skoleoverblikket-api",
+      "orgId": 1,
+      "rules": [
+        {
+          "annotations": {
+            "__dashboardUid__": "skoleoverblikket-health",
+            "__panelId__": "2",
+            "description": "No /alive requests recorded by the API. The container is down, crash-looping, or has stopped sending telemetry to Grafana Cloud. Check the server and the Deploys / restarts panel.",
+            "summary": "Skoleoverblikket API has not answered its /alive health probe for 5 minutes."
+          },
+          "condition": "C",
+          "dashboardUid": "skoleoverblikket-health",
+          "data": [
+            {
+              "datasourceUid": "grafanacloud-prom",
+              "model": {
+                "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"Skoleoverblikket.Api\", http_route=\"/alive\"}[5m]))",
+                "instant": true,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              },
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "settings": {
+                  "mode": "replaceNN",
+                  "replaceWithValue": 0
+                },
+                "type": "reduce"
+              },
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        0.001
+                      ],
+                      "type": "lt"
+                    }
+                  }
+                ],
+                "expression": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              },
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Alerting",
+          "for": "5m",
+          "isPaused": false,
+          "labels": {
+            "service": "skoleoverblikket",
+            "severity": "critical"
+          },
+          "noDataState": "Alerting",
+          "panelId": 2,
+          "title": "Skoleoverblikket API down",
+          "uid": "skoleoverblikket-api-down"
+        },
+        {
+          "annotations": {
+            "__dashboardUid__": "skoleoverblikket-errors",
+            "__panelId__": "4",
+            "description": "Covers 500 responses as well as background jobs (retention, email, exports). See 'Distinct errors' on the Errors & logs dashboard for message and stack trace.",
+            "summary": "Skoleoverblikket API logged {{ $values.B.Value }} error line(s) in the last 10 minutes."
+          },
+          "condition": "C",
+          "dashboardUid": "skoleoverblikket-errors",
+          "data": [
+            {
+              "datasourceUid": "grafanacloud-logs",
+              "model": {
+                "expr": "sum(count_over_time({service_name=\"Skoleoverblikket.Api\"} | detected_level=~\"error|critical|fatal\" [10m]))",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "queryType": "instant",
+                "refId": "A"
+              },
+              "queryType": "instant",
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "settings": {
+                  "mode": "replaceNN",
+                  "replaceWithValue": 0
+                },
+                "type": "reduce"
+              },
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        0
+                      ],
+                      "type": "gt"
+                    }
+                  }
+                ],
+                "expression": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              },
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Error",
+          "isPaused": false,
+          "keepFiringFor": "10m",
+          "labels": {
+            "service": "skoleoverblikket",
+            "severity": "warning"
+          },
+          "noDataState": "OK",
+          "panelId": 4,
+          "title": "Skoleoverblikket errors logged",
+          "uid": "skoleoverblikket-errors-logged"
+        },
+        {
+          "annotations": {
+            "__dashboardUid__": "skoleoverblikket-errors",
+            "__panelId__": "8",
+            "description": "Three or more 'Application started' lines in 15 minutes: the container is crash-looping (failed migration, missing config, OOM). A normal deploy starts once.",
+            "summary": "Skoleoverblikket API started {{ $values.B.Value }} times in 15 minutes."
+          },
+          "condition": "C",
+          "dashboardUid": "skoleoverblikket-errors",
+          "data": [
+            {
+              "datasourceUid": "grafanacloud-logs",
+              "model": {
+                "expr": "sum(count_over_time({service_name=\"Skoleoverblikket.Api\"} | scope_name=\"Microsoft.Hosting.Lifetime\" |= \"Application started\" [15m]))",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "queryType": "instant",
+                "refId": "A"
+              },
+              "queryType": "instant",
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 900,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "settings": {
+                  "mode": "replaceNN",
+                  "replaceWithValue": 0
+                },
+                "type": "reduce"
+              },
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        2
+                      ],
+                      "type": "gt"
+                    }
+                  }
+                ],
+                "expression": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              },
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Error",
+          "isPaused": false,
+          "labels": {
+            "service": "skoleoverblikket",
+            "severity": "critical"
+          },
+          "noDataState": "OK",
+          "panelId": 8,
+          "title": "Skoleoverblikket API restart loop",
+          "uid": "skoleoverblikket-restart-loop"
+        },
+        {
+          "annotations": {
+            "__dashboardUid__": "skoleoverblikket-health",
+            "__panelId__": "14",
+            "description": "p95 above 2 s with at least 20 API requests in 30 minutes. Single cold starts after a deploy don't trigger it. Check the Endpoints table for the slow path.",
+            "summary": "Skoleoverblikket API p95 latency is {{ humanize $values.B.Value }} ms over the last 30 minutes."
+          },
+          "condition": "D",
+          "dashboardUid": "skoleoverblikket-health",
+          "data": [
+            {
+              "datasourceUid": "grafanacloud-logs",
+              "model": {
+                "expr": "quantile_over_time(0.95, {service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath=~\"/api/v1/.*\" | unwrap Duration [30m]) by (service_name)",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "queryType": "instant",
+                "refId": "A"
+              },
+              "queryType": "instant",
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 1800,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "settings": {
+                  "mode": "replaceNN",
+                  "replaceWithValue": 0
+                },
+                "type": "reduce"
+              },
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "grafanacloud-logs",
+              "model": {
+                "expr": "sum by (service_name) (count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath=~\"/api/v1/.*\" [30m]))",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "queryType": "instant",
+                "refId": "E"
+              },
+              "queryType": "instant",
+              "refId": "E",
+              "relativeTimeRange": {
+                "from": 1800,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "expression": "E",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "F",
+                "settings": {
+                  "mode": "replaceNN",
+                  "replaceWithValue": 0
+                },
+                "type": "reduce"
+              },
+              "refId": "F",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "expression": "$B > 2000 && $F >= 20",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "D",
+                "type": "math"
+              },
+              "refId": "D",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Error",
+          "for": "10m",
+          "isPaused": false,
+          "labels": {
+            "service": "skoleoverblikket",
+            "severity": "warning"
+          },
+          "noDataState": "OK",
+          "panelId": 14,
+          "title": "Skoleoverblikket API slow",
+          "uid": "skoleoverblikket-slow-api"
+        }
+      ]
+    }
+  ]
+}
