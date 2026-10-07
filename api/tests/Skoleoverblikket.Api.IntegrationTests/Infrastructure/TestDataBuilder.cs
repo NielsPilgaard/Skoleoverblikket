@@ -1,6 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
+using Skoleoverblikket.Api.Controllers;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Models;
+using Skoleoverblikket.Api.Services;
+using Skoleoverblikket.Api.Tenancy;
 
 namespace Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 
@@ -179,19 +182,12 @@ public static class TestDataBuilder
 		return slot;
 	}
 
-	public static async Task<Room> CreateRoomAsync(
+	public static async Task<RoomsController.RoomDto> CreateRoomAsync(
 		IServiceProvider services, Guid tenantId, string name = "Lokale 1")
 	{
-		using var scope = services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-		var room = new Room
-		{
-			Id = Guid.NewGuid(),
-			TenantId = tenantId,
-			Name = name,
-		};
-		db.Rooms.Add(room);
-		await db.SaveChangesAsync();
-		return room;
+		await using var scope = services.CreateAsyncScope();
+		scope.ServiceProvider.GetRequiredService<HttpTenantContext>().UseBackgroundTenant(tenantId);
+		return await scope.ServiceProvider.GetRequiredService<RoomService>()
+			.CreateRoomAsync(new RoomsController.UpsertRoomRequest(name, null, null), CancellationToken.None);
 	}
 }

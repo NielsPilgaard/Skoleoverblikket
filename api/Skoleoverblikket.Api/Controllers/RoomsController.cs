@@ -1,19 +1,15 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Skoleoverblikket.Api.Data;
-using Skoleoverblikket.Api.Models;
 using Skoleoverblikket.Api.Auth;
-using Skoleoverblikket.Api.Tenancy;
-using ZiggyCreatures.Caching.Fusion;
+using Skoleoverblikket.Api.Services;
 
 namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/rooms")]
 [Authorize]
-public sealed class RoomsController(AppDbContext db, ITenantContext tenant, IFusionCache cache) : ControllerBase
+public sealed class RoomsController(RoomService rooms) : ControllerBase
 {
 	public record RoomDto(Guid Id, string Name, int? Capacity, string? Description);
 	public record UpsertRoomRequest(
@@ -22,85 +18,28 @@ public sealed class RoomsController(AppDbContext db, ITenantContext tenant, IFus
 		string? Description);
 
 	[HttpGet]
-	public async Task<ActionResult<List<RoomDto>>> GetAll(CancellationToken cancellationToken)
-	{
-		var rooms = await db.Rooms
-			.AsNoTracking()
-			.OrderBy(r => r.Name)
-			.Select(r => new RoomDto(r.Id, r.Name, r.Capacity, r.Description))
-			.ToListAsync(cancellationToken);
-		return Ok(rooms);
-	}
+	public async Task<ActionResult<List<RoomDto>>> GetAll(CancellationToken cancellationToken) =>
+		Ok(await rooms.GetAllAsync(cancellationToken));
 
 	[HttpGet("{id:guid}")]
-	public async Task<ActionResult<RoomDto>> GetById(Guid id, CancellationToken cancellationToken)
-	{
-		var room = await db.Rooms
-						   .AsNoTracking()
-						   .Where(r => r.Id == id)
-						   .Select(r => new RoomDto(r.Id, r.Name, r.Capacity, r.Description))
-						   .FirstOrDefaultAsync(cancellationToken);
-
-		return room is null
-				   ? NotFound()
-				   : Ok(room);
-	}
+	public async Task<ActionResult<RoomDto>> GetById(Guid id, CancellationToken cancellationToken) =>
+		await rooms.GetByIdAsync(id, cancellationToken) is { } room ? Ok(room) : NotFound();
 
 	[HttpPost]
 	[Authorize(Roles = Roles.Admin)]
 	public async Task<ActionResult<RoomDto>> Create([FromBody] UpsertRoomRequest req, CancellationToken cancellationToken)
 	{
-		var room = new Room
-		{
-			Id = Guid.NewGuid(),
-			TenantId = tenant.TenantId,
-			Name = req.Name,
-			Capacity = req.Capacity,
-			Description = req.Description,
-		};
-		db.Rooms.Add(room);
-		await db.SaveChangesAsync(cancellationToken);
-		await cache.RemoveAsync(SchoolsController.OnboardingCacheKey(tenant.TenantId), token: cancellationToken);
-		return CreatedAtAction(nameof(GetById), new { id = room.Id },
-			new RoomDto(room.Id, room.Name, room.Capacity, room.Description));
+		var room = await rooms.CreateRoomAsync(req, cancellationToken);
+		return CreatedAtAction(nameof(GetById), new { id = room.Id }, room);
 	}
 
 	[HttpPut("{id:guid}")]
 	[Authorize(Roles = Roles.Admin)]
-	public async Task<ActionResult<RoomDto>> Update(Guid id, [FromBody] UpsertRoomRequest req, CancellationToken cancellationToken)
-	{
-		var room = await db.Rooms.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
-		if (room is null)
-		{
-			return NotFound();
-		}
-
-		if (room.TenantId != tenant.TenantId)
-		{
-			return NotFound();
-		}
-
-		room.Name = req.Name;
-		room.Capacity = req.Capacity;
-		room.Description = req.Description;
-		await db.SaveChangesAsync(cancellationToken);
-		return Ok(new RoomDto(room.Id, room.Name, room.Capacity, room.Description));
-	}
+	public async Task<ActionResult<RoomDto>> Update(Guid id, [FromBody] UpsertRoomRequest req, CancellationToken cancellationToken) =>
+		await rooms.UpdateRoomAsync(id, req, cancellationToken) is { } room ? Ok(room) : NotFound();
 
 	[HttpDelete("{id:guid}")]
 	[Authorize(Roles = Roles.Admin)]
-	public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken)
-	{
-		var room = await db.Rooms
-			.FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenant.TenantId, cancellationToken);
-		if (room is null)
-		{
-			return NotFound();
-		}
-
-		db.Rooms.Remove(room);
-		await db.SaveChangesAsync(cancellationToken);
-		await cache.RemoveAsync(SchoolsController.OnboardingCacheKey(tenant.TenantId), token: cancellationToken);
-		return NoContent();
-	}
+	public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken) =>
+		await rooms.DeleteRoomAsync(id, cancellationToken) ? NoContent() : NotFound();
 }
