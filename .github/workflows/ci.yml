@@ -66,7 +66,7 @@ jobs:
         run: npm ci
         working-directory: web
 
-      # Lint rules only. Formatting never fails CI: the autofix job commits it instead.
+      # Lint rules only. Formatting never fails CI: the .githooks pre-commit hook formats instead.
       - name: Lint
         run: npx biome lint src/
         working-directory: web
@@ -101,61 +101,6 @@ jobs:
       contents: read
       packages: read
     uses: ./.github/workflows/e2e.yml
-
-  # Self-healing formatting: run the formatters and commit the result back to the branch.
-  # [skip ci] + GITHUB_TOKEN means the fix commit starts no new CI run or deploy;
-  # a formatting-only change doesn't need one. Fork PRs can't be pushed to, so they're skipped.
-  autofix:
-    name: Auto-format
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    permissions:
-      contents: write
-    concurrency:
-      group: autofix-${{ github.head_ref || github.ref_name }}
-      cancel-in-progress: true
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
-
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: "10.0.x"
-
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: web/package-lock.json
-
-      - name: Install web dependencies
-        run: npm ci
-        working-directory: web
-
-      - name: Biome (safe fixes only)
-        run: npx biome check --write src/ || true
-        working-directory: web
-
-      - name: dotnet format
-        run: |
-          dotnet format api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj || true
-          dotnet format api/tests/Skoleoverblikket.Api.IntegrationTests/Skoleoverblikket.Api.IntegrationTests.csproj || true
-
-      - name: Commit fixes
-        run: |
-          if git diff --quiet; then
-            echo "Nothing to format."
-            exit 0
-          fi
-          git diff --stat
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "style: auto-format [skip ci]"
-          git pull --rebase
-          git push
 
   migrate:
     name: Apply database migrations
