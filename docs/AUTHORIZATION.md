@@ -14,7 +14,7 @@ purpose: Reference before touching any endpoint's auth — the ClassPermission s
 
 Two layers protect every request:
 
-1. **JWT authentication** — Keycloak-issued bearer token required on all endpoints. The `tenant_id` claim is mandatory; a missing claim returns 401.
+1. **JWT authentication** — Keycloak-issued bearer token required on all endpoints except one: the school ZIP download (`GET /api/v1/exports/school.zip/download`), which is authenticated by a single-use `ExportLink` token instead (see the endpoint table). The `tenant_id` claim is mandatory; a missing claim returns 401.
 2. **Role- and resource-based authorization** — what an authenticated user can do depends on their Keycloak role and, for schema editing, whether `ClassPermission` rows exist.
 
 ---

@@ -2246,9 +2246,9 @@ export const postApiV1ExportsSchoolZipLinkMutation = (options?: Partial<Options<
     return mutationOptions;
 };
 
-export const getApiV1ExportsSchoolZipDownloadQueryKey = (options?: Options<GetApiV1ExportsSchoolZipDownloadData>) => createQueryKey('getApiV1ExportsSchoolZipDownload', options);
+export const getApiV1ExportsSchoolZipDownloadQueryKey = (options: Options<GetApiV1ExportsSchoolZipDownloadData>) => createQueryKey('getApiV1ExportsSchoolZipDownload', options);
 
-export const getApiV1ExportsSchoolZipDownloadOptions = (options?: Options<GetApiV1ExportsSchoolZipDownloadData>) => queryOptions<unknown, DefaultError, unknown, ReturnType<typeof getApiV1ExportsSchoolZipDownloadQueryKey>>({
+export const getApiV1ExportsSchoolZipDownloadOptions = (options: Options<GetApiV1ExportsSchoolZipDownloadData>) => queryOptions<unknown, DefaultError, unknown, ReturnType<typeof getApiV1ExportsSchoolZipDownloadQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {
         const { data } = await getApiV1ExportsSchoolZipDownload({
             ...options,

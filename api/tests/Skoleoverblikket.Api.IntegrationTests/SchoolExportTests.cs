@@ -184,6 +184,28 @@ public sealed class SchoolExportTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task DownloadLink_RedeemedConcurrently_WorksExactlyOnce()
+	{
+		var schoolId = await SeedSchoolAsync("Mikkel Samtidig", $"tok-{Guid.NewGuid():N}");
+		var linkResponse = await Client(schoolId, "admin").PostAsync("/api/v1/exports/school.zip/link", null);
+		var link = await linkResponse.Content.ReadFromJsonAsync<SchoolExportController.ExportLinkDto>();
+
+		// All requests wait on the same gate, so they hit the handler together.
+		var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+		var requests = Enumerable.Range(0, 8).Select(async _ =>
+		{
+			var browser = factory.CreateClient();
+			await gate.Task;
+			return await browser.GetAsync(link!.Url);
+		}).ToList();
+		gate.SetResult();
+		var responses = await Task.WhenAll(requests);
+
+		await Assert.That(responses.Count(r => r.StatusCode == HttpStatusCode.OK)).IsEqualTo(1);
+		await Assert.That(responses.Count(r => r.StatusCode == HttpStatusCode.Unauthorized)).IsEqualTo(responses.Length - 1);
+	}
+
+	[Test]
 	public async Task DownloadLink_WithForgedOrMissingToken_IsUnauthorized()
 	{
 		var browser = factory.CreateClient();

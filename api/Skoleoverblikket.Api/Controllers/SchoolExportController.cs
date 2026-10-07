@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Skoleoverblikket.Api.Auth;
@@ -24,11 +25,13 @@ public sealed class SchoolExportController(SchoolExportService exports, ExportLi
 			: Forbid();
 
 	/// <summary>GET /api/v1/exports/school.zip/download?token=… — <see cref="GetSchoolZip"/> for a link from <see cref="CreateSchoolZipLink"/>.</summary>
+	/// <param name="token">The link's token. Checked and redeemed by <see cref="ExportLinkAuthHandler"/>; declared here so it is in the OpenAPI spec.</param>
+	/// <param name="cancellationToken">Request cancellation.</param>
 	[HttpGet("school.zip/download")]
 	[Authorize(AuthenticationSchemes = ExportLinkAuthHandler.SchemeName)]
 	[Produces("application/zip")]
 	[ProducesResponseType(StatusCodes.Status200OK)]
-	public Task<IResult> DownloadSchoolZip(CancellationToken cancellationToken) =>
+	public Task<IResult> DownloadSchoolZip([FromQuery, Required] string token, CancellationToken cancellationToken) =>
 		GetSchoolZip(cancellationToken);
 
 	/// <summary>

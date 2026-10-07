@@ -4108,7 +4108,9 @@ export type PostApiV1ExportsSchoolZipLinkResponse = PostApiV1ExportsSchoolZipLin
 export type GetApiV1ExportsSchoolZipDownloadData = {
     body?: never;
     path?: never;
-    query?: never;
+    query: {
+        token: string;
+    };
     url: '/api/v1/exports/school.zip/download';
 };
 

@@ -1134,7 +1134,7 @@ export const postApiV1ExportsSchoolZipLink = <ThrowOnError extends boolean = fal
     ...options
 });
 
-export const getApiV1ExportsSchoolZipDownload = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1ExportsSchoolZipDownloadData, ThrowOnError>) => (options?.client ?? client).get<GetApiV1ExportsSchoolZipDownloadResponses, unknown, ThrowOnError>({
+export const getApiV1ExportsSchoolZipDownload = <ThrowOnError extends boolean = false>(options: Options<GetApiV1ExportsSchoolZipDownloadData, ThrowOnError>) => (options.client ?? client).get<GetApiV1ExportsSchoolZipDownloadResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/exports/school.zip/download',
     ...options

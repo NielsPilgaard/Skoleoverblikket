@@ -20,6 +20,8 @@ public sealed class ExportLinkTokens(IDataProtectionProvider dataProtection, IMe
 	private readonly ITimeLimitedDataProtector _protector =
 		dataProtection.CreateProtector("Skoleoverblikket.SchoolExportLink").ToTimeLimitedDataProtector();
 
+	private readonly Lock _redeemLock = new();
+
 	public string Create(Guid tenantId, string subject) =>
 		_protector.Protect($"{tenantId:N}|{subject}", Lifetime);
 
@@ -38,13 +40,18 @@ public sealed class ExportLinkTokens(IDataProtectionProvider dataProtection, IMe
 
 		// Each token is unique (random IV), so the token itself marks the link as used. Single use
 		// also means a token that ends up in the request log or elmah.io is already dead.
+		// The check and the mark happen under one lock, so two requests racing with the same link
+		// can't both see it unused.
 		var key = $"export-link:{token}";
-		if (used.TryGetValue(key, out _))
+		lock (_redeemLock)
 		{
-			return null;
-		}
+			if (used.TryGetValue(key, out _))
+			{
+				return null;
+			}
 
-		used.Set(key, true, Lifetime);
+			used.Set(key, true, Lifetime);
+		}
 
 		var parts = payload.Split('|', 2);
 		return Guid.TryParse(parts[0], out var tenantId) && parts.Length == 2
