@@ -7835,6 +7835,35 @@
         }
       }
     },
+    "/api/v1/admin/backup-status": {
+      "get": {
+        "tags": [
+          "SuperAdminBackupStatus"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupStatusDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupStatusDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupStatusDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/email-preview/staff-invitation": {
       "get": {
         "tags": [
@@ -9621,6 +9650,79 @@
           },
           "role": {
             "$ref": "#/components/schemas/StaffRole"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BackupHealth": {
+        "enum": [
+          "Healthy",
+          "Degraded",
+          "Unhealthy"
+        ],
+        "type": "string"
+      },
+      "BackupStatusDto": {
+        "required": [
+          "generatedAt",
+          "health",
+          "retentionDays",
+          "retentionOk"
+        ],
+        "type": "object",
+        "properties": {
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "health": {
+            "$ref": "#/components/schemas/BackupHealth"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dataSecuredAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastFullBackupAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "oldestRestorableAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "retentionDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "retentionOk": {
+            "type": "boolean"
+          },
+          "lastDrillAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastDrillOk": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "lastDrillMinutes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "sshTunnelCommand": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -15677,6 +15779,9 @@
     },
     {
       "name": "Substitute"
+    },
+    {
+      "name": "SuperAdminBackupStatus"
     },
     {
       "name": "SuperAdminEmailPreview"
