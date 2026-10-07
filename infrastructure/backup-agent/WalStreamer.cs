@@ -29,7 +29,7 @@ public sealed record WalSnapshot(
 public sealed class WalState
 {
 	private readonly Lock _gate = new();
-	private WalSnapshot _snapshot = new(false, "Ikke tjekket endnu", null, null, false, null, false, false, null, 0, 0, null, null, 0, 0, null, null, null, null);
+	private WalSnapshot _snapshot = new(false, "Not checked yet", null, null, false, null, false, false, null, 0, 0, null, null, 0, 0, null, null, null, null);
 
 	public WalSnapshot Current => Volatile.Read(ref _snapshot);
 
@@ -118,7 +118,7 @@ public sealed class WalStreamer(
 				var result = await pgBackRest.StanzaCreateAsync(null, cancellationToken);
 				_stanzaReady = result.Ok;
 				_stanzaRetryAt = DateTimeOffset.UtcNow + TimeSpan.FromMinutes(5);
-				wal.Set(s => s with { StanzaReady = _stanzaReady, Problem = _stanzaReady ? null : $"Repo'et svarer ikke (stanza-create): {result.Tail(2)}" });
+				wal.Set(s => s with { StanzaReady = _stanzaReady, Problem = _stanzaReady ? null : $"Repo unreachable (stanza-create): {result.Tail(2)}" });
 			}
 
 			if (await CheckIdentityAsync(server, cancellationToken))
@@ -167,9 +167,9 @@ public sealed class WalStreamer(
 				s.LiveVolumeName = _options.LiveVolumeName;
 				s.SystemIdentifier = server.SystemIdentifier;
 				s.Timeline = server.Timeline;
-				s.FullBackupRequested ??= "Første start af agenten";
+				s.FullBackupRequested ??= "First agent start";
 			});
-			await HistoryAsync("agent", true, $"Agenten kører mod {_options.LiveVolumeName} (timeline {server.Timeline})", cancellationToken);
+			await HistoryAsync("agent", true, $"Agent running against {_options.LiveVolumeName} (timeline {server.Timeline})", cancellationToken);
 			return true;
 		}
 
@@ -177,8 +177,8 @@ public sealed class WalStreamer(
 		{
 			wal.Set(s => s with
 			{
-				Problem = $"Live-databasen har system-id {server.SystemIdentifier}, men agenten kender {systemId}. " +
-					"Er det en ny, tom database? Tjek PG_VOLUME. pgBackRest afviser dens WAL; se RESTORE.md §12.",
+				Problem = $"Live database has system id {server.SystemIdentifier}, the agent knows {systemId}. " +
+					"A new, empty database? Check PG_VOLUME. pgBackRest rejects its WAL; see RESTORE.md §12.",
 			});
 			StopReceiver();
 			return false;
@@ -195,10 +195,10 @@ public sealed class WalStreamer(
 				s.LastGoLive = new GoLive(now, _options.LiveVolumeName, spare?.TargetDescription);
 				s.Spare = null;
 				s.Checklist = [];
-				s.FullBackupRequested = $"{_options.LiveVolumeName} er sat i drift";
+				s.FullBackupRequested = $"{_options.LiveVolumeName} went live";
 			});
-			await HistoryAsync("golive", true, $"Live-volume skiftet fra {volume} til {_options.LiveVolumeName}. {volume} gemmes til efterforskning.", cancellationToken);
-			await ResetStreamingAsync($"{_options.LiveVolumeName} er sat i drift", gap: false, cancellationToken);
+			await HistoryAsync("golive", true, $"Live volume switched from {volume} to {_options.LiveVolumeName}. {volume} kept for forensics.", cancellationToken);
+			await ResetStreamingAsync($"{_options.LiveVolumeName} went live", gap: false, cancellationToken);
 			return true;
 		}
 
@@ -207,10 +207,10 @@ public sealed class WalStreamer(
 			state.Update(s =>
 			{
 				s.Timeline = server.Timeline;
-				s.FullBackupRequested = $"Ny timeline {server.Timeline}";
+				s.FullBackupRequested = $"New timeline {server.Timeline}";
 			});
-			await HistoryAsync("timeline", true, $"Live-databasen er på timeline {server.Timeline} (før {timeline})", cancellationToken);
-			await ResetStreamingAsync($"Ny timeline {server.Timeline}", gap: false, cancellationToken);
+			await HistoryAsync("timeline", true, $"Live database on timeline {server.Timeline} (was {timeline})", cancellationToken);
+			await ResetStreamingAsync($"New timeline {server.Timeline}", gap: false, cancellationToken);
 		}
 
 		return true;
@@ -223,11 +223,11 @@ public sealed class WalStreamer(
 		if (slot is null)
 		{
 			var hadSlot = state.Read(s => s.SlotCreatedAt is not null);
-			await ResetStreamingAsync(hadSlot ? "Replikerings-slot manglede" : "Første replikerings-slot", gap: hadSlot, cancellationToken);
+			await ResetStreamingAsync(hadSlot ? "Replication slot was missing" : "First replication slot", gap: hadSlot, cancellationToken);
 		}
 		else if (slot.WalStatus == "lost")
 		{
-			await ResetStreamingAsync("Postgres opgav slot'et: agenten var mere end max_slot_wal_keep_size bagud", gap: true, cancellationToken);
+			await ResetStreamingAsync("Postgres dropped the slot: the agent was more than max_slot_wal_keep_size behind", gap: true, cancellationToken);
 		}
 	}
 
@@ -260,7 +260,7 @@ public sealed class WalStreamer(
 		});
 		wal.Set(s => s with { PushedEnd = 0, PushedTimeline = 0 });
 		logger.LogWarning("WAL streaming reset: {Reason}", reason);
-		await HistoryAsync(gap ? "wal-gap" : "slot", !gap, gap ? $"Hul i WAL-kæden: {reason}. Ny slot oprettet; fuld backup bestilt." : reason, cancellationToken);
+		await HistoryAsync(gap ? "wal-gap" : "slot", !gap, gap ? $"WAL gap: {reason}. New slot created; full backup requested." : reason, cancellationToken);
 	}
 
 	private async Task PushAsync(CancellationToken cancellationToken)

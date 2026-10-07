@@ -14,7 +14,7 @@ purpose: 'The incident runbook for the database and its backups (tasks 53, 54, 6
 ## TL;DR
 
 1. Open the backup console: `ssh -L 9090:127.0.0.1:9090 <user>@<vps>`, then on the VPS `docker exec $(docker ps -qf name=backup-agent) cat /var/lib/backup-agent/console-link` and open that link in your browser.
-2. **Gendan** → pick a point → type the spare volume's name → wait for the checks.
+2. **Restore** → pick a point → type the spare volume's name → wait for the checks.
 3. Go live: scale `api` and `keycloak` to 0 in Dokploy, swap `PG_VOLUME` and `PG_SPARE_VOLUME`, redeploy.
 4. Work through the checklist the console shows, including the GDPR assessment within 72 hours.
 
@@ -34,16 +34,16 @@ ssh -L 9090:127.0.0.1:9090 <user>@<vps>
 docker exec $(docker ps -qf name=backup-agent) cat /var/lib/backup-agent/console-link
 ```
 
-Open the printed `http://localhost:9090/adgang?noegle=…` link on your own machine. It sets a cookie for 12 hours. The key lives in the agent's volume, so only someone with a shell on the VPS can read it.
+Open the printed `http://localhost:9090/access?key=…` link on your own machine. It sets a cookie for 12 hours. The key lives in the agent's volume, so only someone with a shell on the VPS can read it.
 
 | Page | Use it for |
 |---|---|
-| Overblik | "Data sikret for X min siden", newest backup, oldest restorable point, slot, disk, heartbeats |
-| Backups | What can be restored (per timeline), every backup, WAL gaps, "Tag backup nu", "Kør verify nu" |
-| Drills | Drill history and RTO trend, "Kør drill nu", log the quarterly manual drill |
-| Slettede skoler | Schools deleted in the last 14 days that a restore would bring back |
-| Gendan | The restore wizard, the go-live steps, the post-restore checklist, deleting the old volume |
-| Historik | Every run, action and event (also in the ops bucket under `history/`) |
+| Overview | "Data secured X min ago", newest backup, oldest restore point, slot, disk, heartbeats |
+| Backups | What can be restored (per timeline), every backup, WAL gaps, "Back up now", "Verify now" |
+| Drills | Drill history and RTO trend, "Drill now", log the quarterly manual drill |
+| Deleted schools | Schools deleted in the last 14 days that a restore would bring back |
+| Restore | The restore wizard, the go-live steps, the post-restore checklist, deleting the old volume |
+| History | Every run, action and event (also in the ops bucket under `history/`) |
 
 **The console doesn't load:** the agent is down. `docker ps -a | grep backup-agent`, `docker logs <container>`, then redeploy the compose app in Dokploy. Postgres keeps running without the agent; WAL waits in the replication slot for up to 4 GB.
 
@@ -55,10 +55,10 @@ Open the printed `http://localhost:9090/adgang?noegle=…` link on your own mach
 
 ## 3. Restore with the wizard
 
-**Gendan** in the console:
+**Restore** in the console:
 
-1. Pick the point: a time (Danish time), "lige før en migration" (stops just before the transaction that applied it), or a full backup as it was. Times outside the restorable ranges are refused; a WAL gap splits the ranges.
-2. Leave "Forbered gen-sletning" ticked. It backdates the deletion warning of schools deleted after the point, on the restored copy, so `SchoolRetentionJob` deletes them again on its first pass instead of emailing them a new warning.
+1. Pick the point: a time (Copenhagen time), "Just before a migration" (stops just before the transaction that applied it), or "Full backup as-is". Times outside the restorable ranges are refused; a WAL gap splits the ranges.
+2. Leave "Re-delete schools deleted after this point" ticked. It backdates the deletion warning of schools deleted after the point, on the restored copy, so `SchoolRetentionJob` deletes them again on its first pass instead of emailing them a new warning.
 3. Type the spare volume's name and start. The wizard wipes the spare volume, runs `pgbackrest restore` into it, starts a temporary Postgres on it inside the agent, runs the drill checks and stops it again. The live volume is mounted read-only and is never touched.
 4. Read the summary: the checks, rows per table against live, latest migration, Keycloak users, the time recovery actually reached, and the resurrected schools.
 
@@ -74,14 +74,14 @@ To undo, swap the variables back and redeploy. The old volume was never written 
 
 ## 5. After go-live
 
-The console's **Gendan** page shows the checklist; each tick goes to history:
+The console's **Restore** page shows the checklist; each tick goes to history:
 
 - **Stripe:** resend webhook events since the restore point (Dashboard → Developers → Webhooks, or `stripe events resend`). Events are kept 30 days.
-- **Resurrected schools:** check they're gone again a few minutes after the API started (Slettede skoler, API logs from `SchoolRetentionJob`).
+- **Resurrected schools:** check they're gone again a few minutes after the API started (Deleted schools, API logs from `SchoolRetentionJob`).
 - **Smoke test** with the smoke tenant: login, schema, ugeplan, a file. Never log in as a real school user.
 - **elmah.io:** no new errors.
 - **GDPR:** §6.
-- **Old volume:** it keeps the pre-restore database for forensics. Delete it with "Slet gammel volume" once you're done, at the latest after 14 days (DPA). The console warns after 7.
+- **Old volume:** it keeps the pre-restore database for forensics. Delete it with "Delete old volume" once you're done, at the latest after 14 days (DPA). The console warns after 7.
 
 ## 6. GDPR
 
@@ -103,13 +103,13 @@ Insert the rows into live by hand. The files stay on the VPS; never copy them to
 
 ## 8. WAL gap (lost slot)
 
-If the agent falls more than 4 GB behind (agent down for long, S3 down past the agent's own 4 GB buffer), Postgres drops the slot and keeps running. The console goes red: "Hul i WAL-kæden". A point-in-time restore can't cross the gap.
+If the agent falls more than 4 GB behind (agent down for long, S3 down past the agent's own 4 GB buffer), Postgres drops the slot and keeps running. The console goes red: "WAL gap". A point-in-time restore can't cross the gap.
 
-The agent recovers by itself: new slot, streaming again, full backup requested. If that backup can't run, fix the cause and click **Tag backup nu** (full). The gap closes with that backup. Restores into the gap can only go to the last backup before it.
+The agent recovers by itself: new slot, streaming again, full backup requested. If that backup can't run, fix the cause and click **Back up now** (full). The gap closes with that backup. Restores into the gap can only go to the last backup before it.
 
 ## 9. The repo or S3 is down
 
-`archive-push` fails and "Ikke skubbet endnu (wal-receive)" grows on the overview. Up to 4 GB waits on the agent's `wal-receive` volume, then the agent pauses and Postgres holds up to 4 GB more in the slot, then §8. Fix the endpoint or keys in Dokploy (`PGBACKREST_REPO1_*`) and redeploy the agent. Everything waiting is pushed, oldest first, with no gap.
+`archive-push` fails and "Not pushed yet" grows on the overview. Up to 4 GB waits on the agent's `wal-receive` volume, then the agent pauses and Postgres holds up to 4 GB more in the slot, then §8. Fix the endpoint or keys in Dokploy (`PGBACKREST_REPO1_*`) and redeploy the agent. Everything waiting is pushed, oldest first, with no gap.
 
 ## 10. The VPS is gone
 

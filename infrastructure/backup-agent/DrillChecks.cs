@@ -25,17 +25,17 @@ public sealed class DrillChecks(IOptions<AgentOptions> options, LivePostgres liv
 	{
 		var checks = new List<CheckResult>();
 		var tables = new List<TableComparison>();
-		var liveApp = await TryAsync(() => live.TableEstimatesAsync(_options.AppDatabase, cancellationToken), log, "Live-databasen svarer ikke; sammenligning med live springes over");
+		var liveApp = await TryAsync(() => live.TableEstimatesAsync(_options.AppDatabase, cancellationToken), log, "Live database down; skipping comparisons with live");
 		var liveKeycloak = await TryAsync(() => live.TableEstimatesAsync(_options.KeycloakDatabase, cancellationToken), log, null);
 		var liveMigration = (await TryAsync(() => live.MigrationsAsync(cancellationToken), log,
-			"Kan ikke læse live __EFMigrationsHistory (mangler GRANT SELECT til backup_agent?)"))?.LastOrDefault()?.MigrationId;
+			"Can't read live __EFMigrationsHistory (GRANT SELECT to backup_agent missing?)"))?.LastOrDefault()?.MigrationId;
 
 		string? migrationId = null;
 		long rows = 0;
 		var tableCount = 0;
 		if (!await restored.DatabaseExistsAsync(_options.AppDatabase, cancellationToken))
 		{
-			checks.Add(new CheckResult("App-database", false, $"{_options.AppDatabase} findes ikke i gendannelsen"));
+			checks.Add(new CheckResult("App database", false, $"{_options.AppDatabase} missing"));
 		}
 		else
 		{
@@ -53,9 +53,9 @@ public sealed class DrillChecks(IOptions<AgentOptions> options, LivePostgres liv
 			var liveIsNewer = liveMigration is not null && migrationId is not null && string.CompareOrdinal(liveMigration, migrationId) > 0;
 			checks.Add(TablesCheck(counts, liveApp, liveIsNewer));
 			checks.Add(liveMigration is null
-				? new CheckResult("Migration", null, $"Gendannet: {migrationId ?? "ingen"}. Live kunne ikke læses.")
+				? new CheckResult("Migration", null, $"{migrationId ?? "none"} (live unreadable)")
 				: new CheckResult("Migration", migrationId == liveMigration || liveIsNewer,
-					migrationId == liveMigration ? $"Samme som live: {migrationId}" : $"Gendannet {migrationId ?? "ingen"}, live {liveMigration}"));
+					migrationId == liveMigration ? $"{migrationId} (= live)" : $"{migrationId ?? "none"}, live {liveMigration}"));
 			checks.Add(RowsCheck(counts, liveApp));
 			checks.Add(SchoolsCheck(counts, liveApp));
 			checks.Add(await TenantIsolationCheckAsync(app, cancellationToken));
@@ -66,9 +66,9 @@ public sealed class DrillChecks(IOptions<AgentOptions> options, LivePostgres liv
 		{
 			var tolerance = _options.WalSwitchInterval * 2 + TimeSpan.FromMinutes(1);
 			checks.Add(reachedAt is { } reached
-				? new CheckResult("Tidspunkt nået", reached <= wanted && reached >= wanted - tolerance,
-					$"Seneste agent-heartbeat i gendannelsen: {Fmt.DateTimeSeconds(reached)}, mål: {Fmt.DateTimeSeconds(wanted)}")
-				: new CheckResult("Tidspunkt nået", null, "Ingen agent-heartbeat i gendannelsen"));
+				? new CheckResult("Point reached", reached <= wanted && reached >= wanted - tolerance,
+					$"{Fmt.DateTimeSeconds(reached)} (target {Fmt.DateTimeSeconds(wanted)})")
+				: new CheckResult("Point reached", null, "No agent heartbeat in the restore"));
 		}
 
 		long? keycloakUsers = null;
@@ -80,12 +80,12 @@ public sealed class DrillChecks(IOptions<AgentOptions> options, LivePostgres liv
 		}
 		else
 		{
-			checks.Add(new CheckResult("Keycloak", false, $"{_options.KeycloakDatabase} findes ikke i gendannelsen"));
+			checks.Add(new CheckResult("Keycloak", false, $"{_options.KeycloakDatabase} missing"));
 		}
 
 		foreach (var check in checks)
 		{
-			log($"{(check.Ok switch { true => "OK  ", false => "FEJL", null => "--  " })} {check.Name}: {check.Detail}");
+			log($"{(check.Ok switch { true => "OK  ", false => "FAIL", null => "--  " })} {check.Name}: {check.Detail}");
 		}
 
 		return new CheckReport(checks, tables, tableCount, rows, migrationId, keycloakUsers, reachedAt);
@@ -155,17 +155,17 @@ public sealed class DrillChecks(IOptions<AgentOptions> options, LivePostgres liv
 	{
 		if (live is null)
 		{
-			return new CheckResult("Tabeller", null, $"{restored.Count} tabeller gendannet. Live kunne ikke læses.");
+			return new CheckResult("Tables", null, $"{restored.Count} (live unreadable)");
 		}
 
 		var missing = live.Keys.Where(t => !restored.ContainsKey(t)).Select(ShortName).ToList();
 		if (missing.Count == 0)
 		{
-			return new CheckResult("Tabeller", true, $"Alle {live.Count} live-tabeller findes ({restored.Count} gendannet)");
+			return new CheckResult("Tables", true, $"All {live.Count} live tables present");
 		}
 
-		return new CheckResult("Tabeller", liveIsNewer,
-			$"{missing.Count} live-tabeller mangler{(liveIsNewer ? " (fra migrationer efter tidspunktet)" : "")}: {string.Join(", ", missing.Take(8))}");
+		return new CheckResult("Tables", liveIsNewer,
+			$"{missing.Count} live tables missing{(liveIsNewer ? " (from later migrations)" : "")}: {string.Join(", ", missing.Take(8))}");
 	}
 
 	/// <summary>Catches empty or partial restores: each table live has rows in must have at least half of them.</summary>
@@ -173,7 +173,7 @@ public sealed class DrillChecks(IOptions<AgentOptions> options, LivePostgres liv
 	{
 		if (live is null)
 		{
-			return new CheckResult("Rækker pr. tabel", null, $"{restored.Values.Sum()} rækker gendannet. Live kunne ikke læses.");
+			return new CheckResult("Rows", null, $"{Fmt.Number(restored.Values.Sum())} (live unreadable)");
 		}
 
 		// pg_stat estimates are rough on small tables, so only tables with some volume count.
@@ -182,8 +182,8 @@ public sealed class DrillChecks(IOptions<AgentOptions> options, LivePostgres liv
 			.Select(l => $"{ShortName(l.Key)} {restored[l.Key]}/{l.Value}")
 			.ToList();
 		return tooFew.Count == 0
-			? new CheckResult("Rækker pr. tabel", true, $"{restored.Values.Sum()} rækker; ingen tabel under halvdelen af live")
-			: new CheckResult("Rækker pr. tabel", false, $"Under halvdelen af live: {string.Join(", ", tooFew.Take(8))}");
+			? new CheckResult("Rows", true, $"{Fmt.Number(restored.Values.Sum())}, no table under half of live")
+			: new CheckResult("Rows", false, $"Under half of live: {string.Join(", ", tooFew.Take(8))}");
 	}
 
 	private static CheckResult SchoolsCheck(Dictionary<string, long> restored, Dictionary<string, long>? live)
@@ -191,10 +191,10 @@ public sealed class DrillChecks(IOptions<AgentOptions> options, LivePostgres liv
 		var count = restored.GetValueOrDefault("public.Schools");
 		if (live?.GetValueOrDefault("public.Schools") is not { } liveCount || liveCount == 0)
 		{
-			return new CheckResult("Skoler", null, $"{count} skoler gendannet");
+			return new CheckResult("Schools", null, $"{count}");
 		}
 
-		return new CheckResult("Skoler", Math.Abs(count - liveCount) <= 2, $"{count} gendannet, live ca. {liveCount} (±2 tilladt)");
+		return new CheckResult("Schools", Math.Abs(count - liveCount) <= 2, $"{count}, live ~{liveCount} (±2)");
 	}
 
 	/// <summary>No row in a tenant-scoped table may point at a school that doesn't exist.</summary>
@@ -227,8 +227,8 @@ public sealed class DrillChecks(IOptions<AgentOptions> options, LivePostgres liv
 		}
 
 		return orphans.Count == 0
-			? new CheckResult("Tenant-isolation", true, $"Alle rækker i {tables.Count} tabeller med TenantId peger på en skole")
-			: new CheckResult("Tenant-isolation", false, $"Rækker uden skole: {string.Join(", ", orphans)}");
+			? new CheckResult("Tenant isolation", true, $"No orphan rows in {tables.Count} tables")
+			: new CheckResult("Tenant isolation", false, $"Rows without a school: {string.Join(", ", orphans)}");
 	}
 
 	/// <summary>The agent's last heartbeat commit in the restore: how far recovery really got.</summary>
@@ -245,23 +245,23 @@ public sealed class DrillChecks(IOptions<AgentOptions> options, LivePostgres liv
 		await using var realm = new NpgsqlCommand("SELECT count(*) FROM realm WHERE name = @name", keycloak);
 		realm.Parameters.AddWithValue("name", _options.KeycloakRealm);
 		var realmCount = await SafeCountAsync(realm, cancellationToken);
-		checks.Add(new CheckResult("Keycloak-realm", realmCount > 0, realmCount > 0 ? $"Realm {_options.KeycloakRealm} findes" : $"Realm {_options.KeycloakRealm} mangler"));
+		checks.Add(new CheckResult("Keycloak realm", realmCount > 0, realmCount > 0 ? _options.KeycloakRealm : $"{_options.KeycloakRealm} missing"));
 
 		await using var users = new NpgsqlCommand("SELECT count(*) FROM user_entity", keycloak);
 		var userCount = await SafeCountAsync(users, cancellationToken);
 		if (live?.GetValueOrDefault("public.user_entity") is { } liveUsers and > 0)
 		{
 			var allowed = Math.Max(2, liveUsers * 5 / 100);
-			checks.Add(new CheckResult("Keycloak-brugere", Math.Abs(userCount - liveUsers) <= allowed, $"{userCount} gendannet, live ca. {liveUsers} (±{allowed})"));
+			checks.Add(new CheckResult("Keycloak users", Math.Abs(userCount - liveUsers) <= allowed, $"{userCount}, live ~{liveUsers} (±{allowed})"));
 		}
 		else
 		{
-			checks.Add(new CheckResult("Keycloak-brugere", null, $"{userCount} brugere gendannet"));
+			checks.Add(new CheckResult("Keycloak users", null, $"{userCount}"));
 		}
 
 		await using var credentials = new NpgsqlCommand("SELECT count(*) FROM credential", keycloak);
 		var credentialCount = await SafeCountAsync(credentials, cancellationToken);
-		checks.Add(new CheckResult("Keycloak-loginoplysninger", userCount == 0 || credentialCount > 0, $"{credentialCount} credentials"));
+		checks.Add(new CheckResult("Keycloak credentials", userCount == 0 || credentialCount > 0, $"{credentialCount}"));
 		return userCount;
 	}
 

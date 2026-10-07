@@ -39,7 +39,7 @@ public sealed record RepoSnapshot(
 	IReadOnlyList<RepoSegment> Segments,
 	IReadOnlyList<RestorableRange> Ranges)
 {
-	public static readonly RepoSnapshot Empty = new(DateTimeOffset.MinValue, false, "Ikke læst endnu", [], [], []);
+	public static readonly RepoSnapshot Empty = new(DateTimeOffset.MinValue, false, "Not read yet", [], [], []);
 
 	public RepoBackup? NewestFull => Backups.Where(b => b.Type == "full").MaxBy(b => b.StoppedAt);
 	public RepoBackup? Oldest => Backups.MinBy(b => b.StartedAt);
@@ -134,7 +134,7 @@ public sealed class PgBackRest(IOptions<AgentOptions> options)
 		var stanza = document.RootElement.EnumerateArray().FirstOrDefault();
 		if (stanza.ValueKind != JsonValueKind.Object)
 		{
-			return (false, "Ingen stanza i repo", []);
+			return (false, "No stanza in the repo", []);
 		}
 
 		var status = stanza.GetProperty("status");

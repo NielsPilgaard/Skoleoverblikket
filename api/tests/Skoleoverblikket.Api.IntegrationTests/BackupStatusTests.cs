@@ -12,7 +12,7 @@ using Skoleoverblikket.Api.Services;
 namespace Skoleoverblikket.Api.IntegrationTests;
 
 /// <summary>
-/// The backoffice backup card reads the agent's status.json from the ops bucket (LocalStack here,
+/// The backoffice backup card reads the agent's status.json from the ops bucket (Silo here,
 /// never real OVH). Superadmins get it, school admins don't.
 /// </summary>
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
@@ -57,7 +57,7 @@ public sealed class BackupStatusTests(ApiFactory factory)
 			  "schemaVersion": 1,
 			  "generatedAt": "{{generatedAt:O}}",
 			  "health": "Degraded",
-			  "issues": ["Spare-volumen har holdt den gamle database i 8 dage"],
+			  "issues": ["pgdata-b has held the old database for 8 days. Delete it when you're done investigating."],
 			  "dataSecuredAt": "{{generatedAt.AddMinutes(-3):O}}",
 			  "backups": { "lastFullAt": "{{generatedAt.AddHours(-9):O}}", "oldestRestorableAt": "{{generatedAt.AddDays(-13):O}}", "retentionDays": 14, "retentionOk": true, "count": 14 },
 			  "drill": { "lastAt": "{{generatedAt.AddDays(-2):O}}", "lastOk": true, "lastMinutes": 3.5 },

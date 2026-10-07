@@ -95,7 +95,7 @@ public sealed class StatusBuilder(
 
 		if (!w.PostgresReachable)
 		{
-			Issue(Health.Unhealthy, $"Postgres svarer ikke: {w.PostgresError}");
+			Issue(Health.Unhealthy, $"Postgres down: {w.PostgresError}");
 		}
 
 		if (w.Problem is not null)
@@ -105,47 +105,47 @@ public sealed class StatusBuilder(
 
 		if (!ops.IsConfigured)
 		{
-			Issue(Health.Degraded, "Ops-bucket er ikke sat op; status og historik ligger kun på agentens volume");
+			Issue(Health.Degraded, "Ops bucket not set up; status and history only on the agent's volume");
 		}
 		else if (ops.LastError is not null)
 		{
-			Issue(Health.Degraded, $"Kan ikke skrive til ops-bucket: {ops.LastError}");
+			Issue(Health.Degraded, $"Can't write to the ops bucket: {ops.LastError}");
 		}
 
 		if (w.Slot?.WalStatus == "lost")
 		{
-			Issue(Health.Unhealthy, "Replikerings-slot er tabt");
+			Issue(Health.Unhealthy, "Replication slot lost");
 		}
 
 		if (s.Gaps.Count > 0)
 		{
-			Issue(Health.Unhealthy, $"Hul i WAL-kæden siden {Fmt.DateTime(s.Gaps.Min(g => g.DetectedAt))} ({s.Gaps[^1].Reason}). Point-in-time-gendannelse kan ikke krydse hullet; næste fulde backup lukker det.");
+			Issue(Health.Unhealthy, $"WAL gap since {Fmt.DateTime(s.Gaps.Min(g => g.DetectedAt))} ({s.Gaps[^1].Reason}). The next full backup closes it.");
 		}
 
 		var running = now - _startedAt > _options.MaxDataLoss;
 		if (w.DataSecuredAt is { } secured ? now - secured > _options.MaxDataLoss : running)
 		{
-			Issue(Health.Unhealthy, $"Data sikret {Fmt.Ago(w.DataSecuredAt, now)} (mål: højst {_options.MaxDataLoss.TotalMinutes:0} min)");
+			Issue(Health.Unhealthy, $"Data secured {Fmt.Ago(w.DataSecuredAt, now)} (target: {_options.MaxDataLoss.TotalMinutes:0} min)");
 		}
 
 		if (w.PushFailingSince is { } failing && now - failing > TimeSpan.FromMinutes(5))
 		{
-			Issue(Health.Unhealthy, $"archive-push fejler siden {Fmt.DateTime(failing)}: {w.PushError}");
+			Issue(Health.Unhealthy, $"archive-push failing since {Fmt.DateTime(failing)}: {w.PushError}");
 		}
 
 		if (w.ReceiverPaused)
 		{
-			Issue(Health.Unhealthy, $"WAL-modtagelse er sat på pause: {Fmt.Bytes(w.SpoolBytes)} venter på at blive skubbet til repo'et");
+			Issue(Health.Unhealthy, $"WAL receiver paused: {Fmt.Bytes(w.SpoolBytes)} waiting to be pushed");
 		}
 
 		if (w.Slot?.RetainedBytes is { } retained && retained >= _options.SlotWarnBytes)
 		{
-			Issue(Health.Degraded, $"Postgres holder {Fmt.Bytes(retained)} WAL for agenten (slot'et opgives ved {Fmt.Bytes(w.Server?.SlotKeepBytes)})");
+			Issue(Health.Degraded, $"Postgres holds {Fmt.Bytes(retained)} WAL for the agent (slot dropped at {Fmt.Bytes(w.Server?.SlotKeepBytes)})");
 		}
 
 		if (snapshot.Error is not null && snapshot.ReadAt != DateTimeOffset.MinValue)
 		{
-			Issue(Health.Unhealthy, $"pgbackrest info fejler: {snapshot.Error}");
+			Issue(Health.Unhealthy, $"pgbackrest info failing: {snapshot.Error}");
 		}
 
 		// When the repo can't be read, "no backups" would be a guess; the info error above says it instead.
@@ -153,32 +153,32 @@ public sealed class StatusBuilder(
 		var repoRead = snapshot.ReadAt != DateTimeOffset.MinValue && (snapshot.Error is null || snapshot.Backups.Count > 0);
 		if (repoRead && (newestFull is null || now - newestFull.StoppedAt > TimeSpan.FromHours(26)))
 		{
-			Issue(Health.Unhealthy, newestFull is null ? "Der er ingen fuld backup" : $"Nyeste fulde backup er fra {Fmt.DateTime(newestFull.StoppedAt)} (over 26 timer)");
+			Issue(Health.Unhealthy, newestFull is null ? "No full backup" : $"Newest full backup is from {Fmt.DateTime(newestFull.StoppedAt)} (over 26 h)");
 		}
 
 		var retentionCheck = BackupService.RetentionCheck(snapshot, _options.RetentionDays);
 		if (retentionCheck.Ok == false)
 		{
-			Issue(Health.Unhealthy, $"{retentionCheck.Detail}. Slet de for gamle backups (RESTORE.md).");
+			Issue(Health.Unhealthy, $"{retentionCheck.Detail}. Delete the old backups (RESTORE.md).");
 		}
 
 		if (s.LastDrill is { Ok: false } failedDrill)
 		{
-			Issue(Health.Unhealthy, $"Seneste drill fejlede {Fmt.DateTime(failedDrill.At)}");
+			Issue(Health.Unhealthy, $"Drill failed {Fmt.DateTime(failedDrill.At)}");
 		}
 		else if (s.LastDrill is null || now - s.LastDrill.At > TimeSpan.FromDays(8))
 		{
-			Issue(Health.Degraded, "Ingen gennemført drill de sidste 8 dage");
+			Issue(Health.Degraded, "No successful drill in 8 days");
 		}
 
 		if (s.LastVerify is { Ok: false } failedVerify)
 		{
-			Issue(Health.Unhealthy, $"Seneste verify fejlede {Fmt.DateTime(failedVerify.At)}");
+			Issue(Health.Unhealthy, $"Verify failed {Fmt.DateTime(failedVerify.At)}");
 		}
 
 		if (disk is { } d && d.UsedPercent >= 80)
 		{
-			Issue(d.UsedPercent >= 90 ? Health.Unhealthy : Health.Degraded, $"Disken er {d.UsedPercent}% fuld");
+			Issue(d.UsedPercent >= 90 ? Health.Unhealthy : Health.Degraded, $"Disk {d.UsedPercent}% full");
 		}
 
 		if (s.OldVolume is { } old)
@@ -186,11 +186,11 @@ public sealed class StatusBuilder(
 			var days = (now - old.Since).TotalDays;
 			if (days >= _options.RetentionDays)
 			{
-				Issue(Health.Unhealthy, $"{old.Name} har holdt den gamle database i {days:0} dage. Databehandleraftalen tillader højst {_options.RetentionDays}. Slet den i konsollen.");
+				Issue(Health.Unhealthy, $"{old.Name} has held the old database for {days:0} days (DPA max {_options.RetentionDays}). Delete it on the Restore page.");
 			}
 			else if (days >= 7)
 			{
-				Issue(Health.Degraded, $"{old.Name} har holdt den gamle database i {days:0} dage. Slet den, når efterforskningen er slut.");
+				Issue(Health.Degraded, $"{old.Name} has held the old database for {days:0} days. Delete it when you're done investigating.");
 			}
 		}
 
@@ -201,7 +201,7 @@ public sealed class StatusBuilder(
 
 		if (s.FullBackupRequested is not null && running)
 		{
-			Issue(Health.Degraded, $"Fuld backup venter: {s.FullBackupRequested}");
+			Issue(Health.Degraded, $"Full backup pending: {s.FullBackupRequested}");
 		}
 
 		var health = issues.Count == 0 ? Health.Healthy : issues.Max(i => i.Severity);
@@ -245,7 +245,7 @@ public sealed class StatusBuilder(
 				Schedule.Next(now, _options.VerifyHour, _options.VerifyDay),
 				Schedule.Next(now, _options.DrillHour, _options.DrillDay)),
 			Volumes: new VolumesStatus(_options.LiveVolumeName, _options.SpareVolumeName, s.OldVolume?.Since,
-				s.OldVolume is not null ? "gammel live-database" : s.Spare is not null ? $"gendannelse ({s.Spare.TargetDescription})" : restore.SpareIsEmpty ? "tom" : "ukendt indhold"),
+				s.OldVolume is not null ? "old live database" : s.Spare is not null ? $"restored to {s.Spare.TargetDescription}" : restore.SpareIsEmpty ? "empty" : "unknown contents"),
 			SshTunnelCommand: _options.SshTunnelCommand);
 		Last = status;
 		return status;

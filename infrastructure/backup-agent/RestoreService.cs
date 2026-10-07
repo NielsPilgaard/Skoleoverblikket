@@ -21,7 +21,7 @@ public sealed record RestoreTarget(string[] Arguments, string Description, DateT
 /// <summary>
 /// Task 60 D5: restore into the spare volume, check it with a temporary Postgres inside the agent,
 /// and let a human make it live by flipping PG_VOLUME in Dokploy. The live volume is mounted
-/// read-only and never touched; the old one stays for forensics until "Slet gammel volume".
+/// read-only and never touched; the old one stays for forensics until "Delete old volume".
 /// </summary>
 public sealed class RestoreService(
 	IOptions<AgentOptions> options,
@@ -43,23 +43,23 @@ public sealed class RestoreService(
 	{
 		if (string.Equals(_options.LiveVolumeName, _options.SpareVolumeName, StringComparison.Ordinal))
 		{
-			return $"PG_VOLUME og PG_SPARE_VOLUME er begge {_options.LiveVolumeName}. Sæt PG_SPARE_VOLUME til den anden volume.";
+			return $"PG_VOLUME and PG_SPARE_VOLUME are both {_options.LiveVolumeName}. Set PG_SPARE_VOLUME to the other volume.";
 		}
 
 		if (!Directory.Exists(_options.SpareDataDirectory))
 		{
-			return $"Spare-volumen er ikke monteret på {_options.SpareDataDirectory}.";
+			return $"Spare volume not mounted at {_options.SpareDataDirectory}.";
 		}
 
 		var liveId = await Volumes.IdentityAsync(_options.LiveDataDirectory, cancellationToken);
 		var spareId = await Volumes.IdentityAsync(_options.SpareDataDirectory, cancellationToken);
 		if (liveId is null || spareId is null)
 		{
-			return "Kunne ikke afgøre, om spare- og live-volumen er forskellige (stat fejlede).";
+			return "Can't tell whether spare and live are different volumes (stat failed).";
 		}
 
 		return liveId == spareId
-			? "Spare-volumen er den samme som live-volumen. Har du kun ændret PG_VOLUME og ikke PG_SPARE_VOLUME?"
+			? "Spare and live are the same volume. Did you change PG_VOLUME but not PG_SPARE_VOLUME?"
 			: null;
 	}
 
@@ -79,17 +79,17 @@ public sealed class RestoreService(
 				{
 					if (Fmt.ParseLocal(request.Time) is not { } target)
 					{
-						return (null, "Vælg et tidspunkt.");
+						return (null, "Pick a time.");
 					}
 
 					if (snapshot.RangeFor(target) is not { } range)
 					{
-						return (null, $"{Fmt.DateTime(target)} ligger uden for det, der kan gendannes.");
+						return (null, $"{Fmt.DateTime(target)} is not restorable.");
 					}
 
 					return (new RestoreTarget(
 						["--type=time", $"--target={Fmt.PgTimestamp(target)}", $"--target-timeline={range.Timeline}"],
-						$"tidspunkt {Fmt.DateTime(target)}", target), null);
+						Fmt.DateTime(target), target), null);
 				}
 
 			case RestoreMode.Migration:
@@ -97,25 +97,25 @@ public sealed class RestoreService(
 					var migration = (await MigrationsAsync(cancellationToken)).FirstOrDefault(m => m.MigrationId == request.MigrationId);
 					if (migration?.AppliedAt is not { } appliedAt)
 					{
-						return (null, "Vælg en migration med kendt tidspunkt.");
+						return (null, "Pick a migration with a known time.");
 					}
 
 					if (snapshot.RangeFor(appliedAt) is not { } range)
 					{
-						return (null, $"Migrationen blev anvendt {Fmt.DateTime(appliedAt)}, uden for det, der kan gendannes.");
+						return (null, $"Migration applied {Fmt.DateTime(appliedAt)}, which is not restorable.");
 					}
 
 					// Exclusive: recovery stops just before the transaction that applied the migration.
 					return (new RestoreTarget(
 						["--type=time", $"--target={Fmt.PgTimestamp(appliedAt)}", "--target-exclusive", $"--target-timeline={range.Timeline}"],
-						$"lige før migration {migration.MigrationId} ({Fmt.DateTimeSeconds(appliedAt)})", appliedAt), null);
+						$"just before {migration.MigrationId} ({Fmt.DateTimeSeconds(appliedAt)})", appliedAt), null);
 				}
 
 			default:
 				{
 					var backup = snapshot.Backups.FirstOrDefault(b => b.Label == request.BackupLabel);
 					return backup is null
-						? (null, "Vælg en backup.")
+						? (null, "Pick a backup.")
 						: (new RestoreTarget(["--type=immediate", $"--set={backup.Label}"], $"backup {backup.Label} ({Fmt.DateTime(backup.StoppedAt)})", null), null);
 				}
 		}
@@ -126,7 +126,7 @@ public sealed class RestoreService(
 	{
 		if (!string.Equals(request.Confirmation?.Trim(), _options.SpareVolumeName, StringComparison.Ordinal))
 		{
-			return (null, $"Skriv navnet på spare-volumen ({_options.SpareVolumeName}) for at bekræfte, at den må slettes.");
+			return (null, $"Type {_options.SpareVolumeName} to confirm.");
 		}
 
 		if (await SpareProblemAsync(cancellationToken) is { } problem)
@@ -140,9 +140,9 @@ public sealed class RestoreService(
 			return (null, error);
 		}
 
-		var job = jobs.TryStart(JobKind.Restore, $"Gendan {target.Description} til {_options.SpareVolumeName}",
+		var job = jobs.TryStart(JobKind.Restore, $"Restore to {target.Description} ({_options.SpareVolumeName})",
 			(job, ct) => RestoreAsync(job, target, request.PrepareResurrected, ct));
-		return job is null ? (null, "Et andet job kører. Vent til det er færdigt.") : (job, null);
+		return job is null ? (null, "Another job is running.") : (job, null);
 	}
 
 	private async Task<JobOutcome> RestoreAsync(Job job, RestoreTarget target, bool prepareResurrected, CancellationToken cancellationToken)
@@ -154,7 +154,7 @@ public sealed class RestoreService(
 			return new JobOutcome(false, problem);
 		}
 
-		job.Log($"Sletter indholdet af {_options.SpareVolumeName} ({spare})…");
+		job.Log($"Wiping {_options.SpareVolumeName} ({spare})…");
 		Volumes.WipeContents(spare);
 		state.Update(s =>
 		{
@@ -162,14 +162,14 @@ public sealed class RestoreService(
 			s.OldVolume = null;
 		});
 
-		job.Log($"Gendanner {target.Description}…");
+		job.Log($"Restoring to {target.Description}…");
 		var restore = await pgBackRest.RestoreAsync(spare, target.Arguments, job.Log, cancellationToken);
 		if (!restore.Ok)
 		{
-			return new JobOutcome(false, $"pgbackrest restore fejlede: {restore.Tail(2)}");
+			return new JobOutcome(false, $"pgbackrest restore failed: {restore.Tail(2)}");
 		}
 
-		job.Log("Starter midlertidig Postgres på spare-volumen og afspiller WAL…");
+		job.Log("Starting a temporary Postgres on the spare, replaying WAL…");
 		await using var temp = await TempPostgres.StartAsync(spare, "restore", 5433, job.Log, cancellationToken);
 		var report = await checks.RunAsync(temp, target.Target, job.Log, cancellationToken);
 		var reached = report.ReachedAt ?? target.Target ?? DateTimeOffset.UtcNow;
@@ -182,13 +182,13 @@ public sealed class RestoreService(
 			if (prepareResurrected && resurrected.Any(r => !r.DeletedAutomatically))
 			{
 				var ids = resurrected.Where(r => !r.DeletedAutomatically).Select(r => r.SchoolId).ToArray();
-				job.Log($"Markerer {ids.Length} genopståede skoler, så SchoolRetentionJob sletter dem igen få minutter efter API-start…");
+				job.Log($"Backdating the deletion warning of {ids.Length} resurrected schools, so SchoolRetentionJob deletes them at API start…");
 				await PrepareRedeletionAsync(app, ids, cancellationToken);
 				resurrected = await ResurrectedAsync(app, reached, cancellationToken);
 				prepared = true;
 			}
 
-			job.Log("Fjerner pgBackRests recovery-indstillinger og lukker Postgres pænt ned…");
+			job.Log("Clearing recovery settings, stopping Postgres cleanly…");
 			await temp.ClearRecoverySettingsAsync(cancellationToken);
 			await temp.StopAsync();
 
@@ -202,9 +202,9 @@ public sealed class RestoreService(
 			});
 
 			var skipped = report.Checks.Count(c => c.Ok is null);
-			var summary = $"{_options.SpareVolumeName} gendannet til {target.Description} på {Fmt.Duration(stopwatch.Elapsed.TotalSeconds)}. " +
-				$"{report.Checks.Count(c => c.Ok == true)} tjek OK, {report.Checks.Count(c => c.Ok == false)} fejlede" +
-				$"{(skipped > 0 ? $", {skipped} sprunget over (live svarede ikke)" : "")}. {resurrected.Count} genopståede skoler.";
+			var summary = $"{_options.SpareVolumeName} restored to {target.Description} in {Fmt.Duration(stopwatch.Elapsed.TotalSeconds)}. " +
+				$"Checks: {report.Checks.Count(c => c.Ok == true)} OK, {report.Checks.Count(c => c.Ok == false)} failed" +
+				$"{(skipped > 0 ? $", {skipped} skipped (live down)" : "")}. Resurrected schools: {resurrected.Count}.";
 			return new JobOutcome(ok, summary, new
 			{
 				target.Description,
@@ -272,7 +272,7 @@ public sealed class RestoreService(
 	{
 		if (!string.Equals(confirmation?.Trim(), _options.SpareVolumeName, StringComparison.Ordinal))
 		{
-			return (null, $"Skriv {_options.SpareVolumeName} for at bekræfte.");
+			return (null, $"Type {_options.SpareVolumeName} to confirm.");
 		}
 
 		if (await SpareProblemAsync(cancellationToken) is { } problem)
@@ -280,10 +280,10 @@ public sealed class RestoreService(
 			return (null, problem);
 		}
 
-		var job = jobs.TryStart(JobKind.DeleteOldVolume, $"Slet indholdet af {_options.SpareVolumeName}", (job, _) =>
+		var job = jobs.TryStart(JobKind.DeleteOldVolume, $"Delete old volume ({_options.SpareVolumeName})", (job, _) =>
 		{
 			var old = state.Read(s => s.OldVolume);
-			job.Log($"Sletter {_options.SpareDataDirectory}…");
+			job.Log($"Wiping {_options.SpareDataDirectory}…");
 			Volumes.WipeContents(_options.SpareDataDirectory);
 			state.Update(s =>
 			{
@@ -291,10 +291,10 @@ public sealed class RestoreService(
 				s.Spare = null;
 			});
 			var summary = old is null
-				? $"{_options.SpareVolumeName} er tømt"
-				: $"Gammel database på {_options.SpareVolumeName} slettet efter {(DateTimeOffset.UtcNow - old.Since).TotalDays:0.#} dage";
+				? $"{_options.SpareVolumeName} wiped"
+				: $"Old database on {_options.SpareVolumeName} deleted after {(DateTimeOffset.UtcNow - old.Since).TotalDays:0.#} days";
 			return Task.FromResult(new JobOutcome(true, summary));
 		});
-		return job is null ? (null, "Et andet job kører. Vent til det er færdigt.") : (job, null);
+		return job is null ? (null, "Another job is running.") : (job, null);
 	}
 }

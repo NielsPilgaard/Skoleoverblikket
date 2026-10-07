@@ -10,20 +10,20 @@ public static class RestorePages
 {
 	private static readonly (string Key, string Label)[] ChecklistItems =
 	[
-		("full-backup", "Fuld backup efter go-live (agenten tager den selv; den nye timeline skal have sin egen)"),
-		("stripe", "Stripe: gensend webhook-hændelser siden gendannelsestidspunktet (Developers → Webhooks, eller stripe events resend)"),
-		("resurrected", "Genopståede skoler er slettet igen (se Slettede skoler og loggen fra SchoolRetentionJob)"),
-		("smoke", "Røgtest med smoke-skolen: login, skema, ugeplan, en fil"),
-		("elmah", "elmah.io: ingen nye fejl efter go-live"),
-		("gdpr", "GDPR: vurdér inden 72 timer, om tabt data er et brud, der skal anmeldes, og om skolerne skal have besked (RESTORE.md §6)"),
+		("full-backup", "Full backup on the new timeline (the agent takes it)"),
+		("stripe", "Stripe: resend webhooks since the restore point"),
+		("resurrected", "Resurrected schools are deleted again"),
+		("smoke", "Smoke test: login, schedule, week plan, a file"),
+		("elmah", "elmah.io: no new errors"),
+		("gdpr", "GDPR: breach assessment within 72 h (RESTORE.md §6)"),
 	];
 
 	public static void Map(WebApplication app)
 	{
-		app.MapGet("/gendan", Wizard);
-		app.MapPost("/gendan", StartRestore);
-		app.MapPost("/gendan/slet-gammel", DeleteOldVolume);
-		app.MapPost("/gendan/tjekliste", TickChecklist);
+		app.MapGet("/restore", Wizard);
+		app.MapPost("/restore", StartRestore);
+		app.MapPost("/restore/delete-old", DeleteOldVolume);
+		app.MapPost("/restore/checklist", TickChecklist);
 	}
 
 	private static async Task<IResult> Wizard(
@@ -43,17 +43,13 @@ public static class RestorePages
 		var (spare, oldVolume, goLive, checklist) = state.Read(s => (s.Spare, s.OldVolume, s.LastGoLive, new Dictionary<string, DateTimeOffset>(s.Checklist)));
 		var spareProblem = await restore.SpareProblemAsync(cancellationToken);
 		var migrations = await restore.MigrationsAsync(cancellationToken);
-		var body = new StringBuilder("<h1>Gendan</h1>");
+		var body = new StringBuilder("<h1>Restore</h1>");
 
-		body.Append($"""
-			<p class="muted">En gendannelse skriver aldrig over live-databasen. Den går til spare-volumen <b>{E(opts.SpareVolumeName)}</b>,
-			bliver tjekket med en midlertidig Postgres her i agenten, og går først i drift, når du skifter <code>PG_VOLUME</code> i Dokploy.
-			Den gamle volume gemmes til efterforskning.</p>
-			""");
+		body.Append($"""<p class="muted">Restores go to <b>{E(opts.SpareVolumeName)}</b>. Live is never touched.</p>""");
 
 		if (spareProblem is not null)
 		{
-			body.Append($"""<div class="alert bad"><b>Spare-volumen kan ikke bruges:</b> {E(spareProblem)}</div>""");
+			body.Append($"""<div class="alert bad">{E(spareProblem)}</div>""");
 		}
 
 		if (goLive is not null && now - goLive.At < TimeSpan.FromDays(30))
@@ -66,14 +62,13 @@ public static class RestorePages
 			var days = (now - oldVolume.Since).TotalDays;
 			var tone = days >= opts.RetentionDays ? "bad" : days >= 7 ? "warn" : "good";
 			body.Append($"""
-				<h2>Gammel volume</h2>
-				<div class="alert {tone}"><b>{E(oldVolume.Name)}</b> har holdt den gamle live-database i {days:0.#} dage (siden {E(Fmt.DateTime(oldVolume.Since))}).
-				Slet den, når efterforskningen er slut: senest efter {opts.RetentionDays} dage (databehandleraftalen).</div>
+				<h2>Old volume</h2>
+				<div class="alert {tone}"><b>{E(oldVolume.Name)}</b> holds the old live database ({days:0.#} days). Delete it within {opts.RetentionDays} days (DPA).</div>
 				""");
-			body.Append(Form(context, "/gendan/slet-gammel", $"""
-				<label>Skriv <code>{E(opts.SpareVolumeName)}</code> for at slette den gamle database permanent
+			body.Append(Form(context, "/restore/delete-old", $"""
+				<label>Type <code>{E(opts.SpareVolumeName)}</code> to delete it permanently
 				<input name="confirmation" autocomplete="off" required></label>
-				<div><button class="danger" type="submit"{(spareProblem is null && jobs.Current is null ? "" : " disabled")}>Slet gammel volume</button></div>
+				<div><button class="danger" type="submit"{(spareProblem is null && jobs.Current is null ? "" : " disabled")}>Delete old volume</button></div>
 				""", "stack"));
 		}
 
@@ -83,46 +78,43 @@ public static class RestorePages
 		}
 
 		body.Append(RestoreForm(context, opts, snapshot, migrations, spare, oldVolume, spareProblem, restore.SpareHasPidFile, jobs.Current is not null));
-		return Page(context, "Gendan", body.ToString(), status);
+		return Page(context, "Restore", body.ToString(), status);
 	}
 
 	private static string SpareSummary(SpareRestore spare, AgentOptions opts)
 	{
 		var tables = string.Concat(spare.Tables.Select(t =>
-			$"<tr><td>{E(t.Table)}</td><td>{t.Restored}</td><td>{(t.Live is { } live ? live.ToString(Fmt.Danish) : "—")}</td></tr>"));
+			$"<tr><td>{E(t.Table)}</td><td>{Fmt.Number(t.Restored)}</td><td>{(t.Live is { } live ? Fmt.Number(live) : "—")}</td></tr>"));
 		var resurrected = spare.Resurrected.Count == 0
-			? "<p class=\"muted\">Ingen skoler er slettet efter gendannelsestidspunktet.</p>"
+			? "<p class=\"muted\">None.</p>"
 			: $"""
-				<p>Disse skoler er slettet efter tidspunktet og kommer tilbage med gendannelsen. Sammenlignet med <code>ledger.json</code> i ops-bucket'en, ikke med den gendannede tabel.</p>
-				<div class="table-wrap"><table><thead><tr><th>Skole</th><th>Slettet</th><th>Slettes igen</th></tr></thead><tbody>
+				<div class="table-wrap"><table><thead><tr><th>School</th><th>Deleted</th><th>Deleted again</th></tr></thead><tbody>
 				{string.Concat(spare.Resurrected.Select(r => $"<tr><td>{E(r.Name)}</td><td>{E(Fmt.DateTime(r.DeletedAt))}</td><td>{(r.DeletedAutomatically
-					? "<span class=\"pill good\">automatisk</span> SchoolRetentionJob sletter den ca. 3 min efter API-start"
-					: "<span class=\"pill bad\">manuelt</span> Jobbet ville sende en ny advarselsmail og vente 7 dage. Gendan igen med &laquo;Forbered gen-sletning&raquo;, eller slet den i hånden før API-start.")}</td></tr>"))}
+					? "<span class=\"pill good\">auto</span> ~3 min after API start"
+					: "<span class=\"pill bad\">manual</span> Delete by hand before API start, or restore again with re-deletion ticked")}</td></tr>"))}
 				</tbody></table></div>
-				{(spare.ResurrectedPrepared ? "<p class=\"small muted\">Advarselsdatoen er sat 8 dage tilbage på den gendannede kopi, så sletningen sker ved første kørsel.</p>" : "")}
 				""";
 
 		return $"""
-			<h2>På {E(opts.SpareVolumeName)} nu</h2>
+			<h2>On {E(opts.SpareVolumeName)}</h2>
 			<div class="hero {(spare.Ok ? "good" : "bad")}">
-			  <p class="mid">Gendannet til {E(spare.TargetDescription)}</p>
-			  <p class="muted">Klar {E(Fmt.DateTime(spare.RestoredAt))} efter {E(Fmt.Duration(spare.DurationSeconds))}. Nåede {E(Fmt.DateTimeSeconds(spare.ReachedAt))}
-			  (seneste agent-heartbeat). Migration {E(spare.MigrationId ?? "—")}. Keycloak-brugere: {spare.KeycloakUsers?.ToString(Fmt.Danish) ?? "—"}.</p>
+			  <p class="mid">Restored to {E(spare.TargetDescription)}</p>
+			  <p class="muted">Ready {E(Fmt.DateTime(spare.RestoredAt))} · took {E(Fmt.Duration(spare.DurationSeconds))} · reached {E(Fmt.DateTimeSeconds(spare.ReachedAt))}</p>
 			</div>
 			{Checks(spare.Checks)}
-			<details><summary>Rækker pr. tabel, gendannet mod live</summary>
-			<div class="table-wrap"><table><thead><tr><th>Tabel</th><th>Gendannet</th><th>Live (ca.)</th></tr></thead><tbody>{tables}</tbody></table></div>
+			<details><summary>Rows per table</summary>
+			<div class="table-wrap"><table><thead><tr><th>Table</th><th>Restored</th><th>Live (est.)</th></tr></thead><tbody>{tables}</tbody></table></div>
 			</details>
-			<h2>Genopståede skoler</h2>
+			<h2>Resurrected schools</h2>
 			{resurrected}
-			<h2>Sæt i drift</h2>
+			<h2>Go live</h2>
 			<div class="alert warn"><ol class="steps">
-			  <li>Skaler <code>api</code> og <code>keycloak</code> til 0 i Dokploy, så intet skriver til den gamle database.</li>
-			  <li>Sæt <code>PG_VOLUME={E(opts.SpareVolumeName)}</code> og <code>PG_SPARE_VOLUME={E(opts.LiveVolumeName)}</code> i compose-appens miljø i Dokploy.</li>
-			  <li>Redeploy. Postgres starter på den gendannede volume, agenten opdager skiftet, opretter et nyt slot og tager en fuld backup med det samme.</li>
-			  <li>Gå igennem tjeklisten, der dukker op her.</li>
+			  <li>Dokploy: scale <code>api</code> and <code>keycloak</code> to 0.</li>
+			  <li>Set <code>PG_VOLUME={E(opts.SpareVolumeName)}</code> and <code>PG_SPARE_VOLUME={E(opts.LiveVolumeName)}</code>.</li>
+			  <li>Redeploy.</li>
+			  <li>Work through the checklist that appears here.</li>
 			</ol>
-			<p class="small">Fortryd: sæt de to variabler tilbage og redeploy. {E(opts.LiveVolumeName)} røres ikke af gendannelsen.</p></div>
+			<p class="small">Undo: swap the two back and redeploy. {E(opts.LiveVolumeName)} is untouched.</p></div>
 			""";
 	}
 
@@ -137,9 +129,14 @@ public static class RestorePages
 		bool pidFile,
 		bool busy)
 	{
+		if (snapshot.ReadAt == DateTimeOffset.MinValue)
+		{
+			return "<h2>New restore</h2><p class=\"muted\">Reading the repo. Reload in a few seconds.</p>";
+		}
+
 		if (snapshot.Ranges.Count == 0)
 		{
-			return "<h2>Ny gendannelse</h2><p class=\"muted\">Der er intet at gendanne endnu: ingen backup med WAL i repo'et.</p>";
+			return $"<h2>New restore</h2><p class=\"muted\">Nothing to restore: no backup with WAL in the repo.{(snapshot.Error is null ? "" : $" {E(snapshot.Error)}")}</p>";
 		}
 
 		var oldest = snapshot.OldestRestorable!.Value;
@@ -148,47 +145,47 @@ public static class RestorePages
 		var migrationOptions = string.Concat(migrations.AsEnumerable().Reverse().Select(m =>
 		{
 			var reachable = m.AppliedAt is { } at && snapshot.RangeFor(at) is not null;
-			return $"<option value=\"{Attr(m.MigrationId)}\"{(reachable ? "" : " disabled")}>{E(m.MigrationId)} – {(m.AppliedAt is { } applied ? E(Fmt.DateTimeSeconds(applied)) : "tidspunkt ukendt")}</option>";
+			return $"<option value=\"{Attr(m.MigrationId)}\"{(reachable ? "" : " disabled")}>{E(m.MigrationId)} – {(m.AppliedAt is { } applied ? E(Fmt.DateTimeSeconds(applied)) : "time unknown")}</option>";
 		}));
 		var backupOptions = string.Concat(snapshot.Backups.OrderByDescending(b => b.StoppedAt).Select(b =>
 			$"<option value=\"{Attr(b.Label)}\">{E(b.Label)} – {E(Fmt.DateTime(b.StoppedAt))}</option>"));
 		var warnings = new StringBuilder();
 		if (oldVolume is not null)
 		{
-			warnings.Append($"<div class=\"alert warn\">{E(opts.SpareVolumeName)} holder den gamle live-database. En ny gendannelse sletter den.</div>");
+			warnings.Append($"<div class=\"alert warn\">Wipes the old live database on {E(opts.SpareVolumeName)}.</div>");
 		}
 		else if (spare is not null)
 		{
-			warnings.Append($"<div class=\"alert warn\">{E(opts.SpareVolumeName)} holder gendannelsen ovenfor. En ny gendannelse sletter den.</div>");
+			warnings.Append("<div class=\"alert warn\">Wipes the restore above.</div>");
 		}
 
 		if (pidFile)
 		{
-			warnings.Append($"<div class=\"alert warn\">Der ligger en <code>postmaster.pid</code> på {E(opts.SpareVolumeName)}: en Postgres blev ikke lukket pænt ned der. Tjek, at ingen container bruger volumen.</div>");
+			warnings.Append($"<div class=\"alert warn\"><code>postmaster.pid</code> on {E(opts.SpareVolumeName)}: a Postgres didn't shut down cleanly. Check no container uses the volume.</div>");
 		}
 
-		var form = Form(context, "/gendan", $"""
+		var form = Form(context, "/restore", $"""
 			<fieldset class="stack">
-			<legend>Gendan til</legend>
-			<label class="choice"><input type="radio" name="mode" value="Time" checked> Et tidspunkt</label>
-			<label class="choice"><input type="radio" name="mode" value="Migration"> Lige før en migration</label>
-			<label class="choice"><input type="radio" name="mode" value="Backup"> En fuld backup, som den var</label>
+			<legend>Restore to</legend>
+			<label class="choice"><input type="radio" name="mode" value="Time" checked> Point in time</label>
+			<label class="choice"><input type="radio" name="mode" value="Migration"> Just before a migration</label>
+			<label class="choice"><input type="radio" name="mode" value="Backup"> Full backup as-is</label>
 			</fieldset>
-			<div id="mode-Time"><label>Tidspunkt (dansk tid)
+			<div id="mode-Time"><label>Time (Copenhagen)
 			<input type="datetime-local" name="time" min="{Fmt.InputValue(oldest)}" max="{Fmt.InputValue(newest)}" value="{Fmt.InputValue(newest)}"></label>
-			<p class="small muted">Kan gendannes:<br>{ranges}</p></div>
+			<p class="small muted">Restorable:<br>{ranges}</p></div>
 			<div id="mode-Migration"><label>Migration <select name="migrationId">{migrationOptions}</select></label>
-			<p class="small muted">Tidspunktet er migrationens commit-tid. Gendannelsen stopper lige før den. Gråt = uden for det, der kan gendannes.</p></div>
+			<p class="small muted">Stops just before the migration's commit. Greyed out: not restorable.</p></div>
 			<div id="mode-Backup"><label>Backup <select name="backupLabel">{backupOptions}</select></label></div>
 			<label class="choice"><input type="checkbox" name="prepareResurrected" value="true" checked>
-			Forbered gen-sletning af skoler, der er slettet efter tidspunktet (sætter deres advarselsdato 8 dage tilbage på kopien)</label>
-			<label>Skriv <code>{E(opts.SpareVolumeName)}</code> for at slette spare-volumen og gendanne
+			Re-delete schools deleted after this point</label>
+			<label>Type <code>{E(opts.SpareVolumeName)}</code> to wipe it and restore
 			<input name="confirmation" autocomplete="off" required></label>
-			<div><button class="danger" type="submit"{(spareProblem is null && !busy ? "" : " disabled")}>Gendan til {E(opts.SpareVolumeName)}</button></div>
+			<div><button class="danger" type="submit"{(spareProblem is null && !busy ? "" : " disabled")}>Restore to {E(opts.SpareVolumeName)}</button></div>
 			""", "stack");
 
 		return $"""
-			<h2>Ny gendannelse</h2>
+			<h2>New restore</h2>
 			{warnings}
 			{form}
 			""";
@@ -201,12 +198,12 @@ public static class RestorePages
 		{
 			items.Append(ticked.TryGetValue(key, out var at)
 				? $"<li>{Ok(true)} {E(label)} <span class=\"muted small\">({E(Fmt.DateTime(at))})</span></li>"
-				: $"<li>{Form(context, "/gendan/tjekliste", $"<input type=\"hidden\" name=\"item\" value=\"{Attr(key)}\"><button type=\"submit\">Afkryds</button> {E(label)}")}</li>");
+				: $"<li>{Form(context, "/restore/checklist", $"<input type=\"hidden\" name=\"item\" value=\"{Attr(key)}\"><button type=\"submit\">Done</button> {E(label)}")}</li>");
 		}
 
 		return $"""
-			<h2>Efter go-live</h2>
-			<p>{E(goLive.Volume)} blev sat i drift {E(Fmt.Ago(goLive.At, now))}{(goLive.TargetDescription is null ? "" : $", gendannet til {E(goLive.TargetDescription)}")}. Afkrydsninger gemmes i historikken.</p>
+			<h2>After go-live</h2>
+			<p>{E(goLive.Volume)} went live {E(Fmt.Ago(goLive.At, now))}{(goLive.TargetDescription is null ? "" : $", restored to {E(goLive.TargetDescription)}")}.</p>
 			<ul class="steps">{items}</ul>
 			""";
 	}
@@ -226,10 +223,10 @@ public static class RestorePages
 		var (job, error) = await restore.StartAsync(request, cancellationToken);
 		if (job is null)
 		{
-			return Results.Redirect(Redirect("/gendan", error: error));
+			return Results.Redirect(Redirect("/restore", error: error));
 		}
 
-		await BackupPages.Audit(ops, $"Konsol: Gendan til spare-volumen ({job.Title})", cancellationToken);
+		await BackupPages.Audit(ops, $"Console: {job.Title}", cancellationToken);
 		return Results.Redirect($"/job/{job.Id}");
 	}
 
@@ -238,10 +235,10 @@ public static class RestorePages
 		var (job, error) = await restore.StartDeleteOldVolumeAsync(confirmation, cancellationToken);
 		if (job is null)
 		{
-			return Results.Redirect(Redirect("/gendan", error: error));
+			return Results.Redirect(Redirect("/restore", error: error));
 		}
 
-		await BackupPages.Audit(ops, "Konsol: Slet gammel volume", cancellationToken);
+		await BackupPages.Audit(ops, "Console: delete old volume", cancellationToken);
 		return Results.Redirect($"/job/{job.Id}");
 	}
 
@@ -250,11 +247,11 @@ public static class RestorePages
 		var match = ChecklistItems.FirstOrDefault(i => i.Key == item);
 		if (match.Key is null)
 		{
-			return Results.Redirect(Redirect("/gendan", error: "Ukendt punkt."));
+			return Results.Redirect(Redirect("/restore", error: "Unknown item."));
 		}
 
 		state.Update(s => s.Checklist[match.Key] = DateTimeOffset.UtcNow);
-		await ops.AppendHistoryAsync(new HistoryEntry(DateTimeOffset.UtcNow, "tjekliste", true, $"Afkrydset: {match.Label}"), cancellationToken);
-		return Results.Redirect("/gendan");
+		await ops.AppendHistoryAsync(new HistoryEntry(DateTimeOffset.UtcNow, "checklist", true, $"Done: {match.Label}"), cancellationToken);
+		return Results.Redirect("/restore");
 	}
 }

@@ -17,12 +17,12 @@ public static class Html
 
 	private static readonly (string Path, string Label)[] Nav =
 	[
-		("/", "Overblik"),
+		("/", "Overview"),
 		("/backups", "Backups"),
 		("/drills", "Drills"),
-		("/slettede-skoler", "Slettede skoler"),
-		("/gendan", "Gendan"),
-		("/historik", "Historik"),
+		("/deleted-schools", "Deleted schools"),
+		("/restore", "Restore"),
+		("/history", "History"),
 	];
 
 	public static IResult Page(HttpContext context, string title, string body, AgentStatus? status)
@@ -37,23 +37,23 @@ public static class Html
 
 		var health = status is null ? "" : $"""<span class="pill {HealthClass(status.Health)}">{E(HealthLabel(status.Health))}</span>""";
 		var volumes = status is null ? "" : $"""<span class="muted">Live: <b>{E(status.Volumes.Live)}</b> · Spare: <b>{E(status.Volumes.Spare)}</b></span>""";
-		var error = context.Request.Query["fejl"].ToString();
+		var error = context.Request.Query["error"].ToString();
 		var notice = context.Request.Query["ok"].ToString();
 		var alerts = (error.Length > 0 ? $"<div class=\"alert bad\">{E(error)}</div>" : "")
 			+ (notice.Length > 0 ? $"<div class=\"alert good\">{E(notice)}</div>" : "");
 		var html = $"""
 			<!doctype html>
-			<html lang="da">
+			<html lang="en">
 			<head>
 			<meta charset="utf-8">
 			<meta name="viewport" content="width=device-width, initial-scale=1">
-			<title>{E(title)} · Backup-konsol</title>
+			<title>{E(title)} · Backup console</title>
 			<link rel="stylesheet" href="/console.css">
 			<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 			</head>
 			<body>
 			<header class="top">
-			  <div class="brand">Skoleoverblikket · Backup-konsol</div>
+			  <div class="brand">Skoleoverblikket · Backup console</div>
 			  {health}
 			  {volumes}
 			</header>
@@ -90,15 +90,15 @@ public static class Html
 
 	public static string HealthLabel(Health health) => health switch
 	{
-		Health.Healthy => "Alt i orden",
-		Health.Degraded => "Advarsel",
-		_ => "Fejl",
+		Health.Healthy => "Healthy",
+		Health.Degraded => "Warning",
+		_ => "Unhealthy",
 	};
 
 	public static string Ok(bool? ok) => ok switch
 	{
 		true => """<span class="pill good">OK</span>""",
-		false => """<span class="pill bad">Fejl</span>""",
+		false => """<span class="pill bad">Fail</span>""",
 		null => """<span class="pill muted">—</span>""",
 	};
 
@@ -111,14 +111,14 @@ public static class Html
 
 	public static string Redirect(string path, string? error = null, string? ok = null)
 	{
-		var query = error is not null ? $"?fejl={Uri.EscapeDataString(error)}" : ok is not null ? $"?ok={Uri.EscapeDataString(ok)}" : "";
+		var query = error is not null ? $"?error={Uri.EscapeDataString(error)}" : ok is not null ? $"?ok={Uri.EscapeDataString(ok)}" : "";
 		return path + query;
 	}
 
 	public static string Checks(IEnumerable<CheckResult> checks)
 	{
 		var rows = string.Concat(checks.Select(c => $"<tr><td>{Ok(c.Ok)}</td><td>{E(c.Name)}</td><td>{E(c.Detail)}</td></tr>"));
-		return $"""<table><thead><tr><th></th><th>Tjek</th><th>Resultat</th></tr></thead><tbody>{rows}</tbody></table>""";
+		return $"""<table><thead><tr><th></th><th>Check</th><th>Result</th></tr></thead><tbody>{rows}</tbody></table>""";
 	}
 
 	/// <summary>A small inline SVG line of values, oldest first. Used for the drill RTO trend.</summary>
@@ -199,7 +199,7 @@ public static class Html
 		  var next = 0;
 		  var state = document.getElementById('job-state');
 		  function poll() {
-		    fetch('/job/' + id + '/log?fra=' + next, { headers: { 'Accept': 'application/json' } })
+		    fetch('/job/' + id + '/log?after=' + next, { headers: { 'Accept': 'application/json' } })
 		      .then(function (r) { return r.json(); })
 		      .then(function (data) {
 		        if (data.lines.length) {
@@ -209,7 +209,7 @@ public static class Html
 		        }
 		        next = data.next;
 		        if (data.done) {
-		          state.textContent = data.ok ? 'Færdig' : 'Fejlede';
+		          state.textContent = data.ok ? 'Done' : 'Failed';
 		          state.className = 'pill ' + (data.ok ? 'good' : 'bad');
 		          var summary = document.getElementById('job-summary');
 		          summary.textContent = data.summary || '';

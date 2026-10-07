@@ -17,36 +17,36 @@ public sealed class BackupService(
 
 	public async Task<JobOutcome> BackupAsync(Job job, string type, string reason, CancellationToken cancellationToken)
 	{
-		job.Log($"Årsag: {reason}");
+		job.Log($"Reason: {reason}");
 		var started = DateTimeOffset.UtcNow;
 		var result = await pgBackRest.BackupAsync(type, job.Log, cancellationToken);
 		if (!result.Ok)
 		{
-			return await FailAsync(type, $"pgbackrest backup fejlede: {result.Tail(2)}", cancellationToken);
+			return await FailAsync(type, $"pgbackrest backup failed: {result.Tail(2)}", cancellationToken);
 		}
 
 		var snapshot = await repo.RefreshAsync(cancellationToken);
 		var backup = snapshot.Backups.Where(b => b.StartedAt >= started.AddMinutes(-1)).MaxBy(b => b.StartedAt);
 		if (backup is null)
 		{
-			return await FailAsync(type, "Backuppen findes ikke i pgbackrest info", cancellationToken);
+			return await FailAsync(type, "Backup missing from pgbackrest info", cancellationToken);
 		}
 
 		// pgBackRest runs with archive-check=n: it refuses to check the archive when Postgres has no
 		// archive_mode (Phase 0). So the agent checks itself that the WAL the backup needs is in the
 		// repo. Until then the backup can't be restored.
-		job.Log($"Venter på at WAL-segment {backup.WalStop} når repo'et…");
+		job.Log($"Waiting for WAL segment {backup.WalStop} to reach the repo…");
 		await live.MarkAsync(cancellationToken);
 		if (!await WaitForSegmentAsync(backup.WalStop, cancellationToken))
 		{
-			return await FailAsync(type, $"WAL-segment {backup.WalStop} nåede ikke repo'et inden for {WalWait.TotalMinutes:0} min", cancellationToken);
+			return await FailAsync(type, $"WAL segment {backup.WalStop} didn't reach the repo within {WalWait.TotalMinutes:0} min", cancellationToken);
 		}
 
-		job.Log("WAL er i repo'et. Rydder op i gamle backups (expire)…");
+		job.Log("WAL in the repo. Expiring old backups…");
 		var expire = await pgBackRest.ExpireAsync(job.Log, cancellationToken);
 		if (!expire.Ok)
 		{
-			job.Log($"expire fejlede: {expire.Tail(2)}");
+			job.Log($"expire failed: {expire.Tail(2)}");
 		}
 
 		snapshot = await repo.RefreshAsync(cancellationToken);
@@ -70,14 +70,14 @@ public sealed class BackupService(
 			});
 		}
 
-		var summary = $"{(type == "full" ? "Fuld" : "Inkrementel")} backup {backup.Label}: {Fmt.Bytes(backup.DatabaseBytes)} " +
-			$"({Fmt.Bytes(backup.RepoBytes)} i repo) på {Fmt.Duration(backup.DurationSeconds)}. {snapshot.Backups.Count} backups i repo.";
+		var summary = $"{(type == "full" ? "Full" : "Incremental")} backup {backup.Label}: {Fmt.Bytes(backup.DatabaseBytes)} " +
+			$"({Fmt.Bytes(backup.RepoBytes)} in repo) in {Fmt.Duration(backup.DurationSeconds)}. {snapshot.Backups.Count} backups in repo.";
 		if (type == "full")
 		{
 			await heartbeats.SendAsync(Heartbeats.Kind.Backup, expire.Ok ? Health.Healthy : Health.Degraded, summary, DateTimeOffset.UtcNow - started, cancellationToken);
 		}
 
-		return new JobOutcome(expire.Ok, expire.Ok ? summary : $"{summary} Men expire fejlede.", new { backup.Label, type, backup.DatabaseBytes, backup.RepoBytes, backup.DurationSeconds, reason });
+		return new JobOutcome(expire.Ok, expire.Ok ? summary : $"{summary} expire failed.", new { backup.Label, type, backup.DatabaseBytes, backup.RepoBytes, backup.DurationSeconds, reason });
 	}
 
 	private async Task<bool> WaitForSegmentAsync(string segmentName, CancellationToken cancellationToken)
@@ -125,7 +125,7 @@ public sealed class BackupService(
 	{
 		var stopwatch = Stopwatch.StartNew();
 		var result = await pgBackRest.VerifyAsync(job.Log, cancellationToken);
-		var summary = result.Ok ? "Alle backups og WAL i repo'et kunne læses og dekrypteres" : $"verify fejlede: {result.Tail(3)}";
+		var summary = result.Ok ? "All backups and WAL read and decrypted" : $"verify failed: {result.Tail(3)}";
 		state.Update(s => s.LastVerify = new VerifyResult(DateTimeOffset.UtcNow, result.Ok, summary));
 		await heartbeats.SendAsync(Heartbeats.Kind.Verify, result.Ok ? Health.Healthy : Health.Unhealthy, summary, stopwatch.Elapsed, cancellationToken);
 		return new JobOutcome(result.Ok, summary);
@@ -140,7 +140,7 @@ public sealed class BackupService(
 		var newest = snapshot.Backups.MaxBy(b => b.StoppedAt);
 		if (newest is null)
 		{
-			return await DrillFailedAsync("Ingen backups at gendanne", total.Elapsed, cancellationToken);
+			return await DrillFailedAsync("No backups to restore", total.Elapsed, cancellationToken);
 		}
 
 		// Point-in-time 30 minutes back (53 Phase 4). Too early for that (a fresh repo): just before the
@@ -159,7 +159,7 @@ public sealed class BackupService(
 		if (range is not null)
 		{
 			targetArguments = ["--type=time", $"--target={Fmt.PgTimestamp(target.Value)}", $"--target-timeline={range.Timeline}"];
-			description = $"tidspunkt {Fmt.DateTime(target)}";
+			description = Fmt.DateTime(target);
 		}
 		else
 		{
@@ -172,16 +172,16 @@ public sealed class BackupService(
 		try
 		{
 			Volumes.Recreate(dataDirectory);
-			job.Log($"Gendanner {description} til {dataDirectory} (tmpfs)…");
+			job.Log($"Restoring to {description} in {dataDirectory} (tmpfs)…");
 			var restoreWatch = Stopwatch.StartNew();
 			var restore = await pgBackRest.RestoreAsync(dataDirectory, targetArguments, job.Log, cancellationToken);
 			if (!restore.Ok)
 			{
-				return await DrillFailedAsync($"pgbackrest restore fejlede: {restore.Tail(2)}", total.Elapsed, cancellationToken);
+				return await DrillFailedAsync($"pgbackrest restore failed: {restore.Tail(2)}", total.Elapsed, cancellationToken);
 			}
 
 			var restoreSeconds = restoreWatch.Elapsed.TotalSeconds;
-			job.Log("Starter midlertidig Postgres og afspiller WAL…");
+			job.Log("Starting a temporary Postgres, replaying WAL…");
 			var recoveryWatch = Stopwatch.StartNew();
 			CheckReport report;
 			await using (var temp = await TempPostgres.StartAsync(dataDirectory, "drill", 5434, job.Log, cancellationToken))
@@ -198,8 +198,8 @@ public sealed class BackupService(
 
 				var failed = report.Checks.Where(c => c.Ok == false).Select(c => $"{c.Name}: {c.Detail}").ToList();
 				var summary = ok
-					? $"Drill OK: {report.TableCount} tabeller, {report.Rows} rækker, gendannet på {Fmt.Duration(total.Elapsed.TotalSeconds)}"
-					: $"Drill fejlede: {string.Join("; ", failed)}";
+					? $"Drill OK: {report.TableCount} tables, {Fmt.Number(report.Rows)} rows, restored in {Fmt.Duration(total.Elapsed.TotalSeconds)}"
+					: $"Drill failed: {string.Join("; ", failed)}";
 				await heartbeats.SendAsync(Heartbeats.Kind.Drill, ok ? Health.Healthy : Health.Unhealthy, summary, total.Elapsed, cancellationToken);
 				return new JobOutcome(ok, summary, result);
 			}
@@ -213,7 +213,7 @@ public sealed class BackupService(
 
 	private async Task<JobOutcome> DrillFailedAsync(string reason, TimeSpan took, CancellationToken cancellationToken)
 	{
-		var result = new DrillResult(DateTimeOffset.UtcNow, false, took.TotalSeconds, 0, 0, "—", null, [new CheckResult("Gendannelse", false, reason)], 0, 0, null);
+		var result = new DrillResult(DateTimeOffset.UtcNow, false, took.TotalSeconds, 0, 0, "—", null, [new CheckResult("Restore", false, reason)], 0, 0, null);
 		state.Update(s => s.LastDrill = result);
 		await heartbeats.SendAsync(Heartbeats.Kind.Drill, Health.Unhealthy, reason, took, cancellationToken);
 		return new JobOutcome(false, reason, result);
@@ -224,12 +224,12 @@ public sealed class BackupService(
 		var oldest = snapshot.Oldest;
 		if (oldest is null)
 		{
-			return new CheckResult("Opbevaring", null, "Ingen backups");
+			return new CheckResult("Retention", null, "No backups");
 		}
 
 		var age = DateTimeOffset.UtcNow - oldest.StartedAt;
-		return new CheckResult("Opbevaring", age.TotalDays <= retentionDays,
-			$"Ældste backup er {age.TotalDays:0.#} dage gammel (højst {retentionDays} dage, databehandleraftalen)");
+		return new CheckResult("Retention", age.TotalDays <= retentionDays,
+			$"Oldest backup {age.TotalDays:0.#} days old (max {retentionDays}, DPA)");
 	}
 }
 

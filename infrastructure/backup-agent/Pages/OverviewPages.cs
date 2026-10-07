@@ -4,14 +4,14 @@ using static Skoleoverblikket.BackupAgent.Pages.Html;
 
 namespace Skoleoverblikket.BackupAgent.Pages;
 
-/// <summary>Overblik, Slettede skoler and Historik.</summary>
+/// <summary>Overview, Deleted schools and History.</summary>
 public static class OverviewPages
 {
 	public static void Map(WebApplication app)
 	{
 		app.MapGet("/", Overview);
-		app.MapGet("/slettede-skoler", Ledger);
-		app.MapGet("/historik", History);
+		app.MapGet("/deleted-schools", Ledger);
+		app.MapGet("/history", History);
 		app.MapGet("/healthz", () => Results.Text("ok"));
 	}
 
@@ -27,15 +27,14 @@ public static class OverviewPages
 
 		body.Append($"""
 			<div class="hero {securedClass}">
-			  <p class="big">Data sikret {E(Fmt.Ago(secured, now))}</p>
-			  <p class="muted">Seneste WAL i repo: <span class="mono">{E(status.Wal.RepoNewestSegment ?? "—")}</span>,
-			  skubbet {E(Fmt.Ago(status.Wal.RepoNewestSegmentAt, now))}. Agenten skubbede senest {E(Fmt.Ago(w.LastPushAt, now))}.</p>
+			  <p class="big">Data secured {E(Fmt.Ago(secured, now))}</p>
+			  <p class="muted">Newest WAL in repo: <span class="mono">{E(status.Wal.RepoNewestSegment ?? "—")}</span> ({E(Fmt.Ago(status.Wal.RepoNewestSegmentAt, now))}) · last push {E(Fmt.Ago(w.LastPushAt, now))}</p>
 			</div>
 			""");
 
 		if (jobs.Current is { } running)
 		{
-			body.Append($"""<div class="alert warn">Kører nu: {E(running.Title)} · <a href="/job/{running.Id}">se log</a></div>""");
+			body.Append($"""<div class="alert warn">Running: {E(running.Title)} · <a href="/job/{running.Id}">log</a></div>""");
 		}
 
 		if (status.Issues.Count > 0)
@@ -51,47 +50,47 @@ public static class OverviewPages
 		var lastDrill = state.Read(s => s.LastDrill);
 
 		body.Append("""<div class="grid">""");
-		body.Append(Card("Seneste fulde backup", full is null
-			? """<p class="bad">Ingen</p>"""
+		body.Append(Card("Last full backup", full is null
+			? """<p class="bad">None</p>"""
 			: $"""
 				<p class="mid">{E(Fmt.Ago(full.StoppedAt, now))}</p>
-				<p class="muted small">{E(full.Label)} · {E(Fmt.DateTime(full.StoppedAt))}<br>{E(Fmt.Bytes(full.DatabaseBytes))} ({E(Fmt.Bytes(full.RepoBytes))} i repo) · {E(Fmt.Duration(full.DurationSeconds))}</p>
+				<p class="muted small">{E(full.Label)} · {E(Fmt.DateTime(full.StoppedAt))}<br>{E(Fmt.Bytes(full.DatabaseBytes))} ({E(Fmt.Bytes(full.RepoBytes))} in repo) · {E(Fmt.Duration(full.DurationSeconds))}</p>
 				"""));
-		body.Append(Card("Ældste gendannelsespunkt", status.Backups.OldestRestorableAt is null
-			? """<p class="muted">Intet endnu</p>"""
+		body.Append(Card("Oldest restore point", status.Backups.OldestRestorableAt is null
+			? """<p class="muted">None yet</p>"""
 			: $"""
 				<p class="mid">{E(Fmt.DateTime(status.Backups.OldestRestorableAt))}</p>
-				<p class="small">{(status.Backups.RetentionOk ? "<span class=\"pill good\">Inden for 14 dage</span>" : "<span class=\"pill bad\">Ældre end 14 dage (databehandleraftalen)</span>")}
-				<span class="muted">{retentionAge:0.#} dage tilbage · {status.Backups.Count} backups</span></p>
+				<p class="small">{(status.Backups.RetentionOk ? $"<span class=\"pill good\">Within {status.Backups.RetentionDays} days</span>" : $"<span class=\"pill bad\">Older than {status.Backups.RetentionDays} days (DPA)</span>")}
+				<span class="muted">{retentionAge:0.#} days back · {status.Backups.Count} backups</span></p>
 				"""));
-		body.Append(Card("Replikerings-slot", $"""
-			<p>{SlotLabel(status.Wal.SlotStatus)} · modtager {(status.Wal.ReceiverPaused ? "<span class=\"pill bad\">på pause</span>" : status.Wal.ReceiverRunning ? "<span class=\"pill good\">kører</span>" : "<span class=\"pill warn\">kører ikke</span>")}</p>
-			<p class="small muted">Postgres holder {E(Fmt.Bytes(retained))} af højst {E(Fmt.Bytes(status.Wal.SlotCapBytes))} for agenten</p>
+		body.Append(Card("Replication slot", $"""
+			<p>{SlotLabel(status.Wal.SlotStatus)} · receiver {(status.Wal.ReceiverPaused ? "<span class=\"pill bad\">paused</span>" : status.Wal.ReceiverRunning ? "<span class=\"pill good\">running</span>" : "<span class=\"pill warn\">stopped</span>")}</p>
+			<p class="small muted">Held by Postgres: {E(Fmt.Bytes(retained))} of {E(Fmt.Bytes(status.Wal.SlotCapBytes))}</p>
 			<meter min="0" max="100" low="50" high="75" optimum="0" value="{slotPercent}"></meter>
-			<p class="small muted">Ikke skubbet endnu (wal-receive): {E(Fmt.Bytes(status.Wal.SpoolBytes))}{(w.ReceiverLastLine is null ? "" : $"<br>pg_receivewal: {E(w.ReceiverLastLine)}")}</p>
+			<p class="small muted">Not pushed yet: {E(Fmt.Bytes(status.Wal.SpoolBytes))}{(w.ReceiverLastLine is null ? "" : $"<br>pg_receivewal: {E(w.ReceiverLastLine)}")}</p>
 			"""));
-		body.Append(Card("Disk", status.Disk is null ? """<p class="muted">Ukendt</p>""" : $"""
-			<p class="mid">{status.Disk.UsedPercent}% brugt</p>
+		body.Append(Card("Disk", status.Disk is null ? """<p class="muted">Unknown</p>""" : $"""
+			<p class="mid">{status.Disk.UsedPercent}% used</p>
 			<meter min="0" max="100" low="70" high="80" optimum="0" value="{status.Disk.UsedPercent}"></meter>
-			<p class="small muted">{E(Fmt.Bytes(status.Disk.FreeBytes))} fri</p>
+			<p class="small muted">{E(Fmt.Bytes(status.Disk.FreeBytes))} free</p>
 			"""));
-		body.Append(Card("Seneste drill", lastDrill is null ? """<p class="muted">Ingen endnu</p>""" : $"""
+		body.Append(Card("Last drill", lastDrill is null ? """<p class="muted">None yet</p>""" : $"""
 			<p>{Ok(lastDrill.Ok)} {E(Fmt.Ago(lastDrill.At, now))}</p>
-			<p class="small muted">Gendannet på {E(Fmt.Duration(lastDrill.TotalSeconds))} (RTO) · {lastDrill.Tables} tabeller, {lastDrill.Rows} rækker<br>{E(lastDrill.TargetDescription)}</p>
+			<p class="small muted">RTO {E(Fmt.Duration(lastDrill.TotalSeconds))} · {lastDrill.Tables} tables, {Fmt.Number(lastDrill.Rows)} rows<br>Target: {E(lastDrill.TargetDescription)}</p>
 			"""));
-		body.Append(Card("Seneste verify", status.Verify.LastAt is null ? """<p class="muted">Ingen endnu</p>""" : $"""
+		body.Append(Card("Last verify", status.Verify.LastAt is null ? """<p class="muted">None yet</p>""" : $"""
 			<p>{Ok(status.Verify.LastOk)} {E(Fmt.Ago(status.Verify.LastAt, now))}</p>
 			"""));
-		body.Append(Card("Næste kørsler", $"""
-			<p class="small">Fuld backup: {E(Fmt.DateTime(status.Schedule.NextFull))}<br>Verify: {E(Fmt.DateTime(status.Schedule.NextVerify))}<br>Drill: {E(Fmt.DateTime(status.Schedule.NextDrill))}</p>
+		body.Append(Card("Next runs", $"""
+			<p class="small">Full backup: {E(Fmt.DateTime(status.Schedule.NextFull))}<br>Verify: {E(Fmt.DateTime(status.Schedule.NextVerify))}<br>Drill: {E(Fmt.DateTime(status.Schedule.NextDrill))}</p>
 			"""));
-		body.Append(Card("Heartbeats og ops-bucket", $"""
+		body.Append(Card("Heartbeats and ops bucket", $"""
 			<p class="small">{string.Join("<br>", Enum.GetValues<Heartbeats.Kind>().Select(k => $"{k}: {HeartbeatLine(context, k, now)}"))}</p>
-			<p class="small muted">Ops-bucket: {(ops.IsConfigured ? ops.LastError is null ? $"skrevet {E(Fmt.Ago(ops.LastWriteOkAt, now))}" : $"<span class=\"pill bad\">fejl</span> {E(ops.LastError)}" : "ikke sat op")}</p>
+			<p class="small muted">Ops bucket: {(ops.IsConfigured ? ops.LastError is null ? $"written {E(Fmt.Ago(ops.LastWriteOkAt, now))}" : $"<span class=\"pill bad\">error</span> {E(ops.LastError)}" : "not set up")}</p>
 			"""));
 		body.Append(Card("Volumes", $"""
-			<p class="small">Live: <b>{E(status.Volumes.Live)}</b> (timeline {status.Postgres.Timeline?.ToString() ?? "?"}, Postgres {(status.Postgres.Reachable ? "svarer" : "<span class=\"pill bad\">svarer ikke</span>")})<br>
-			Spare: <b>{E(status.Volumes.Spare)}</b> – {E(status.Volumes.SpareContents)}{(status.Volumes.OldVolumeSince is { } since ? $"<br>Gammel database i {(now - since).TotalDays:0.#} dage" : "")}</p>
+			<p class="small">Live: <b>{E(status.Volumes.Live)}</b> (timeline {status.Postgres.Timeline?.ToString() ?? "?"}, Postgres {(status.Postgres.Reachable ? "up" : "<span class=\"pill bad\">down</span>")})<br>
+			Spare: <b>{E(status.Volumes.Spare)}</b> – {E(status.Volumes.SpareContents)}{(status.Volumes.OldVolumeSince is { } since ? $"<br>Old database kept {(now - since).TotalDays:0.#} days" : "")}</p>
 			"""));
 		body.Append("</div>");
 
@@ -100,16 +99,16 @@ public static class OverviewPages
 			body.Append($"""<p class="muted small">Tunnel: <code>{E(ssh)}</code></p>""");
 		}
 
-		return Page(context, "Overblik", body.ToString(), status);
+		return Page(context, "Overview", body.ToString(), status);
 	}
 
 	private static string SlotLabel(string status) => status switch
 	{
-		"reserved" => """<span class="pill good">reserveret</span>""",
-		"extended" => """<span class="pill warn">udvidet</span>""",
-		"unreserved" => """<span class="pill bad">over grænsen</span>""",
-		"lost" => """<span class="pill bad">tabt</span>""",
-		"missing" => """<span class="pill bad">mangler</span>""",
+		"reserved" => """<span class="pill good">reserved</span>""",
+		"extended" => """<span class="pill warn">extended</span>""",
+		"unreserved" => """<span class="pill bad">over limit</span>""",
+		"lost" => """<span class="pill bad">lost</span>""",
+		"missing" => """<span class="pill bad">missing</span>""",
 		_ => $"""<span class="pill muted">{E(status)}</span>""",
 	};
 
@@ -118,12 +117,12 @@ public static class OverviewPages
 		var heartbeats = context.RequestServices.GetRequiredService<Heartbeats>();
 		if (!heartbeats.IsConfigured(kind))
 		{
-			return "<span class=\"muted\">ikke sat op</span>";
+			return "<span class=\"muted\">not set up</span>";
 		}
 
 		return heartbeats.LastSent(kind) is { } last
 			? $"<span class=\"pill {HealthClass(last.Result)}\">{E(last.Result)}</span> {E(Fmt.Ago(last.At, now))}"
-			: "<span class=\"muted\">ikke sendt endnu</span>";
+			: "<span class=\"muted\">not sent yet</span>";
 	}
 
 	private static async Task<IResult> Ledger(HttpContext context, StatusBuilder statusBuilder, OpsBucket ops, RepoInfoCache repo, IOptions<AgentOptions> options, CancellationToken cancellationToken)
@@ -137,23 +136,21 @@ public static class OverviewPages
 			var inBackups = oldest is null || oldest < e.DeletedAt;
 			return $"""
 				<tr><td>{E(e.SchoolName)}</td><td>{E(Fmt.DateTime(e.DeletedAt))}</td>
-				<td>{(inBackups ? "<span class=\"pill warn\">ja</span>" : "<span class=\"pill good\">nej</span>")}</td>
+				<td>{(inBackups ? "<span class=\"pill warn\">yes</span>" : "<span class=\"pill good\">no</span>")}</td>
 				<td>{E(Fmt.Date(e.DeletedAt.AddDays(retention)))}</td></tr>
 				""";
 		}));
 		var body = $"""
-			<h1>Slettede skoler</h1>
-			<p class="muted">Skoler slettet de sidste {retention} dage, som stadig kan være i en backup. En gendannelse til før sletningen
-			bringer dem tilbage. Listen kommer fra <code>SchoolDeletionRecords</code> og spejles til <code>ledger.json</code> i ops-bucket'en,
-			fordi en gendannelse spoler tabellen tilbage, men ikke bucket'en. Kun skolens navn og datoer, ingen persondata.</p>
+			<h1>Deleted schools</h1>
+			<p class="muted">Deleted in the last {retention} days. A restore to before the deletion brings the school back.</p>
 			<div class="table-wrap"><table>
-			<thead><tr><th>Skole</th><th>Slettet</th><th>Stadig i backup</th><th>Ude af alle backups senest</th></tr></thead>
-			<tbody>{(rows.Length == 0 ? "<tr><td colspan=\"4\" class=\"muted\">Ingen skoler slettet de sidste 14 dage</td></tr>" : rows)}</tbody>
+			<thead><tr><th>School</th><th>Deleted</th><th>In backups</th><th>Out of backups by</th></tr></thead>
+			<tbody>{(rows.Length == 0 ? $"<tr><td colspan=\"4\" class=\"muted\">None in the last {retention} days</td></tr>" : rows)}</tbody>
 			</table></div>
-			<p class="muted small">Tom liste, selvom en skole er slettet? Så kan agenten ikke læse tabellen. Kør i app-databasen:
+			<p class="muted small">Empty, but a school was deleted? The agent can't read the table. Run in the app database:
 			<code>GRANT SELECT ON "SchoolDeletionRecords", "__EFMigrationsHistory" TO backup_agent;</code></p>
 			""";
-		return Page(context, "Slettede skoler", body, status);
+		return Page(context, "Deleted schools", body, status);
 	}
 
 	private static readonly Dictionary<string, string> KindLabels = new()
@@ -161,16 +158,16 @@ public static class OverviewPages
 		["backup"] = "Backup",
 		["drill"] = "Drill",
 		["verify"] = "Verify",
-		["restore"] = "Gendannelse",
-		["deleteoldvolume"] = "Slet gammel volume",
+		["restore"] = "Restore",
+		["deleteoldvolume"] = "Delete old volume",
 		["golive"] = "Go live",
-		["wal-gap"] = "Hul i WAL",
+		["wal-gap"] = "WAL gap",
 		["slot"] = "Slot",
 		["timeline"] = "Timeline",
 		["agent"] = "Agent",
-		["handling"] = "Handling",
-		["tjekliste"] = "Tjekliste",
-		["manuel-drill"] = "Manuel drill",
+		["action"] = "Action",
+		["checklist"] = "Checklist",
+		["manual-drill"] = "Manual drill",
 	};
 
 	private static async Task<IResult> History(HttpContext context, StatusBuilder statusBuilder, OpsBucket ops, CancellationToken cancellationToken)
@@ -181,14 +178,13 @@ public static class OverviewPages
 			<td>{E(e.Summary)}</td><td>{(e.DurationSeconds is { } d ? E(Fmt.Duration(d)) : "")}</td></tr>
 			"""));
 		var body = $"""
-			<h1>Historik</h1>
-			<p class="muted">Alle kørsler, handlinger og hændelser de sidste 3 måneder. Ligger også i <code>history/</code> i ops-bucket'en.
-			Ingen brugernavne: SSH-nøglen er identiteten, og SSH-login står i værtens <code>auth.log</code>.</p>
+			<h1>History</h1>
+			<p class="muted">Last 3 months. Also in <code>history/</code> in the ops bucket.</p>
 			<div class="table-wrap"><table>
-			<thead><tr><th>Tid</th><th>Type</th><th></th><th>Resultat</th><th>Varighed</th></tr></thead>
-			<tbody>{(rows.Length == 0 ? "<tr><td colspan=\"5\" class=\"muted\">Ingen historik endnu</td></tr>" : rows)}</tbody>
+			<thead><tr><th>Time</th><th>Type</th><th></th><th>Summary</th><th>Duration</th></tr></thead>
+			<tbody>{(rows.Length == 0 ? "<tr><td colspan=\"5\" class=\"muted\">No history yet</td></tr>" : rows)}</tbody>
 			</table></div>
 			""";
-		return Page(context, "Historik", body, status);
+		return Page(context, "History", body, status);
 	}
 }

@@ -76,7 +76,7 @@ public sealed class Scheduler(
 		// The agent heartbeat (53's WAL heartbeat) carries the overall health, so any Unhealthy issue
 		// alerts within minutes, and a dead agent alerts through the missing heartbeat.
 		await heartbeats.SendAsync(Heartbeats.Kind.Wal, current.Health,
-			current.Issues.Count == 0 ? $"Data sikret {Fmt.Ago(current.DataSecuredAt, current.GeneratedAt)}" : string.Join(" | ", current.Issues.Take(3)),
+			current.Issues.Count == 0 ? $"Data secured {Fmt.Ago(current.DataSecuredAt, current.GeneratedAt)}" : string.Join(" | ", current.Issues.Take(3)),
 			null, cancellationToken);
 	}
 
@@ -151,19 +151,19 @@ public sealed class Scheduler(
 		if (requested is not null && Attempt("requested-full", now, TimeSpan.FromMinutes(30)))
 		{
 			// Counts as today's full backup, so the 02:00 one doesn't run right after it.
-			Run("full", JobKind.Backup, "Fuld backup", (job, ct) => backups.BackupAsync(job, "full", requested, ct), "requested-full");
+			Run("full", JobKind.Backup, "Full backup", (job, ct) => backups.BackupAsync(job, "full", requested, ct), "requested-full");
 		}
 		else if (Due("full", _options.FullBackupHour, null, now))
 		{
-			Run("full", JobKind.Backup, "Daglig fuld backup", (job, ct) => backups.BackupAsync(job, "full", $"Planlagt kl. {_options.FullBackupHour:00}", ct));
+			Run("full", JobKind.Backup, "Daily full backup", (job, ct) => backups.BackupAsync(job, "full", $"Scheduled at {_options.FullBackupHour:00}:00", ct));
 		}
 		else if (Due("verify", _options.VerifyHour, _options.VerifyDay, now))
 		{
-			Run("verify", JobKind.Verify, "Ugentlig verify", backups.VerifyAsync);
+			Run("verify", JobKind.Verify, "Weekly verify", backups.VerifyAsync);
 		}
 		else if (Due("drill", _options.DrillHour, _options.DrillDay, now))
 		{
-			Run("drill", JobKind.Drill, "Ugentlig drill", (job, ct) => backups.DrillAsync(job, checks, ct));
+			Run("drill", JobKind.Drill, "Weekly drill", (job, ct) => backups.DrillAsync(job, checks, ct));
 		}
 	}
 

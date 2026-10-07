@@ -36,7 +36,7 @@ Where the build differs from the spec above:
 - **`archive-check=n`, no `archive-copy`.** pgBackRest refuses to check the archive without `archive_mode`. The agent waits for each backup's stop segment to reach the repo instead.
 - **A heartbeat row.** The agent commits `backup_agent_heartbeat` before each WAL switch, so every time target has a commit after it and a restore reports the time it reached. "Just before migration X" uses the migration's commit time (`track_commit_timestamp`), mirrored to `migrations.json`.
 - **The WAL heartbeat carries the agent's overall health**, so any red issue alerts within minutes.
-- **"Forbered gen-sletning"** (default on) backdates the deletion warning of resurrected schools on the restored copy, so `SchoolRetentionJob` deletes them on its first pass instead of sending a new warning. Without it, a school restored to before its warning would be warned again and kept 7 more days.
+- **"Re-delete schools deleted after this point"** (default on) backdates the deletion warning of resurrected schools on the restored copy, so `SchoolRetentionJob` deletes them on its first pass instead of sending a new warning. Without it, a school restored to before its warning would be warned again and kept 7 more days.
 - **API route** is `GET /api/v1/admin/backup-status`, like the other superadmin endpoints.
 
 ## Context
@@ -102,13 +102,13 @@ New project `infrastructure/backup-agent/` (Dockerfile + .NET minimal API). Back
 
 ### Phase B: Console (read + safe actions)
 
-Server-rendered pages on `:9090`, in Danish like the backoffice:
+Server-rendered pages on `:9090`. In English and as short as possible, because they're read during an incident (changed at review, 2026-10-07). The backoffice card stays Danish like the rest of the backoffice, but the issue lines it shows come from the agent in English.
 
-- [x] **Overview**: big "Data sikret for X min siden" (newest WAL in repo), last full backup, oldest restorable point with a red flag if older than 14 days (DPA, `BACKUP_RETENTION_DAYS` in [dataProcessing.ts](../web/src/content/dataProcessing.ts)), slot health and retained WAL vs. the 4 GB cap, disk %, heartbeat states.
+- [x] **Overview**: big "Data secured X min ago" (newest WAL in repo), last full backup, oldest restorable point with a red flag if older than 14 days (DPA, `BACKUP_RETENTION_DAYS` in [dataProcessing.ts](../web/src/content/dataProcessing.ts)), slot health and retained WAL vs. the 4 GB cap, disk %, heartbeat states.
 - [x] **Backups**: list of full backups (time, size, duration) and the continuous WAL range, from `pgbackrest info --output=json`.
 - [x] **Drills**: history with each check's result, and restore duration as a trend (the measured RTO). A form to log the quarterly manual drill from 53 Phase 3 (date, RTO, what broke), with the next due date.
 - [x] **Deleted-schools ledger**: schools deleted in the last 14 days that are still in backups, and the date each one ages out. There is no deletion record today ([SchoolDeletionService](../api/Skoleoverblikket.Api/Services/SchoolDeletionService.cs) only logs). Add a non-tenant `SchoolDeletionRecords` table (school ID, name, deleted at), written by `SchoolDeletionService` in the same transaction as the delete. The agent reads it over the socket (`SELECT` on that table only) and mirrors it to `ledger.json` in the ops bucket, because a restore rewinds the table but not the bucket. School name and dates only, no personal data. Rows older than 14 days are deleted by `SchoolRetentionJob`.
-- [x] **Actions**: "Tag backup nu" (full or incremental, at most once per hour, warns between 07 and 16 because of I/O), "Kør drill nu", "Kør verify nu". Each shows live log output and lands in history.
+- [x] **Actions**: "Back up now" (full or incremental, at most once per hour, warns between 07 and 16 because of I/O), "Drill now", "Verify now". Each shows live log output and lands in history.
 - [x] **Audit**: every action is written to `history/` with time and the action. No user name (SSH is the identity). The SSH login itself is in the host's `auth.log`.
 
 ### Phase C: Restore wizard + backoffice card
@@ -118,7 +118,7 @@ Server-rendered pages on `:9090`, in Danish like the backoffice:
 - [x] **Resurrected schools**: list schools that exist in the restore but were deleted later (compare the restored `Tenants` with `ledger.json` in S3, not with the restored table). Show that `SchoolRetentionJob` will re-delete them on startup, or that they must be deleted by hand (answer from 53's open question).
 - [x] **Go live** (human step, the UI only shows it): "Skaler `api` og `keycloak` til 0 i Dokploy → sæt `PG_VOLUME=pgdata-b` → redeploy." The agent then detects the new live volume, mounts are swapped on redeploy, and it takes a full backup right away (a restore starts a new timeline).
 - [x] **Post-restore checklist** in the console: Stripe webhook resend since the target time, re-delete resurrected schools, smoke test with the smoke tenant, check elmah.io, GDPR breach assessment within 72h (53 runbook §6). Tick-offs go to `history/`.
-- [x] **Keep the old volume** until you click "Slet gammel volume" (typed confirmation), at most 14 days (DPA). The console shows its age and nags after 7.
+- [x] **Keep the old volume** until you click "Delete old volume" (typed confirmation), at most 14 days (DPA). The console shows its age and nags after 7.
 - [x] **Backoffice card** on `/backoffice`: API endpoint `GET /api/v1/superadmin/backup-status` reads `status.json` with the read-only key and returns it. The card shows the RPO, last full, last drill, retention flag, and how old the status is ("opdateret for 4 min siden", red after 15). Below: `ssh -L 9090:127.0.0.1:9090 <vps>` to copy. No buttons.
 
 ### Phase D (later, only when a school asks): per-school export from a point in time

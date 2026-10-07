@@ -139,8 +139,8 @@ public sealed class JobRunner(OpsBucket ops, IHostApplicationLifetime lifetime, 
 		catch (Exception ex)
 		{
 			logger.LogError(ex, "Job {Title} failed", job.Title);
-			job.Log($"FEJL: {ex.Message}");
-			outcome = new JobOutcome(false, $"Fejlede: {ex.Message}");
+			job.Log($"ERROR: {ex.Message}");
+			outcome = new JobOutcome(false, $"Failed: {ex.Message}");
 		}
 		finally
 		{
@@ -148,7 +148,7 @@ public sealed class JobRunner(OpsBucket ops, IHostApplicationLifetime lifetime, 
 			_gate.Release();
 		}
 
-		job.Log(outcome.Ok ? $"Færdig: {outcome.Summary}" : $"Fejlede: {outcome.Summary}");
+		job.Log(outcome.Ok ? $"Done: {outcome.Summary}" : $"Failed: {outcome.Summary}");
 		job.Finish(outcome);
 		try
 		{

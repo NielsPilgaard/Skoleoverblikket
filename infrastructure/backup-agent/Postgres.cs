@@ -211,7 +211,7 @@ public sealed class TempPostgres : IAsyncDisposable
 			}
 
 			await server.StopAsync();
-			throw new InvalidOperationException("Den midlertidige Postgres kom ikke op som primær. Se loggen ovenfor.");
+			throw new InvalidOperationException("The temporary Postgres didn't come up as primary. See the log above.");
 		}
 
 		foreach (var line in ReadLogLines(logFile).Where(IsRecoveryLine))

@@ -15,7 +15,7 @@ namespace Skoleoverblikket.BackupAgent.Pages;
 public sealed class ConsoleAccess
 {
 	public const string CookieName = "backup-console-key";
-	private static readonly string[] OpenPaths = ["/healthz", "/console.css", "/console.js", "/favicon.svg", "/adgang"];
+	private static readonly string[] OpenPaths = ["/healthz", "/console.css", "/console.js", "/favicon.svg", "/access"];
 
 	private readonly byte[] _key;
 
@@ -33,7 +33,7 @@ public sealed class ConsoleAccess
 		var key = File.ReadAllText(keyFile).Trim();
 		_key = Encoding.ASCII.GetBytes(key);
 		var linkFile = Path.Combine(directory, "console-link");
-		File.WriteAllText(linkFile, $"http://localhost:9090/adgang?noegle={key}\n");
+		File.WriteAllText(linkFile, $"http://localhost:9090/access?key={key}\n");
 		File.SetUnixFileMode(linkFile, UnixFileMode.UserRead | UnixFileMode.UserWrite);
 		logger.LogInformation("Console link: run `docker exec <backup-agent container> cat {LinkFile}` on the host", linkFile);
 	}
@@ -59,14 +59,14 @@ public sealed class ConsoleAccess
 			await context.Response.WriteAsync(LockedPage);
 		});
 
-		app.MapGet("/adgang", (HttpContext context, string? noegle, ConsoleAccess access) =>
+		app.MapGet("/access", (HttpContext context, string? key, ConsoleAccess access) =>
 		{
-			if (!access.Matches(noegle))
+			if (!access.Matches(key))
 			{
 				return Results.Content(LockedPage, "text/html; charset=utf-8", statusCode: StatusCodes.Status401Unauthorized);
 			}
 
-			context.Response.Cookies.Append(CookieName, noegle!, new CookieOptions
+			context.Response.Cookies.Append(CookieName, key!, new CookieOptions
 			{
 				HttpOnly = true,
 				SameSite = SameSiteMode.Strict,
@@ -80,14 +80,14 @@ public sealed class ConsoleAccess
 
 	private const string LockedPage = """
 		<!doctype html>
-		<html lang="da">
+		<html lang="en">
 		<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>Backup-konsol</title><link rel="stylesheet" href="/console.css"></head>
+		<title>Backup console</title><link rel="stylesheet" href="/console.css"></head>
 		<body><main>
-		<h1>Backup-konsol</h1>
-		<p>Åbn konsollen med linket, der ligger på serveren. Kør i SSH-sessionen:</p>
+		<h1>Backup console</h1>
+		<p>Get the access link from the server. In your SSH session:</p>
 		<pre class="log">docker exec $(docker ps -qf name=backup-agent) cat /var/lib/backup-agent/console-link</pre>
-		<p class="muted">Linket virker gennem SSH-tunnelen (<code>ssh -L 9090:127.0.0.1:9090 &lt;vps&gt;</code>) og giver adgang i 12 timer.</p>
+		<p class="muted">Open it through the tunnel (<code>ssh -L 9090:127.0.0.1:9090 &lt;vps&gt;</code>). Access lasts 12 hours.</p>
 		</main></body>
 		</html>
 		""";
