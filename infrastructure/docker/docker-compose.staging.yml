@@ -73,11 +73,11 @@ services:
       Keycloak__WebClientId: skoleoverblikket-web
       Keycloak__AdminClientId: skoleoverblikket-admin
       Keycloak__AdminClientSecret: skoleoverblikket-admin-secret
-      ObjectStorage__ServiceUrl: http://localstack:4566
-      ObjectStorage__AccessKey: test
-      ObjectStorage__SecretKey: test
+      ObjectStorage__ServiceUrl: http://silo:9000
+      ObjectStorage__AccessKey: minioadmin
+      ObjectStorage__SecretKey: minioadmin
       ObjectStorage__DefaultBucketName: skoleoverblikket
-      ObjectStorage__PublicEndpoint: http://localhost:4566
+      ObjectStorage__PublicEndpoint: http://localhost:9000
       ObjectStorage__PresignedUploadSigningKey: stub-signing-key
       Smtp__Host: mailpit
       Smtp__Port: 1025
@@ -99,7 +99,7 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
-      localstack:
+      silo:
         condition: service_healthy
     healthcheck:
       test:
@@ -114,21 +114,16 @@ services:
       retries: 18
       start_period: 30s
 
-  localstack:
-    image: localstack/localstack:3
+  silo:
+    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    command: server /data
     environment:
-      SERVICES: s3
-      DEFAULT_REGION: eu-west-1
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - "4566:4566"
+      - "9000:9000"
     healthcheck:
-      test:
-        [
-          "CMD",
-          "bash",
-          "-c",
-          "exec 3<>/dev/tcp/localhost/4566 && printf 'GET /_localstack/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q '200'",
-        ]
+      test: ["CMD", "silo", "healthcheck", "ready"]
       interval: 5s
       timeout: 5s
       retries: 12

@@ -17,7 +17,7 @@ using Skoleoverblikket.Api.Email;
 using Skoleoverblikket.Api.Services;
 using Skoleoverblikket.Api.Storage;
 using Stripe;
-using Testcontainers.LocalStack;
+using Testcontainers.Minio;
 using Testcontainers.PostgreSql;
 using TUnit.AspNetCore;
 using TUnit.Core.Interfaces;
@@ -25,7 +25,7 @@ using TUnit.Core.Interfaces;
 namespace Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 
 /// <summary>
-/// Spins up a real PostgreSQL container and a LocalStack S3 container (via Testcontainers)
+/// Spins up a real PostgreSQL container and a Silo (MinIO fork) S3 container (via Testcontainers)
 /// alongside the full ASP.NET Core pipeline. Auth is replaced by <see cref="TestAuthHandler"/>
 /// which reads X-Test-TenantId / X-Test-Roles / X-Test-Subject headers so each HttpClient
 /// can carry its own tenant identity without shared mutable state.
@@ -38,7 +38,7 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 		.WithPassword("test")
 		.Build();
 
-	private readonly LocalStackContainer _localStack = new LocalStackBuilder("localstack/localstack:4").Build();
+	private readonly MinioContainer _silo = new MinioBuilder("pgsty/silo:RELEASE.2026-09-16T00-00-00Z").Build();
 
 	private readonly IContainer _stripeMock = new ContainerBuilder("stripe/stripe-mock:v0.196.0")
 		.WithPortBinding(12111, true)
@@ -53,7 +53,7 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 
 	public async Task InitializeAsync()
 	{
-		await Task.WhenAll(_postgres.StartAsync(), _localStack.StartAsync(), _stripeMock.StartAsync());
+		await Task.WhenAll(_postgres.StartAsync(), _silo.StartAsync(), _stripeMock.StartAsync());
 
 		await using var scope = Services.CreateAsyncScope();
 		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -74,14 +74,14 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 
 		builder.ConfigureAppConfiguration(config =>
 		{
-			var localStackUrl = _localStack.GetConnectionString();
+			var siloUrl = _silo.GetConnectionString();
 			config.AddInMemoryCollection(new Dictionary<string, string?>
 			{
-				["ObjectStorage:ServiceUrl"] = localStackUrl,
-				["ObjectStorage:AccessKey"] = "test",
-				["ObjectStorage:SecretKey"] = "test",
+				["ObjectStorage:ServiceUrl"] = siloUrl,
+				["ObjectStorage:AccessKey"] = _silo.GetAccessKey(),
+				["ObjectStorage:SecretKey"] = _silo.GetSecretKey(),
 				["ObjectStorage:DefaultBucketName"] = "skoleoverblikket-test",
-				["ObjectStorage:PublicEndpoint"] = localStackUrl,
+				["ObjectStorage:PublicEndpoint"] = siloUrl,
 				["ObjectStorage:PresignedUploadSigningKey"] = "test-signing-key",
 			});
 		});
@@ -108,13 +108,13 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 			services.RemoveAll<IEmailSender>();
 			services.AddSingleton<IEmailSender>(Emails);
 
-			// Point S3 client and S3Options at LocalStack
-			var localStackUrl = _localStack.GetConnectionString();
+			// Point S3 client and S3Options at Silo
+			var siloUrl = _silo.GetConnectionString();
 			services.RemoveAll<IAmazonS3>();
 			services.AddSingleton<IAmazonS3>(_ =>
 			{
-				var config = new AmazonS3Config { ServiceURL = localStackUrl, ForcePathStyle = true };
-				return new AmazonS3Client(new BasicAWSCredentials("test", "test"), config);
+				var config = new AmazonS3Config { ServiceURL = siloUrl, ForcePathStyle = true };
+				return new AmazonS3Client(new BasicAWSCredentials(_silo.GetAccessKey(), _silo.GetSecretKey()), config);
 			});
 
 			// Point the shared StripeClient at stripe-mock instead of the real Stripe API
@@ -131,7 +131,7 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 		await base.DisposeAsync();
 		await Task.WhenAll(
 			_postgres.DisposeAsync().AsTask(),
-			_localStack.DisposeAsync().AsTask(),
+			_silo.DisposeAsync().AsTask(),
 			_stripeMock.DisposeAsync().AsTask());
 	}
 }

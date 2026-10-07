@@ -15,7 +15,7 @@
 
   <ItemGroup>
     <PackageReference Include="Testcontainers" Version="4.12.0" />
-    <PackageReference Include="Testcontainers.LocalStack" Version="4.12.0" />
+    <PackageReference Include="Testcontainers.Minio" Version="4.12.0" />
     <PackageReference Include="TUnit" Version="1.43.2" />
     <PackageReference Include="TUnit.AspNetCore" Version="1.43.2" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.11.0" />
