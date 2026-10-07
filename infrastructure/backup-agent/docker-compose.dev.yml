@@ -1,0 +1,103 @@
+# Local stack for proving the backup agent by hand (task 60 Testing). Not used by Dokploy.
+# Our Postgres image, the agent, and LocalStack standing in for the OVH buckets. From the repo root:
+#
+#   docker compose -f infrastructure/backup-agent/docker-compose.dev.yml up -d --build
+#   docker compose -f infrastructure/backup-agent/docker-compose.dev.yml exec postgres bash /dev-seed/seed.sh
+#   open http://localhost:9090
+#
+# Go live with a restore the same way as on prod, by flipping the two volume variables:
+#
+#   PG_VOLUME=pgdata-b PG_SPARE_VOLUME=pgdata-a docker compose -f infrastructure/backup-agent/docker-compose.dev.yml up -d
+#
+# The slot cap is 256 MB here (4 GB on prod) and WAL switches every minute, so the lost-slot
+# and RPO cases can be tried in minutes.
+
+name: backup-agent-dev
+
+services:
+  postgres:
+    build: ../postgres
+    environment:
+      POSTGRES_PASSWORD: dev-superuser
+      APP_DB_PASSWORD: dev-app
+      KEYCLOAK_DB_PASSWORD: dev-keycloak
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "max_slot_wal_keep_size=${DEV_SLOT_CAP:-256MB}", "-c", "shared_buffers=128MB"]
+    volumes:
+      - ${PG_VOLUME:-pgdata-a}:/var/lib/postgresql/data
+      - pg-socket:/var/run/postgresql
+      - ./dev:/dev-seed:ro
+      - ../../api/Skoleoverblikket.Api/Data/Migrations/migration_script.sql:/dev-migrations/migration_script.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "/var/run/postgresql"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - db
+
+  backup-agent:
+    build:
+      context: ../..
+      dockerfile: infrastructure/backup-agent/Dockerfile
+    depends_on:
+      localstack:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - pg-socket:/var/run/postgresql
+      - ${PG_VOLUME:-pgdata-a}:/var/lib/postgresql/data:ro
+      - ${PG_SPARE_VOLUME:-pgdata-b}:/pgdata/spare
+      - wal-receive:/wal-receive
+      - agent-state:/var/lib/backup-agent
+    tmpfs:
+      - /drill:size=1g,uid=999,gid=999,mode=0700
+    mem_limit: 1g
+    environment:
+      Agent__LiveVolumeName: ${PG_VOLUME:-pgdata-a}
+      Agent__SpareVolumeName: ${PG_SPARE_VOLUME:-pgdata-b}
+      Agent__SshTunnelCommand: "ssh -L 9090:127.0.0.1:9090 ubuntu@<vps>"
+      Agent__WalSwitchInterval: "00:01:00"
+      Agent__StatusInterval: "00:01:00"
+      Agent__SlotWarnBytes: "134217728"
+      PGBACKREST_REPO1_S3_ENDPOINT: localstack
+      PGBACKREST_REPO1_STORAGE_PORT: "4566"
+      PGBACKREST_REPO1_STORAGE_VERIFY_TLS: "n"
+      PGBACKREST_REPO1_S3_REGION: us-east-1
+      PGBACKREST_REPO1_S3_BUCKET: pgbackrest
+      PGBACKREST_REPO1_S3_KEY: test
+      PGBACKREST_REPO1_S3_KEY_SECRET: test
+      PGBACKREST_REPO1_CIPHER_PASS: dev-cipher-pass
+      OpsBucket__ServiceUrl: http://localstack:4566
+      OpsBucket__AccessKey: test
+      OpsBucket__SecretKey: test
+      OpsBucket__BucketName: skoleoverblikket-ops
+    networks:
+      - agent
+
+  localstack:
+    image: localstack/localstack:4
+    environment:
+      SERVICES: s3
+    volumes:
+      - ./dev/localstack-buckets.sh:/etc/localstack/init/ready.d/buckets.sh:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "awslocal s3 ls s3://skoleoverblikket-ops"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks:
+      - agent
+
+# "db" stands in for dokploy-network. The agent is not on it: it reaches Postgres only through
+# the socket volume, and nothing can reach the agent except through 127.0.0.1:9090.
+networks:
+  db:
+  agent:
+
+volumes:
+  pgdata-a:
+  pgdata-b:
+  pg-socket:
+  wal-receive:
+  agent-state:

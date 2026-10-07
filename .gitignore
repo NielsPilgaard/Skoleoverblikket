@@ -249,6 +249,8 @@ Generated_Code/
 # because we have git ;-)
 _UpgradeReport_Files/
 Backup*/
+# Not a Visual Studio backup: the backup agent (task 60). Case-insensitive matching on Windows hid it.
+!infrastructure/backup-agent/
 UpgradeLog*.XML
 UpgradeLog*.htm
 ServiceFabricBackup/
