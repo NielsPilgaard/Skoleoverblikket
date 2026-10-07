@@ -14,7 +14,7 @@ purpose: Reference before touching any endpoint's auth — the ClassPermission s
 
 Two layers protect every request:
 
-1. **JWT authentication** — Keycloak-issued bearer token required on all endpoints. The `tenant_id` claim is mandatory; a missing claim returns 401.
+1. **JWT authentication** — Keycloak-issued bearer token required on all endpoints except one: the school ZIP download (`GET /api/v1/exports/school.zip/download`), which is authenticated by a single-use `ExportLink` token instead (see the endpoint table). The `tenant_id` claim is mandatory; a missing claim returns 401.
 2. **Role- and resource-based authorization** — what an authenticated user can do depends on their Keycloak role and, for schema editing, whether `ClassPermission` rows exist.
 
 ---
@@ -162,6 +162,8 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 | `GET /api/v1/staff-absences`, `GET {id}`, `PUT {id}/substitute` | `[Authorize(Roles = "admin")]` | Whole-school action, no ClassPermission check |
 | `GET /api/v1/staff/available`, `GET /api/v1/substitutions/mine` | `[Authorize]`, not parent/board | |
 | `PUT /api/v1/week-plans/{id}/slots/{slotId}/substitute` | `EditClass` on the week plan's class | |
+| `GET /api/v1/exports/school.zip`, `POST school.zip/link` | `[Authorize(Roles = "admin")]` | |
+| `GET /api/v1/exports/school.zip/download?token=…` | `ExportLink` scheme, admin | The only endpoint not authenticated by a Keycloak JWT. The token comes from `POST school.zip/link`, carries the admin's tenant and subject (data protection, signed and encrypted), lasts one minute and works once (`ExportLinkAuthHandler`) |
 
 ---
 

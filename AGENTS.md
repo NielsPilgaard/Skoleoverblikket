@@ -180,6 +180,7 @@ Formatting never fails CI: a pre-commit hook (`.githooks/`, enabled by `npm inst
 | [docs/PRD.md](docs/PRD.md) | Full product requirements, target segments, competitive positioning, out-of-scope list |
 | [docs/PERSONAS.md](docs/PERSONAS.md) | Hanne/Thomas/Birgitte/Mikkel — the four users every screen must work for |
 | [docs/adr/INDEX.md](docs/adr/INDEX.md) | Concept → ADR lookup for all product/architecture decisions |
+| [tasks/INDEX.md](tasks/INDEX.md) | Prioritized list of open tasks — "implement next task" starts here |
 | [docs/SCHEMA_FEATURES.md](docs/SCHEMA_FEATURES.md) | Schema planner detail: time slot inheritance, conflict detection, entities, permissions |
 | [docs/GLOSSARY.md](docs/GLOSSARY.md) | Kept Danish domain vocabulary vs. incidental Danish names renamed to English in code |
 | [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md) | Role model, ClassPermission superadmin/restricted modes, endpoint auth summary |

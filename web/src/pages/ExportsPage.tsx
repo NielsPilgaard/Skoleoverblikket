@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { usePageTitle } from '../hooks/usePageTitle'
 import keycloak from '../auth/keycloak'
+import { postApiV1ExportsSchoolZipLink } from '../api/generated/sdk.gen'
 
 interface ExportCard {
   title: string
@@ -36,6 +37,8 @@ const EXPORTS: ExportCard[] = [
     filename: 'uvm-minimumstimetal.xlsx',
   },
 ]
+
+const FULL_EXPORT_KEY = 'full-export'
 
 function DownloadIcon() {
   return (
@@ -81,7 +84,7 @@ export default function ExportsPage() {
   const [downloading, setDownloading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  async function downloadCsv(path: string, filename: string) {
+  async function download(path: string, filename: string) {
     setError(null)
     setDownloading(filename)
     try {
@@ -105,13 +108,28 @@ export default function ExportsPage() {
     }
   }
 
+  // The ZIP can be large, so the browser downloads it itself from a one-minute, single-use link
+  // instead of holding it all in memory like the small exports above.
+  async function downloadAll() {
+    setError(null)
+    setDownloading(FULL_EXPORT_KEY)
+    try {
+      const { data } = await postApiV1ExportsSchoolZipLink({ throwOnError: true })
+      window.location.assign(data.url)
+    } catch {
+      setError('Filen kunne ikke hentes. Prøv igen om lidt.')
+    } finally {
+      setDownloading(null)
+    }
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-8">
       {/* Header */}
       <div>
         <h1 className="font-display text-2xl font-semibold text-gray-900">Eksporter</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Download data som CSV til videre bearbejdning i Excel
+          Download data til videre bearbejdning i Excel, eller hent alt på én gang
         </p>
       </div>
 
@@ -121,6 +139,31 @@ export default function ExportsPage() {
           {error}
         </div>
       )}
+
+      {/* Everything in one ZIP */}
+      <div
+        data-testid="full-export-card"
+        className="flex flex-col gap-4 rounded-xl border border-brand-200 bg-brand-50 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-gray-900">Alle skolens data</p>
+          <p className="mt-0.5 text-sm text-gray-600">
+            Én ZIP-fil med alt: klasser, elever, forældre, medarbejdere, skemaer, fravær, beskeder
+            og alle uploadede filer. Gem den, hvis I stopper med Skoleoverblikket. Det kan tage et
+            par minutter.
+          </p>
+        </div>
+        <button
+          type="button"
+          data-testid="full-export-download"
+          disabled={downloading !== null}
+          onClick={downloadAll}
+          className="shrink-0 inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {downloading === FULL_EXPORT_KEY ? <Spinner /> : <DownloadIcon />}
+          {downloading === FULL_EXPORT_KEY ? 'Henter…' : 'Hent alt'}
+        </button>
+      </div>
 
       {/* Export cards */}
       <div className="space-y-4">
@@ -138,7 +181,7 @@ export default function ExportsPage() {
               <button
                 type="button"
                 disabled={downloading !== null}
-                onClick={() => downloadCsv(item.path, item.filename)}
+                onClick={() => download(item.path, item.filename)}
                 className="shrink-0 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isDownloading ? <Spinner /> : <DownloadIcon />}

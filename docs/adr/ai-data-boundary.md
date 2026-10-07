@@ -88,7 +88,7 @@ Constraints:
 
 - **IMP-001**: One shared `ILlmClient` (OpenAI NuGet, configurable base URL/model) — built for feedback triage, reused by [task 21](../../tasks/21-ai-suggestions-for-schema.md).
 - **IMP-002**: Per-tenant opt-out `AllowAiFeedbackProcessing` (default on). Off → no LLM call, no dispatch; report still reaches the backoffice.
-- **IMP-003**: Alexandra Instituttet and Scaleway (transcription) go on the sub-processor list — see [task 48](../../tasks/48-databehandleraftale.md). GitHub and Anthropic do not, because they never receive personal data.
+- **IMP-003**: Alexandra Instituttet and Scaleway (transcription) go on the sub-processor list — see [task 48](../../tasks/completed/48-databehandleraftale.md). GitHub and Anthropic do not, because they never receive personal data.
 - **IMP-004**: Any future AI feature must place itself in one of the two zones. A feature that needs personal data *and* code execution is not allowed under this ADR without superseding it.
 
 ## Related Decisions

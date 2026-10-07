@@ -265,7 +265,7 @@ However, if Skoleoverblikket ever expands to serve folkeskoler or mixed schools,
 
 ## Future features (post-launch)
 
-Open implementation tasks are tracked in [tasks/todo.md](../tasks/todo.md). Feature-specific task files live in [tasks/](../tasks/).
+Open implementation tasks are tracked in [tasks/INDEX.md](../tasks/INDEX.md). Feature-specific task files live in [tasks/](../tasks/).
 
 ## Out of scope
 

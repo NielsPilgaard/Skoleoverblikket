@@ -27,5 +27,11 @@ public sealed class School : ITenantScoped, IEntityTypeConfiguration<School>
 
 	public DateTimeOffset CreatedAt { get; init; }
 
+	/// <summary>
+	/// When the founder's welcome email is due, a day after signup. Null once sent, and for schools
+	/// created before the email existed, so those are never emailed.
+	/// </summary>
+	public DateTimeOffset? WelcomeEmailDueAt { get; set; }
+
 	public void Configure(EntityTypeBuilder<School> builder) => builder.Property(s => s.CreatedAt).HasDefaultValueSql("now()");
 }

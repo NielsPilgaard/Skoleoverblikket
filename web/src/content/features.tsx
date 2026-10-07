@@ -191,7 +191,7 @@ export const features = [
     key: 'reports',
     title: 'Timetal og eksport',
     description:
-      "Eksportér lærernes timer til Excel og sammenlign med UVM's vejledende timetal — klar til ledelsen.",
+      "Eksportér lærernes timer til Excel og sammenlign med UVM's vejledende timetal — klar til ledelsen. Hent alle skolens data og filer med ét klik.",
     icon: icon(
       <>
         <line x1="18" y1="20" x2="18" y2="10" />
@@ -238,6 +238,7 @@ export const sidebarRouteFeatures = {
   '/lokaler': null,
   '/elever': null,
   '/foraeldre': 'parentModule',
+  '/bestyrelsesmedlemmer': 'board',
   '/import': 'import',
   '/filer': 'files',
   '/eksporter': 'reports',

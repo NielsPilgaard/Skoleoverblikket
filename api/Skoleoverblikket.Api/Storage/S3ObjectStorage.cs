@@ -2,6 +2,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Options;
 using System.Net;
+using System.Runtime.CompilerServices;
 
 namespace Skoleoverblikket.Api.Storage;
 
@@ -60,6 +61,39 @@ public sealed class S3ObjectStorage(IAmazonS3 s3, IOptions<S3Options> opts) : IO
 	public async Task DeleteAsync(string key, CancellationToken cancellationToken = default)
 	{
 		await s3.DeleteObjectAsync(_options.DefaultBucketName, key, cancellationToken);
+	}
+
+	public async Task<Stream?> OpenReadAsync(string key, CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			var response = await s3.GetObjectAsync(_options.DefaultBucketName, key, cancellationToken);
+			return response.ResponseStream;
+		}
+		catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+		{
+			return null;
+		}
+	}
+
+	public async IAsyncEnumerable<string> ListKeysAsync(string prefix, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+	{
+		// An empty prefix would list the whole bucket, across every school.
+		ArgumentException.ThrowIfNullOrWhiteSpace(prefix);
+
+		var request = new ListObjectsV2Request { BucketName = _options.DefaultBucketName, Prefix = prefix };
+		ListObjectsV2Response page;
+		do
+		{
+			page = await s3.ListObjectsV2Async(request, cancellationToken);
+			foreach (var o in page.S3Objects ?? [])
+			{
+				yield return o.Key;
+			}
+
+			request.ContinuationToken = page.NextContinuationToken;
+		}
+		while (page.IsTruncated == true);
 	}
 
 	public async Task<int> DeleteByPrefixAsync(string prefix, CancellationToken cancellationToken = default)

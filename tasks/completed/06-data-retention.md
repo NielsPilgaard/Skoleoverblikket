@@ -10,7 +10,7 @@
 - **Warning first, always:** the warning email goes out from day 83, and deletion needs both 90 days since cancellation *and* 7 days since the warning. A school the job never warned (job down, backfilled) gets 7 days from the warning, never a silent deletion.
 - **Order:** files (every tenant storage prefix) → Keycloak login accounts → database in one transaction. A failure in files or accounts skips the database so the next pass can retry with the keys and subjects still known.
 - **Email:** existing Scaleway SMTP via `IEmailSender`, to the school's contact email and admin staff.
-- **Full export: not available.** `/eksporter` has hours reports and the full schema as CSV, but no all-data bundle. The warning links there. Follow-up: [51-full-data-export](../51-full-data-export.md).
+- **Full export: not available.** `/eksporter` has hours reports and the full schema as CSV, but no all-data bundle. The warning links there. Follow-up: [51-full-data-export](51-full-data-export.md).
 - Tests: `SchoolRetentionTests` (day 82/84/89/91 timeline, other school untouched, never-warned case, resubscribe, failed account deletion keeps data).
 
 ### Context
