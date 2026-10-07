@@ -6,7 +6,7 @@ description: Regenerate OpenAPI spec then frontend API client for Skoleoverblikk
 Run one command:
 
 ```bash
-cd web && npm run codegen --silent 2>&1 | cut -c1-300 | tail -30
+set -o pipefail; cd web && npm run codegen --silent 2>&1 | cut -c1-300 | tail -30
 ```
 
 It builds the API quietly into `bin/codegen/` (works while Aspire is running,

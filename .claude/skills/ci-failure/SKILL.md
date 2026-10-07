@@ -48,7 +48,8 @@ gh run download <run-id> -n stack-logs -D <scratch-dir>/stack        # api/keycl
 Compare the failing commit with the last green run of the same workflow:
 
 ```bash
-gh run list --workflow=staging.yml --limit 10
+gh run view <run-id> --json workflowName,headSha   # the failing run's workflow and commit
+gh run list --workflow="<workflowName>" --limit 10
 git diff --stat <last-green-sha> <failing-sha>
 git log --oneline <last-green-sha>..<failing-sha>
 ```

@@ -29,8 +29,9 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           REVIEWED: ${{ contains(github.event.pull_request.labels.*.name, 'migration-reviewed') }}
         run: |
-          files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename' \
-            | grep '^api/Skoleoverblikket.Api/Data/Migrations/' || true)
+          # Separate steps: a failed API call must fail the gate, while grep finding nothing is fine.
+          all_files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')
+          files=$(printf '%s\n' "$all_files" | grep '^api/Skoleoverblikket.Api/Data/Migrations/' || true)
           if [ -z "$files" ]; then
             echo "No migration changes."
             exit 0

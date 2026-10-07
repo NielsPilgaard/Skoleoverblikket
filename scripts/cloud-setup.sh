@@ -11,9 +11,18 @@ set -euo pipefail
 cd "$CLAUDE_PROJECT_DIR"
 
 dotnet_dir="$HOME/.dotnet"
-if ! { command -v dotnet >/dev/null 2>&1 && dotnet --list-sdks | grep -q '^10\.'; } &&
-	! [ -x "$dotnet_dir/dotnet" ]; then
-	curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 10.0 --install-dir "$dotnet_dir" >/dev/null
+has_sdk10() { "$1" --list-sdks 2>/dev/null | grep -q '^10\.'; }
+if ! { command -v dotnet >/dev/null 2>&1 && has_sdk10 dotnet; } &&
+	! { [ -x "$dotnet_dir/dotnet" ] && has_sdk10 "$dotnet_dir/dotnet"; }; then
+	# Pinned to a dotnet/install-scripts commit and checked before running. To update: pick a
+	# newer commit and replace both values with its sha and the script's sha256sum.
+	installer_commit=e5cf1dd2d1540ed05ac84f8eb8c5cdec2807621e
+	installer_sha256=082f7685e156738a1b2e2ed8381a621870d4ce8e8c59278034556f05c186eb2e
+	installer=$(mktemp)
+	curl -fsSL "https://raw.githubusercontent.com/dotnet/install-scripts/$installer_commit/src/dotnet-install.sh" -o "$installer"
+	echo "$installer_sha256  $installer" | sha256sum -c --quiet -
+	bash "$installer" --channel 10.0 --install-dir "$dotnet_dir" >/dev/null
+	rm -f "$installer"
 fi
 
 if [ -x "$dotnet_dir/dotnet" ]; then
