@@ -86,7 +86,7 @@ public sealed class ConsoleAccess
 		<body><main>
 		<h1>Backup console</h1>
 		<p>Get the access link from the server. In your SSH session:</p>
-		<pre class="log">docker exec $(docker ps -qf name=backup-agent) cat /var/lib/backup-agent/console-link</pre>
+		<pre class="log">docker exec $(docker ps -qf label=com.docker.compose.service=backup-agent) cat /var/lib/backup-agent/console-link</pre>
 		<p class="muted">Open it through the tunnel (<code>ssh -L 9090:127.0.0.1:9090 &lt;vps&gt;</code>). Access lasts 12 hours.</p>
 		</main></body>
 		</html>
