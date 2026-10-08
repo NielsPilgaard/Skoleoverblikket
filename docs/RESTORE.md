@@ -13,12 +13,12 @@ purpose: 'The incident runbook for the database and its backups (tasks 53, 54, 6
 
 ## TL;DR
 
-1. Open the backup console: `ssh -L 9090:127.0.0.1:9090 <user>@<vps>`, then on the VPS `docker exec $(docker ps -qf name=backup-agent) cat /var/lib/backup-agent/console-link` and open that link in your browser.
+1. Open the backup console: `pwsh scripts/backup-console.ps1 <user>@<vps>`.
 2. **Restore** → pick a point → type the spare volume's name → wait for the checks.
-3. Go live: scale `api` and `keycloak` to 0 in Dokploy, swap `PG_VOLUME` and `PG_SPARE_VOLUME`, redeploy.
+3. Type the name again and click **Go live**, then **Redeploy** the compose app in Dokploy.
 4. Work through the checklist the console shows, including the GDPR assessment within 72 hours.
 
-Never delete a `skoleoverblikket-pgdata-*` or `skoleoverblikket-wal-receive` volume, and never run `docker compose down -v`. They are the database.
+Never delete a `skoleoverblikket-pgdata-*`, `skoleoverblikket-pg-control` or `skoleoverblikket-wal-receive` volume, and never run `docker compose down -v`. They are the database.
 
 How it works: [postgres-backup-agent](adr/postgres-backup-agent.md). Environment: [DEPLOYMENT.md](DEPLOYMENT.md).
 
@@ -29,12 +29,20 @@ How it works: [postgres-backup-agent](adr/postgres-backup-agent.md). Environment
 The console runs in the `backup-agent` container. It doesn't need Keycloak, the API or the app database, so it works when they're down.
 
 ```bash
-ssh -L 9090:127.0.0.1:9090 <user>@<vps>
-# on the VPS, in that session:
-docker exec $(docker ps -qf name=backup-agent) cat /var/lib/backup-agent/console-link
+pwsh scripts/backup-console.ps1 <user>@<vps>
 ```
 
-Open the printed `http://localhost:9090/access?key=…` link on your own machine. It sets a cookie for 12 hours. The key lives in the agent's volume, so only someone with a shell on the VPS can read it.
+It reads the access link from the agent over SSH, opens the tunnel and opens the link in your browser. Keep the window open; Ctrl+C closes the tunnel. Set `BACKUP_CONSOLE_SERVER=<user>@<vps>` once and run it with no arguments. If 9090 is taken (the local dev stack), add `-LocalPort 9091`.
+
+Without the script:
+
+```bash
+ssh -L 9090:127.0.0.1:9090 <user>@<vps>
+# on the VPS, in that session:
+docker exec $(docker ps -qf label=com.docker.compose.service=backup-agent) cat /var/lib/backup-agent/console-link
+```
+
+The link (`http://localhost:9090/access?key=…`) sets a cookie for 12 hours. The key lives in the agent's volume, so only someone with a shell on the VPS can read it.
 
 | Page | Use it for |
 |---|---|
@@ -59,18 +67,20 @@ Open the printed `http://localhost:9090/access?key=…` link on your own machine
 
 1. Pick the point: a time (Copenhagen time), "Just before a migration" (stops just before the transaction that applied it), or "Full backup as-is". Times outside the restorable ranges are refused; a WAL gap splits the ranges.
 2. Leave "Re-delete schools deleted after this point" ticked. It backdates the deletion warning of schools deleted after the point, on the restored copy, so `SchoolRetentionJob` deletes them again on its first pass instead of emailing them a new warning.
-3. Type the spare volume's name and start. The wizard wipes the spare volume, runs `pgbackrest restore` into it, starts a temporary Postgres on it inside the agent, runs the drill checks and stops it again. The live volume is mounted read-only and is never touched.
+3. Type the spare volume's name and start. The wizard wipes the spare volume, runs `pgbackrest restore` into it, starts a temporary Postgres on it inside the agent, runs the drill checks and stops it again. The live volume is never touched: the agent asks Postgres which directory it runs on and only writes to the other one.
 4. Read the summary: the checks, rows per table against live, latest migration, Keycloak users, the time recovery actually reached, and the resurrected schools.
 
 If live Postgres is down, the comparisons with live are skipped and marked "—". That's expected in a real incident.
 
 ## 4. Go live (swap the A/B volumes)
 
-1. In Dokploy, scale `api` and `keycloak` to 0 so nothing writes to the old database.
-2. In the compose app's environment, swap the two variables, e.g. `PG_VOLUME=pgdata-b` and `PG_SPARE_VOLUME=pgdata-a`. Both, always: if they point at the same volume the agent refuses every write to the spare.
-3. Redeploy. Postgres starts on the restored volume (a new timeline). The agent notices the swap, creates a new replication slot and takes a full backup at once.
+1. Under the summary, type the spare volume's name and click **Go live**. If a check failed, read it first: tick the box to go live anyway (in a real incident live may be worse). The agent writes the spare's letter to `/pg-control/active`, and the header shows "pgdata-b live on redeploy".
+2. In Dokploy, **Redeploy** the compose app. No environment variables to change, nothing to scale down: Redeploy recreates every container. Postgres starts on the restored volume (a new timeline), and the API and Keycloak restart with it, so no stale caches.
+3. The agent notices the new live volume, creates a new replication slot, takes a full backup at once and shows the checklist (§5).
 
-To undo, swap the variables back and redeploy. The old volume was never written to.
+Changed your mind before redeploying: **Cancel** on the banner. To undo after going live: **Switch back** under "Old volume" on the Restore page, then Redeploy again. The old volume was never written to.
+
+If Postgres won't start after the redeploy and its log says `select-volume: /pgdata/b is empty`, the marker names a volume without a database. Switch back (or Cancel) and redeploy.
 
 ## 5. After go-live
 
@@ -89,7 +99,7 @@ Lost data is a personal data breach (availability). Assess within 72 hours wheth
 
 ## 7. One school's mistake
 
-Restore to the spare volume with the wizard (§3) but **don't go live**. Then read that school's rows from the spare with a throwaway Postgres that has no network, on the VPS:
+Restore to the spare volume with the wizard (§3) but **don't go live**. Then read that school's rows from the spare (the console names it; `pgdata-b` here) with a throwaway Postgres that has no network, on the VPS:
 
 ```bash
 docker run --rm -d --name restore-read --network none \
@@ -116,27 +126,27 @@ The agent recovers by itself: new slot, streaming again, full backup requested. 
 The agent image restores without anything from the old box. On a new VPS with Docker:
 
 ```bash
-docker volume create skoleoverblikket-pgdata-a
 docker run -d --name backup-agent -p 127.0.0.1:9090:9090 \
-  -v skoleoverblikket-pgdata-a:/pgdata/spare \
-  -e Agent__LiveVolumeName=none -e Agent__SpareVolumeName=pgdata-a \
+  --label com.docker.compose.service=backup-agent \
+  -v skoleoverblikket-pgdata-a:/pgdata/a -v skoleoverblikket-pgdata-b:/pgdata/b \
+  -v skoleoverblikket-pg-control:/pg-control \
   --env-file agent.env \
   ghcr.io/nielspilgaard/skoleoverblikket-backup-agent:<tag>
 ```
 
-`agent.env` holds the `PGBACKREST_REPO1_*` values (endpoint, bucket, keys, cipher pass) and the `OpsBucket__*` keys from the password manager. Open the console (§1); it shows Postgres as down, which is right. Restore into `pgdata-a` with the wizard, then install Dokploy and deploy the compose app with `PG_VOLUME=pgdata-a` and `COMPOSE_PROFILES=selfhosted-db` (task 54 §4 lists everything else to recreate). Without the cipher pass the backups are unreadable.
+`agent.env` holds the `PGBACKREST_REPO1_*` values (endpoint, bucket, keys, cipher pass) and the `OpsBucket__*` keys from the password manager. Open the console (§1); it shows Postgres as down, which is right, and treats `pgdata-a` as live, so the wizard restores into `pgdata-b`. Restore, click Go live (it writes `b` to the marker), stop this container, then install Dokploy and deploy the compose app with `COMPOSE_PROFILES=selfhosted-db` (task 54 §4 lists everything else to recreate). Postgres starts on `pgdata-b`. Without the cipher pass the backups are unreadable.
 
 ## 11. A backup is older than 14 days
 
 The console flags it red (DPA). Normally `expire` after each daily full keeps the oldest at 13–14 days. If fulls keep failing, the oldest data just gets older. Fix the backup first. If no new full can be taken, the DPA wins: expire the stale backups by hand and log it in the console's history, knowing that leaves nothing to restore until the next full succeeds.
 
 ```bash
-docker exec $(docker ps -qf name=backup-agent) pgbackrest --stanza=main expire --set=<label>
+docker exec $(docker ps -qf label=com.docker.compose.service=backup-agent) pgbackrest --stanza=main expire --set=<label>
 ```
 
 ## 12. The agent says the live database has another system-id
 
-The live cluster isn't the one the repo knows, e.g. it was re-initialized empty. Stop and don't delete anything: check that `PG_VOLUME` points at the right volume. If a new cluster is intended, point the agent at a new repo path (`PGBACKREST_REPO1_PATH`), remove `/var/lib/backup-agent/state.json` in the agent and redeploy it. The old path keeps the old backups until you delete them (within 14 days, DPA).
+The live cluster isn't the one the repo knows, e.g. it was re-initialized empty. Stop and don't delete anything: check which volume `/pg-control/active` names (`docker exec <postgres container> cat /pg-control/active`) and that it's the one you meant. If a new cluster is intended, point the agent at a new repo path (`PGBACKREST_REPO1_PATH`), remove `/var/lib/backup-agent/state.json` in the agent and redeploy it. The old path keeps the old backups until you delete them (within 14 days, DPA).
 
 ## 13. After a `pg_restore` into a new cluster
 
@@ -150,7 +160,7 @@ GRANT SELECT ON "SchoolDeletionRecords", "__EFMigrationsHistory" TO backup_agent
 
 | Thing | Where |
 |---|---|
-| Live and spare database | Docker volumes `skoleoverblikket-pgdata-a` / `-b`; `PG_VOLUME` says which is live |
+| Live and spare database | Docker volumes `skoleoverblikket-pgdata-a` / `-b`; `/pg-control/active` (volume `skoleoverblikket-pg-control`) says which one Postgres starts on |
 | WAL not yet in the repo | Docker volume `skoleoverblikket-wal-receive` |
 | Backups (encrypted) | pgBackRest repo bucket at OVH (`PGBACKREST_REPO1_S3_BUCKET`) |
 | Status, history, deleted-schools ledger | Ops bucket `skoleoverblikket-ops` (`status.json`, `history/`, `ledger.json`, `migrations.json`) |

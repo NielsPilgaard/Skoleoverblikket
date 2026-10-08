@@ -18,7 +18,7 @@ description: >-
 
 ## TL;DR
 
-Postgres runs as one compose service holding both databases (task [54](../../tasks/54-move-vps.md)). It has no `archive_command` and no pgBackRest. A `backup-agent` container ([task 60](../../tasks/60-backup-console.md)) shares its socket and reads its data volume read-only, streams WAL with `pg_receivewal` into a persistent `wal-receive` volume, pushes it with `pgbackrest archive-push`, and runs backups, the weekly drill and restores. A restore goes into a spare volume (`pgdata-a`/`pgdata-b`) and goes live when a human swaps `PG_VOLUME`. A broken backup setup becomes a WAL gap and an alert, never an outage.
+Postgres runs as one compose service holding both databases (task [54](../../tasks/54-move-vps.md)). It has no `archive_command` and no pgBackRest. A `backup-agent` container ([task 60](../../tasks/60-backup-console.md)) shares its socket and both data volumes, streams WAL with `pg_receivewal` into a persistent `wal-receive` volume, pushes it with `pgbackrest archive-push`, and runs backups, the weekly drill and restores. A restore goes into the spare volume (`pgdata-a`/`pgdata-b`) and goes live when a human clicks Go live in the console and redeploys. A broken backup setup becomes a WAL gap and an alert, never an outage.
 
 ## Status
 
@@ -33,10 +33,10 @@ Postgres runs as one compose service holding both databases (task [54](../../tas
 
 ## Decision
 
-- **D1: Separate container, shared socket.** The agent mounts the socket volume and the live data volume read-only and runs as uid 999. The Postgres image carries no backup tooling.
+- **D1: Separate container, shared socket.** The agent mounts the socket volume and both data volumes and runs as uid 999. The Postgres image carries no backup tooling.
 - **D2: WAL by streaming, not `archive_command`.** `pg_receivewal --slot=agent --synchronous` over the socket. `max_slot_wal_keep_size = 4GB` caps what Postgres holds for the agent; past it Postgres drops the slot and keeps running. The agent commits a heartbeat row and calls `pg_switch_wal()` every 5 minutes, so the 15-minute RPO holds on quiet nights and every time target has a commit after it.
 - **D2a: Received WAL lives on a persistent `wal-receive` volume** until `archive-push` succeeds, because the slot moves on as soon as `pg_receivewal` flushes. Segments are deleted only after a successful push, leftovers are pushed on start, and streaming pauses at 4 GB unpushed so the agent can't fill the disk either.
-- **D5: Restore into an A/B volume.** Compose declares `pgdata-a` and `pgdata-b`. Postgres mounts `${PG_VOLUME}`, the agent mounts it read-only and `${PG_SPARE_VOLUME}` read-write. Going live = swap the two variables in Dokploy and redeploy. The agent has no docker socket.
+- **D5: Restore into an A/B volume, picked by a marker file.** Compose declares `pgdata-a` and `pgdata-b`, and both Postgres and the agent mount them at `/pgdata/a` and `/pgdata/b`, plus a small `pg-control` volume. Postgres's entrypoint (`select-volume.sh`) reads `/pg-control/active` (`a` or `b`) and starts on that directory. The agent reads which one is live from Postgres (`data_directory`), restores only into the other, and writes the marker when a human clicks Go live. Going live = Go live in the console, then Redeploy in Dokploy; no environment variables change, and nothing has to be scaled down first because Redeploy recreates every container. The agent has no docker socket.
 
 The console, the ops bucket and the backoffice card are task 60 D3, D4, D6 and stay specified there.
 
@@ -47,7 +47,7 @@ The console, the ops bucket and the backoffice card are task 60 D3, D4, D6 and s
 | `pg_receivewal` over the shared socket, peer auth mapped to `backup_agent` | Works. The agent's uid 999 can't log in as `postgres` (scram on the socket) |
 | `archive-push` from the receive directory | Works, re-push is idempotent. `.partial` is never pushed while streaming |
 | `pgbackrest backup` with a read-only `pg1-path` | Works, **but only with `archive-check=n`**: without `archive_mode`, pgBackRest refuses (`[087] archive_mode must be enabled`) |
-| `pg1-path` mounted elsewhere than `data_directory` | Refused (`[058]`). The agent mounts the live volume at `/var/lib/postgresql/data` |
+| `pg1-path` mounted elsewhere than `data_directory` | Refused (`[058]`). The agent mounts both volumes at the same paths as Postgres (`/pgdata/a`, `/pgdata/b`) and passes `--pg1-path` per call |
 | Restore into the spare volume, PITR to a time | Recovery stopped 3 s after the target |
 | Slot past `max_slot_wal_keep_size` with the agent stopped | Postgres kept serving, slot `lost`, `pg_receivewal` fails with "requested WAL segment … has already been removed" |
 
@@ -66,7 +66,7 @@ The console, the ops bucket and the backoffice card are task 60 D3, D4, D6 and s
 
 - **NEG-001**: `archive-check=n` rules out pgBackRest's `archive-copy`, so a backup isn't self-contained: it needs the archive. The agent checks after each backup that its stop segment reached the repo and fails the backup otherwise.
 - **NEG-002**: The agent is our own code (~3,700 lines of C#, a third of it console HTML) where Dokploy's backup feature was none. It's proven by hand, not by tests ([TESTING.md](../TESTING.md)).
-- **NEG-003**: Two volume variables (`PG_VOLUME`, `PG_SPARE_VOLUME`) must be swapped together. Compose can't derive one from the other. The agent refuses to touch a spare that is the live volume (same device and inode).
+- **NEG-003**: The agent mounts the live volume read-write, because it can't know in advance which of the two will be live. Only code keeps it off live: it takes the live volume from Postgres's `data_directory`, refuses to restore while a go-live is pending or while Postgres runs on an unknown directory, and refuses a spare that is the live directory (same device and inode). The Postgres entrypoint refuses to create a new database on an empty volume once the marker exists, so a wrong marker fails loudly instead of starting empty.
 - **NEG-004**: Docker network separation alone did not keep other containers out on Docker Desktop: a container on another network reached the agent by IP, masqueraded to the same gateway address as the SSH tunnel. The console therefore also needs a key that only `docker exec` on the host can read.
 
 ## Alternatives Considered

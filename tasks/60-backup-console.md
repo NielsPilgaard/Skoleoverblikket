@@ -16,7 +16,7 @@ status: 'In progress'
 
 ## TL;DR
 
-Task [54](54-move-vps.md) moves Postgres into compose with pgBackRest, so Dokploy's backup UI (list, manual backup, restore button) goes away. This task replaces it. A `backup-agent` container sits next to Postgres and does everything backup-related: it streams WAL with `pg_receivewal` (Postgres has no `archive_command`, so pgBackRest problems never become prod problems), runs pgBackRest backups, the [53](53-restore-drill.md) drill and restores, and writes a PII-free `status.json` to a separate OVH S3 bucket. Its console is published on `127.0.0.1:9090` only and opened with `ssh -L`, so it works when Postgres, Keycloak or the API are down. It's the only place with a restore button. A restore goes into a spare volume (`pgdata-b`), gets checked, and goes live when you change one env var in Dokploy. The backoffice gets a read-only status card read from S3, with no actions.
+Task [54](54-move-vps.md) moves Postgres into compose with pgBackRest, so Dokploy's backup UI (list, manual backup, restore button) goes away. This task replaces it. A `backup-agent` container sits next to Postgres and does everything backup-related: it streams WAL with `pg_receivewal` (Postgres has no `archive_command`, so pgBackRest problems never become prod problems), runs pgBackRest backups, the [53](53-restore-drill.md) drill and restores, and writes a PII-free `status.json` to a separate OVH S3 bucket. Its console is published on `127.0.0.1:9090` only and opened with `ssh -L`, so it works when Postgres, Keycloak or the API are down. It's the only place with a restore button. A restore goes into a spare volume (`pgdata-b`), gets checked, and goes live when you click Go live and Redeploy in Dokploy. The backoffice gets a read-only status card read from S3, with no actions.
 
 ## Implementation status (2026-10-07)
 
@@ -32,7 +32,10 @@ Left, all Niels (accounts and servers):
 Where the build differs from the spec above:
 
 - **Console key on top of the SSH tunnel (amends D4).** On Docker Desktop a container on another network reached the agent by IP, masqueraded to the same gateway address as the tunnel. So the console also wants a key that only `docker exec` on the host can read (`/var/lib/backup-agent/console-link`). Still no login, and the API can't get it.
-- **Two volume variables.** Compose can't derive the spare from `PG_VOLUME`, so going live swaps `PG_VOLUME` and `PG_SPARE_VOLUME` together. The agent refuses to write to a spare that is the live volume.
+- **Go live with a marker file, not env vars (amends D1, D5).** Both Postgres and the agent mount `pgdata-a` and `pgdata-b` at `/pgdata/a` and `/pgdata/b`, plus `pg-control`. Postgres's entrypoint starts on whichever `/pg-control/active` names. The console's Go live writes it, then Redeploy in Dokploy recreates every container, so nothing is scaled down and no variable changes at 2 a.m. The agent mounts live read-write, so code keeps it off live: it reads live from Postgres's `data_directory` and refuses a spare that is the live directory. See [postgres-backup-agent](../docs/adr/postgres-backup-agent.md) NEG-003.
+- **Failed checks don't block go-live.** In a real incident live itself may be broken, so a failed check asks for a tick box instead.
+- **Quarterly manual drill is alerted.** Overdue (3 months after the last one, or after the agent first started) makes the agent `Unhealthy`, which the WAL heartbeat carries to elmah.io.
+- **`scripts/backup-console.ps1`** opens the tunnel, reads the link and opens the browser in one step.
 - **`archive-check=n`, no `archive-copy`.** pgBackRest refuses to check the archive without `archive_mode`. The agent waits for each backup's stop segment to reach the repo instead.
 - **A heartbeat row.** The agent commits `backup_agent_heartbeat` before each WAL switch, so every time target has a commit after it and a restore reports the time it reached. "Just before migration X" uses the migration's commit time (`track_commit_timestamp`), mirrored to `migrations.json`.
 - **The WAL heartbeat carries the agent's overall health**, so any red issue alerts within minutes.
@@ -95,7 +98,7 @@ New project `infrastructure/backup-agent/` (Dockerfile + .NET minimal API). Back
 - [x] **Drill**: the weekly [53](53-restore-drill.md) drill (restore into tmpfs, checks, PII-free summary). The bash `drill.sh` from 53 becomes agent code.
 - [x] **Status**: every 5 min write `status.json` to the ops bucket: newest full backup, newest WAL in the repo (the real RPO), oldest restorable point vs. 14 days, slot `wal_status` and retained WAL (in the slot and unpushed in `wal-receive`), disk %, last drill result and duration, last verify, schedule of the next runs. Append each run (backup, drill, verify, restore) to `history/YYYY-MM.json`.
 - [x] **Heartbeats**: elmah.io heartbeats per 53 D3 (WAL every 30 min, backup daily, drill weekly). A stale `status.json` is itself caught by the WAL heartbeat.
-- [x] Compose ([docker-compose.prod.yml](../infrastructure/docker/docker-compose.prod.yml)): `backup-agent` service, own network (not `dokploy-network`), `ports: ["127.0.0.1:9090:9090"]`, volumes: `pg-socket` (shared), `wal-receive` (persistent, read-write, mounted at `/wal-receive`, D2a), live `pgdata-*` read-only, spare `pgdata-*` read-write, a tmpfs for the drill. Memory limit so a drill can't starve Postgres.
+- [x] Compose ([docker-compose.prod.yml](../infrastructure/docker/docker-compose.prod.yml)): `backup-agent` service, own network (not `dokploy-network`), `ports: ["127.0.0.1:9090:9090"]`, volumes: `pg-socket` (shared), `wal-receive` (persistent, read-write, mounted at `/wal-receive`, D2a), `pgdata-a`, `pgdata-b` and `pg-control` at the same paths as Postgres, a tmpfs for the drill. Memory limit so a drill can't starve Postgres.
 - [x] Postgres: `pg-socket` volume for `/var/run/postgresql`, `wal_level = replica`, `max_wal_senders`, `max_replication_slots`, `max_slot_wal_keep_size = 4GB`, a `backup_agent` role with `REPLICATION` + `pg_read_all_settings` + `pg_checkpoint` (only what pgBackRest needs).
 - [ ] Ops bucket `skoleoverblikket-ops` at OVH (same region as the repo). Two users: agent (RW) and api (read-only). Lifecycle: delete `history/` after 400 days (PII-free, but no reason to keep it forever).
 - [x] CI: build and push `ghcr.io/nielspilgaard/skoleoverblikket-backup-agent` like the other `publish-*` jobs. Pin a tag in compose.
@@ -116,7 +119,7 @@ Server-rendered pages on `:9090`. In English and as short as possible, because t
 - [x] **Pick a point**: a time (Europe/Copenhagen), "just before migration X" (from `__EFMigrationsHistory` times in the newest backup), or a full backup. Points outside the restorable range are disabled.
 - [x] **Restore to the spare volume**: wipe the spare volume (confirm by typing its name), `pgbackrest restore --type=time --target=…` into it, start a temporary Postgres on it inside the agent, run the drill checks, show a summary: per-table counts vs. live, latest migration, Keycloak realm + user count, reached recovery time.
 - [x] **Resurrected schools**: list schools that exist in the restore but were deleted later (compare the restored `Tenants` with `ledger.json` in S3, not with the restored table). Show that `SchoolRetentionJob` will re-delete them on startup, or that they must be deleted by hand (answer from 53's open question).
-- [x] **Go live** (human step, the UI only shows it): "Skaler `api` og `keycloak` til 0 i Dokploy → sæt `PG_VOLUME=pgdata-b` → redeploy." The agent then detects the new live volume, mounts are swapped on redeploy, and it takes a full backup right away (a restore starts a new timeline).
+- [x] **Go live**: type the spare's name and click Go live (writes `/pg-control/active`), then Redeploy in Dokploy. The agent then detects the new live volume and takes a full backup right away (a restore starts a new timeline). Cancel before the redeploy; Switch back after it.
 - [x] **Post-restore checklist** in the console: Stripe webhook resend since the target time, re-delete resurrected schools, smoke test with the smoke tenant, check elmah.io, GDPR breach assessment within 72h (53 runbook §6). Tick-offs go to `history/`.
 - [x] **Keep the old volume** until you click "Delete old volume" (typed confirmation), at most 14 days (DPA). The console shows its age and nags after 7.
 - [x] **Backoffice card** on `/backoffice`: API endpoint `GET /api/v1/superadmin/backup-status` reads `status.json` with the read-only key and returns it. The card shows the RPO, last full, last drill, retention flag, and how old the status is ("opdateret for 4 min siden", red after 15). Below: `ssh -L 9090:127.0.0.1:9090 <vps>` to copy. No buttons.
@@ -129,7 +132,7 @@ Restore to the spare volume (Phase C), then run the task-51 export filtered on o
 
 - [x] `docs/RESTORE.md` (from 53): the console is step 1 of every incident. Add how to reach it, the A/B volume flip, and "VPS gone: run the agent image on a new box".
 - [x] The new ADR from 54 §7 records D1, D2, D2a and D5 (topology, streaming WAL and its persistent `wal-receive` volume, A/B volumes).
-- [x] [DEPLOYMENT.md](../docs/DEPLOYMENT.md): ops bucket keys (agent RW, API read-only), `PG_VOLUME`.
+- [x] [DEPLOYMENT.md](../docs/DEPLOYMENT.md): ops bucket keys (agent RW, API read-only), the `pg-control` marker.
 
 ## Testing
 
@@ -140,7 +143,7 @@ Restore to the spare volume (Phase C), then run the task-51 export filtered on o
 - [x] Recreate the agent container (`docker compose up -d --force-recreate backup-agent`) while a segment is waiting in `wal-receive` (wrong S3 key set): the segment is still there after restart, and once the key is fixed it is pushed and then deleted. No gap in `pgbackrest info`.
 - [x] Stop Postgres: the console still loads, shows the last status and the restore wizard.
 - [x] From another container on `dokploy-network` and from outside: `curl <host>:9090` fails.
-- [ ] Full restore on staging through the wizard: restore to `pgdata-b`, flip `PG_VOLUME`, app comes up on the target time, flip back works.
+- [ ] Full restore on staging through the wizard: restore to `pgdata-b`, Go live and Redeploy, app comes up on the target time, Switch back works. (Done on the dev stack 2026-10-08; still to do on a real server.)
 - [ ] Ops bucket key from the API container can't write or delete (`rclone touch` fails).
 
 ## Done when

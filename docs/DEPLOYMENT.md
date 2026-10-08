@@ -69,7 +69,7 @@ From the task [54](../tasks/54-move-vps.md) cutover, Postgres and the backup age
 | `POSTGRES_IMAGE`, `BACKUP_AGENT_IMAGE` | Pinned `sha-…` tags of `skoleoverblikket-postgres` and `skoleoverblikket-backup-agent`. The defaults don't exist, so forgetting them fails loudly instead of pulling `latest`. Not changed by `deploy.mjs`, so a normal deploy never restarts the database. |
 | `POSTGRES_PASSWORD` | Superuser password. Only used by the init script and by hand. |
 | `APP_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD` | Passwords of the `skoleoverblikket` and `keycloak` roles, created on first start. `DATABASE_URL` and `KEYCLOAK_DB_PASSWORD` for Keycloak use the same values, host `postgres`. |
-| `PG_VOLUME`, `PG_SPARE_VOLUME` | Live data volume (default `pgdata-a`) and restore target (default `pgdata-b`). Going live with a restore = swap both and redeploy. |
+| (none for the data volume) | Postgres starts on `pgdata-a` or `pgdata-b`, whichever the `pg-control` volume's `active` file names. The console's Go live writes it; then Redeploy. See [RESTORE.md](RESTORE.md) §4. |
 | `PG_SHARED_BUFFERS`, `PG_EFFECTIVE_CACHE_SIZE`, `POSTGRES_MEMORY` | Sized for the VPS (about 25% of Postgres' memory for shared buffers). |
 | `BACKUP_AGENT_MEMORY`, `DRILL_TMPFS_SIZE` | The drill restores into tmpfs, which counts against the agent's memory limit. Size from the first drill. |
 | `PGBACKREST_REPO1_S3_ENDPOINT`, `PGBACKREST_REPO1_S3_REGION`, `PGBACKREST_REPO1_S3_BUCKET` | The pgBackRest repo: its own OVH bucket, not the files bucket and not the ops bucket. |
