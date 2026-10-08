@@ -93,7 +93,7 @@ The console, the ops bucket and the backoffice card are task 60 D3, D4, D6 and s
 
 ## Implementation Notes
 
-- **IMP-001**: `infrastructure/postgres/` (image, `postgresql.conf`, `pg_hba.conf`, roles) and `infrastructure/backup-agent/` (.NET agent, `pgbackrest.conf`, Dockerfile, `docker-compose.dev.yml` for the local proof).
+- **IMP-001**: `infrastructure/postgres/` (image, `postgresql.conf`, `pg_hba.conf`, roles) and `infrastructure/backup-agent/` (.NET agent, `pgbackrest.conf`, Dockerfile, `docker-compose.dev.yml` for the local proof). How it fits together and how to move it to another project: [the agent's README](../../infrastructure/backup-agent/README.md).
 - **IMP-002**: In `docker-compose.prod.yml` both services sit behind the `selfhosted-db` profile until the task 54 cutover sets `COMPOSE_PROFILES=selfhosted-db`.
 - **IMP-003**: The agent reads no school data. `backup_agent` can stream WAL, run backups, write its own heartbeat row and `SELECT` two app tables (`SchoolDeletionRecords`, `__EFMigrationsHistory`), granted by a migration. A database restored with `pg_restore` (the 54 cutover) needs that `GRANT` run by hand; the console shows it.
 - **IMP-004**: Retention is time-based (`repo1-retention-full=13`) with daily fulls, per the task 54 retention note. The agent flags any backup older than 14 days.
