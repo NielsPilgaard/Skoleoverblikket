@@ -699,7 +699,7 @@ foreach ($fd in $fileDefs) {
         continue
     }
 
-    # 2. PUT to S3/LocalStack
+    # 2. PUT to S3/Silo
     try {
         Invoke-RestMethod `
             -Uri $presign.uploadUrl `

@@ -1,0 +1,46 @@
+name: Migration gate
+
+# A merge to main applies migrations to the production database within minutes, and
+# code is easy to roll back while a migration is not. A PR that touches migrations
+# fails this check until the owner sets the `migration-reviewed` label, so a PR opened
+# from a phone (Claude cloud session) can't ship a migration on a tap of the merge button.
+# Required status check on main: "Migration review".
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: migration-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Migration review
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Check migrations against label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REVIEWED: ${{ contains(github.event.pull_request.labels.*.name, 'migration-reviewed') }}
+        run: |
+          # Separate steps: a failed API call must fail the gate, while grep finding nothing is fine.
+          all_files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')
+          files=$(printf '%s\n' "$all_files" | grep '^api/Skoleoverblikket.Api/Data/Migrations/' || true)
+          if [ -z "$files" ]; then
+            echo "No migration changes."
+            exit 0
+          fi
+          echo "Migration changes:"
+          echo "$files"
+          if [ "$REVIEWED" = "true" ]; then
+            echo "Labelled migration-reviewed, OK."
+            exit 0
+          fi
+          echo "::error::This PR changes migrations. Review them on a desktop, then add the 'migration-reviewed' label."
+          exit 1

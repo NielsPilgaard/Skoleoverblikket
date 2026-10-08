@@ -76,7 +76,7 @@ Run the setup script (Windows) to install prerequisites automatically:
 
 ### Start the dev stack
 
-The local dev environment runs via [.NET Aspire](https://learn.microsoft.com/aspire), which orchestrates all containers (PostgreSQL, Keycloak, LocalStack, API, web).
+The local dev environment runs via [.NET Aspire](https://learn.microsoft.com/aspire), which orchestrates all containers (PostgreSQL, Keycloak, Silo, API, web).
 
 ```powershell
 aspire run
@@ -90,7 +90,8 @@ This starts:
 | Swagger UI | http://localhost:5000/api/v1/openapi |
 | Keycloak | http://localhost:8080 |
 | PgAdmin | http://localhost:5050 |
-| LocalStack | http://localhost:4566 |
+| Silo (S3) | http://localhost:9000 |
+| Silo console | http://localhost:9001 |
 
 The Keycloak realm (`Skoleoverblikket`) is imported automatically from `infrastructure/keycloak/realms/Skoleoverblikket-realm.json` on first startup.
 
@@ -146,12 +147,11 @@ Migrations live in `api/Skoleoverblikket.Api/Data/Migrations/`. Never edit an ex
 When the API has changed, regenerate the typed TypeScript client:
 
 ```powershell
-# 1. Build the API (emits openapi spec to web/openapi/v1.json)
-dotnet build api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj
-
-# 2. Run codegen
+# Builds the API (emits openapi/Skoleoverblikket.Api.json), then generates web/src/api/generated
 cd web && npm run codegen
 ```
+
+The API build goes to `bin/codegen/`, so it works while the Aspire stack is running.
 
 ## Documentation
 

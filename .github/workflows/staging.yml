@@ -9,98 +9,15 @@ on:
 
 jobs:
   e2e:
-    name: E2E tests against staging stack
-    runs-on: ubuntu-latest
+    name: E2E
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: web/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: web
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ hashFiles('web/package-lock.json') }}
-          restore-keys: playwright-chromium-
-
-      - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-        working-directory: web
-
-      - name: Install Playwright system deps
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
-        working-directory: web
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull API and Keycloak images
-        timeout-minutes: 15
-        env:
-          API_IMAGE: ghcr.io/nielspilgaard/skoleoverblikket-api:sha-${{ github.event.workflow_run.head_sha }}
-          KEYCLOAK_IMAGE: ghcr.io/nielspilgaard/skoleoverblikket-keycloak:sha-${{ github.event.workflow_run.head_sha }}
-          # WEB_IMAGE unused here — we build it locally with the staging Keycloak URL
-          WEB_IMAGE: ghcr.io/nielspilgaard/skoleoverblikket-web:sha-${{ github.event.workflow_run.head_sha }}
-        run: docker compose -f infrastructure/docker/docker-compose.staging.yml pull api keycloak keycloak-db postgres mailpit localstack
-
-      - name: Build web image with staging Keycloak URL
-        # The published web image has the production Keycloak URL baked in (https://auth.skoleoverblikket.dk).
-        # For e2e tests we need http://localhost:8080, so we rebuild locally.
-        timeout-minutes: 10
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: web/Dockerfile
-          push: false
-          load: true
-          tags: skoleoverblikket-web-e2e:latest
-          build-args: |
-            VITE_KEYCLOAK_URL=http://localhost:8080
-
-      - name: Start staging stack
-        timeout-minutes: 5
-        env:
-          API_IMAGE: ghcr.io/nielspilgaard/skoleoverblikket-api:sha-${{ github.event.workflow_run.head_sha }}
-          WEB_IMAGE: skoleoverblikket-web-e2e:latest
-          KEYCLOAK_IMAGE: ghcr.io/nielspilgaard/skoleoverblikket-keycloak:sha-${{ github.event.workflow_run.head_sha }}
-        run: docker compose -f infrastructure/docker/docker-compose.staging.yml up -d --wait
-
-      - name: Run Playwright e2e tests
-        env:
-          SKIP_ASPIRE: "1"
-          PLAYWRIGHT_BASE_URL: http://localhost:5173
-          KEYCLOAK_ADMIN_PASSWORD: staging-admin-password
-        run: npx playwright test --reporter=line
-        working-directory: web
-
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: web/playwright-report/
-          retention-days: 7
-
-      - name: Tear down staging stack
-        if: always()
-        run: docker compose -f infrastructure/docker/docker-compose.staging.yml down -v
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/e2e.yml
+    with:
+      image_tag: sha-${{ github.event.workflow_run.head_sha }}
+      ref: ${{ github.event.workflow_run.head_sha }}
 
   # Deploy from here rather than a workflow_run-triggered CD: this run's own head_sha can be a
   # later [skip ci] commit with no images. workflow_run.head_sha is the commit CI built.

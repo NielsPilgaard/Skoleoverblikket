@@ -119,6 +119,32 @@ else {
     Write-Ok "ryni installed"
 }
 
+# ── Web dependencies + Playwright browser ───────────────────────────────────
+# npm install also enables the .githooks pre-commit formatter. The Playwright browser
+# version is pinned by @playwright/test, so it must be re-downloaded after every bump;
+# `playwright install` is a no-op when the right build is already there.
+
+Write-Step "Installing web dependencies and Playwright chromium..."
+
+$webDir = Join-Path $PSScriptRoot '..\web'
+Push-Location $webDir
+try {
+    npm install --no-audit --no-fund
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail "npm install failed in web/"
+        exit 1
+    }
+    npx playwright install chromium
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail "Failed to install Playwright chromium. Run manually: cd web; npx playwright install chromium"
+        exit 1
+    }
+    Write-Ok "Web dependencies and Playwright chromium installed"
+}
+finally {
+    Pop-Location
+}
+
 # ── Docker ───────────────────────────────────────────────────────────────────
 
 Write-Step "Checking Docker..."

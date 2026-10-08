@@ -54,6 +54,8 @@ These have non-empty values in `appsettings.json` that are correct for productio
 | `Keycloak__MetadataAddress` | _(empty — auto-discovered)_ | Override only if your Keycloak OIDC discovery endpoint is at a non-standard path.           |
 | `ElmahIo__ApiKey`           | _(empty — disabled)_        | elmah.io API key. Error logging to elmah.io activates only when both this and `ElmahIo__LogId` are set. In `docker-compose.prod.yml`, set the host-side variable `ElmahIo_ApiKey` (single underscore) — Compose maps it to the container config key `ElmahIo__ApiKey`. |
 | `ElmahIo__LogId`            | _(empty — disabled)_        | elmah.io log ID (GUID). Only errors (uncaught request exceptions and `LogLevel.Error`+) are sent. In `docker-compose.prod.yml`, set the host-side variable `ElmahIo_LogId` (single underscore) — Compose maps it to the container config key `ElmahIo__LogId`. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | _(empty — disabled)_      | Grafana Cloud OTLP gateway URL. Logs, metrics and traces are exported only when set. Dashboards and alert rules: [infrastructure/grafana/](../infrastructure/grafana/README.md). |
+| `OTEL_EXPORTER_OTLP_HEADERS`  | _(empty)_                 | `Authorization=Basic <base64 instanceId:token>` for the Grafana Cloud OTLP gateway.         |
 
 ---
 

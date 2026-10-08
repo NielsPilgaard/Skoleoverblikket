@@ -14,7 +14,7 @@
     "prepare": "git config core.hooksPath .githooks || exit 0",
     "preview": "vite preview",
     "api:generate": "openapi-ts -f openapi-ts.config.ts",
-    "codegen": "npm run api:generate",
+    "codegen": "dotnet build ../api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj -nologo -v q -clp:ErrorsOnly -p:OutDir=bin/codegen/ && openapi-ts -f openapi-ts.config.ts --silent --no-log-file",
     "test:e2e": "playwright test",
     "test:e2e:skip-aspire": "SKIP_ASPIRE=1 playwright test"
   },
