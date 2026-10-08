@@ -22,6 +22,8 @@ public static class RestorePages
 	{
 		app.MapGet("/restore", Wizard);
 		app.MapPost("/restore", StartRestore);
+		app.MapPost("/restore/go-live", ArmGoLive);
+		app.MapPost("/restore/go-live/cancel", CancelGoLive);
 		app.MapPost("/restore/delete-old", DeleteOldVolume);
 		app.MapPost("/restore/checklist", TickChecklist);
 	}
@@ -33,6 +35,7 @@ public static class RestorePages
 		RepoInfoCache repo,
 		StateStore state,
 		JobRunner jobs,
+		DataVolumes volumes,
 		IOptions<AgentOptions> options,
 		CancellationToken cancellationToken)
 	{
@@ -43,13 +46,24 @@ public static class RestorePages
 		var (spare, oldVolume, goLive, checklist) = state.Read(s => (s.Spare, s.OldVolume, s.LastGoLive, new Dictionary<string, DateTimeOffset>(s.Checklist)));
 		var spareProblem = await restore.SpareProblemAsync(cancellationToken);
 		var migrations = await restore.MigrationsAsync(cancellationToken);
+		var pending = volumes.GoLivePending;
+		var busy = jobs.Current is not null;
 		var body = new StringBuilder("<h1>Restore</h1>");
 
-		body.Append($"""<p class="muted">Restores go to <b>{E(opts.SpareVolumeName)}</b>. Live is never touched.</p>""");
-
-		if (spareProblem is not null)
+		if (pending)
 		{
-			body.Append($"""<div class="alert bad">{E(spareProblem)}</div>""");
+			body.Append($"""
+				<div class="alert warn"><p><b>{E(volumes.SpareName)} goes live on the next redeploy.</b> Redeploy the compose app in Dokploy now.</p>
+				{Form(context, "/restore/go-live/cancel", "<button type=\"submit\">Cancel</button>")}</div>
+				""");
+		}
+		else
+		{
+			body.Append($"""<p class="muted">Restores go to <b>{E(volumes.SpareName)}</b>. Live ({E(volumes.LiveName)}) is never touched.</p>""");
+			if (spareProblem is not null)
+			{
+				body.Append($"""<div class="alert bad">{E(spareProblem)}</div>""");
+			}
 		}
 
 		if (goLive is not null && now - goLive.At < TimeSpan.FromDays(30))
@@ -65,23 +79,40 @@ public static class RestorePages
 				<h2>Old volume</h2>
 				<div class="alert {tone}"><b>{E(oldVolume.Name)}</b> holds the old live database ({days:0.#} days). Delete it within {opts.RetentionDays} days (DPA).</div>
 				""");
-			body.Append(Form(context, "/restore/delete-old", $"""
-				<label>Type <code>{E(opts.SpareVolumeName)}</code> to delete it permanently
-				<input name="confirmation" autocomplete="off" required></label>
-				<div><button class="danger" type="submit"{(spareProblem is null && jobs.Current is null ? "" : " disabled")}>Delete old volume</button></div>
-				""", "stack"));
+			if (!pending)
+			{
+				var deleteForm = Form(context, "/restore/delete-old", $"""
+					<label>Type <code>{E(volumes.SpareName)}</code> to delete it permanently
+					<input name="confirmation" autocomplete="off" required></label>
+					<div><button class="danger" type="submit"{(spareProblem is null && !busy ? "" : " disabled")}>Delete old volume</button></div>
+					""", "stack");
+				var switchBack = GoLiveForm(context, volumes, "Switch back", spareProblem is null && !busy);
+				body.Append($"""<div class="grid">{Card("Switch back", switchBack)}{Card("Delete", deleteForm)}</div>""");
+			}
 		}
 
 		if (spare is not null)
 		{
-			body.Append(SpareSummary(spare, opts));
+			body.Append(SpareSummary(context, spare, volumes, pending, spareProblem is null && !busy));
 		}
 
-		body.Append(RestoreForm(context, opts, snapshot, migrations, spare, oldVolume, spareProblem, restore.SpareHasPidFile, jobs.Current is not null));
+		if (!pending)
+		{
+			body.Append(RestoreForm(context, volumes, snapshot, migrations, spare, oldVolume, spareProblem, restore.SpareHasPidFile, busy));
+		}
+
 		return Page(context, "Restore", body.ToString(), status);
 	}
 
-	private static string SpareSummary(SpareRestore spare, AgentOptions opts)
+	private static string GoLiveForm(HttpContext context, DataVolumes volumes, string button, bool enabled, bool checksFailed = false) => Form(context, "/restore/go-live", $"""
+		{(checksFailed ? "<label class=\"choice\"><input type=\"checkbox\" name=\"acceptFailedChecks\" value=\"true\"> Some checks failed. I've read them and want this restore live.</label>" : "")}
+		<label>Type <code>{E(volumes.SpareName)}</code> to make it live
+		<input name="confirmation" autocomplete="off" required></label>
+		<div><button class="danger" type="submit"{(enabled ? "" : " disabled")}>{E(button)}</button></div>
+		<p class="small muted">Then <b>Redeploy</b> in Dokploy. Postgres starts on {E(volumes.SpareName)}; API and Keycloak restart with it.</p>
+		""", "stack");
+
+	private static string SpareSummary(HttpContext context, SpareRestore spare, DataVolumes volumes, bool pending, bool canGoLive)
 	{
 		var tables = string.Concat(spare.Tables.Select(t =>
 			$"<tr><td>{E(t.Table)}</td><td>{Fmt.Number(t.Restored)}</td><td>{(t.Live is { } live ? Fmt.Number(live) : "—")}</td></tr>"));
@@ -94,9 +125,16 @@ public static class RestorePages
 					: "<span class=\"pill bad\">manual</span> Delete by hand before API start, or restore again with re-deletion ticked")}</td></tr>"))}
 				</tbody></table></div>
 				""";
+		var goLive = pending
+			? ""
+			: $"""
+				<h2>Go live</h2>
+				{GoLiveForm(context, volumes, "Go live", canGoLive, checksFailed: !spare.Ok)}
+				<p class="small muted">Undo: Switch back on this page, then Redeploy again. {E(volumes.LiveName)} is untouched.</p>
+				""";
 
 		return $"""
-			<h2>On {E(opts.SpareVolumeName)}</h2>
+			<h2>On {E(volumes.SpareName)}</h2>
 			<div class="hero {(spare.Ok ? "good" : "bad")}">
 			  <p class="mid">Restored to {E(spare.TargetDescription)}</p>
 			  <p class="muted">Ready {E(Fmt.DateTime(spare.RestoredAt))} · took {E(Fmt.Duration(spare.DurationSeconds))} · reached {E(Fmt.DateTimeSeconds(spare.ReachedAt))}</p>
@@ -107,20 +145,13 @@ public static class RestorePages
 			</details>
 			<h2>Resurrected schools</h2>
 			{resurrected}
-			<h2>Go live</h2>
-			<div class="alert warn"><ol class="steps">
-			  <li>Dokploy: scale <code>api</code> and <code>keycloak</code> to 0.</li>
-			  <li>Set <code>PG_VOLUME={E(opts.SpareVolumeName)}</code> and <code>PG_SPARE_VOLUME={E(opts.LiveVolumeName)}</code>.</li>
-			  <li>Redeploy.</li>
-			  <li>Work through the checklist that appears here.</li>
-			</ol>
-			<p class="small">Undo: swap the two back and redeploy. {E(opts.LiveVolumeName)} is untouched.</p></div>
+			{goLive}
 			""";
 	}
 
 	private static string RestoreForm(
 		HttpContext context,
-		AgentOptions opts,
+		DataVolumes volumes,
 		RepoSnapshot snapshot,
 		List<MigrationRow> migrations,
 		SpareRestore? spare,
@@ -152,7 +183,7 @@ public static class RestorePages
 		var warnings = new StringBuilder();
 		if (oldVolume is not null)
 		{
-			warnings.Append($"<div class=\"alert warn\">Wipes the old live database on {E(opts.SpareVolumeName)}.</div>");
+			warnings.Append($"<div class=\"alert warn\">Wipes the old live database on {E(volumes.SpareName)}.</div>");
 		}
 		else if (spare is not null)
 		{
@@ -161,7 +192,7 @@ public static class RestorePages
 
 		if (pidFile)
 		{
-			warnings.Append($"<div class=\"alert warn\"><code>postmaster.pid</code> on {E(opts.SpareVolumeName)}: a Postgres didn't shut down cleanly. Check no container uses the volume.</div>");
+			warnings.Append($"<div class=\"alert warn\"><code>postmaster.pid</code> on {E(volumes.SpareName)}: a Postgres didn't shut down cleanly. Check no container uses the volume.</div>");
 		}
 
 		var form = Form(context, "/restore", $"""
@@ -179,9 +210,9 @@ public static class RestorePages
 			<div id="mode-Backup"><label>Backup <select name="backupLabel">{backupOptions}</select></label></div>
 			<label class="choice"><input type="checkbox" name="prepareResurrected" value="true" checked>
 			Re-delete schools deleted after this point</label>
-			<label>Type <code>{E(opts.SpareVolumeName)}</code> to wipe it and restore
+			<label>Type <code>{E(volumes.SpareName)}</code> to wipe it and restore
 			<input name="confirmation" autocomplete="off" required></label>
-			<div><button class="danger" type="submit"{(spareProblem is null && !busy ? "" : " disabled")}>Restore to {E(opts.SpareVolumeName)}</button></div>
+			<div><button class="danger" type="submit"{(spareProblem is null && !busy ? "" : " disabled")}>Restore to {E(volumes.SpareName)}</button></div>
 			""", "stack");
 
 		return $"""
@@ -228,6 +259,18 @@ public static class RestorePages
 
 		await BackupPages.Audit(ops, $"Console: {job.Title}", cancellationToken);
 		return Results.Redirect($"/job/{job.Id}");
+	}
+
+	private static async Task<IResult> ArmGoLive([FromForm] string? confirmation, [FromForm] bool? acceptFailedChecks, RestoreService restore, CancellationToken cancellationToken)
+	{
+		var error = await restore.ArmGoLiveAsync(confirmation, acceptFailedChecks == true, cancellationToken);
+		return Results.Redirect(error is null ? "/restore" : Redirect("/restore", error: error));
+	}
+
+	private static async Task<IResult> CancelGoLive(RestoreService restore, CancellationToken cancellationToken)
+	{
+		await restore.CancelGoLiveAsync(cancellationToken);
+		return Results.Redirect("/restore");
 	}
 
 	private static async Task<IResult> DeleteOldVolume([FromForm] string? confirmation, RestoreService restore, OpsBucket ops, CancellationToken cancellationToken)

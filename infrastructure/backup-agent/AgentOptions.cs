@@ -2,7 +2,7 @@ namespace Skoleoverblikket.BackupAgent;
 
 /// <summary>
 /// Everything the agent needs to find Postgres, its volumes and its schedule. Bound from the
-/// "Agent" section, so compose sets e.g. <c>Agent__LiveVolumeName</c>. pgBackRest's own settings
+/// "Agent" section, so compose sets e.g. <c>Agent__SshTunnelCommand</c>. pgBackRest's own settings
 /// (repo, S3 keys, cipher pass) come from PGBACKREST_* env vars, which child processes inherit.
 /// </summary>
 public sealed class AgentOptions
@@ -15,19 +15,17 @@ public sealed class AgentOptions
 	public string SocketDirectory { get; init; } = "/var/run/postgresql";
 
 	/// <summary>
-	/// The live data volume, mounted read-only at the same path Postgres uses, because pgBackRest
-	/// refuses a pg1-path that differs from the server's data_directory.
+	/// Both data volumes are mounted here as <c>a</c> and <c>b</c>, at the same paths as in Postgres,
+	/// because pgBackRest refuses a pg1-path that differs from the server's data_directory.
+	/// <see cref="DataVolumes"/> decides which one is live.
 	/// </summary>
-	public string LiveDataDirectory { get; init; } = "/var/lib/postgresql/data";
+	public string DataRoot { get; init; } = "/pgdata";
 
-	/// <summary>The spare data volume, read-write. Restores go here, never over the live one.</summary>
-	public string SpareDataDirectory { get; init; } = "/pgdata/spare";
+	/// <summary>Volume shared with Postgres. Its file <c>active</c> (a or b) picks the data volume at Postgres' next start.</summary>
+	public string ControlDirectory { get; init; } = "/pg-control";
 
-	/// <summary>Compose volume name of the live data volume (<c>PG_VOLUME</c>). Shown in the console and typed to confirm.</summary>
-	public string LiveVolumeName { get; init; } = "pgdata-a";
-
-	/// <summary>Compose volume name of the spare data volume (<c>PG_SPARE_VOLUME</c>).</summary>
-	public string SpareVolumeName { get; init; } = "pgdata-b";
+	/// <summary>Compose volume names are this plus the slot letter. Shown in the console and typed to confirm.</summary>
+	public string VolumeNamePrefix { get; init; } = "pgdata-";
 
 	/// <summary>Persistent agent volume: state.json, the console key and local copies of the ops bucket files.</summary>
 	public string StateDirectory { get; init; } = "/var/lib/backup-agent";

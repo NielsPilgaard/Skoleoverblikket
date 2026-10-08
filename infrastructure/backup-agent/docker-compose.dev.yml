@@ -5,9 +5,9 @@
 #   docker compose -f infrastructure/backup-agent/docker-compose.dev.yml exec postgres bash /dev-seed/seed.sh
 #   open http://localhost:9090
 #
-# Go live with a restore the same way as on prod, by flipping the two volume variables:
+# Go live with a restore the same way as on prod: "Go live" in the console, then the redeploy:
 #
-#   PG_VOLUME=pgdata-b PG_SPARE_VOLUME=pgdata-a docker compose -f infrastructure/backup-agent/docker-compose.dev.yml up -d
+#   docker compose -f infrastructure/backup-agent/docker-compose.dev.yml up -d --force-recreate
 #
 # The slot cap is 256 MB here (4 GB on prod) and WAL switches every minute, so the lost-slot
 # and RPO cases can be tried in minutes.
@@ -23,7 +23,9 @@ services:
       KEYCLOAK_DB_PASSWORD: dev-keycloak
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "max_slot_wal_keep_size=${DEV_SLOT_CAP:-256MB}", "-c", "shared_buffers=128MB"]
     volumes:
-      - ${PG_VOLUME:-pgdata-a}:/var/lib/postgresql/data
+      - pgdata-a:/pgdata/a
+      - pgdata-b:/pgdata/b
+      - pg-control:/pg-control
       - pg-socket:/var/run/postgresql
       - ./dev:/dev-seed:ro
       - ../../api/Skoleoverblikket.Api/Data/Migrations/migration_script.sql:/dev-migrations/migration_script.sql:ro
@@ -46,16 +48,15 @@ services:
       - "127.0.0.1:9090:9090"
     volumes:
       - pg-socket:/var/run/postgresql
-      - ${PG_VOLUME:-pgdata-a}:/var/lib/postgresql/data:ro
-      - ${PG_SPARE_VOLUME:-pgdata-b}:/pgdata/spare
+      - pgdata-a:/pgdata/a
+      - pgdata-b:/pgdata/b
+      - pg-control:/pg-control
       - wal-receive:/wal-receive
       - agent-state:/var/lib/backup-agent
     tmpfs:
       - /drill:size=1g,uid=999,gid=999,mode=0700
     mem_limit: 1g
     environment:
-      Agent__LiveVolumeName: ${PG_VOLUME:-pgdata-a}
-      Agent__SpareVolumeName: ${PG_SPARE_VOLUME:-pgdata-b}
       Agent__SshTunnelCommand: "ssh -L 9090:127.0.0.1:9090 ubuntu@<vps>"
       Agent__WalSwitchInterval: "00:01:00"
       Agent__StatusInterval: "00:01:00"
@@ -98,6 +99,7 @@ networks:
 volumes:
   pgdata-a:
   pgdata-b:
+  pg-control:
   pg-socket:
   wal-receive:
   agent-state:

@@ -20,6 +20,7 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton<StateStore>();
 builder.Services.AddSingleton<WalState>();
+builder.Services.AddSingleton<DataVolumes>();
 builder.Services.AddSingleton<LivePostgres>();
 builder.Services.AddSingleton<PgBackRest>();
 builder.Services.AddSingleton<RepoInfoCache>();

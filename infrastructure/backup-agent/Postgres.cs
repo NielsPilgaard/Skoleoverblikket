@@ -4,7 +4,7 @@ using NpgsqlTypes;
 
 namespace Skoleoverblikket.BackupAgent;
 
-public sealed record ServerInfo(int VersionNum, long SystemIdentifier, int Timeline, NpgsqlLogSequenceNumber CurrentLsn, long SlotKeepBytes);
+public sealed record ServerInfo(int VersionNum, long SystemIdentifier, int Timeline, NpgsqlLogSequenceNumber CurrentLsn, long SlotKeepBytes, string DataDirectory);
 
 public sealed record SlotInfo(string WalStatus, NpgsqlLogSequenceNumber? RestartLsn, bool Active, long? RetainedBytes);
 
@@ -46,11 +46,12 @@ public sealed class LivePostgres(IOptions<AgentOptions> options)
 			       (SELECT system_identifier FROM pg_control_system()),
 			       (SELECT timeline_id FROM pg_control_checkpoint()),
 			       pg_current_wal_lsn(),
-			       pg_size_bytes(current_setting('max_slot_wal_keep_size'))
+			       pg_size_bytes(current_setting('max_slot_wal_keep_size')),
+			       current_setting('data_directory')
 			""", connection);
 		await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 		await reader.ReadAsync(cancellationToken);
-		return new ServerInfo(reader.GetInt32(0), reader.GetInt64(1), reader.GetInt32(2), reader.GetFieldValue<NpgsqlLogSequenceNumber>(3), reader.GetInt64(4));
+		return new ServerInfo(reader.GetInt32(0), reader.GetInt64(1), reader.GetInt32(2), reader.GetFieldValue<NpgsqlLogSequenceNumber>(3), reader.GetInt64(4), reader.GetString(5));
 	}
 
 	public async Task<SlotInfo?> SlotAsync(CancellationToken cancellationToken)

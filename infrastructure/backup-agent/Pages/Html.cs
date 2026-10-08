@@ -36,7 +36,7 @@ public static class Html
 		}
 
 		var health = status is null ? "" : $"""<span class="pill {HealthClass(status.Health)}">{E(HealthLabel(status.Health))}</span>""";
-		var volumes = status is null ? "" : $"""<span class="muted">Live: <b>{E(status.Volumes.Live)}</b> · Spare: <b>{E(status.Volumes.Spare)}</b></span>""";
+		var volumes = status is null ? "" : $"""<span class="muted">Live: <b>{E(status.Volumes.Live)}</b> · Spare: <b>{E(status.Volumes.Spare)}</b></span>{(status.Volumes.GoLivePending ? $"""<a class="pill warn" href="/restore">{E(status.Volumes.Spare)} live on redeploy</a>""" : "")}""";
 		var error = context.Request.Query["error"].ToString();
 		var notice = context.Request.Query["ok"].ToString();
 		var alerts = (error.Length > 0 ? $"<div class=\"alert bad\">{E(error)}</div>" : "")

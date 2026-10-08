@@ -6,6 +6,11 @@ FROM postgres:${PG_MAJOR}
 
 COPY postgresql.conf pg_hba.conf pg_ident.conf /etc/postgresql/
 COPY initdb/ /docker-entrypoint-initdb.d/
-RUN chmod 0755 /docker-entrypoint-initdb.d/*.sh
+COPY select-volume.sh /usr/local/bin/
+RUN chmod 0755 /docker-entrypoint-initdb.d/*.sh /usr/local/bin/select-volume.sh \
+ && mkdir -p /pgdata/a /pgdata/b /pg-control \
+ && chown postgres:postgres /pgdata/a /pgdata/b /pg-control
 
+# Starts on /pgdata/a or /pgdata/b, whichever /pg-control/active names (task 60 D5).
+ENTRYPOINT ["select-volume.sh"]
 CMD ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]

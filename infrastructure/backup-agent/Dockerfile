@@ -19,9 +19,9 @@ FROM postgres:${PG_MAJOR} AS runtime
 RUN apt-get update \
  && apt-get install -y --no-install-recommends pgbackrest rclone ca-certificates curl \
  && rm -rf /var/lib/apt/lists/* \
- && mkdir -p /pgdata/spare /var/lib/backup-agent /wal-receive /drill \
- && chown -R postgres:postgres /pgdata /var/lib/backup-agent /wal-receive /drill \
- && chmod 0700 /pgdata/spare /drill
+ && mkdir -p /pgdata/a /pgdata/b /pg-control /var/lib/backup-agent /wal-receive /drill \
+ && chown -R postgres:postgres /pgdata /pg-control /var/lib/backup-agent /wal-receive /drill \
+ && chmod 0700 /pgdata/a /pgdata/b /drill
 
 COPY infrastructure/backup-agent/pgbackrest.conf /etc/pgbackrest/pgbackrest.conf
 COPY --from=build /app /app

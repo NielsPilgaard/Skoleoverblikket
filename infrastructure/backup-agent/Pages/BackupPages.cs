@@ -166,7 +166,7 @@ public static class BackupPages
 	{
 		var status = await statusBuilder.BuildAsync(cancellationToken);
 		var now = DateTimeOffset.UtcNow;
-		var (lastDrill, manual) = state.Read(s => (s.LastDrill, s.LastManualDrill));
+		var (lastDrill, manual, nextManual) = state.Read(s => (s.LastDrill, s.LastManualDrill, s.NextManualDrillDue));
 		var history = ops.ReadHistory(months: 6);
 		var drills = history.Where(h => h.Kind == "drill" && h.Details is not null)
 			.Select(h => (Entry: h, Result: h.Details!.Value.Deserialize<DrillResult>(AgentJson.Options)))
@@ -181,7 +181,6 @@ public static class BackupPages
 			<td>{d.Result.Checks.Count(c => c.Ok == true)}/{d.Result.Checks.Count}{string.Concat(d.Result.Checks.Where(c => c.Ok == false).Select(c => $"<br><span class=\"small\">{E(c.Name)}: {E(c.Detail)}</span>"))}</td></tr>
 			"""));
 		var trend = Sparkline([.. drills.Select(d => d.Result!.TotalSeconds / 60).Reverse()], "Restore time per drill, minutes");
-		var nextManual = manual is null ? (DateOnly?)null : manual.Date.AddMonths(3);
 		var overdue = nextManual is { } due && due < Fmt.LocalDate(now);
 		var manualRows = string.Concat(manualDrills.Take(12).Select(m => $"<tr><td>{E(Fmt.Date(m.At))}</td><td>{E(m.Summary)}</td></tr>"));
 
@@ -201,7 +200,7 @@ public static class BackupPages
 			<div class="grid">
 			{Card("Weekly drill", drillForm + (lastDrill is null ? "<p class=\"muted\">No drill yet.</p>" : $"<p>Last: {Ok(lastDrill.Ok)} {E(Fmt.DateTime(lastDrill.At))} · RTO {E(Fmt.Duration(lastDrill.TotalSeconds))}</p>"))}
 			{Card("Restore time (RTO)", trend.Length == 0 ? "<p class=\"muted\">Needs two drills.</p>" : trend + "<p class=\"muted small\">Minutes, oldest left.</p>")}
-			{Card("Quarterly manual drill", $"<p>Last: {(manual is null ? "never" : $"{E(Fmt.Date(manual.Date))}, RTO {manual.RtoMinutes} min")}</p><p class=\"{(overdue || manual is null ? "pill bad" : "muted")}\">Next due: {(nextManual is { } n ? E(Fmt.Date(n)) : "now")}</p>")}
+			{Card("Quarterly manual drill", $"<p>Last: {(manual is null ? "never" : $"{E(Fmt.Date(manual.Date))}, RTO {manual.RtoMinutes} min")}</p><p class=\"{(overdue ? "pill bad" : "muted")}\">Next due: {(nextManual is { } n ? E(Fmt.Date(n)) : "—")}</p>")}
 			</div>
 			{(lastDrill is null ? "" : $"<h2>Last drill: checks</h2>{Checks(lastDrill.Checks)}")}
 			<h2>Drill history</h2>

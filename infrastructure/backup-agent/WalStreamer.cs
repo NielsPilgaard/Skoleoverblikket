@@ -56,6 +56,7 @@ public sealed class WalStreamer(
 	StateStore state,
 	WalState wal,
 	OpsBucket ops,
+	DataVolumes volumes,
 	ILogger<WalStreamer> logger) : BackgroundService
 {
 	private static readonly TimeSpan Tick = TimeSpan.FromSeconds(5);
@@ -160,16 +161,37 @@ public sealed class WalStreamer(
 	private async Task<bool> CheckIdentityAsync(ServerInfo server, CancellationToken cancellationToken)
 	{
 		var (volume, systemId, timeline, spare) = state.Read(s => (s.LiveVolumeName, s.SystemIdentifier, s.Timeline, s.Spare));
+		var liveSlot = volumes.SlotOf(server.DataDirectory);
+		if (liveSlot is null)
+		{
+			// Postgres runs on neither /pgdata volume. Keep streaming WAL; the status says what's wrong
+			// and restores stay off, because the agent can't tell which volume is safe to wipe.
+			return true;
+		}
+
+		var live = volumes.Name(liveSlot);
 		if (systemId is null)
 		{
 			state.Update(s =>
 			{
-				s.LiveVolumeName = _options.LiveVolumeName;
+				s.FirstStartedAt ??= DateTimeOffset.UtcNow;
+				s.LiveVolumeName = live;
 				s.SystemIdentifier = server.SystemIdentifier;
 				s.Timeline = server.Timeline;
 				s.FullBackupRequested ??= "First agent start";
 			});
-			await HistoryAsync("agent", true, $"Agent running against {_options.LiveVolumeName} (timeline {server.Timeline})", cancellationToken);
+			await HistoryAsync("agent", true, $"Agent running against {live} (timeline {server.Timeline})", cancellationToken);
+		}
+
+		// From now on Postgres only starts on the volume this file names. Without it, an empty
+		// volume would get a fresh, empty cluster at the next start.
+		if (volumes.Next is null)
+		{
+			volumes.SetNext(liveSlot);
+		}
+
+		if (systemId is null)
+		{
 			return true;
 		}
 
@@ -178,27 +200,28 @@ public sealed class WalStreamer(
 			wal.Set(s => s with
 			{
 				Problem = $"Live database has system id {server.SystemIdentifier}, the agent knows {systemId}. " +
-					"A new, empty database? Check PG_VOLUME. pgBackRest rejects its WAL; see RESTORE.md §12.",
+					"A new, empty database? Check which volume /pg-control/active names. pgBackRest rejects its WAL; see RESTORE.md §12.",
 			});
 			StopReceiver();
 			return false;
 		}
 
-		if (volume != _options.LiveVolumeName)
+		if (volume != live)
 		{
 			var now = DateTimeOffset.UtcNow;
+			var old = volumes.Name(DataVolumes.Other(liveSlot));
 			state.Update(s =>
 			{
-				s.LiveVolumeName = _options.LiveVolumeName;
+				s.LiveVolumeName = live;
 				s.Timeline = server.Timeline;
-				s.OldVolume = new OldVolume(_options.SpareVolumeName, now);
-				s.LastGoLive = new GoLive(now, _options.LiveVolumeName, spare?.TargetDescription);
+				s.OldVolume = new OldVolume(old, now);
+				s.LastGoLive = new GoLive(now, live, spare?.TargetDescription);
 				s.Spare = null;
 				s.Checklist = [];
-				s.FullBackupRequested = $"{_options.LiveVolumeName} went live";
+				s.FullBackupRequested = $"{live} went live";
 			});
-			await HistoryAsync("golive", true, $"Live volume switched from {volume} to {_options.LiveVolumeName}. {volume} kept for forensics.", cancellationToken);
-			await ResetStreamingAsync($"{_options.LiveVolumeName} went live", gap: false, cancellationToken);
+			await HistoryAsync("golive", true, $"Live volume switched from {old} to {live}. {old} kept for forensics.", cancellationToken);
+			await ResetStreamingAsync($"{live} went live", gap: false, cancellationToken);
 			return true;
 		}
 

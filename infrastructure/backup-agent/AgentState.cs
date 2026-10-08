@@ -64,6 +64,10 @@ public sealed record ManualDrill(DateOnly Date, int RtoMinutes, string Notes, Da
 /// </summary>
 public sealed class AgentState
 {
+	/// <summary>When this agent first ran here. The first quarterly manual drill is due 3 months after.</summary>
+	public DateTimeOffset? FirstStartedAt { get; set; }
+
+	/// <summary>The volume the agent last saw Postgres run on. Counts as live while Postgres is down.</summary>
 	public string? LiveVolumeName { get; set; }
 	public long? SystemIdentifier { get; set; }
 	public int? Timeline { get; set; }
@@ -90,6 +94,13 @@ public sealed class AgentState
 	public Dictionary<string, DateTimeOffset> Checklist { get; set; } = [];
 
 	public ManualDrill? LastManualDrill { get; set; }
+
+	/// <summary>The quarterly manual drill is due 3 months after the last one, the first one 3 months after the agent's first start.</summary>
+	[JsonIgnore]
+	public DateOnly? NextManualDrillDue =>
+		LastManualDrill is { } manual ? manual.Date.AddMonths(3)
+		: FirstStartedAt is { } first ? Fmt.LocalDate(first).AddMonths(3)
+		: null;
 }
 
 public static class AgentJson

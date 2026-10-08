@@ -20,8 +20,9 @@ public sealed record RestoreTarget(string[] Arguments, string Description, DateT
 
 /// <summary>
 /// Task 60 D5: restore into the spare volume, check it with a temporary Postgres inside the agent,
-/// and let a human make it live by flipping PG_VOLUME in Dokploy. The live volume is mounted
-/// read-only and never touched; the old one stays for forensics until "Delete old volume".
+/// and let a human make it live: "Go live" in the console names the spare for Postgres' next start,
+/// and a redeploy in Dokploy does the rest. The live volume is never written to; the old one stays
+/// for forensics until "Delete old volume".
 /// </summary>
 public sealed class RestoreService(
 	IOptions<AgentOptions> options,
@@ -30,7 +31,8 @@ public sealed class RestoreService(
 	DrillChecks checks,
 	StateStore state,
 	OpsBucket ops,
-	JobRunner jobs)
+	JobRunner jobs,
+	DataVolumes volumes)
 {
 	// Mirrors SchoolDeletionService (API): deletion needs 90 days since cancellation and a warning 7 days old.
 	private static readonly TimeSpan SchoolRetention = TimeSpan.FromDays(90);
@@ -41,31 +43,87 @@ public sealed class RestoreService(
 	/// <summary>Why the spare volume must not be written to, or null when it's safe.</summary>
 	public async Task<string?> SpareProblemAsync(CancellationToken cancellationToken)
 	{
-		if (string.Equals(_options.LiveVolumeName, _options.SpareVolumeName, StringComparison.Ordinal))
+		if (volumes.UnknownLiveDirectory is { } unknown)
 		{
-			return $"PG_VOLUME and PG_SPARE_VOLUME are both {_options.LiveVolumeName}. Set PG_SPARE_VOLUME to the other volume.";
+			return $"Postgres runs on {unknown}, not on a /pgdata volume. Restores are off until that's fixed.";
 		}
 
-		if (!Directory.Exists(_options.SpareDataDirectory))
+		if (volumes.GoLivePending)
 		{
-			return $"Spare volume not mounted at {_options.SpareDataDirectory}.";
+			return $"{volumes.SpareName} goes live on the next redeploy. Cancel that first.";
 		}
 
-		var liveId = await Volumes.IdentityAsync(_options.LiveDataDirectory, cancellationToken);
-		var spareId = await Volumes.IdentityAsync(_options.SpareDataDirectory, cancellationToken);
+		var spare = volumes.SpareDirectory;
+		if (!Directory.Exists(spare))
+		{
+			return $"Spare volume not mounted at {spare}.";
+		}
+
+		var liveId = await Volumes.IdentityAsync(volumes.LiveDirectory, cancellationToken);
+		var spareId = await Volumes.IdentityAsync(spare, cancellationToken);
 		if (liveId is null || spareId is null)
 		{
 			return "Can't tell whether spare and live are different volumes (stat failed).";
 		}
 
 		return liveId == spareId
-			? "Spare and live are the same volume. Did you change PG_VOLUME but not PG_SPARE_VOLUME?"
+			? $"{volumes.LiveName} and {volumes.SpareName} are the same volume. Check the volume mounts in compose."
 			: null;
 	}
 
-	public bool SpareHasPidFile => File.Exists(Path.Combine(_options.SpareDataDirectory, "postmaster.pid"));
+	public bool SpareHasPidFile => File.Exists(Path.Combine(volumes.SpareDirectory, "postmaster.pid"));
 
-	public bool SpareIsEmpty => !Directory.Exists(_options.SpareDataDirectory) || !Directory.EnumerateFileSystemEntries(_options.SpareDataDirectory).Any();
+	public bool SpareIsEmpty => !Directory.Exists(volumes.SpareDirectory) || !Directory.EnumerateFileSystemEntries(volumes.SpareDirectory).Any();
+
+	/// <summary>
+	/// Names the spare for Postgres' next start. A restore with failed checks needs an extra tick:
+	/// in a real incident live is often what's broken, so checks against it can fail for good reasons.
+	/// Nothing changes until someone redeploys.
+	/// </summary>
+	public async Task<string?> ArmGoLiveAsync(string? confirmation, bool acceptFailedChecks, CancellationToken cancellationToken)
+	{
+		var spare = volumes.SpareName;
+		if (!string.Equals(confirmation?.Trim(), spare, StringComparison.Ordinal))
+		{
+			return $"Type {spare} to confirm.";
+		}
+
+		if (jobs.Current is not null)
+		{
+			return "Another job is running.";
+		}
+
+		if (await SpareProblemAsync(cancellationToken) is { } problem)
+		{
+			return problem;
+		}
+
+		var (restore, old) = state.Read(s => (s.Spare, s.OldVolume));
+		if (restore is null && old is null)
+		{
+			return $"{spare} holds no restore.";
+		}
+
+		if (restore is { Ok: false } && !acceptFailedChecks)
+		{
+			return "Some checks failed. Tick the box to go live anyway.";
+		}
+
+		volumes.SetNext(volumes.Spare);
+		await ops.AppendHistoryAsync(new HistoryEntry(DateTimeOffset.UtcNow, "golive", null,
+			$"Console: {spare} goes live on the next redeploy{(restore is null ? " (switch back)" : $" (restored to {restore.TargetDescription})")}"), cancellationToken);
+		return null;
+	}
+
+	public async Task CancelGoLiveAsync(CancellationToken cancellationToken)
+	{
+		var pending = volumes.GoLivePending ? volumes.SpareName : null;
+		volumes.SetNext(volumes.Live);
+		if (pending is not null)
+		{
+			await ops.AppendHistoryAsync(new HistoryEntry(DateTimeOffset.UtcNow, "golive", null, $"Console: go-live of {pending} cancelled"), cancellationToken);
+		}
+	}
 
 	public async Task<List<MigrationRow>> MigrationsAsync(CancellationToken cancellationToken) =>
 		await ops.ReadAsync<List<MigrationRow>>(OpsBucket.MigrationsKey, preferRemote: false, cancellationToken) ?? [];
@@ -124,9 +182,9 @@ public sealed class RestoreService(
 	/// <summary>Validates the request and starts the restore job, or returns why not.</summary>
 	public async Task<(Job? Job, string? Error)> StartAsync(RestoreRequest request, CancellationToken cancellationToken)
 	{
-		if (!string.Equals(request.Confirmation?.Trim(), _options.SpareVolumeName, StringComparison.Ordinal))
+		if (!string.Equals(request.Confirmation?.Trim(), volumes.SpareName, StringComparison.Ordinal))
 		{
-			return (null, $"Type {_options.SpareVolumeName} to confirm.");
+			return (null, $"Type {volumes.SpareName} to confirm.");
 		}
 
 		if (await SpareProblemAsync(cancellationToken) is { } problem)
@@ -140,21 +198,28 @@ public sealed class RestoreService(
 			return (null, error);
 		}
 
-		var job = jobs.TryStart(JobKind.Restore, $"Restore to {target.Description} ({_options.SpareVolumeName})",
-			(job, ct) => RestoreAsync(job, target, request.PrepareResurrected, ct));
+		var slot = volumes.Spare;
+		var job = jobs.TryStart(JobKind.Restore, $"Restore to {target.Description} ({volumes.Name(slot)})",
+			(job, ct) => RestoreAsync(job, slot, target, request.PrepareResurrected, ct));
 		return job is null ? (null, "Another job is running.") : (job, null);
 	}
 
-	private async Task<JobOutcome> RestoreAsync(Job job, RestoreTarget target, bool prepareResurrected, CancellationToken cancellationToken)
+	private async Task<JobOutcome> RestoreAsync(Job job, string slot, RestoreTarget target, bool prepareResurrected, CancellationToken cancellationToken)
 	{
 		var stopwatch = Stopwatch.StartNew();
-		var spare = _options.SpareDataDirectory;
+		var spare = volumes.Directory(slot);
+		var name = volumes.Name(slot);
 		if (await SpareProblemAsync(cancellationToken) is { } problem)
 		{
 			return new JobOutcome(false, problem);
 		}
 
-		job.Log($"Wiping {_options.SpareVolumeName} ({spare})…");
+		if (slot != volumes.Spare)
+		{
+			return new JobOutcome(false, $"{name} went live while the restore was starting. Nothing was wiped.");
+		}
+
+		job.Log($"Wiping {name} ({spare})…");
 		Volumes.WipeContents(spare);
 		state.Update(s =>
 		{
@@ -202,7 +267,7 @@ public sealed class RestoreService(
 			});
 
 			var skipped = report.Checks.Count(c => c.Ok is null);
-			var summary = $"{_options.SpareVolumeName} restored to {target.Description} in {Fmt.Duration(stopwatch.Elapsed.TotalSeconds)}. " +
+			var summary = $"{name} restored to {target.Description} in {Fmt.Duration(stopwatch.Elapsed.TotalSeconds)}. " +
 				$"Checks: {report.Checks.Count(c => c.Ok == true)} OK, {report.Checks.Count(c => c.Ok == false)} failed" +
 				$"{(skipped > 0 ? $", {skipped} skipped (live down)" : "")}. Resurrected schools: {resurrected.Count}.";
 			return new JobOutcome(ok, summary, new
@@ -270,9 +335,10 @@ public sealed class RestoreService(
 
 	public async Task<(Job? Job, string? Error)> StartDeleteOldVolumeAsync(string? confirmation, CancellationToken cancellationToken)
 	{
-		if (!string.Equals(confirmation?.Trim(), _options.SpareVolumeName, StringComparison.Ordinal))
+		var name = volumes.SpareName;
+		if (!string.Equals(confirmation?.Trim(), name, StringComparison.Ordinal))
 		{
-			return (null, $"Type {_options.SpareVolumeName} to confirm.");
+			return (null, $"Type {name} to confirm.");
 		}
 
 		if (await SpareProblemAsync(cancellationToken) is { } problem)
@@ -280,19 +346,20 @@ public sealed class RestoreService(
 			return (null, problem);
 		}
 
-		var job = jobs.TryStart(JobKind.DeleteOldVolume, $"Delete old volume ({_options.SpareVolumeName})", (job, _) =>
+		var directory = volumes.SpareDirectory;
+		var job = jobs.TryStart(JobKind.DeleteOldVolume, $"Delete old volume ({name})", (job, _) =>
 		{
 			var old = state.Read(s => s.OldVolume);
-			job.Log($"Wiping {_options.SpareDataDirectory}…");
-			Volumes.WipeContents(_options.SpareDataDirectory);
+			job.Log($"Wiping {directory}…");
+			Volumes.WipeContents(directory);
 			state.Update(s =>
 			{
 				s.OldVolume = null;
 				s.Spare = null;
 			});
 			var summary = old is null
-				? $"{_options.SpareVolumeName} wiped"
-				: $"Old database on {_options.SpareVolumeName} deleted after {(DateTimeOffset.UtcNow - old.Since).TotalDays:0.#} days";
+				? $"{name} wiped"
+				: $"Old database on {name} deleted after {(DateTimeOffset.UtcNow - old.Since).TotalDays:0.#} days";
 			return Task.FromResult(new JobOutcome(true, summary));
 		});
 		return job is null ? (null, "Another job is running.") : (job, null);

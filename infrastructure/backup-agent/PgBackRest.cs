@@ -73,13 +73,27 @@ public static partial class Wal
 	public static ulong SegmentEnd(string name) => (ulong)(SegmentIndex(name) + 1) * SegmentBytes;
 }
 
-/// <summary>Thin wrapper over the pgbackrest CLI. Repo settings come from PGBACKREST_* env vars.</summary>
-public sealed class PgBackRest(IOptions<AgentOptions> options)
+/// <summary>
+/// Thin wrapper over the pgbackrest CLI. Repo settings come from PGBACKREST_* env vars. pg1-path is
+/// the live volume, which changes when a restore goes live, so it's passed per call, not in the config.
+/// </summary>
+public sealed class PgBackRest(IOptions<AgentOptions> options, DataVolumes volumes)
 {
 	private readonly AgentOptions _options = options.Value;
 
-	public Task<ShellResult> RunAsync(IEnumerable<string> arguments, Action<string>? log, CancellationToken cancellationToken) =>
-		Shell.RunAsync("pgbackrest", [$"--stanza={_options.Stanza}", .. arguments], log, cancellationToken);
+	/// <summary>Commands that read the cluster. pgBackRest rejects --pg1-path on the repo-only ones (info, verify, expire).</summary>
+	private static readonly string[] ClusterCommands = ["stanza-create", "check", "backup", "archive-push", "restore"];
+
+	public Task<ShellResult> RunAsync(IEnumerable<string> arguments, Action<string>? log, CancellationToken cancellationToken)
+	{
+		var list = arguments.ToList();
+		if (list.Any(ClusterCommands.Contains) && !list.Any(a => a.StartsWith("--pg1-path=", StringComparison.Ordinal)))
+		{
+			list.Insert(0, $"--pg1-path={volumes.LiveDirectory}");
+		}
+
+		return Shell.RunAsync("pgbackrest", [$"--stanza={_options.Stanza}", .. list], log, cancellationToken);
+	}
 
 	/// <summary>
 	/// Short I/O timeout for the quick calls the WAL loop and the status tick make, so a dead S3

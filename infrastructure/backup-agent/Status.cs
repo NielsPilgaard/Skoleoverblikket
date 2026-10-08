@@ -56,7 +56,8 @@ public sealed record PostgresStatus(bool Reachable, int? Version, int? Timeline)
 
 public sealed record ScheduleStatus(DateTimeOffset NextFull, DateTimeOffset NextVerify, DateTimeOffset NextDrill);
 
-public sealed record VolumesStatus(string Live, string Spare, DateTimeOffset? OldVolumeSince, string? SpareContents);
+/// <summary><see cref="GoLivePending"/>: the spare goes live on the next redeploy.</summary>
+public sealed record VolumesStatus(string Live, string Spare, DateTimeOffset? OldVolumeSince, string? SpareContents, bool GoLivePending);
 
 /// <summary>Builds the status from the WAL loop, the repo snapshot and the agent's state, and decides the health.</summary>
 public sealed class StatusBuilder(
@@ -65,7 +66,8 @@ public sealed class StatusBuilder(
 	RepoInfoCache repo,
 	StateStore state,
 	OpsBucket ops,
-	RestoreService restore)
+	RestoreService restore,
+	DataVolumes volumes)
 {
 	private readonly AgentOptions _options = options.Value;
 	private readonly DateTimeOffset _startedAt = DateTimeOffset.UtcNow;
@@ -86,8 +88,9 @@ public sealed class StatusBuilder(
 			x.Spare,
 			x.FullBackupRequested,
 			x.LastManualDrill,
+			x.NextManualDrillDue,
 		});
-		var disk = await Disk.UsageAsync(_options.LiveDataDirectory, cancellationToken) ?? await Disk.UsageAsync(_options.StateDirectory, cancellationToken);
+		var disk = await Disk.UsageAsync(volumes.LiveDirectory, cancellationToken) ?? await Disk.UsageAsync(_options.StateDirectory, cancellationToken);
 		var spareProblem = await restore.SpareProblemAsync(cancellationToken);
 
 		var issues = new List<(Health Severity, string Text)>();
@@ -194,9 +197,22 @@ public sealed class StatusBuilder(
 			}
 		}
 
-		if (spareProblem is not null)
+		if (volumes.UnknownLiveDirectory is { } unknown)
+		{
+			Issue(Health.Unhealthy, $"Postgres runs on {unknown}, not on /pgdata/a or /pgdata/b. Restores are off.");
+		}
+		else if (volumes.GoLivePending)
+		{
+			Issue(Health.Degraded, $"{volumes.SpareName} goes live on the next redeploy");
+		}
+		else if (spareProblem is not null)
 		{
 			Issue(Health.Degraded, spareProblem);
+		}
+
+		if (s.NextManualDrillDue is { } due && due < Fmt.LocalDate(now))
+		{
+			Issue(Health.Unhealthy, $"Quarterly manual drill overdue since {Fmt.Date(due)}. Log it on the Drills page.");
 		}
 
 		if (s.FullBackupRequested is not null && running)
@@ -206,7 +222,6 @@ public sealed class StatusBuilder(
 
 		var health = issues.Count == 0 ? Health.Healthy : issues.Max(i => i.Severity);
 		var newestSegment = snapshot.NewestSegment;
-		var nextManual = s.LastManualDrill is { } manual ? manual.Date.AddMonths(3) : (DateOnly?)null;
 		var status = new AgentStatus(
 			SchemaVersion: 1,
 			GeneratedAt: now,
@@ -236,7 +251,7 @@ public sealed class StatusBuilder(
 				snapshot.NewestRestorable,
 				_options.RetentionDays,
 				retentionCheck.Ok != false),
-			Drill: new DrillStatus(s.LastDrill?.At, s.LastDrill?.Ok, s.LastDrill is null ? null : s.LastDrill.TotalSeconds / 60, s.LastDrill?.TargetDescription, s.LastManualDrill?.Date, nextManual),
+			Drill: new DrillStatus(s.LastDrill?.At, s.LastDrill?.Ok, s.LastDrill is null ? null : s.LastDrill.TotalSeconds / 60, s.LastDrill?.TargetDescription, s.LastManualDrill?.Date, s.NextManualDrillDue),
 			Verify: new VerifyStatus(s.LastVerify?.At, s.LastVerify?.Ok),
 			Disk: disk is { } usage ? new DiskStatus(usage.UsedPercent, usage.FreeBytes) : null,
 			Postgres: new PostgresStatus(w.PostgresReachable, w.Server?.VersionNum, w.Server?.Timeline),
@@ -244,8 +259,9 @@ public sealed class StatusBuilder(
 				Schedule.Next(now, _options.FullBackupHour, null),
 				Schedule.Next(now, _options.VerifyHour, _options.VerifyDay),
 				Schedule.Next(now, _options.DrillHour, _options.DrillDay)),
-			Volumes: new VolumesStatus(_options.LiveVolumeName, _options.SpareVolumeName, s.OldVolume?.Since,
-				s.OldVolume is not null ? "old live database" : s.Spare is not null ? $"restored to {s.Spare.TargetDescription}" : restore.SpareIsEmpty ? "empty" : "unknown contents"),
+			Volumes: new VolumesStatus(volumes.LiveName, volumes.SpareName, s.OldVolume?.Since,
+				s.OldVolume is not null ? "old live database" : s.Spare is not null ? $"restored to {s.Spare.TargetDescription}" : restore.SpareIsEmpty ? "empty" : "unknown contents",
+				volumes.GoLivePending),
 			SshTunnelCommand: _options.SshTunnelCommand);
 		Last = status;
 		return status;

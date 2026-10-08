@@ -90,7 +90,7 @@ public static class OverviewPages
 			"""));
 		body.Append(Card("Volumes", $"""
 			<p class="small">Live: <b>{E(status.Volumes.Live)}</b> (timeline {status.Postgres.Timeline?.ToString() ?? "?"}, Postgres {(status.Postgres.Reachable ? "up" : "<span class=\"pill bad\">down</span>")})<br>
-			Spare: <b>{E(status.Volumes.Spare)}</b> – {E(status.Volumes.SpareContents)}{(status.Volumes.OldVolumeSince is { } since ? $"<br>Old database kept {(now - since).TotalDays:0.#} days" : "")}</p>
+			Spare: <b>{E(status.Volumes.Spare)}</b> – {E(status.Volumes.SpareContents)}{(status.Volumes.GoLivePending ? " <span class=\"pill warn\">live on redeploy</span>" : "")}{(status.Volumes.OldVolumeSince is { } since ? $"<br>Old database kept {(now - since).TotalDays:0.#} days" : "")}</p>
 			"""));
 		body.Append("</div>");
 
