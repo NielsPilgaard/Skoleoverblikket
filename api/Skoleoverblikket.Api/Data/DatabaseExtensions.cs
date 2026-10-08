@@ -28,14 +28,25 @@ public static class DatabaseExtensions
 
 		if (!app.Environment.IsEnvironment("Testing"))
 		{
+			if (!string.IsNullOrEmpty(app.Configuration["ObjectStorage:ServiceUrl"]))
+			{
+				// Awaited: the data protection key ring lives in this bucket and is read on first use,
+				// so on a fresh stack it must exist before requests arrive. A storage outage must not
+				// stop the API from starting, though; most features don't touch object storage.
+				try
+				{
+					using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+					await app.Services.EnsureS3BucketAsync(cts.Token);
+				}
+				catch (Exception ex)
+				{
+					app.Logger.LogError(ex, "Could not ensure the object storage bucket exists");
+				}
+			}
+
 			if (!string.IsNullOrEmpty(app.Configuration.GetConnectionString("skoleoverblikket-db")))
 			{
 				_ = Task.Run(() => app.Services.SeedAsync());
-			}
-
-			if (!string.IsNullOrEmpty(app.Configuration["ObjectStorage:ServiceUrl"]))
-			{
-				_ = Task.Run(() => app.Services.EnsureS3BucketAsync());
 			}
 		}
 	}

@@ -1,7 +1,7 @@
 name: CI fix
 
 # When CI fails on a PR because of a lint rule or a TypeScript error, Claude fixes it and pushes to the PR branch.
-# Formatting is handled by the autofix job in ci.yml; this covers what a formatter can't fix.
+# Formatting is handled by the .githooks pre-commit hook; this covers what a formatter can't fix.
 #
 # Guardrails:
 # - PRs from branches in this repo only (workflow_run has secrets; never run fork code with them).

@@ -50,9 +50,15 @@ public sealed class S3ObjectStorage(IAmazonS3 s3, IOptions<S3Options> opts) : IO
 			Verb = HttpVerb.PUT,
 			Expires = DateTime.UtcNow.Add(expiry),
 			ContentType = contentType,
+			// The SDK defaults presigned URLs to https whatever the ServiceURL says.
+			Protocol = new Uri(_options.PublicEndpoint).Scheme == Uri.UriSchemeHttp ? Protocol.HTTP : Protocol.HTTPS,
 		};
 
-		var uploadUrl = RewriteOrigin(s3.GetPreSignedURL(request), _options.PublicEndpoint);
+		// SigV4 signs the Host header, so sign for the host the browser uploads to. In the
+		// docker-compose stack the API reaches S3 at silo:9000 but the browser at localhost:9000.
+		// Presigning is local; this client never sends a request.
+		using var signer = S3Extensions.CreateClient(_options, _options.PublicEndpoint);
+		var uploadUrl = signer.GetPreSignedURL(request);
 		var publicUrl = BuildPublicUrl(key);
 
 		return Task.FromResult((uploadUrl, publicUrl));
@@ -151,14 +157,6 @@ public sealed class S3ObjectStorage(IAmazonS3 s3, IOptions<S3Options> opts) : IO
 		return !publicUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
 				? null
 				: WebUtility.UrlDecode(publicUrl[prefix.Length..]);
-	}
-
-	private static string RewriteOrigin(string url, string serviceUrl)
-	{
-		var generated = new Uri(url);
-		var target = new Uri(serviceUrl);
-		var rewritten = new UriBuilder(generated) { Scheme = target.Scheme, Host = target.Host, Port = target.Port };
-		return rewritten.Uri.ToString();
 	}
 
 	private string BuildPublicUrl(string key)

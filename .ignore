@@ -1,0 +1,5 @@
+# ripgrep (and Claude Code's Grep/Glob) skip these in repo-wide searches.
+# Generated code with 12k+ character lines: one match floods agent context.
+# Search them only by explicit path, with output truncated (see .claude/skills/codegen/SKILL.md).
+web/src/api/generated/
+openapi/

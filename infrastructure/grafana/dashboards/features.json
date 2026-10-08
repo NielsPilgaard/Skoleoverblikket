@@ -1,0 +1,680 @@
+{
+  "uid": "skoleoverblikket-features",
+  "title": "Skoleoverblikket – Feature usage",
+  "description": "API requests grouped by product module (skema, ugeplan, vikar, fravær, forældre …), from HttpLogging in Loki.",
+  "tags": [
+    "skoleoverblikket",
+    "aspnetcore"
+  ],
+  "timezone": "Europe/Copenhagen",
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "links": [
+    {
+      "title": "Skoleoverblikket",
+      "type": "dashboards",
+      "tags": [
+        "skoleoverblikket"
+      ],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "grafanacloud-logs"
+        },
+        "enable": true,
+        "iconColor": "purple",
+        "name": "Deploys / restarts",
+        "expr": "{service_name=\"Skoleoverblikket.Api\"} | scope_name=\"Microsoft.Hosting.Lifetime\" |= \"Application started\"",
+        "titleFormat": "API started",
+        "textFormat": "instance {{service_instance_id}}",
+        "instant": false
+      }
+    ]
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "type": "row",
+      "id": 1,
+      "title": "Which modules do schools use?",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "id": 2,
+      "title": "API requests",
+      "description": "Requests to /api/v1, excluding 404s and health probes.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "grafanacloud-logs"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "A",
+          "expr": "sum(count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"ResponseLog\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | StatusCode!=\"404\" [$__range]))",
+          "legendFormat": "",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto"
+      }
+    },
+    {
+      "type": "stat",
+      "id": 3,
+      "title": "Modules used",
+      "description": "",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "grafanacloud-logs"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "A",
+          "expr": "count(sum by (feature) (count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"ResponseLog\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | StatusCode!=\"404\" | label_format feature=`{{ if or (hasPrefix \"/api/v1/sfo\" .RequestPath) }}SFO{{ else if or (hasPrefix \"/api/v1/staff-absences\" .RequestPath) (hasPrefix \"/api/v1/staff/available\" .RequestPath) (hasPrefix \"/api/v1/substitutions\" .RequestPath) (contains \"/substitute\" .RequestPath) }}Vikardækning{{ else if or (contains \"/week-plan\" .RequestPath) }}Ugeplan{{ else if or (hasPrefix \"/api/v1/classes\" .RequestPath) (hasPrefix \"/api/v1/courses\" .RequestPath) (hasPrefix \"/api/v1/rooms\" .RequestPath) (hasPrefix \"/api/v1/time-slot\" .RequestPath) (contains \"/schedule\" .RequestPath) }}Skema{{ else if or (hasPrefix \"/api/v1/staff\" .RequestPath) }}Personale{{ else if or (hasPrefix \"/api/v1/absence\" .RequestPath) (hasPrefix \"/api/v1/attendance\" .RequestPath) }}Fravær{{ else if or (hasPrefix \"/api/v1/parent\" .RequestPath) (hasPrefix \"/api/v1/contact-directory\" .RequestPath) (hasPrefix \"/api/v1/students\" .RequestPath) }}Forældre{{ else if or (hasPrefix \"/api/v1/messages\" .RequestPath) (hasPrefix \"/api/v1/contact-threads\" .RequestPath) (hasPrefix \"/api/v1/class-chats\" .RequestPath) (hasPrefix \"/api/v1/notification\" .RequestPath) }}Kommunikation{{ else if or (hasPrefix \"/api/v1/calendar\" .RequestPath) }}Kalender{{ else if or (hasPrefix \"/api/v1/files\" .RequestPath) }}Filer{{ else if or (hasPrefix \"/api/v1/vacation-registration\" .RequestPath) }}Ferieindmelding{{ else if or (hasPrefix \"/api/v1/board-\" .RequestPath) }}Bestyrelse{{ else if or (hasPrefix \"/api/v1/compliance-coverage\" .RequestPath) }}Stå mål med{{ else if or (hasPrefix \"/api/v1/reports\" .RequestPath) (hasPrefix \"/api/v1/imports\" .RequestPath) (hasPrefix \"/api/v1/exports\" .RequestPath) }}Rapporter, import & eksport{{ else if or (hasPrefix \"/api/v1/billing\" .RequestPath) (hasPrefix \"/api/v1/modules\" .RequestPath) (hasPrefix \"/api/v1/stripe\" .RequestPath) }}Abonnement{{ else if or (hasPrefix \"/api/v1/admin\" .RequestPath) }}Backoffice{{ else if or (hasPrefix \"/api/v1/demo-request\" .RequestPath) }}Demo-forespørgsler{{ else if or (hasPrefix \"/api/v1/schools\" .RequestPath) (hasPrefix \"/api/v1/stats\" .RequestPath) (hasPrefix \"/api/v1/tenants\" .RequestPath) (hasPrefix \"/api/v1/data-processing-agreement\" .RequestPath) }}Skole & onboarding{{ else }}Andet / bots{{ end }}` [$__range])))",
+          "legendFormat": "",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto"
+      }
+    },
+    {
+      "type": "stat",
+      "id": 4,
+      "title": "Checkouts started",
+      "description": "Successful Stripe Checkout session creations.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "grafanacloud-logs"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "A",
+          "expr": "sum(count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"ResponseLog\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/billing/checkout.*\" | StatusCode=~\"2..\" [$__range]))",
+          "legendFormat": "",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto"
+      }
+    },
+    {
+      "type": "stat",
+      "id": 5,
+      "title": "404 Not Found (mostly bots)",
+      "description": "Scanners probing for /api/.env, /wp-login.php etc. A sudden rise from a real path = broken frontend link.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "grafanacloud-logs"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "A",
+          "expr": "sum(count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"ResponseLog\" | RequestPath!~\"/alive|/health\" | StatusCode=\"404\" [$__range]))",
+          "legendFormat": "",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto"
+      }
+    },
+    {
+      "type": "table",
+      "id": 6,
+      "title": "Requests per module (selected range)",
+      "description": "",
+      "gridPos": {
+        "h": 13,
+        "w": 8,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "grafanacloud-logs"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "A",
+          "expr": "sum by (feature) (count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"ResponseLog\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | StatusCode!=\"404\" | label_format feature=`{{ if or (hasPrefix \"/api/v1/sfo\" .RequestPath) }}SFO{{ else if or (hasPrefix \"/api/v1/staff-absences\" .RequestPath) (hasPrefix \"/api/v1/staff/available\" .RequestPath) (hasPrefix \"/api/v1/substitutions\" .RequestPath) (contains \"/substitute\" .RequestPath) }}Vikardækning{{ else if or (contains \"/week-plan\" .RequestPath) }}Ugeplan{{ else if or (hasPrefix \"/api/v1/classes\" .RequestPath) (hasPrefix \"/api/v1/courses\" .RequestPath) (hasPrefix \"/api/v1/rooms\" .RequestPath) (hasPrefix \"/api/v1/time-slot\" .RequestPath) (contains \"/schedule\" .RequestPath) }}Skema{{ else if or (hasPrefix \"/api/v1/staff\" .RequestPath) }}Personale{{ else if or (hasPrefix \"/api/v1/absence\" .RequestPath) (hasPrefix \"/api/v1/attendance\" .RequestPath) }}Fravær{{ else if or (hasPrefix \"/api/v1/parent\" .RequestPath) (hasPrefix \"/api/v1/contact-directory\" .RequestPath) (hasPrefix \"/api/v1/students\" .RequestPath) }}Forældre{{ else if or (hasPrefix \"/api/v1/messages\" .RequestPath) (hasPrefix \"/api/v1/contact-threads\" .RequestPath) (hasPrefix \"/api/v1/class-chats\" .RequestPath) (hasPrefix \"/api/v1/notification\" .RequestPath) }}Kommunikation{{ else if or (hasPrefix \"/api/v1/calendar\" .RequestPath) }}Kalender{{ else if or (hasPrefix \"/api/v1/files\" .RequestPath) }}Filer{{ else if or (hasPrefix \"/api/v1/vacation-registration\" .RequestPath) }}Ferieindmelding{{ else if or (hasPrefix \"/api/v1/board-\" .RequestPath) }}Bestyrelse{{ else if or (hasPrefix \"/api/v1/compliance-coverage\" .RequestPath) }}Stå mål med{{ else if or (hasPrefix \"/api/v1/reports\" .RequestPath) (hasPrefix \"/api/v1/imports\" .RequestPath) (hasPrefix \"/api/v1/exports\" .RequestPath) }}Rapporter, import & eksport{{ else if or (hasPrefix \"/api/v1/billing\" .RequestPath) (hasPrefix \"/api/v1/modules\" .RequestPath) (hasPrefix \"/api/v1/stripe\" .RequestPath) }}Abonnement{{ else if or (hasPrefix \"/api/v1/admin\" .RequestPath) }}Backoffice{{ else if or (hasPrefix \"/api/v1/demo-request\" .RequestPath) }}Demo-forespørgsler{{ else if or (hasPrefix \"/api/v1/schools\" .RequestPath) (hasPrefix \"/api/v1/stats\" .RequestPath) (hasPrefix \"/api/v1/tenants\" .RequestPath) (hasPrefix \"/api/v1/data-processing-agreement\" .RequestPath) }}Skole & onboarding{{ else }}Andet / bots{{ end }}` [$__range]))",
+          "legendFormat": "",
+          "queryType": "instant"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "feature": "Module",
+              "Value #A": "Requests"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Requests"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Requests",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 7,
+      "title": "Requests per module over time",
+      "description": "",
+      "gridPos": {
+        "h": 13,
+        "w": 16,
+        "x": 8,
+        "y": 5
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "grafanacloud-logs"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "A",
+          "expr": "sum by (feature) (count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"ResponseLog\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | StatusCode!=\"404\" | label_format feature=`{{ if or (hasPrefix \"/api/v1/sfo\" .RequestPath) }}SFO{{ else if or (hasPrefix \"/api/v1/staff-absences\" .RequestPath) (hasPrefix \"/api/v1/staff/available\" .RequestPath) (hasPrefix \"/api/v1/substitutions\" .RequestPath) (contains \"/substitute\" .RequestPath) }}Vikardækning{{ else if or (contains \"/week-plan\" .RequestPath) }}Ugeplan{{ else if or (hasPrefix \"/api/v1/classes\" .RequestPath) (hasPrefix \"/api/v1/courses\" .RequestPath) (hasPrefix \"/api/v1/rooms\" .RequestPath) (hasPrefix \"/api/v1/time-slot\" .RequestPath) (contains \"/schedule\" .RequestPath) }}Skema{{ else if or (hasPrefix \"/api/v1/staff\" .RequestPath) }}Personale{{ else if or (hasPrefix \"/api/v1/absence\" .RequestPath) (hasPrefix \"/api/v1/attendance\" .RequestPath) }}Fravær{{ else if or (hasPrefix \"/api/v1/parent\" .RequestPath) (hasPrefix \"/api/v1/contact-directory\" .RequestPath) (hasPrefix \"/api/v1/students\" .RequestPath) }}Forældre{{ else if or (hasPrefix \"/api/v1/messages\" .RequestPath) (hasPrefix \"/api/v1/contact-threads\" .RequestPath) (hasPrefix \"/api/v1/class-chats\" .RequestPath) (hasPrefix \"/api/v1/notification\" .RequestPath) }}Kommunikation{{ else if or (hasPrefix \"/api/v1/calendar\" .RequestPath) }}Kalender{{ else if or (hasPrefix \"/api/v1/files\" .RequestPath) }}Filer{{ else if or (hasPrefix \"/api/v1/vacation-registration\" .RequestPath) }}Ferieindmelding{{ else if or (hasPrefix \"/api/v1/board-\" .RequestPath) }}Bestyrelse{{ else if or (hasPrefix \"/api/v1/compliance-coverage\" .RequestPath) }}Stå mål med{{ else if or (hasPrefix \"/api/v1/reports\" .RequestPath) (hasPrefix \"/api/v1/imports\" .RequestPath) (hasPrefix \"/api/v1/exports\" .RequestPath) }}Rapporter, import & eksport{{ else if or (hasPrefix \"/api/v1/billing\" .RequestPath) (hasPrefix \"/api/v1/modules\" .RequestPath) (hasPrefix \"/api/v1/stripe\" .RequestPath) }}Abonnement{{ else if or (hasPrefix \"/api/v1/admin\" .RequestPath) }}Backoffice{{ else if or (hasPrefix \"/api/v1/demo-request\" .RequestPath) }}Demo-forespørgsler{{ else if or (hasPrefix \"/api/v1/schools\" .RequestPath) (hasPrefix \"/api/v1/stats\" .RequestPath) (hasPrefix \"/api/v1/tenants\" .RequestPath) (hasPrefix \"/api/v1/data-processing-agreement\" .RequestPath) }}Skole & onboarding{{ else }}Andet / bots{{ end }}` [$__interval]))",
+          "legendFormat": "{{feature}}",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 8,
+      "title": "Errors per module (4xx + 5xx, excl. 401/404)",
+      "description": "Validation errors (400), forbidden (403), conflicts (409) and server errors per module.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "grafanacloud-logs"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "A",
+          "expr": "sum by (feature) (count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"ResponseLog\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | StatusCode!=\"404\" | StatusCode=~\"4..|5..\" | StatusCode!=\"401\" | label_format feature=`{{ if or (hasPrefix \"/api/v1/sfo\" .RequestPath) }}SFO{{ else if or (hasPrefix \"/api/v1/staff-absences\" .RequestPath) (hasPrefix \"/api/v1/staff/available\" .RequestPath) (hasPrefix \"/api/v1/substitutions\" .RequestPath) (contains \"/substitute\" .RequestPath) }}Vikardækning{{ else if or (contains \"/week-plan\" .RequestPath) }}Ugeplan{{ else if or (hasPrefix \"/api/v1/classes\" .RequestPath) (hasPrefix \"/api/v1/courses\" .RequestPath) (hasPrefix \"/api/v1/rooms\" .RequestPath) (hasPrefix \"/api/v1/time-slot\" .RequestPath) (contains \"/schedule\" .RequestPath) }}Skema{{ else if or (hasPrefix \"/api/v1/staff\" .RequestPath) }}Personale{{ else if or (hasPrefix \"/api/v1/absence\" .RequestPath) (hasPrefix \"/api/v1/attendance\" .RequestPath) }}Fravær{{ else if or (hasPrefix \"/api/v1/parent\" .RequestPath) (hasPrefix \"/api/v1/contact-directory\" .RequestPath) (hasPrefix \"/api/v1/students\" .RequestPath) }}Forældre{{ else if or (hasPrefix \"/api/v1/messages\" .RequestPath) (hasPrefix \"/api/v1/contact-threads\" .RequestPath) (hasPrefix \"/api/v1/class-chats\" .RequestPath) (hasPrefix \"/api/v1/notification\" .RequestPath) }}Kommunikation{{ else if or (hasPrefix \"/api/v1/calendar\" .RequestPath) }}Kalender{{ else if or (hasPrefix \"/api/v1/files\" .RequestPath) }}Filer{{ else if or (hasPrefix \"/api/v1/vacation-registration\" .RequestPath) }}Ferieindmelding{{ else if or (hasPrefix \"/api/v1/board-\" .RequestPath) }}Bestyrelse{{ else if or (hasPrefix \"/api/v1/compliance-coverage\" .RequestPath) }}Stå mål med{{ else if or (hasPrefix \"/api/v1/reports\" .RequestPath) (hasPrefix \"/api/v1/imports\" .RequestPath) (hasPrefix \"/api/v1/exports\" .RequestPath) }}Rapporter, import & eksport{{ else if or (hasPrefix \"/api/v1/billing\" .RequestPath) (hasPrefix \"/api/v1/modules\" .RequestPath) (hasPrefix \"/api/v1/stripe\" .RequestPath) }}Abonnement{{ else if or (hasPrefix \"/api/v1/admin\" .RequestPath) }}Backoffice{{ else if or (hasPrefix \"/api/v1/demo-request\" .RequestPath) }}Demo-forespørgsler{{ else if or (hasPrefix \"/api/v1/schools\" .RequestPath) (hasPrefix \"/api/v1/stats\" .RequestPath) (hasPrefix \"/api/v1/tenants\" .RequestPath) (hasPrefix \"/api/v1/data-processing-agreement\" .RequestPath) }}Skole & onboarding{{ else }}Andet / bots{{ end }}` [$__interval]))",
+          "legendFormat": "{{feature}}",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 9,
+      "title": "p95 latency per module",
+      "description": "",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "grafanacloud-logs"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "A",
+          "expr": "quantile_over_time(0.95, {service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | label_format feature=`{{ if or (hasPrefix \"/api/v1/sfo\" .RequestPath) }}SFO{{ else if or (hasPrefix \"/api/v1/staff-absences\" .RequestPath) (hasPrefix \"/api/v1/staff/available\" .RequestPath) (hasPrefix \"/api/v1/substitutions\" .RequestPath) (contains \"/substitute\" .RequestPath) }}Vikardækning{{ else if or (contains \"/week-plan\" .RequestPath) }}Ugeplan{{ else if or (hasPrefix \"/api/v1/classes\" .RequestPath) (hasPrefix \"/api/v1/courses\" .RequestPath) (hasPrefix \"/api/v1/rooms\" .RequestPath) (hasPrefix \"/api/v1/time-slot\" .RequestPath) (contains \"/schedule\" .RequestPath) }}Skema{{ else if or (hasPrefix \"/api/v1/staff\" .RequestPath) }}Personale{{ else if or (hasPrefix \"/api/v1/absence\" .RequestPath) (hasPrefix \"/api/v1/attendance\" .RequestPath) }}Fravær{{ else if or (hasPrefix \"/api/v1/parent\" .RequestPath) (hasPrefix \"/api/v1/contact-directory\" .RequestPath) (hasPrefix \"/api/v1/students\" .RequestPath) }}Forældre{{ else if or (hasPrefix \"/api/v1/messages\" .RequestPath) (hasPrefix \"/api/v1/contact-threads\" .RequestPath) (hasPrefix \"/api/v1/class-chats\" .RequestPath) (hasPrefix \"/api/v1/notification\" .RequestPath) }}Kommunikation{{ else if or (hasPrefix \"/api/v1/calendar\" .RequestPath) }}Kalender{{ else if or (hasPrefix \"/api/v1/files\" .RequestPath) }}Filer{{ else if or (hasPrefix \"/api/v1/vacation-registration\" .RequestPath) }}Ferieindmelding{{ else if or (hasPrefix \"/api/v1/board-\" .RequestPath) }}Bestyrelse{{ else if or (hasPrefix \"/api/v1/compliance-coverage\" .RequestPath) }}Stå mål med{{ else if or (hasPrefix \"/api/v1/reports\" .RequestPath) (hasPrefix \"/api/v1/imports\" .RequestPath) (hasPrefix \"/api/v1/exports\" .RequestPath) }}Rapporter, import & eksport{{ else if or (hasPrefix \"/api/v1/billing\" .RequestPath) (hasPrefix \"/api/v1/modules\" .RequestPath) (hasPrefix \"/api/v1/stripe\" .RequestPath) }}Abonnement{{ else if or (hasPrefix \"/api/v1/admin\" .RequestPath) }}Backoffice{{ else if or (hasPrefix \"/api/v1/demo-request\" .RequestPath) }}Demo-forespørgsler{{ else if or (hasPrefix \"/api/v1/schools\" .RequestPath) (hasPrefix \"/api/v1/stats\" .RequestPath) (hasPrefix \"/api/v1/tenants\" .RequestPath) (hasPrefix \"/api/v1/data-processing-agreement\" .RequestPath) }}Skole & onboarding{{ else }}Andet / bots{{ end }}` | unwrap Duration [$__interval]) by (feature)",
+          "legendFormat": "{{feature}}",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "pointSize": 6
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "row",
+      "id": 10,
+      "title": "Weekly rhythm",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "id": 11,
+      "title": "API requests per hour",
+      "description": "When during the week schools use the product. Useful for picking deploy windows.",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "grafanacloud-logs"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "A",
+          "expr": "sum(count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"ResponseLog\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | StatusCode!=\"404\" [1h]))",
+          "legendFormat": "requests/h",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1h"
+    }
+  ]
+}

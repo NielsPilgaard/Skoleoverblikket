@@ -48,11 +48,15 @@ var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26
                       .WaitFor(postgres)
                       .WaitFor(mailpit);
 
-// LocalStack (S3-compatible local emulation for OVHCloud Object Storage)
-builder.AddContainer("localstack", "localstack/localstack", "3")
+// Silo (MinIO fork — S3-compatible local emulation for OVHCloud Object Storage)
+builder.AddContainer("silo", "pgsty/silo", "RELEASE.2026-09-16T00-00-00Z")
        .WithLifetime(ContainerLifetime.Persistent)
-       .WithVolume("skoleoverblikket-s3", "/var/lib/localstack/data")
-       .WithHttpEndpoint(port: 4566, targetPort: 4566, name: "gateway")
+       .WithVolume("skoleoverblikket-silo", "/data")
+       .WithHttpEndpoint(port: 9000, targetPort: 9000, name: "s3")
+       .WithHttpEndpoint(port: 9001, targetPort: 9001, name: "console")
+       .WithEnvironment("MINIO_ROOT_USER", "minioadmin")
+       .WithEnvironment("MINIO_ROOT_PASSWORD", "minioadmin")
+       .WithArgs("server", "/data", "--console-address", ":9001")
        .WithContainerRuntimeArgs("--label", $"com.docker.compose.project={label}");
 
 // API — port 5000 is pinned so the Vite proxy target (http://127.0.0.1:5000) always resolves correctly.

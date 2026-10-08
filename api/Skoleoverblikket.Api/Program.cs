@@ -15,11 +15,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
+// No RequestQuery: query strings carry invitation/export tokens and free-text
+// searches (names), and these logs are shipped to Grafana Cloud.
 builder.Services.AddHttpLogging(options =>
 {
 	options.LoggingFields = HttpLoggingFields.RequestMethod
 		| HttpLoggingFields.RequestPath
-		| HttpLoggingFields.RequestQuery
 		| HttpLoggingFields.ResponseStatusCode
 		| HttpLoggingFields.Duration;
 });
@@ -32,6 +33,7 @@ builder.Services.AddKeycloakAdmin();
 builder.Services.AddOpenApi();
 builder.Services.AddEmail();
 builder.Services.AddObjectStorage();
+builder.Services.AddS3DataProtection();
 builder.Services.AddStripe();
 builder.Services.AddDomainServices();
 builder.Services.AddApiRateLimiting();

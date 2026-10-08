@@ -93,9 +93,9 @@ This is the "easy to forget" list. Most items cost an outage if missed.
 
 ### 1. Postgres image and pgBackRest config
 
-**Do [task 60](60-backup-console.md) Phase 0 (the spike) first.** It decides between streamed WAL (below) and the spool-copy fallback.
+**Do [task 60](60-backup-console.md) Phase 0 (the spike) first.** It decides between streamed WAL (below) and the spool-copy fallback. The fallback only covers WAL delivery. If the read-only base backup fails, this task waits until Phase 0 passes or task 60 defines a separate base-backup fix.
 
-> **Phase 0 done 2026-10-07: streamed WAL passed, no fallback.** Results in [postgres-backup-agent](../docs/adr/postgres-backup-agent.md). The Postgres image, config, roles and both compose services are built (`infrastructure/postgres/`, `infrastructure/backup-agent/`, `selfhosted-db` profile in the prod compose). Two changes to the plan below: pgBackRest runs with `archive-check=n` (it refuses archive checks without `archive_mode`), so `archive-copy=y` is not possible; and the agent mounts the data volumes at the same paths as Postgres (`/pgdata/a`, `/pgdata/b`), because pgBackRest refuses a `pg1-path` that differs from `data_directory`. The fallback only covers WAL delivery. If the read-only base backup fails, this task waits until Phase 0 passes or task 60 defines a separate base-backup fix.
+> **Phase 0 done 2026-10-07: streamed WAL passed, no fallback.** Results in [postgres-backup-agent](../docs/adr/postgres-backup-agent.md). The Postgres image, config, roles and both compose services are built (`infrastructure/postgres/`, `infrastructure/backup-agent/`, `selfhosted-db` profile in the prod compose). Two changes to the plan below: pgBackRest runs with `archive-check=n` (it refuses archive checks without `archive_mode`), so `archive-copy=y` is not possible; and the agent mounts the data volumes at the same paths as Postgres (`/pgdata/a`, `/pgdata/b`), because pgBackRest refuses a `pg1-path` that differs from `data_directory`.
 
 New folder `infrastructure/postgres/` (Postgres only, no backup tooling):
 

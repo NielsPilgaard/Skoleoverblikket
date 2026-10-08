@@ -125,6 +125,8 @@ Do not write a test for:
 Every PR runs:
 
 1. API integration tests (Testcontainers spins PostgreSQL ephemerally — no shared state)
-2. Playwright smoke tests against a Docker Compose stack
+2. The full Playwright suite against the Docker Compose stack (`infrastructure/docker/docker-compose.staging.yml`), with images built from the PR's code (`.github/workflows/e2e.yml`)
+
+After merge, the Staging workflow runs the same suite against the images CI published for that commit, and only deploys if it passes.
 
 PRs do not merge if tests fail.

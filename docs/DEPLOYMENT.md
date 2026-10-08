@@ -56,6 +56,8 @@ These have non-empty values in `appsettings.json` that are correct for productio
 | `ElmahIo__LogId`            | _(empty — disabled)_        | elmah.io log ID (GUID). Only errors (uncaught request exceptions and `LogLevel.Error`+) are sent. In `docker-compose.prod.yml`, set the host-side variable `ElmahIo_LogId` (single underscore) — Compose maps it to the container config key `ElmahIo__LogId`. |
 | `BackupStatus__AccessKey`   | _(empty — card says "ikke sat op")_ | Key for the backup agent's ops bucket, used by the backoffice backup card. Must only be able to **read** `skoleoverblikket-ops`, never write or delete. In `docker-compose.prod.yml`: `BackupStatus_AccessKey`. |
 | `BackupStatus__SecretKey`   | _(empty)_                   | Secret for the key above. In `docker-compose.prod.yml`: `BackupStatus_SecretKey`. `BackupStatus__ServiceUrl` and `BackupStatus__BucketName` default to OVH RBX and `skoleoverblikket-ops`. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | _(empty — disabled)_      | Grafana Cloud OTLP gateway URL. Logs, metrics and traces are exported only when set. Dashboards and alert rules: [infrastructure/grafana/](../infrastructure/grafana/README.md). |
+| `OTEL_EXPORTER_OTLP_HEADERS`  | _(empty)_                 | `Authorization=Basic <base64 instanceId:token>` for the Grafana Cloud OTLP gateway.         |
 
 ---
 

@@ -184,6 +184,27 @@ public sealed class SchoolExportTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task DownloadLink_StillWorksAfterDeploy()
+	{
+		var schoolId = await SeedSchoolAsync("Mikkel Deploysen", $"tok-{Guid.NewGuid():N}");
+		var linkResponse = await Client(schoolId, "admin").PostAsync("/api/v1/exports/school.zip/link", null);
+		var link = await linkResponse.Content.ReadFromJsonAsync<SchoolExportController.ExportLinkDto>();
+
+		// The key ring lives in object storage, not in the container that gets replaced on deploy.
+		using (var scope = factory.Services.CreateScope())
+		{
+			var storage = scope.ServiceProvider.GetRequiredService<IObjectStorage>();
+			await Assert.That(await storage.ListKeysAsync(S3XmlRepository.Prefix).AnyAsync()).IsTrue();
+		}
+
+		// A fresh host stands in for the new container after a deploy.
+		await using var redeployed = factory.WithWebHostBuilder(_ => { });
+		var response = await redeployed.CreateClient().GetAsync(link!.Url);
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+	}
+
+	[Test]
 	public async Task DownloadLink_RedeemedConcurrently_WorksExactlyOnce()
 	{
 		var schoolId = await SeedSchoolAsync("Mikkel Samtidig", $"tok-{Guid.NewGuid():N}");

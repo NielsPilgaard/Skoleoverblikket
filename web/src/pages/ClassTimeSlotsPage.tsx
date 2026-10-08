@@ -298,13 +298,13 @@ export default function ClassTimeSlotsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Skoledag starter
                 </label>
-                <TimeInput value={dayStart} onChange={setDayStart} />
+                <TimeInput label="Skoledag starter" value={dayStart} onChange={setDayStart} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Skoledag slutter
                 </label>
-                <TimeInput value={dayEnd} onChange={setDayEnd} />
+                <TimeInput label="Skoledag slutter" value={dayEnd} onChange={setDayEnd} />
               </div>
             </div>
 
@@ -348,6 +348,7 @@ export default function ClassTimeSlotsPage() {
                       <div>
                         <label className="block text-xs text-gray-500 mb-0.5">Starttidspunkt</label>
                         <TimeInput
+                          label={`Pause ${i + 1}, starttidspunkt`}
                           value={b.startTime}
                           onChange={(v) =>
                             setBreaks((prev) =>
@@ -363,6 +364,7 @@ export default function ClassTimeSlotsPage() {
                           min={5}
                           max={60}
                           value={b.durationMinutes}
+                          aria-label={`Pause ${i + 1}, varighed (min)`}
                           onFocus={(e) => e.target.select()}
                           onChange={(e) =>
                             setBreaks((prev) =>
@@ -377,6 +379,7 @@ export default function ClassTimeSlotsPage() {
                     </div>
                     <button
                       onClick={() => setBreaks((prev) => prev.filter((_, idx) => idx !== i))}
+                      aria-label={`Fjern pause ${i + 1}`}
                       className="p-1.5 text-gray-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-colors mb-0.5"
                     >
                       <svg

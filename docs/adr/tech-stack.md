@@ -35,7 +35,7 @@ A v1 needed to ship fast with a single developer who has deep C# expertise but l
 | Frontend | React + Vite + TypeScript + Tailwind CSS |
 | Auth / SSO | Keycloak (Docker Compose service) |
 | Object storage | OVHCloud Object Storage (S3-compatible, EU) |
-| Local S3 emulation | LocalStack (v3, no license required) |
+| Local S3 emulation | Silo (pgsty MinIO fork, AGPL, dev/test only) |
 | Local orchestration | .NET Aspire (v13) |
 | Hosting | OVHCloud VPS + Dokploy + Docker Compose |
 
@@ -46,7 +46,7 @@ A v1 needed to ship fast with a single developer who has deep C# expertise but l
 - **POS-001**: Developer's existing C#/ASP.NET Core/EF Core expertise reduces v1 risk and dev time.
 - **POS-002**: Keycloak provides battle-tested multi-tenant OIDC/JWT auth and leaves the door open for future UniLogin integration.
 - **POS-003**: OVHCloud co-locates VPS and object storage, minimizing vendor count and latency, and keeps all data in the EU.
-- **POS-004**: .NET Aspire replaces a hand-maintained docker-compose.yml for local dev — one `aspire run` command orchestrates PostgreSQL, pgAdmin, Keycloak, and LocalStack with a dashboard, health checks, and OpenTelemetry.
+- **POS-004**: .NET Aspire replaces a hand-maintained docker-compose.yml for local dev — one `aspire run` command orchestrates PostgreSQL, pgAdmin, Keycloak, and Silo with a dashboard, health checks, and OpenTelemetry.
 
 ### Negative
 

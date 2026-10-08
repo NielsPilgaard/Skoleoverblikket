@@ -18,8 +18,10 @@ Runs all tUnit integration tests via Testcontainers. Needs Docker running. If Do
 ## Step 2 — Playwright E2E
 
 ```bash
-cd web && npx playwright test --reporter=line
+cd web && npx playwright install chromium && npx playwright test --reporter=line
 ```
+
+`playwright install` is a no-op when the browser is current; it's there because a `@playwright/test` bump otherwise fails global setup with "Executable doesn't exist".
 
 Playwright config starts the full Aspire stack automatically via `aspire run --non-interactive` if not already up. Pass `SKIP_ASPIRE=1` only if the stack is already running.
 

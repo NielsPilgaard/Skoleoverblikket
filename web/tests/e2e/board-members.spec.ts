@@ -21,7 +21,9 @@ test('admin invites, updates and removes a board member from Stamdata', async ({
 
   const row = page.getByTestId('board-member-row').filter({ hasText: email })
   await expect(row).toBeVisible({ timeout: 15_000 })
-  await expect(row).toContainText('Afventer')
+  // Inviting pre-creates the Keycloak account (temporary password in the email),
+  // so a fresh invite already shows as having an account.
+  await expect(row).toContainText('Konto oprettet')
 
   const teacherAccess = row.getByTestId('board-member-teacher-access')
   await expect(teacherAccess).not.toBeChecked()

@@ -5,7 +5,8 @@ description: >-
   Both add-ons are sold at 300 kr/md, but no endpoint checks them. Rule: board
   and parent users only exist while their module is active, so every request
   from those roles is refused without it. Admin and staff features of a module
-  turn read-only without it, the same way an expired subscription does today.
+  block writes without it but still allow reads and deletes, as long as the
+  subscription itself is active.
   One global filter plus one attribute, no per-action checks.
 status: 'Ready'
 ---
@@ -16,8 +17,8 @@ status: 'Ready'
 
 A global `ModuleAccessFilter`, next to `SubscriptionAccessFilter`, enforces three rules. A trial counts as having every module, as `SubscriptionService.GetActiveModulesAsync` already does.
 
-- **R1 (users)**: a request from a `Board` user without `BoardModule`, or from a `Parent` user without `ParentModule`, gets 403. Board and parent users can't exist without their module.
-- **R2 (features)**: actions marked `[RequiresModule(X)]` reject `POST`/`PUT`/`PATCH` with 403 without module X. `GET` and `DELETE` still work, so a school that drops a module can see its data and clean up.
+- **R1 (users)**: a request made as a `Board` user without `BoardModule`, or as a `Parent` user without `ParentModule`, gets 403 (D1 covers principals with several roles). Board and parent users can't exist without their module.
+- **R2 (features)**: actions marked `[RequiresModule(X)]` reject `POST`/`PUT`/`PATCH` with 403 without module X. `GET` and `DELETE` still work, so a school that drops a module can see its data and clean up. An expired subscription still blocks `DELETE` first (D2).
 - **R3 (invitations)**: accepting a board or parent invitation gets 403 when the inviting school lacks the module.
 
 No new frontend. The UI already hides the sidebar items and disables the invite buttons.
@@ -31,8 +32,8 @@ No new frontend. The UI already hides the sidebar items and disables the invite 
 
 ## Decisions
 
-- **D1 — Gate on the role, not the endpoint (R1).** If the principal is in `Roles.Board` and `BoardModule` isn't active, return 403. The same goes for `Roles.Parent` and `ParentModule`. The only exemption is `GET /api/v1/modules`, so the frontend can still read the module state. A user with both an admin or staff role and a gated role is only blocked by R1 on requests that act as the gated role; check how `User.IsInRole` combines roles here and write a test for it.
-- **D2 — Without a module its features become read-only (R2).** This is the same rule as an expired subscription: writes are blocked, reads and deletes work. Deleting is allowed so an admin can remove leftover board members and parents.
+- **D1 — Gate on the role, not the endpoint (R1).** If the principal is in `Roles.Board` and `BoardModule` isn't active, return 403. The same goes for `Roles.Parent` and `ParentModule`. The only exemption is `GET /api/v1/modules`, so the frontend can still read the module state. A principal can hold several realm roles (a staff member who accepts a board invitation keeps `Staff` and gains `Board`), so R1 decides per request which role the principal acts as. It reads the roles allowed by the action's `[Authorize(Roles = …)]` attributes and drops the gated roles whose module is off. If the principal still holds one of the remaining roles, R1 lets the request through. Otherwise it returns 403. An action with no role list counts every authenticated role, so it is only blocked when all of the principal's roles are gated and off. Example without `BoardModule`: an Admin-and-Board principal gets through on an Admin-only action and on an action open to Admin and Board. The same principal gets 403 on a Board-only action such as `GET board-members/me`.
+- **D2 — Without a module its features become read-only, except deletes (R2).** R2 blocks `POST`/`PUT`/`PATCH` and allows `GET` and `DELETE`, so an admin can remove leftover board members and parents. This is not the expired-subscription rule. `SubscriptionAccessFilter` runs first and blocks `DELETE` too when the subscription has expired. So a `DELETE` on a gated feature only works while the subscription itself passes that filter (active or trialing). With an expired subscription everything except reads is blocked, whatever the modules.
 - **D3 — Turning a module off blocks, it doesn't delete.** Board members, parents, files and messages stay. Turning the module on again restores access. Deleting data after cancellation stays with `SchoolRetentionJob`.
 - **D4 — Invitation accept checks the module in the service (R3).** On accept, the user has no tenant claim yet, so the filter can't see the school. `BoardMemberInvitationService` and `ParentInvitationService` look up the invitation's school, check the module, and return a failure that the controller maps to 403. `preview` keeps working.
 - **D5 — One query per gated request.** Call `GetActiveModulesAsync` once per request, and only when R1 or R2 applies. No cache until it shows up in a profile.
@@ -79,6 +80,7 @@ Integration tests only, through HTTP, in one new `ModuleAccessTests.cs`. Each te
 
 - R1: a board user without `BoardModule` gets 403 on `GET board-members/me`, `GET board-files` and a `SchemasController` read. With the module, 200. Same for a parent user on `GET parents/me` and `GET absence/mine`.
 - R1 exemption: `GET /modules` returns 200 for a blocked board user.
+- R1 multiple roles (D1): an Admin-and-Board principal without `BoardModule` gets 200 on an Admin-only `GET` (e.g. `GET board-members`) and 403 on the Board-only `GET board-members/me`.
 - R2: an admin without `BoardModule` gets 403 on `POST board-members/invite` and 200 on `GET board-members` and `DELETE board-members/{id}`. An admin without `ParentModule` gets 403 on `POST parents/invite` and `POST students`.
 - R3: accepting a board invitation after the module was removed gets 403.
 - Trial: a trialing school with no bought modules can invite board members and parents.
