@@ -16,6 +16,8 @@ namespace Skoleoverblikket.Api.IntegrationTests;
 /// Covers:
 ///   - Admin window CRUD: create, list, update, delete, 403 for non-admin, list entries.
 ///   - Parent operations: list open windows, upsert own student, 403 for other student, 409 for closed window.
+///   - Parent entry lifecycle: read own entries, edit without duplicating, delete, 409 after the deadline,
+///     and closed or expired windows hidden from the parent's open list.
 /// </summary>
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
 public sealed class VacationRegistrationTests(ApiFactory factory)
@@ -116,7 +118,7 @@ public sealed class VacationRegistrationTests(ApiFactory factory)
 	/// <summary>
 	/// Creates a VacationRegistrationWindow directly in the DB for use as test prerequisite.
 	/// </summary>
-	private async Task<VacationRegistrationWindow> CreateWindowAsync(bool isOpen = true)
+	private async Task<VacationRegistrationWindow> CreateWindowAsync(bool isOpen = true, int deadlineInDays = 30)
 	{
 		using var scope = _factory.Services.CreateScope();
 		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -127,7 +129,7 @@ public sealed class VacationRegistrationTests(ApiFactory factory)
 			Id = Guid.NewGuid(),
 			TenantId = _tenantId,
 			Title = "Sommerferie tilmelding",
-			RegistrationDeadline = today.AddDays(30),
+			RegistrationDeadline = today.AddDays(deadlineInDays),
 			CareStartDate = today.AddDays(60),
 			CareEndDate = today.AddDays(90),
 			Granularity = VacationRegistrationGranularity.Weeks,
@@ -321,5 +323,167 @@ public sealed class VacationRegistrationTests(ApiFactory factory)
 			$"/api/v1/vacation-registration/{closedWindow.Id}/entries/{student.Id}", req, JsonOpts);
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+	}
+
+	// ── Parent entry lifecycle ────────────────────────────────────────────────────
+
+	[Test]
+	public async Task GetMyEntries_NoEntryYet_ListsChildWithEmptySelection()
+	{
+		const string subject = "parent-my-entries-empty";
+		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(
+			_factory.Services, _tenantId, "MyEntriesEmptyClass");
+		var student = await CreateStudentAsync(klass.Id, "Elev Uden Svar");
+		await CreateParentAsync(subject, student.Id);
+		var window = await CreateWindowAsync(isOpen: true);
+
+		using var parentClient = CreateParentClient(subject);
+		var entries = await GetMyEntriesAsync(parentClient, window.Id);
+
+		await Assert.That(entries.Count).IsEqualTo(1);
+		await Assert.That(entries[0].StudentId).IsEqualTo(student.Id);
+		await Assert.That(entries[0].SelectedDates).IsEmpty();
+		await Assert.That(entries[0].SubmittedAt).IsNull();
+	}
+
+	[Test]
+	public async Task UpsertEntry_SecondSubmission_UpdatesExistingEntry()
+	{
+		const string subject = "parent-upsert-twice";
+		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(
+			_factory.Services, _tenantId, "UpsertTwiceClass");
+		var student = await CreateStudentAsync(klass.Id, "Elev Ændrer");
+		await CreateParentAsync(subject, student.Id);
+		var window = await CreateWindowAsync(isOpen: true);
+		var today = DateOnly.FromDateTime(DateTime.UtcNow);
+		var firstDate = today.AddDays(65).ToString("yyyy-MM-dd");
+		var secondDates = new[] { today.AddDays(70).ToString("yyyy-MM-dd"), today.AddDays(71).ToString("yyyy-MM-dd") };
+
+		using var parentClient = CreateParentClient(subject);
+		var url = $"/api/v1/vacation-registration/{window.Id}/entries/{student.Id}";
+		var first = await parentClient.PutAsJsonAsync(
+			url, new VacationRegistrationController.UpsertEntryRequest([firstDate], "Første svar"), JsonOpts);
+		var second = await parentClient.PutAsJsonAsync(
+			url, new VacationRegistrationController.UpsertEntryRequest(secondDates, "Rettet svar"), JsonOpts);
+
+		await Assert.That(first.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+		await Assert.That(second.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+		var mine = await GetMyEntriesAsync(parentClient, window.Id);
+		await Assert.That(mine.Single().SelectedDates).IsEquivalentTo(secondDates);
+		await Assert.That(mine.Single().Note).IsEqualTo("Rettet svar");
+
+		// Hanne's overview must show the corrected answer once, not both submissions.
+		var adminResponse = await _adminClient.GetAsync($"/api/v1/vacation-registration/{window.Id}/entries");
+		var adminEntries = await adminResponse.Content.ReadFromJsonAsync<List<VacationRegistrationController.EntryDto>>(JsonOpts);
+		var studentEntries = adminEntries!.Where(e => e.StudentId == student.Id).ToList();
+		await Assert.That(studentEntries.Count).IsEqualTo(1);
+		await Assert.That(studentEntries[0].SelectedDates).IsEquivalentTo(secondDates);
+	}
+
+	[Test]
+	public async Task DeleteEntry_OpenWindow_RemovesEntry()
+	{
+		const string subject = "parent-delete-entry";
+		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(
+			_factory.Services, _tenantId, "DeleteEntryClass");
+		var student = await CreateStudentAsync(klass.Id, "Elev Fortryder");
+		await CreateParentAsync(subject, student.Id);
+		var window = await CreateWindowAsync(isOpen: true);
+		var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+		using var parentClient = CreateParentClient(subject);
+		var url = $"/api/v1/vacation-registration/{window.Id}/entries/{student.Id}";
+		await parentClient.PutAsJsonAsync(
+			url, new VacationRegistrationController.UpsertEntryRequest([today.AddDays(65).ToString("yyyy-MM-dd")], null), JsonOpts);
+
+		var delete = await parentClient.DeleteAsync(url);
+		await Assert.That(delete.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+		var mine = await GetMyEntriesAsync(parentClient, window.Id);
+		await Assert.That(mine.Single().SelectedDates).IsEmpty();
+		await Assert.That(mine.Single().SubmittedAt).IsNull();
+
+		var deleteAgain = await parentClient.DeleteAsync(url);
+		await Assert.That(deleteAgain.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+	}
+
+	[Test]
+	public async Task DeleteEntry_WindowClosedAfterSubmission_Returns409()
+	{
+		const string subject = "parent-delete-closed";
+		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(
+			_factory.Services, _tenantId, "DeleteClosedClass");
+		var student = await CreateStudentAsync(klass.Id, "Elev Lukket Sletning");
+		await CreateParentAsync(subject, student.Id);
+		var window = await CreateWindowAsync(isOpen: true);
+		var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+		using var parentClient = CreateParentClient(subject);
+		var url = $"/api/v1/vacation-registration/{window.Id}/entries/{student.Id}";
+		await parentClient.PutAsJsonAsync(
+			url, new VacationRegistrationController.UpsertEntryRequest([today.AddDays(65).ToString("yyyy-MM-dd")], null), JsonOpts);
+
+		var close = await _adminClient.PutAsJsonAsync(
+			$"/api/v1/vacation-registration/{window.Id}",
+			new VacationRegistrationController.UpdateWindowRequest(
+				window.Title, window.RegistrationDeadline, window.CareStartDate, window.CareEndDate,
+				window.Granularity, IsOpen: false),
+			JsonOpts);
+		await Assert.That(close.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+		var delete = await parentClient.DeleteAsync(url);
+
+		await Assert.That(delete.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+		var mine = await GetMyEntriesAsync(parentClient, window.Id);
+		await Assert.That(mine.Single().SelectedDates.Length).IsEqualTo(1);
+	}
+
+	[Test]
+	public async Task UpsertEntry_DeadlinePassed_Returns409()
+	{
+		const string subject = "parent-deadline-passed";
+		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(
+			_factory.Services, _tenantId, "DeadlinePassedClass");
+		var student = await CreateStudentAsync(klass.Id, "Elev For Sent");
+		await CreateParentAsync(subject, student.Id);
+		var expiredWindow = await CreateWindowAsync(isOpen: true, deadlineInDays: -1);
+		var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+		using var parentClient = CreateParentClient(subject);
+		var response = await parentClient.PutAsJsonAsync(
+			$"/api/v1/vacation-registration/{expiredWindow.Id}/entries/{student.Id}",
+			new VacationRegistrationController.UpsertEntryRequest([today.AddDays(65).ToString("yyyy-MM-dd")], null),
+			JsonOpts);
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+	}
+
+	[Test]
+	public async Task GetOpenWindows_Parent_HidesClosedAndExpiredWindows()
+	{
+		var openWindow = await CreateWindowAsync(isOpen: true);
+		var closedWindow = await CreateWindowAsync(isOpen: false);
+		var expiredWindow = await CreateWindowAsync(isOpen: true, deadlineInDays: -1);
+		var lastDayWindow = await CreateWindowAsync(isOpen: true, deadlineInDays: 0);
+		using var parentClient = CreateParentClient("parent-open-windows-filter");
+
+		var response = await parentClient.GetAsync("/api/v1/vacation-registration/open");
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+		var ids = (await response.Content.ReadFromJsonAsync<List<VacationRegistrationController.WindowDto>>(JsonOpts))!
+			.Select(w => w.Id)
+			.ToList();
+		await Assert.That(ids).Contains(openWindow.Id);
+		await Assert.That(ids).Contains(lastDayWindow.Id);
+		await Assert.That(ids).DoesNotContain(closedWindow.Id);
+		await Assert.That(ids).DoesNotContain(expiredWindow.Id);
+	}
+
+	private static async Task<List<VacationRegistrationController.MyEntryDto>> GetMyEntriesAsync(HttpClient parentClient, Guid windowId)
+	{
+		var response = await parentClient.GetAsync($"/api/v1/vacation-registration/{windowId}/my-entries");
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+		return (await response.Content.ReadFromJsonAsync<List<VacationRegistrationController.MyEntryDto>>(JsonOpts))!;
 	}
 }
