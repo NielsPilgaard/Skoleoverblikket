@@ -8,18 +8,30 @@
     Defaults to $env:BACKUP_CONSOLE_SERVER, so set that once and run the script with no arguments.
 .PARAMETER LocalPort
     Local end of the tunnel. Change it when 9090 is taken, e.g. by the local dev stack.
+.PARAMETER RemotePort
+    The agent's port on the server (127.0.0.1:<port>). Only differs when several projects share a server.
+.PARAMETER Project
+    Compose project (the Dokploy app name) of the agent. Needed when several projects share a server,
+    because they all have a backup-agent service.
 .EXAMPLE
     pwsh scripts/backup-console.ps1 ubuntu@203.0.113.10
 #>
 param(
     [string]$Server = $env:BACKUP_CONSOLE_SERVER,
-    [int]$LocalPort = 9090
+    [int]$LocalPort = 9090,
+    [int]$RemotePort = 9090,
+    [string]$Project = ''
 )
 
 $ErrorActionPreference = 'Stop'
 
 if (-not $Server) {
     Write-Host "Which server? Pass it, e.g. 'pwsh scripts/backup-console.ps1 ubuntu@<vps>', or set BACKUP_CONSOLE_SERVER." -ForegroundColor Red
+    exit 1
+}
+
+if ($Project -notmatch '^[A-Za-z0-9_.-]*$') {
+    Write-Host "Project '$Project' isn't a compose project name." -ForegroundColor Red
     exit 1
 }
 
@@ -39,8 +51,12 @@ try {
 }
 
 Write-Host "Reading the access link from $Server..."
+$filter = '-f label=com.docker.compose.service=backup-agent'
+if ($Project) {
+    $filter += " -f label=com.docker.compose.project=$Project"
+}
 # Single quotes: $(...) runs on the VPS, not here.
-$remote = 'docker exec $(docker ps -qf label=com.docker.compose.service=backup-agent) cat /var/lib/backup-agent/console-link'
+$remote = 'docker exec $(docker ps -q ' + $filter + ') cat /var/lib/backup-agent/console-link'
 $link = (ssh -o ConnectTimeout=15 $Server $remote | Select-Object -First 1)
 if ($LASTEXITCODE -eq 255) {
     Write-Host "Can't SSH to $Server. Check the address and your key: ssh $Server" -ForegroundColor Red
@@ -57,7 +73,7 @@ $tunnel = Start-Process ssh -PassThru -NoNewWindow -ArgumentList @(
     '-N',
     '-o', 'ExitOnForwardFailure=yes',
     '-o', 'ServerAliveInterval=30',
-    '-L', "${LocalPort}:127.0.0.1:9090",
+    '-L', "${LocalPort}:127.0.0.1:${RemotePort}",
     $Server
 )
 
@@ -75,7 +91,7 @@ try {
     }
 
     if (-not $ready) {
-        Write-Host "The tunnel didn't come up. Try by hand: ssh -L ${LocalPort}:127.0.0.1:9090 $Server" -ForegroundColor Red
+        Write-Host "The tunnel didn't come up. Try by hand: ssh -L ${LocalPort}:127.0.0.1:${RemotePort} $Server" -ForegroundColor Red
         exit 1
     }
 
