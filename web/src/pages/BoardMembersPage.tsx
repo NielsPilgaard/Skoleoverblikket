@@ -21,17 +21,22 @@ export default function BoardMembersPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [inviting, setInviting] = useState(false)
+  const [rowError, setRowError] = useState<string | null>(null)
 
   const { data: members, isLoading, isError, error } = useQuery(getApiV1BoardMembersOptions())
 
   const toggleMutation = useMutation({
     ...patchApiV1BoardMembersByIdTeacherDataAccessMutation(),
+    onMutate: () => setRowError(null),
     onSuccess: () => void qc.invalidateQueries({ queryKey: getApiV1BoardMembersQueryKey() }),
+    onError: () => setRowError('Læreradgangen kunne ikke ændres. Prøv igen.'),
   })
 
   const deleteMutation = useMutation({
     ...deleteApiV1BoardMembersByIdMutation(),
+    onMutate: () => setRowError(null),
     onSuccess: () => void qc.invalidateQueries({ queryKey: getApiV1BoardMembersQueryKey() }),
+    onError: () => setRowError('Bestyrelsesmedlemmet kunne ikke fjernes. Prøv igen.'),
   })
 
   const inviteMutation = useMutation({
@@ -118,6 +123,16 @@ export default function BoardMembersPage() {
         </div>
       )}
 
+      {rowError && (
+        <div
+          role="alert"
+          data-testid="board-members-error"
+          className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700"
+        >
+          {rowError}
+        </div>
+      )}
+
       <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
         {isLoading ? (
           <div className="px-5 py-4 animate-pulse space-y-3">
@@ -160,13 +175,14 @@ export default function BoardMembersPage() {
                     type="checkbox"
                     data-testid="board-member-teacher-access"
                     checked={member.canAccessTeacherData}
+                    disabled={toggleMutation.isPending}
                     onChange={(e) =>
                       toggleMutation.mutate({
                         path: { id: member.id! },
                         body: { canAccessTeacherData: e.target.checked },
                       })
                     }
-                    className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                    className="rounded border-gray-300 text-brand-600 focus:ring-brand-500 disabled:opacity-50"
                   />
                   Læreradgang
                 </label>
