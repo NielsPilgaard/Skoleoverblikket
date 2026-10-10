@@ -270,6 +270,7 @@ public sealed class SubscriptionService(
 	/// <summary>
 	/// Returns the active module names for the given school's subscription.
 	/// During a valid trial, all modules are returned so schools can evaluate every feature.
+	/// ModuleAccessFilter enforces this list server side.
 	/// </summary>
 	public async Task<IReadOnlyList<string>> GetActiveModulesAsync(Guid schoolId, CancellationToken cancellationToken = default)
 	{
@@ -277,9 +278,10 @@ public sealed class SubscriptionService(
 			.Include(s => s.ActiveModules)
 			.FirstOrDefaultAsync(s => s.SchoolId == schoolId, cancellationToken);
 
+		// No row yet: the school hasn't opened billing, and GetOrCreateAsync would start a fresh trial.
 		if (sub is null)
 		{
-			return [];
+			return Enum.GetNames<SubscriptionModule>();
 		}
 
 		var isTrialing = sub.Status == SubscriptionStatus.Trialing && sub.TrialEnd > DateTimeOffset.UtcNow;
@@ -292,6 +294,9 @@ public sealed class SubscriptionService(
 			.Select(m => m.Module.ToString())
 			.ToList();
 	}
+
+	public async Task<bool> IsModuleActiveAsync(Guid schoolId, SubscriptionModule module, CancellationToken cancellationToken = default) =>
+		(await GetActiveModulesAsync(schoolId, cancellationToken)).Contains(module.ToString());
 
 	/// <summary>
 	/// Adds a module to the school's subscription via Stripe, then records it in DB.

@@ -38,10 +38,11 @@ Included:
 
 ## Modules (optional add-ons)
 
-Additional capabilities are sold as opt-in modules on top of Basis, each billed on the same monthly/yearly interval as the base subscription (switching interval switches the whole subscription, base plan and modules together). Enforced via `SubscriptionModulesController` — a tenant's active modules gate access to the corresponding feature area in the app.
+Additional capabilities are sold as opt-in modules on top of Basis, each billed on the same monthly/yearly interval as the base subscription (switching interval switches the whole subscription, base plan and modules together). The API enforces them (`ModuleAccessFilter`, see [AUTHORIZATION.md](AUTHORIZATION.md#paid-modules)); the frontend reads the active list from `SubscriptionModulesController` to hide what isn't bought. A trial has every module. Turning a module off blocks its users and makes its features read-only, but deletes nothing: turning it on again restores access, and only `SchoolRetentionJob` deletes data after cancellation.
 
 | Module | Unlocks |
 |---|---|
+| Board module | Bestyrelse: board member accounts, board files and the board's overview |
 | Parent module | Parent portal: schema/calendar/ugeplan views, kontaktbog, beskeder, kontakt directory, fraværsregistrering, ferieindmelding — see [AGENTS.md](../AGENTS.md) built-features list |
 
 More modules may be added over time; check `ModulePriceIds` in Stripe config for the current list rather than assuming this table is exhaustive.

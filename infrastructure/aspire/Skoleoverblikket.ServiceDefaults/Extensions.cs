@@ -60,6 +60,8 @@ public static class Extensions
                 tracing
                     .AddSource(builder.Environment.ApplicationName)
                     .AddSource("Microsoft.EntityFrameworkCore")
+                    // Npgsql's own ActivitySource: one span per SQL command, so traces show DB time.
+                    .AddSource("Npgsql")
                     .AddAspNetCoreInstrumentation(options =>
                     {
                         options.Filter = httpContext =>

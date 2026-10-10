@@ -13,6 +13,7 @@ namespace Skoleoverblikket.Api.Controllers;
 [ApiController]
 [Route("api/v1/students")]
 [Authorize(Roles = Roles.Admin)]
+[RequiresModule(SubscriptionModule.ParentModule)]
 public sealed class StudentsController(AppDbContext db, ITenantContext tenant, IObjectStorage storage) : ControllerBase
 {
 	public record StudentDto(Guid Id, string Name, Guid ClassId, string ClassName, bool IsEnrolledInSfo, DateTimeOffset CreatedAt);

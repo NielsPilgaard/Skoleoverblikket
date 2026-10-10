@@ -13,6 +13,7 @@ namespace Skoleoverblikket.Api.Controllers;
 [ApiController]
 [Route("api/v1/board-files")]
 [Authorize(Roles = $"{Roles.Admin},{Roles.Board}")]
+[RequiresModule(SubscriptionModule.BoardModule)]
 public sealed class BoardFilesController(
 	AppDbContext db,
 	ITenantContext tenant,

@@ -2,8 +2,8 @@
 title: 'Authorization Model'
 description: >-
   JWT + role/ClassPermission authorization: admin vs. staff roles, the
-  superadmin-mode/restricted-mode class-editing logic, tenant isolation, and
-  the endpoint authorization summary.
+  superadmin-mode/restricted-mode class-editing logic, tenant isolation, paid
+  module enforcement, and the endpoint authorization summary.
 status: 'Living'
 purpose: Reference before touching any endpoint's auth — the ClassPermission superadmin/restricted-mode interaction is non-obvious and easy to get wrong.
 ---
@@ -167,6 +167,31 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 
 ---
 
+## Paid modules
+
+`BoardModule` and `ParentModule` are enforced in the API by `ModuleAccessFilter` (`Tenancy/`), a global filter that runs after `SubscriptionAccessFilter`. A trial counts as having every module, and so does a school with no `Subscription` row yet. Every 403 is a `ProblemDetails` titled "Modulet er ikke aktivt".
+
+- **R1, users.** Board users need `BoardModule`, parent users need `ParentModule`. A principal can hold several realm roles (admin and board, say), so the filter drops the roles whose module is off and checks the rest against the action's `[Authorize(Roles = …)]` attributes. An action with no role list needs any remaining role among admin, superadmin, board and parent. Staff have no realm role, so a staff member who became a board member acts as board. Exempt: `GET /api/v1/modules` and `[AllowAnonymous]` actions.
+- **R2, features.** Actions marked `[RequiresModule(X)]` reject `POST`/`PUT`/`PATCH` without module X. `GET` and `DELETE` still work, so a school that drops a module can read and clean up. An expired subscription blocks `DELETE` first, in `SubscriptionAccessFilter`.
+- **R3, invitations.** `BoardMemberInvitationService.AcceptAsync` and `ParentInvitationService.AcceptAsync` check the inviting school's module, because the accepting user has no tenant claim yet.
+
+Marked with `[RequiresModule]`:
+
+| Module | Controller | Gated writes |
+|---|---|---|
+| Board | `BoardMembersController`, `BoardFilesController` | all writes |
+| Board | `ImportsController` | `POST board-members` |
+| Parent | `ParentsController`, `StudentsController`, `AttendanceController`, `ContactThreadsController`, `MessagesController`, `ClassChatController` | all writes |
+| Parent | `ParentInvitationsController` | `POST {parentId}/resend` |
+| Parent | `ImportsController` | `POST students-and-parents` |
+| Parent | `AbsenceController` | `PUT {id}/category`, `POST {id}/approve`, `POST {id}/reject`, `POST follow-ups` |
+
+Not gated: vacation registration windows, the contact directory and the Stå mål med coverage view, which are Basis. A new controller for a paid feature needs the attribute, or the module stops being something a school pays for.
+
+---
+
 ## Known gaps
 
 `WeekPlanController` write endpoints (`PUT slots`, `POST/DELETE files`) enforce `[Authorize]` only — any authenticated tenant user can annotate any class's week plan, regardless of ClassPermissions. This is intentional for the teacher annotation flow but means ClassPermissions do not fully restrict week-plan writes.
+
+One login can't reliably hold two roles. Staff has no realm role, so code treats "has `board` or `parent`" as "is not staff". An invite that reuses an existing account doesn't add the role either. A teacher who is also a parent or board member therefore gets only one role, depending on invite order, and is blocked entirely when that role's module is off. [Task 61](../tasks/61-school-roles-in-api.md) moves school roles to the API to fix this.

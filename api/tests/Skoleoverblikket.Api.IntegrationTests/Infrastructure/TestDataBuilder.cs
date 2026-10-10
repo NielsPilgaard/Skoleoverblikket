@@ -182,6 +182,44 @@ public static class TestDataBuilder
 		return slot;
 	}
 
+	/// <summary>
+	/// Gives the school a paid (non-trial) subscription with exactly <paramref name="modules"/>.
+	/// A completed checkout without a Stripe subscription id activates it without calling Stripe.
+	/// </summary>
+	public static async Task CreateActiveSubscriptionAsync(
+		IServiceProvider services, Guid tenantId, params SubscriptionModule[] modules)
+	{
+		await using var scope = services.CreateAsyncScope();
+		var subscriptions = scope.ServiceProvider.GetRequiredService<SubscriptionService>();
+		await subscriptions.GetOrCreateAsync(tenantId);
+		await subscriptions.HandleWebhookAsync(new Stripe.Event
+		{
+			Type = Stripe.EventTypes.CheckoutSessionCompleted,
+			Data = new Stripe.EventData
+			{
+				Object = new Stripe.Checkout.Session { Metadata = new Dictionary<string, string> { ["school_id"] = tenantId.ToString() } },
+			},
+		});
+
+		foreach (var module in modules)
+		{
+			await subscriptions.GrantModuleOverrideAsync(tenantId, module);
+		}
+	}
+
+	/// <summary>Starts a fresh 30-day trial, which has every module.</summary>
+	public static async Task CreateTrialSubscriptionAsync(IServiceProvider services, Guid tenantId)
+	{
+		await using var scope = services.CreateAsyncScope();
+		await scope.ServiceProvider.GetRequiredService<SubscriptionService>().GetOrCreateAsync(tenantId);
+	}
+
+	public static async Task RemoveModuleAsync(IServiceProvider services, Guid tenantId, SubscriptionModule module)
+	{
+		await using var scope = services.CreateAsyncScope();
+		await scope.ServiceProvider.GetRequiredService<SubscriptionService>().RemoveModuleAsync(tenantId, module);
+	}
+
 	public static async Task<RoomsController.RoomDto> CreateRoomAsync(
 		IServiceProvider services, Guid tenantId, string name = "Lokale 1")
 	{
