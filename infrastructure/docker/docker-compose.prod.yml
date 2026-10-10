@@ -142,6 +142,8 @@ services:
       Stripe__ModulePriceIds__BoardModule__Yearly: ${Stripe_ModulePriceIds_BoardModule_Yearly}
       ElmahIo__ApiKey: ${ElmahIo_ApiKey:-}
       ElmahIo__LogId: ${ElmahIo_LogId:-}
+      # Same endpoint the agent writes to, so the two can't drift apart.
+      BackupStatus__ServiceUrl: ${OpsBucket_ServiceUrl:-https://s3.rbx.io.cloud.ovh.net/}
       BackupStatus__AccessKey: ${BackupStatus_AccessKey:-}
       BackupStatus__SecretKey: ${BackupStatus_SecretKey:-}
     healthcheck:
