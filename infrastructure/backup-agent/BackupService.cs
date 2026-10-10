@@ -77,7 +77,9 @@ public sealed class BackupService(
 			await heartbeats.SendAsync(Heartbeats.Kind.Backup, expire.Ok ? Health.Healthy : Health.Degraded, summary, DateTimeOffset.UtcNow - started, cancellationToken);
 		}
 
-		return new JobOutcome(expire.Ok, expire.Ok ? summary : $"{summary} expire failed.", new { backup.Label, type, backup.DatabaseBytes, backup.RepoBytes, backup.DurationSeconds, reason });
+		// The backup succeeded even when expire didn't: the Degraded heartbeat and the retention check
+		// report that. A failed job would make the scheduler re-run the full backup every hour.
+		return new JobOutcome(true, expire.Ok ? summary : $"{summary} expire failed: {expire.Tail(2)}", new { backup.Label, type, backup.DatabaseBytes, backup.RepoBytes, backup.DurationSeconds, reason, expireOk = expire.Ok });
 	}
 
 	private async Task<bool> WaitForSegmentAsync(string segmentName, CancellationToken cancellationToken)
