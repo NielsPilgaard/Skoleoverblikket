@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Skoleoverblikket.Api.Auth;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Services;
+using Skoleoverblikket.Api.Models;
+using Skoleoverblikket.Api.Tenancy;
 
 namespace Skoleoverblikket.Api.Controllers;
 
@@ -53,17 +55,19 @@ public sealed class ParentInvitationsController(
 			return Unauthorized(new ProblemDetails { Title = "Ikke autentificeret", Status = 401 });
 		}
 
-		var invitation = await invitationService.FindValidAsync(token, cancellationToken);
-		if (invitation is null)
+		return await invitationService.AcceptAsync(token, keycloakSubject, cancellationToken) switch
 		{
-			return Problem(title: "Ugyldig eller udløbet invitation", statusCode: 404);
-		}
-
-		await invitationService.MarkAcceptedAsync(invitation, keycloakSubject, cancellationToken);
-		return NoContent();
+			InvitationAcceptResult.Accepted => NoContent(),
+			InvitationAcceptResult.ModuleInactive => Problem(
+				title: "Modulet er ikke aktivt",
+				detail: "Skolen har ikke længere Forældremodulet. Kontakt skolens kontor.",
+				statusCode: 403),
+			_ => Problem(title: "Ugyldig eller udløbet invitation", statusCode: 404),
+		};
 	}
 
 	[HttpPost("{parentId:guid}/resend")]
+	[RequiresModule(SubscriptionModule.ParentModule)]
 	[Authorize(Roles = Roles.Admin)]
 	public async Task<ActionResult> Resend(Guid parentId, CancellationToken cancellationToken)
 	{

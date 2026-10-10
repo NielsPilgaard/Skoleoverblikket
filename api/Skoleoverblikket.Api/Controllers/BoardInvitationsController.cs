@@ -47,13 +47,14 @@ public sealed class BoardInvitationsController(
 	[AllowAnonymous]
 	public async Task<ActionResult> Accept(string token, CancellationToken cancellationToken)
 	{
-		var invitation = await invitationService.FindValidAsync(token, cancellationToken);
-		if (invitation is null)
+		return await invitationService.AcceptAsync(token, cancellationToken) switch
 		{
-			return Problem(title: "Ugyldig eller udløbet invitation", statusCode: 400);
-		}
-
-		await invitationService.MarkAcceptedAsync(invitation, cancellationToken);
-		return NoContent();
+			InvitationAcceptResult.Accepted => NoContent(),
+			InvitationAcceptResult.ModuleInactive => Problem(
+				title: "Modulet er ikke aktivt",
+				detail: "Skolen har ikke længere Bestyrelsesmodulet. Kontakt skolens kontor.",
+				statusCode: 403),
+			_ => Problem(title: "Ugyldig eller udløbet invitation", statusCode: 400),
+		};
 	}
 }

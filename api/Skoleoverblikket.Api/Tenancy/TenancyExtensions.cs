@@ -8,6 +8,7 @@ public static class TenancyExtensions
 		services.AddScoped<HttpTenantContext>();
 		services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<HttpTenantContext>());
 		services.AddScoped<SubscriptionAccessFilter>();
+		services.AddScoped<ModuleAccessFilter>();
 		services.AddExceptionHandler<MissingTenantClaimExceptionHandler>();
 
 		return services;
