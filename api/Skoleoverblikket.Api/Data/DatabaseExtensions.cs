@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Skoleoverblikket.Api.OpenApi;
 using Skoleoverblikket.Api.Storage;
 
 namespace Skoleoverblikket.Api.Data;
@@ -15,11 +16,12 @@ public static class DatabaseExtensions
 
 	public static async Task MigrateAndSeedAsync(this WebApplication app)
 	{
-		var isOpenApiGeneration = string.Equals(
-			Environment.GetEnvironmentVariable("OPENAPI_GENERATE"), "true",
-			StringComparison.OrdinalIgnoreCase);
+		if (OpenApiGeneration.IsRunning)
+		{
+			return;
+		}
 
-		if (!app.Environment.IsProduction() && !isOpenApiGeneration)
+		if (!app.Environment.IsProduction())
 		{
 			await using var scope = app.Services.CreateAsyncScope();
 			var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
