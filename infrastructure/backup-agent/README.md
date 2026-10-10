@@ -248,7 +248,7 @@ docker compose -f infrastructure/backup-agent/docker-compose.dev.yml exec postgr
 docker exec $(docker ps -qf label=com.docker.compose.project=backup-agent-dev -f label=com.docker.compose.service=backup-agent) cat /var/lib/backup-agent/console-link
 ```
 
-Silo stands in for S3 with a self-signed certificate: pgBackRest only talks HTTPS to S3. The slot cap is 256 MB and the WAL switch runs every minute, so lost-slot and RPO cases take minutes to try. Go live the same way as on prod: **Go live** in the console, then `up -d --force-recreate`.
+Silo stands in for S3 over plain HTTP: pgBackRest defaults to HTTPS, but an `http://` scheme on `repo1-s3-endpoint` turns that off (works on 2.59.3, not in its option help). The slot cap is 256 MB and the WAL switch runs every minute, so lost-slot and RPO cases take minutes to try. Go live the same way as on prod: **Go live** in the console, then `up -d --force-recreate`.
 
 The agent is infrastructure, so it's proven by breaking it on purpose rather than by unit tests. The list (agent killed past the slot cap, wrong S3 key, container recreated with unpushed WAL, Postgres stopped, reaching the console from another container, a full restore with go-live and switch back) is under Testing in [task 60](../../tasks/60-backup-console.md). Run it again after adapting.
 

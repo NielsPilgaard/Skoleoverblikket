@@ -53,7 +53,6 @@ services:
       - pg-control:/pg-control
       - wal-receive:/wal-receive
       - agent-state:/var/lib/backup-agent
-      - silo-certs:/silo-certs:ro
     tmpfs:
       - /drill:size=1g,uid=999,gid=999,mode=0700
     mem_limit: 1g
@@ -62,54 +61,31 @@ services:
       Agent__WalSwitchInterval: "00:01:00"
       Agent__StatusInterval: "00:01:00"
       Agent__SlotWarnBytes: "134217728"
-      # Silo serves HTTPS with the self-signed cert from silo-certs; pgBackRest skips verification,
-      # the agent's ops-bucket client trusts the cert through SSL_CERT_FILE.
-      SSL_CERT_FILE: /silo-certs/public.crt
-      PGBACKREST_REPO1_S3_ENDPOINT: silo
+      # Plain HTTP: pgBackRest defaults to HTTPS, but takes an http:// scheme on the endpoint.
+      PGBACKREST_REPO1_S3_ENDPOINT: http://silo
       PGBACKREST_REPO1_STORAGE_PORT: "9000"
-      PGBACKREST_REPO1_STORAGE_VERIFY_TLS: "n"
       PGBACKREST_REPO1_S3_REGION: us-east-1
       PGBACKREST_REPO1_S3_BUCKET: pgbackrest
       PGBACKREST_REPO1_S3_KEY: minioadmin
       PGBACKREST_REPO1_S3_KEY_SECRET: minioadmin
       PGBACKREST_REPO1_CIPHER_PASS: dev-cipher-pass
-      OpsBucket__ServiceUrl: https://silo:9000
+      OpsBucket__ServiceUrl: http://silo:9000
       OpsBucket__AccessKey: minioadmin
       OpsBucket__SecretKey: minioadmin
       OpsBucket__BucketName: skoleoverblikket-ops
     networks:
       - agent
 
-  # Self-signed cert for Silo (SAN = silo). pgBackRest only speaks HTTPS to S3.
-  silo-certs-init:
-    image: alpine/openssl
-    entrypoint: ["sh", "-c"]
-    command:
-      - >
-        [ -f /certs/public.crt ] || openssl req -x509 -newkey rsa:2048 -nodes -days 3650
-        -subj /CN=silo -addext subjectAltName=DNS:silo,DNS:localhost
-        -keyout /certs/private.key -out /certs/public.crt
-        && chmod 644 /certs/private.key /certs/public.crt
-    volumes:
-      - silo-certs:/certs
-
   silo:
     image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
-    # The image sets HOME=/tmp, so the default certs dir isn't /root/.minio/certs: name it.
-    command: ["server", "/data", "--console-address", ":9001", "--certs-dir", "/certs"]
+    command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-      # mcli's built-in "local" alias is plain HTTP; the healthcheck needs HTTPS.
-      MC_HOST_local: https://minioadmin:minioadmin@localhost:9000
     volumes:
       - silo-data:/data
-      - silo-certs:/certs:ro
-    depends_on:
-      silo-certs-init:
-        condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "mcli", "ready", "local", "--insecure"]
+      test: ["CMD", "mcli", "ready", "local"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -122,8 +98,8 @@ services:
     entrypoint: ["sh", "-c"]
     command:
       - >
-        mcli --insecure alias set local https://silo:9000 minioadmin minioadmin
-        && mcli --insecure mb --ignore-existing local/pgbackrest local/skoleoverblikket-ops
+        mcli alias set local http://silo:9000 minioadmin minioadmin
+        && mcli mb --ignore-existing local/pgbackrest local/skoleoverblikket-ops
     depends_on:
       silo:
         condition: service_healthy
@@ -144,4 +120,3 @@ volumes:
   wal-receive:
   agent-state:
   silo-data:
-  silo-certs:
