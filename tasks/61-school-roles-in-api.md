@@ -15,7 +15,7 @@ status: 'Ready'
 
 ## TL;DR
 
-- **Keycloak authenticates, the API authorizes.** A claims transformation adds `admin`, `staff`, `board` and `parent` role claims from the database for the token's `sub` in the token's school. Those roles in the token are ignored. Only `superadmin` still comes from Keycloak.
+- **Keycloak authenticates, the API authorizes.** A claims transformation adds `admin`, `staff`, `board` and `parent` role claims from the database for the token's `sub` in the token's school. Those roles in the token are ignored. Only `superadmin` still comes from Keycloak. That is the end state: during D10 Phase A the API still accepts Keycloak `admin` alongside `Staff.IsAdmin` until the backfill is done.
 - **One login, several roles.** `GET /api/v1/me` lists the person's roles. A person with more than one role gets a "Vis som" switcher, and the frontend sends `X-Acting-As: staff|parent|board`. The API then applies only that role.
 - **Fixes three bugs along the way:**
   - Invites that land on an existing account never add the role.
