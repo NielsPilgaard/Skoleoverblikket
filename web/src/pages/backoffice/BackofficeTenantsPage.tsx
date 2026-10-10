@@ -49,12 +49,23 @@ export default function BackofficeTenantsPage() {
     queryFn: () => api.get<TenantListItem[]>('/admin/tenants'),
   })
 
+  // The backup card has its own endpoint, so it shows even when the school list fails.
   if (isLoading) {
-    return <div className="text-gray-500 text-sm">Henter skoler…</div>
+    return (
+      <div>
+        <BackofficeBackupStatusCard />
+        <div className="text-gray-500 text-sm">Henter skoler…</div>
+      </div>
+    )
   }
 
   if (isError || !tenants) {
-    return <div className="text-red-600 text-sm">Kunne ikke hente skoler.</div>
+    return (
+      <div>
+        <BackofficeBackupStatusCard />
+        <div className="text-red-600 text-sm">Kunne ikke hente skoler.</div>
+      </div>
+    )
   }
 
   return (

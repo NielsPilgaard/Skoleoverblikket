@@ -99,9 +99,10 @@ export default function BackofficeBackupStatusCard() {
           <h2 className="font-semibold text-gray-900">Backup</h2>
           <span
             data-testid="backup-status-health"
-            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${healthColors[data.health]}`}
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${stale ? 'bg-red-100 text-red-700' : healthColors[data.health]}`}
           >
-            {healthLabel[data.health]}
+            {/* The last report's health says nothing once the agent has gone quiet. */}
+            {stale ? 'Ingen status' : healthLabel[data.health]}
           </span>
         </div>
         <span
