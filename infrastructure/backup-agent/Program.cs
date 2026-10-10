@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using Skoleoverblikket.BackupAgent;
 using Skoleoverblikket.BackupAgent.Pages;
@@ -61,6 +62,22 @@ app.Use(async (context, next) =>
 });
 app.Services.GetRequiredService<ConsoleAccess>(); // Writes console-link at startup, before anyone asks.
 ConsoleAccess.Map(app);
+
+// UseAntiforgery only records the result, and minimal APIs reject a bad token while binding form
+// fields, so a handler that binds none would run anyway. Check every POST here instead; all of them
+// come from Html.Form with a token. This has to run first: once UseAntiforgery has marked a token
+// invalid, reading the form throws.
+app.Use(async (context, next) =>
+{
+	if (HttpMethods.IsPost(context.Request.Method) &&
+		!await context.RequestServices.GetRequiredService<IAntiforgery>().IsRequestValidAsync(context))
+	{
+		context.Response.StatusCode = StatusCodes.Status400BadRequest;
+		return;
+	}
+
+	await next();
+});
 app.UseAntiforgery();
 
 app.MapGet("/console.css", () => Results.Text(Html.Css, "text/css; charset=utf-8"));
