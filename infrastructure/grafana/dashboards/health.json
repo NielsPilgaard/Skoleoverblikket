@@ -291,8 +291,8 @@
     {
       "type": "stat",
       "id": 5,
-      "title": "p95 latency (API)",
-      "description": "",
+      "title": "API p95, warm",
+      "description": "95th percentile of /api/v1 requests on reused connections, so cold starts after a deploy are left out (see Latency below). Shown only with at least 50 such requests in the range; below that a percentile is just the slowest one or two requests. 'warm requests' is the sample size.",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -310,7 +310,17 @@
             "uid": "grafanacloud-logs"
           },
           "refId": "A",
-          "expr": "quantile_over_time(0.95, {service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | unwrap Duration [$__range]) by (service_name)",
+          "expr": "(quantile_over_time(0.95, {service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | RequestId!~\".*:00000001\" | unwrap Duration [$__range]) by (service_name) and on (service_name) (sum by (service_name) (count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | RequestId!~\".*:00000001\" [$__range])) >= 50)) or on (service_name) (sum by (service_name) (count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | RequestId!~\".*:00000001\" [$__range])) < 50) * 0 - 1",
+          "legendFormat": "",
+          "queryType": "instant"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "B",
+          "expr": "sum(count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | RequestId!~\".*:00000001\" [$__range]))",
           "legendFormat": "",
           "queryType": "instant"
         }
@@ -318,7 +328,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
-          "noValue": "0",
+          "noValue": "no requests",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -336,13 +346,61 @@
               }
             ]
           },
-          "mappings": [],
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -1.5,
+                "to": -0.5,
+                "result": {
+                  "text": "too few",
+                  "color": "text"
+                }
+              }
+            }
+          ],
           "color": {
             "mode": "thresholds"
           },
           "decimals": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "p95"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "warm requests"
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "reduceOptions": {
@@ -354,7 +412,7 @@
         },
         "colorMode": "value",
         "graphMode": "none",
-        "textMode": "auto",
+        "textMode": "value_and_name",
         "justifyMode": "center",
         "orientation": "auto"
       }
@@ -509,7 +567,7 @@
       "description": "Requests per time bucket.",
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 0,
         "y": 6
       },
@@ -630,98 +688,13 @@
     {
       "type": "timeseries",
       "id": 10,
-      "title": "API latency",
-      "description": "Server time per request from HttpLogging. Spikes right after a deploy are cold starts (JIT + EF model build).",
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 6
-      },
-      "datasource": {
-        "type": "loki",
-        "uid": "grafanacloud-logs"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "grafanacloud-logs"
-          },
-          "refId": "A",
-          "expr": "quantile_over_time(0.5, {service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | unwrap Duration [$__interval]) by (service_name)",
-          "legendFormat": "p50",
-          "queryType": "range"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "grafanacloud-logs"
-          },
-          "refId": "B",
-          "expr": "quantile_over_time(0.95, {service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | unwrap Duration [$__interval]) by (service_name)",
-          "legendFormat": "p95",
-          "queryType": "range"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "grafanacloud-logs"
-          },
-          "refId": "C",
-          "expr": "quantile_over_time(0.99, {service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | unwrap Duration [$__interval]) by (service_name)",
-          "legendFormat": "p99",
-          "queryType": "range"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ms",
-          "custom": {
-            "drawStyle": "points",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "always",
-            "spanNulls": false,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            },
-            "pointSize": 6
-          },
-          "color": {
-            "mode": "palette-classic"
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "calcs": [
-            "mean",
-            "max"
-          ],
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
-    },
-    {
-      "type": "timeseries",
-      "id": 11,
       "title": "5xx by route",
       "description": "Server errors. Each one is a school user who hit a broken page.",
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 14
+        "w": 8,
+        "x": 8,
+        "y": 6
       },
       "datasource": {
         "type": "loki",
@@ -778,14 +751,14 @@
     },
     {
       "type": "timeseries",
-      "id": 12,
+      "id": 11,
       "title": "Auth failures (401 / 403)",
       "description": "Spikes after a deploy usually mean a role/policy change or a Keycloak problem.",
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 14
+        "w": 8,
+        "x": 16,
+        "y": 6
       },
       "datasource": {
         "type": "loki",
@@ -842,27 +815,489 @@
     },
     {
       "type": "row",
+      "id": 12,
+      "title": "Latency: what is slow, and why",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
       "id": 13,
+      "title": "Slowest API request per time bucket",
+      "description": "Each point is the slowest /api/v1 request in its time bucket, split by connection. Purple markers are deploys. A purple dot at a deploy marker is a cold start (first page load on a fresh instance). A blue dot is a slow request on a warm instance: find it in 'Slow API requests' below. The p95 line only appears in buckets with 20+ warm requests; grey bars (right axis) are the request count behind the dots.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "grafanacloud-logs"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "A",
+          "expr": "max_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | label_format conn=`{{ if hasSuffix \":00000001\" .RequestId }}new connection (cold starts land here){{ else }}reused connection (warm){{ end }}` | unwrap Duration [$__interval]) by (conn)",
+          "legendFormat": "slowest, {{conn}}",
+          "queryType": "range"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "B",
+          "expr": "quantile_over_time(0.95, {service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | RequestId!~\".*:00000001\" | unwrap Duration [$__interval]) by (service_name) and on (service_name) (sum by (service_name) (count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" | RequestId!~\".*:00000001\" [$__interval])) >= 20)",
+          "legendFormat": "p95 warm (buckets with 20+ requests)",
+          "queryType": "range"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "C",
+          "expr": "sum(count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | RequestPath=~\"/api/v1/.*\" [$__interval]))",
+          "legendFormat": "requests",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "pointSize": 6
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*new connection.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*reused connection.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "always"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "requests"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 25
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8080804d"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "table",
+      "id": 14,
+      "title": "Slow API requests (over 300 ms)",
+      "description": "From Tempo traces. Click the span ID to open the trace and see where the time went. Several requests in the same second on one instance = cold start after a deploy. A 5xx status = the error path, not slowness. Tempo search covers at most 30 days.",
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 23
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "grafanacloud-traces"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "grafanacloud-traces"
+          },
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{resource.service.name=\"Skoleoverblikket.Api\" && kind=server && span.url.path=~\"/api/v1/.*\" && duration > 300ms} | select(span.http.response.status_code, resource.service.instance.id)",
+          "limit": 50,
+          "spss": 3,
+          "tableType": "spans"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Trace Service": true,
+              "Trace Name": true,
+              "traceService": true,
+              "traceName": true
+            },
+            "renameByName": {
+              "Name": "Request",
+              "http.response.status_code": "Status",
+              "service.instance.id": "Instance"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 400
+                    },
+                    {
+                      "color": "red",
+                      "value": 500
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ns"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 500000000.0
+                    },
+                    {
+                      "color": "red",
+                      "value": 1500000000.0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Duration",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "id": 15,
+      "title": "Slow calls inside API requests (over 50 ms)",
+      "description": "Outgoing HTTP and database calls made while serving a request: the usual causes. auth.skoleoverblikket.dk .well-known/openid-configuration = Keycloak discovery on a cold instance; api.stripe.com = Stripe (expected for checkout); db spans = slow SQL. 'Request' is the API request the call belongs to.",
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 23
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "grafanacloud-traces"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "grafanacloud-traces"
+          },
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{resource.service.name=\"Skoleoverblikket.Api\" && kind=server} >> {kind=client && duration > 50ms} | select(span.server.address, span.url.full, span.db.system, span.db.query.text, span.db.statement)",
+          "limit": 50,
+          "spss": 3,
+          "tableType": "spans"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Trace Service": true,
+              "traceService": true,
+              "Name": true,
+              "name": true
+            },
+            "renameByName": {
+              "Trace Name": "Request",
+              "server.address": "Host",
+              "url.full": "URL",
+              "db.system": "DB",
+              "db.query.text": "SQL",
+              "db.statement": "SQL (old)"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ns"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 500000000.0
+                    },
+                    {
+                      "color": "red",
+                      "value": 1500000000.0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Duration",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "type": "row",
+      "id": 16,
       "title": "Endpoints",
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 33
       },
       "panels": []
     },
     {
       "type": "table",
-      "id": 14,
+      "id": 17,
       "title": "Endpoints (selected range)",
-      "description": "GUIDs, ISO weeks and dates in the path are replaced with {id}, {week}, {date}.",
+      "description": "GUIDs, ISO weeks and dates in the path are replaced with {id}, {week}, {date}. p95 is blank for paths with fewer than 20 requests (too few to mean anything). A high Max with a low Median is usually one cold start; look it up in 'Slow API requests'.",
       "gridPos": {
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 34
       },
       "datasource": {
         "type": "loki",
@@ -915,7 +1350,17 @@
             "uid": "grafanacloud-logs"
           },
           "refId": "E",
-          "expr": "quantile_over_time(0.95, {service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | label_format route=`{{ regexReplaceAll \"[0-9]{4}-[0-9]{2}-[0-9]{2}\" (regexReplaceAll \"[0-9]{4}-W[0-9]{2}\" (regexReplaceAll \"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\" .RequestPath \"{id}\") \"{week}\") \"{date}\" }}` | unwrap Duration [$__range]) by (route)",
+          "expr": "quantile_over_time(0.95, {service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | label_format route=`{{ regexReplaceAll \"[0-9]{4}-[0-9]{2}-[0-9]{2}\" (regexReplaceAll \"[0-9]{4}-W[0-9]{2}\" (regexReplaceAll \"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\" .RequestPath \"{id}\") \"{week}\") \"{date}\" }}` | unwrap Duration [$__range]) by (route) and on (route) (sum by (route) (count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | label_format route=`{{ regexReplaceAll \"[0-9]{4}-[0-9]{2}-[0-9]{2}\" (regexReplaceAll \"[0-9]{4}-W[0-9]{2}\" (regexReplaceAll \"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\" .RequestPath \"{id}\") \"{week}\") \"{date}\" }}` [$__range])) >= 20)",
+          "legendFormat": "",
+          "queryType": "instant"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "grafanacloud-logs"
+          },
+          "refId": "F",
+          "expr": "max_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath!~\"/alive|/health\" | label_format route=`{{ regexReplaceAll \"[0-9]{4}-[0-9]{2}-[0-9]{2}\" (regexReplaceAll \"[0-9]{4}-W[0-9]{2}\" (regexReplaceAll \"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\" .RequestPath \"{id}\") \"{week}\") \"{date}\" }}` | unwrap Duration [$__range]) by (route)",
           "legendFormat": "",
           "queryType": "instant"
         }
@@ -936,8 +1381,9 @@
               "Value #A": "Requests",
               "Value #B": "4xx",
               "Value #C": "5xx",
-              "Value #D": "p50",
-              "Value #E": "p95"
+              "Value #D": "Median",
+              "Value #E": "p95 (20+ req)",
+              "Value #F": "Max"
             }
           }
         }
@@ -958,7 +1404,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 520
+                "value": 480
               }
             ]
           },
@@ -995,7 +1441,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "p50|p95"
+              "options": "Median|p95.*|Max"
             },
             "properties": [
               {
@@ -1052,27 +1498,27 @@
     },
     {
       "type": "row",
-      "id": 15,
+      "id": 18,
       "title": "Runtime",
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 46
       },
       "panels": []
     },
     {
       "type": "timeseries",
-      "id": 16,
+      "id": 19,
       "title": "Memory",
       "description": "",
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 36
+        "y": 47
       },
       "datasource": {
         "type": "prometheus",
@@ -1139,14 +1585,14 @@
     },
     {
       "type": "timeseries",
-      "id": 17,
+      "id": 20,
       "title": "In-flight work",
       "description": "Queued connections > 0, or DbContexts climbing without traffic = thread pool or DB trouble.",
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 36
+        "y": 47
       },
       "datasource": {
         "type": "prometheus",
@@ -1233,27 +1679,27 @@
     },
     {
       "type": "row",
-      "id": 18,
+      "id": 21,
       "title": "Recent errors and warnings",
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 55
       },
       "panels": []
     },
     {
       "type": "logs",
-      "id": 19,
+      "id": 22,
       "title": "Errors and warnings",
       "description": "",
       "gridPos": {
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 56
       },
       "datasource": {
         "type": "loki",
