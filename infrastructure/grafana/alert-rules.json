@@ -261,9 +261,9 @@
         {
           "annotations": {
             "__dashboardUid__": "skoleoverblikket-health",
-            "__panelId__": "14",
-            "description": "p95 above 2 s with at least 20 API requests in 30 minutes. Single cold starts after a deploy don't trigger it. Check the Endpoints table for the slow path.",
-            "summary": "Skoleoverblikket API p95 latency is {{ humanize $values.B.Value }} ms over the last 30 minutes."
+            "__panelId__": "13",
+            "description": "Warm p95 above 2 s with at least 20 warm API requests in 30 minutes. Warm = request on a reused connection (HttpLogging RequestId sequence > 1), so the cold-start burst after a deploy (all on new connections) can't trigger it. Open 'Slow API requests' and 'Slow calls inside API requests' on the Service health dashboard for the route and the trace.",
+            "summary": "Skoleoverblikket API warm p95 latency is {{ printf \"%.0f\" $values.B.Value }} ms over the last 30 minutes."
           },
           "condition": "D",
           "dashboardUid": "skoleoverblikket-health",
@@ -271,7 +271,7 @@
             {
               "datasourceUid": "grafanacloud-logs",
               "model": {
-                "expr": "quantile_over_time(0.95, {service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath=~\"/api/v1/.*\" | unwrap Duration [30m]) by (service_name)",
+                "expr": "quantile_over_time(0.95, {service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath=~\"/api/v1/.*\" | RequestId!~\".*:00000001\" | unwrap Duration [30m]) by (service_name)",
                 "intervalMs": 1000,
                 "maxDataPoints": 43200,
                 "queryType": "instant",
@@ -307,7 +307,7 @@
             {
               "datasourceUid": "grafanacloud-logs",
               "model": {
-                "expr": "sum by (service_name) (count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath=~\"/api/v1/.*\" [30m]))",
+                "expr": "sum by (service_name) (count_over_time({service_name=\"Skoleoverblikket.Api\"} | event_name=\"Duration\" | RequestPath=~\"/api/v1/.*\" | RequestId!~\".*:00000001\" [30m]))",
                 "intervalMs": 1000,
                 "maxDataPoints": 43200,
                 "queryType": "instant",
@@ -364,7 +364,7 @@
             "severity": "warning"
           },
           "noDataState": "OK",
-          "panelId": 14,
+          "panelId": 13,
           "title": "Skoleoverblikket API slow",
           "uid": "skoleoverblikket-slow-api"
         }

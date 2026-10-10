@@ -321,39 +321,58 @@ def status_cell():
 
 def duration_cell():
     # Tempo reports span duration in nanoseconds.
-    return [{"id": "unit", "value": "ns"}, {"id": "decimals", "value": 0},
+    return [{"id": "unit", "value": "ns"},
             {"id": "custom.cellOptions", "value": {"type": "color-text"}},
             {"id": "thresholds", "value": {"mode": "absolute", "steps": [
-                {"color": "green", "value": None}, {"color": "orange", "value": 500e6}, {"color": "red", "value": 1500e6}]}}]
+                {"color": "green", "value": None}, {"color": "orange", "value": 500_000_000}, {"color": "red", "value": 1_500_000_000}]}}]
 
 
 TRACE_SVC = 'resource.service.name="Skoleoverblikket.Api"'
+
+
+def trace_table(title, query, x, y, desc, renames, hide, extra_overrides, order):
+    # The Tempo "spans" frame has helper columns (traceIdHidden feeds the Span ID link, so it is hidden,
+    # not removed). "Trace Name" is the root span name, i.e. the API request, e.g. "GET api/v1/staff/me".
+    hidden = "|".join(["traceIdHidden", "Spans traceIdHidden", "Trace Service", "kind", "service\\.name", "url\\.path"] + hide)
+    return table(title, [tempo(query)], x, y, w=12, h=10, sort="Duration", desc=desc,
+                 transformations=[{"id": "organize", "options": {
+                     "renameByName": {"Trace Name": "Request", **renames},
+                     # Keyed by the original column names. Request, Duration and the Span ID link stay in view.
+                     "indexByName": {name: i for i, name in enumerate(order)}}}],
+                 overrides=[{"matcher": {"id": "byRegexp", "options": f"^({hidden})$"},
+                             "properties": [{"id": "custom.hidden", "value": True}]},
+                            {"matcher": {"id": "byName", "options": "Span ID"}, "properties": [{"id": "custom.width", "value": 150}]},
+                            {"matcher": {"id": "byName", "options": "Start time"}, "properties": [{"id": "custom.width", "value": 160}]},
+                            {"matcher": {"id": "byName", "options": "Duration"}, "properties": duration_cell()}] + extra_overrides)
+
+
 P += [
-    table(f"Slow API requests (over {SLOW_MS} ms)", [tempo(
+    trace_table(
+        f"Slow API requests (over {SLOW_MS} ms)",
         f'{{{TRACE_SVC} && kind=server && span.url.path=~"/api/v1/.*" && duration > {SLOW_MS}ms}}'
-        ' | select(span.http.response.status_code, resource.service.instance.id)')],
-        0, y, w=12, h=10, sort="Duration",
-        desc="From Tempo traces. Click the span ID to open the trace and see where the time went. "
-             "Several requests in the same second on one instance = cold start after a deploy. "
-             "A 5xx status = the error path, not slowness. Tempo search covers at most 30 days.",
-        transformations=[{"id": "organize", "options": {
-            "excludeByName": {"Trace Service": True, "Trace Name": True, "traceService": True, "traceName": True},
-            "renameByName": {"Name": "Request", "http.response.status_code": "Status", "service.instance.id": "Instance"}}}],
-        overrides=[{"matcher": {"id": "byName", "options": "Status"}, "properties": status_cell()},
-                   {"matcher": {"id": "byName", "options": "Duration"}, "properties": duration_cell()}]),
-    table("Slow calls inside API requests (over 50 ms)", [tempo(
+        ' | select(span.http.response.status_code, resource.service.instance.id)',
+        0, y,
+        "From Tempo traces. Click the span ID to open the trace and see where the time went. "
+        "Several requests in the same second on one instance = cold start after a deploy. "
+        "A 5xx status = the error path, not slowness. Tempo search covers at most 30 days.",
+        {"http.response.status_code": "Status", "service.instance.id": "Instance"},
+        ["Name"],
+        [{"matcher": {"id": "byName", "options": "Status"}, "properties": status_cell()}],
+        ["Trace Name", "Duration", "http.response.status_code", "Start time", "Span ID", "service.instance.id"]),
+    trace_table(
+        "Slow calls inside API requests (over 50 ms)",
         f'{{{TRACE_SVC} && kind=server}} >> {{kind=client && duration > 50ms}}'
-        ' | select(span.server.address, span.url.full, span.db.system, span.db.query.text, span.db.statement)')],
-        12, y, w=12, h=10, sort="Duration",
-        desc="Outgoing HTTP and database calls made while serving a request: the usual causes. "
-             "auth.skoleoverblikket.dk .well-known/openid-configuration = Keycloak discovery on a cold instance; "
-             "api.stripe.com = Stripe (expected for checkout); db spans = slow SQL. "
-             "'Request' is the API request the call belongs to.",
-        transformations=[{"id": "organize", "options": {
-            "excludeByName": {"Trace Service": True, "traceService": True, "Name": True, "name": True},
-            "renameByName": {"Trace Name": "Request", "server.address": "Host", "url.full": "URL",
-                             "db.system": "DB", "db.query.text": "SQL", "db.statement": "SQL (old)"}}}],
-        overrides=[{"matcher": {"id": "byName", "options": "Duration"}, "properties": duration_cell()}]),
+        ' | select(name, span.server.address, span.url.full, span.db.system, span.db.query.text, span.db.statement)',
+        12, y,
+        "Outgoing HTTP and database calls made while serving a request: the usual causes. "
+        "auth.skoleoverblikket.dk .well-known/openid-configuration = Keycloak discovery on a cold instance; "
+        "api.stripe.com = Stripe (expected for checkout); db spans = slow SQL. "
+        "'Request' is the API request the call belongs to.",
+        {"Name": "Call", "server.address": "Host", "url.full": "URL",
+         "db.system": "DB", "db.query.text": "SQL", "db.statement": "Statement"},
+        [], [],
+        ["Trace Name", "Duration", "server.address", "Start time", "Span ID", "Name", "url.full",
+         "db.system", "db.query.text", "db.statement"]),
 ]
 y += 10
 

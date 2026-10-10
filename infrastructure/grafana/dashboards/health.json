@@ -1045,16 +1045,18 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": {
-              "Trace Service": true,
-              "Trace Name": true,
-              "traceService": true,
-              "traceName": true
-            },
             "renameByName": {
-              "Name": "Request",
+              "Trace Name": "Request",
               "http.response.status_code": "Status",
               "service.instance.id": "Instance"
+            },
+            "indexByName": {
+              "Trace Name": 0,
+              "Duration": 1,
+              "http.response.status_code": 2,
+              "Start time": 3,
+              "Span ID": 4,
+              "service.instance.id": 5
             }
           }
         }
@@ -1067,6 +1069,80 @@
           }
         },
         "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(traceIdHidden|Spans traceIdHidden|Trace Service|kind|service\\.name|url\\.path|Name)$"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Span ID"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Start time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 160
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ns"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 500000000
+                    },
+                    {
+                      "color": "red",
+                      "value": 1500000000
+                    }
+                  ]
+                }
+              }
+            ]
+          },
           {
             "matcher": {
               "id": "byName",
@@ -1095,48 +1171,6 @@
                     {
                       "color": "red",
                       "value": 500
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Duration"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "ns"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "orange",
-                      "value": 500000000.0
-                    },
-                    {
-                      "color": "red",
-                      "value": 1500000000.0
                     }
                   ]
                 }
@@ -1182,7 +1216,7 @@
           },
           "refId": "A",
           "queryType": "traceql",
-          "query": "{resource.service.name=\"Skoleoverblikket.Api\" && kind=server} >> {kind=client && duration > 50ms} | select(span.server.address, span.url.full, span.db.system, span.db.query.text, span.db.statement)",
+          "query": "{resource.service.name=\"Skoleoverblikket.Api\" && kind=server} >> {kind=client && duration > 50ms} | select(name, span.server.address, span.url.full, span.db.system, span.db.query.text, span.db.statement)",
           "limit": 50,
           "spss": 3,
           "tableType": "spans"
@@ -1192,19 +1226,26 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": {
-              "Trace Service": true,
-              "traceService": true,
-              "Name": true,
-              "name": true
-            },
             "renameByName": {
               "Trace Name": "Request",
+              "Name": "Call",
               "server.address": "Host",
               "url.full": "URL",
               "db.system": "DB",
               "db.query.text": "SQL",
-              "db.statement": "SQL (old)"
+              "db.statement": "Statement"
+            },
+            "indexByName": {
+              "Trace Name": 0,
+              "Duration": 1,
+              "server.address": 2,
+              "Start time": 3,
+              "Span ID": 4,
+              "Name": 5,
+              "url.full": 6,
+              "db.system": 7,
+              "db.query.text": 8,
+              "db.statement": 9
             }
           }
         }
@@ -1219,6 +1260,42 @@
         "overrides": [
           {
             "matcher": {
+              "id": "byRegexp",
+              "options": "^(traceIdHidden|Spans traceIdHidden|Trace Service|kind|service\\.name|url\\.path)$"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Span ID"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Start time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 160
+              }
+            ]
+          },
+          {
+            "matcher": {
               "id": "byName",
               "options": "Duration"
             },
@@ -1226,10 +1303,6 @@
               {
                 "id": "unit",
                 "value": "ns"
-              },
-              {
-                "id": "decimals",
-                "value": 0
               },
               {
                 "id": "custom.cellOptions",
@@ -1248,11 +1321,11 @@
                     },
                     {
                       "color": "orange",
-                      "value": 500000000.0
+                      "value": 500000000
                     },
                     {
                       "color": "red",
-                      "value": 1500000000.0
+                      "value": 1500000000
                     }
                   ]
                 }
