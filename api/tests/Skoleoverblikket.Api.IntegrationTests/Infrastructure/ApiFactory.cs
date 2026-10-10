@@ -86,9 +86,9 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 				["ObjectStorage:DefaultBucketName"] = "skoleoverblikket-test",
 				["ObjectStorage:PublicEndpoint"] = siloUrl,
 				["ObjectStorage:PresignedUploadSigningKey"] = "test-signing-key",
-				["BackupStatus:ServiceUrl"] = localStackUrl,
-				["BackupStatus:AccessKey"] = "test",
-				["BackupStatus:SecretKey"] = "test",
+				["BackupStatus:ServiceUrl"] = siloUrl,
+				["BackupStatus:AccessKey"] = _silo.GetAccessKey(),
+				["BackupStatus:SecretKey"] = _silo.GetSecretKey(),
 				["BackupStatus:BucketName"] = OpsBucketName,
 			});
 		});
