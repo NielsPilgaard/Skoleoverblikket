@@ -31,13 +31,30 @@
 # Optional overrides:
 #   API_IMAGE                — defaults to ghcr.io/nielspilgaard/skoleoverblikket-api:latest
 #   WEB_IMAGE                — defaults to ghcr.io/nielspilgaard/skoleoverblikket-web:latest
+#
+# Optional backup status card in the backoffice (task 60) — a key that can only READ the ops bucket:
+#   BackupStatus_AccessKey, BackupStatus_SecretKey
+#
+# Self-hosted Postgres and the backup agent (tasks 54 and 60), behind the "selfhosted-db" profile.
+# Until the task 54 cutover, Postgres is still a Dokploy Database resource and these services don't
+# start. At cutover set COMPOSE_PROFILES=selfhosted-db and point DATABASE_URL/KEYCLOAK_DB_URL at
+# postgres:5432. See docs/RESTORE.md and docs/DEPLOYMENT.md.
+#   POSTGRES_IMAGE, BACKUP_AGENT_IMAGE — pinned sha tags; the defaults don't exist on purpose
+#   POSTGRES_PASSWORD, APP_DB_PASSWORD, KEYCLOAK_DB_PASSWORD
+#   No volume variables: both data volumes are always mounted, and the backup console's "Go live"
+#     picks which one Postgres starts on at the next redeploy. NEVER delete the pgdata or pg-control
+#     volumes or run `docker compose down -v`: they are the database.
+#   PGBACKREST_REPO1_S3_ENDPOINT, PGBACKREST_REPO1_S3_REGION, PGBACKREST_REPO1_S3_BUCKET,
+#   PGBACKREST_REPO1_S3_KEY, PGBACKREST_REPO1_S3_KEY_SECRET, PGBACKREST_REPO1_CIPHER_PASS
+#   OpsBucket_ServiceUrl, OpsBucket_AccessKey, OpsBucket_SecretKey (agent: read-write on the ops bucket)
+#   Heartbeats_ApiKey, Heartbeats_LogId, Heartbeats_WalId, Heartbeats_BackupId, Heartbeats_DrillId, Heartbeats_VerifyId
+#   BACKUP_CONSOLE_SSH — shown in the console and backoffice card, e.g. ssh -L 9090:127.0.0.1:9090 ubuntu@<vps>
 
 name:
   skoleoverblikket
 
-  # Postgres is managed as a dedicated Database resource in Dokploy.
-  # Dokploy injects the connection strings below as environment variables.
-  # Do not add a postgres service here.
+  # Postgres is still a dedicated Database resource in Dokploy until the task 54 cutover.
+  # The postgres service below only starts with COMPOSE_PROFILES=selfhosted-db.
 
 services:
   keycloak:
@@ -125,6 +142,10 @@ services:
       Stripe__ModulePriceIds__BoardModule__Yearly: ${Stripe_ModulePriceIds_BoardModule_Yearly}
       ElmahIo__ApiKey: ${ElmahIo_ApiKey:-}
       ElmahIo__LogId: ${ElmahIo_LogId:-}
+      # Same endpoint the agent writes to, so the two can't drift apart.
+      BackupStatus__ServiceUrl: ${OpsBucket_ServiceUrl:-https://s3.rbx.io.cloud.ovh.net/}
+      BackupStatus__AccessKey: ${BackupStatus_AccessKey:-}
+      BackupStatus__SecretKey: ${BackupStatus_SecretKey:-}
     healthcheck:
       test:
         [
@@ -180,7 +201,109 @@ services:
       - "traefik.http.routers.web.tls.certresolver=letsencrypt"
       - "traefik.http.services.web.loadbalancer.server.port=80"
 
+  # One cluster for the app and Keycloak databases (task 54 D2). No published port: only services on
+  # dokploy-network reach it. No backup tooling inside: that's the backup agent's job (task 60 D1).
+  postgres:
+    profiles: ["selfhosted-db"]
+    image: ${POSTGRES_IMAGE:-ghcr.io/nielspilgaard/skoleoverblikket-postgres:sha-PIN_ME}
+    restart: unless-stopped
+    command:
+      [
+        "postgres",
+        "-c",
+        "config_file=/etc/postgresql/postgresql.conf",
+        "-c",
+        "shared_buffers=${PG_SHARED_BUFFERS:-512MB}",
+        "-c",
+        "effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-1536MB}",
+      ]
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-}
+    # select-volume.sh (in the image) starts Postgres on /pgdata/a or /pgdata/b, whichever
+    # pg-control/active names. The backup console writes that file; a redeploy applies it.
+    volumes:
+      - pgdata-a:/pgdata/a
+      - pgdata-b:/pgdata/b
+      - pg-control:/pg-control
+      - pg-socket:/var/run/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "/var/run/postgresql"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    stop_grace_period: 60s
+    mem_limit: ${POSTGRES_MEMORY:-2g}
+    networks:
+      - dokploy-network
+
+  # Streams WAL, runs pgBackRest backups, drills and restores, and serves the break-glass console
+  # (task 60). Not on dokploy-network: it reaches Postgres only through the socket volume. The console
+  # is published on the host's 127.0.0.1 only and reached with `ssh -L 9090:127.0.0.1:9090 <vps>`.
+  # No depends_on: the console must come up when Postgres is broken.
+  backup-agent:
+    profiles: ["selfhosted-db"]
+    image: ${BACKUP_AGENT_IMAGE:-ghcr.io/nielspilgaard/skoleoverblikket-backup-agent:sha-PIN_ME}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - pg-socket:/var/run/postgresql
+      # Both data volumes, at the same paths as in postgres (pgBackRest checks pg1-path against
+      # data_directory). The agent asks Postgres which one is live and only ever writes the other.
+      - pgdata-a:/pgdata/a
+      - pgdata-b:/pgdata/b
+      - pg-control:/pg-control
+      # The only copy of received WAL until archive-push succeeds (task 60 D2a).
+      - wal-receive:/wal-receive
+      - backup-agent-state:/var/lib/backup-agent
+    tmpfs:
+      - /drill:size=${DRILL_TMPFS_SIZE:-4g},uid=999,gid=999,mode=0700
+    # The drill's tmpfs counts against this, so a drill can't starve Postgres.
+    mem_limit: ${BACKUP_AGENT_MEMORY:-5g}
+    stop_grace_period: 30s
+    environment:
+      Agent__SshTunnelCommand: ${BACKUP_CONSOLE_SSH:-}
+      PGBACKREST_REPO1_S3_ENDPOINT: ${PGBACKREST_REPO1_S3_ENDPOINT:-}
+      PGBACKREST_REPO1_S3_REGION: ${PGBACKREST_REPO1_S3_REGION:-}
+      PGBACKREST_REPO1_S3_BUCKET: ${PGBACKREST_REPO1_S3_BUCKET:-}
+      PGBACKREST_REPO1_S3_KEY: ${PGBACKREST_REPO1_S3_KEY:-}
+      PGBACKREST_REPO1_S3_KEY_SECRET: ${PGBACKREST_REPO1_S3_KEY_SECRET:-}
+      PGBACKREST_REPO1_CIPHER_PASS: ${PGBACKREST_REPO1_CIPHER_PASS:-}
+      OpsBucket__ServiceUrl: ${OpsBucket_ServiceUrl:-}
+      OpsBucket__AccessKey: ${OpsBucket_AccessKey:-}
+      OpsBucket__SecretKey: ${OpsBucket_SecretKey:-}
+      Heartbeats__ApiKey: ${Heartbeats_ApiKey:-}
+      Heartbeats__LogId: ${Heartbeats_LogId:-}
+      Heartbeats__WalId: ${Heartbeats_WalId:-}
+      Heartbeats__BackupId: ${Heartbeats_BackupId:-}
+      Heartbeats__DrillId: ${Heartbeats_DrillId:-}
+      Heartbeats__VerifyId: ${Heartbeats_VerifyId:-}
+    networks:
+      - backup-agent
+
 networks:
   dokploy-network:
     external: true
     name: dokploy-network
+  backup-agent:
+    name: skoleoverblikket-backup-agent
+
+# Pinned names: these volumes ARE the database. Never delete them or run `docker compose down -v`.
+# pg-control says which pgdata volume is live; the other is the restore target, so check the backup
+# console before "cleaning up" either. wal-receive holds WAL that may not be in the repo yet.
+volumes:
+  pgdata-a:
+    name: skoleoverblikket-pgdata-a
+  pgdata-b:
+    name: skoleoverblikket-pgdata-b
+  pg-control:
+    name: skoleoverblikket-pg-control
+  pg-socket:
+    name: skoleoverblikket-pg-socket
+  wal-receive:
+    name: skoleoverblikket-wal-receive
+  backup-agent-state:
+    name: skoleoverblikket-backup-agent-state

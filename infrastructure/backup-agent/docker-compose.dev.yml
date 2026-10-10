@@ -1,0 +1,122 @@
+# Local stack for proving the backup agent by hand (task 60 Testing). Not used by Dokploy.
+# Our Postgres image, the agent, and Silo (MinIO fork) standing in for the OVH buckets. From the repo root:
+#
+#   docker compose -f infrastructure/backup-agent/docker-compose.dev.yml up -d --build
+#   docker compose -f infrastructure/backup-agent/docker-compose.dev.yml exec postgres bash /dev-seed/seed.sh
+#   open http://localhost:9090
+#
+# Go live with a restore the same way as on prod: "Go live" in the console, then the redeploy:
+#
+#   docker compose -f infrastructure/backup-agent/docker-compose.dev.yml up -d --force-recreate
+#
+# The slot cap is 256 MB here (4 GB on prod) and WAL switches every minute, so the lost-slot
+# and RPO cases can be tried in minutes.
+
+name: backup-agent-dev
+
+services:
+  postgres:
+    build: ../postgres
+    environment:
+      POSTGRES_PASSWORD: dev-superuser
+      APP_DB_PASSWORD: dev-app
+      KEYCLOAK_DB_PASSWORD: dev-keycloak
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "max_slot_wal_keep_size=${DEV_SLOT_CAP:-256MB}", "-c", "shared_buffers=128MB"]
+    volumes:
+      - pgdata-a:/pgdata/a
+      - pgdata-b:/pgdata/b
+      - pg-control:/pg-control
+      - pg-socket:/var/run/postgresql
+      - ./dev:/dev-seed:ro
+      - ../../api/Skoleoverblikket.Api/Data/Migrations/migration_script.sql:/dev-migrations/migration_script.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "/var/run/postgresql"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - db
+
+  backup-agent:
+    build:
+      context: ../..
+      dockerfile: infrastructure/backup-agent/Dockerfile
+    depends_on:
+      silo-buckets:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - pg-socket:/var/run/postgresql
+      - pgdata-a:/pgdata/a
+      - pgdata-b:/pgdata/b
+      - pg-control:/pg-control
+      - wal-receive:/wal-receive
+      - agent-state:/var/lib/backup-agent
+    tmpfs:
+      - /drill:size=1g,uid=999,gid=999,mode=0700
+    mem_limit: 1g
+    environment:
+      Agent__SshTunnelCommand: "ssh -L 9090:127.0.0.1:9090 ubuntu@<vps>"
+      Agent__WalSwitchInterval: "00:01:00"
+      Agent__StatusInterval: "00:01:00"
+      Agent__SlotWarnBytes: "134217728"
+      # Plain HTTP: pgBackRest defaults to HTTPS, but takes an http:// scheme on the endpoint.
+      PGBACKREST_REPO1_S3_ENDPOINT: http://silo
+      PGBACKREST_REPO1_STORAGE_PORT: "9000"
+      PGBACKREST_REPO1_S3_REGION: us-east-1
+      PGBACKREST_REPO1_S3_BUCKET: pgbackrest
+      PGBACKREST_REPO1_S3_KEY: minioadmin
+      PGBACKREST_REPO1_S3_KEY_SECRET: minioadmin
+      PGBACKREST_REPO1_CIPHER_PASS: dev-cipher-pass
+      OpsBucket__ServiceUrl: http://silo:9000
+      OpsBucket__AccessKey: minioadmin
+      OpsBucket__SecretKey: minioadmin
+      OpsBucket__BucketName: skoleoverblikket-ops
+    networks:
+      - agent
+
+  silo:
+    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - silo-data:/data
+    healthcheck:
+      test: ["CMD", "mcli", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks:
+      - agent
+
+  # Silo has no init hooks: a one-shot creates the pgBackRest repo bucket and the ops bucket.
+  silo-buckets:
+    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    entrypoint: ["sh", "-c"]
+    command:
+      - >
+        mcli alias set local http://silo:9000 minioadmin minioadmin
+        && mcli mb --ignore-existing local/pgbackrest local/skoleoverblikket-ops
+    depends_on:
+      silo:
+        condition: service_healthy
+    networks:
+      - agent
+
+# "db" stands in for dokploy-network. The agent is not on it: it reaches Postgres only through
+# the socket volume, and nothing can reach the agent except through 127.0.0.1:9090.
+networks:
+  db:
+  agent:
+
+volumes:
+  pgdata-a:
+  pgdata-b:
+  pg-control:
+  pg-socket:
+  wal-receive:
+  agent-state:
+  silo-data:

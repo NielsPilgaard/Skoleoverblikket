@@ -28,7 +28,8 @@ public sealed class SchoolExportService(
 	ILogger<SchoolExportService> logger)
 {
 	/// <summary>Billing state kept per subscription, not per school, and holding only Stripe ids.</summary>
-	private static readonly HashSet<Type> NotExported = [typeof(Subscription), typeof(SubscriptionModuleItem)];
+	// Billing, and the backup console's ledger of deleted schools (a school that can export isn't in it).
+	private static readonly HashSet<Type> NotExported = [typeof(Subscription), typeof(SubscriptionModuleItem), typeof(SchoolDeletionRecord)];
 
 	/// <summary>
 	/// Invitation tokens are live credentials: anyone holding one can accept the invitation.
@@ -71,7 +72,7 @@ public sealed class SchoolExportService(
 
 	/// <summary>
 	/// Every table that holds school data. A table needs a TenantId column to be scoped to one school;
-	/// one without it (other than billing) throws, so the export tests fail instead of skipping data.
+	/// one without it (other than <see cref="NotExported"/>) throws, so the export tests fail instead of skipping data.
 	/// </summary>
 	public static List<IEntityType> ExportedTables(IModel model)
 	{

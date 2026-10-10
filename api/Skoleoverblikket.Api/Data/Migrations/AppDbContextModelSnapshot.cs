@@ -1179,6 +1179,30 @@ namespace Skoleoverblikket.Api.Data.Migrations
                     b.ToTable("Schools");
                 });
 
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.SchoolDeletionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SchoolId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SchoolName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.ToTable("SchoolDeletionRecords");
+                });
+
             modelBuilder.Entity("Skoleoverblikket.Api.Models.SchoolFile", b =>
                 {
                     b.Property<Guid>("Id")
