@@ -925,8 +925,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           if (item.boardOnly) return false
           if (isParent) return item.parentOnly === true
           if (item.parentOnly) return false
-          if (item.module === 'parent' && !hasParentModule) return false
-          if (item.module === 'board' && !hasBoardModule) return false
+          // Admin-only pages (Elever, Forældre, Bestyrelse) stay visible without their module:
+          // the API keeps reads and deletes open, and each page explains what is off.
+          const moduleOff =
+            (item.module === 'parent' && !hasParentModule) ||
+            (item.module === 'board' && !hasBoardModule)
+          if (moduleOff && !(item.adminOnly && isAdmin)) return false
           if (item.staffTo) return true
           return !item.adminOnly || isAdmin
         })

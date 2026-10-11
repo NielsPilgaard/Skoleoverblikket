@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Modal } from '../components/Modal'
+import ModuleInactiveNotice from '../components/ModuleInactiveNotice'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getApiV1BoardMembersOptions,
@@ -106,16 +106,10 @@ export default function BoardMembersPage() {
       </div>
 
       {!modulesLoading && !hasBoardModule && (
-        <div
-          data-testid="board-module-inactive"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-800"
-        >
-          Bestyrelsesmodulet er ikke aktivt, så du kan ikke invitere nye bestyrelsesmedlemmer.{' '}
-          <Link to="/abonnement" className="font-medium underline hover:text-amber-900">
-            Aktivér det under Abonnement
-          </Link>
-          .
-        </div>
+        <ModuleInactiveNotice
+          testId="board-module-inactive"
+          text="Bestyrelsesmodulet er ikke aktivt, så du kan ikke invitere eller ændre bestyrelsesmedlemmer. Du kan stadig fjerne dem."
+        />
       )}
 
       <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
@@ -160,6 +154,7 @@ export default function BoardMembersPage() {
                     type="checkbox"
                     data-testid="board-member-teacher-access"
                     checked={member.canAccessTeacherData}
+                    disabled={!hasBoardModule}
                     onChange={(e) =>
                       toggleMutation.mutate({
                         path: { id: member.id! },

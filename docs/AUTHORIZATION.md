@@ -186,6 +186,8 @@ Marked with `[RequiresModule]`:
 | Parent | `ImportsController` | `POST students-and-parents` |
 | Parent | `AbsenceController` | `PUT {id}/category`, `POST {id}/approve`, `POST {id}/reject`, `POST follow-ups` |
 
+The frontend mirrors this. A board or parent user whose module is off sees "Modulet er ikke aktivt" (`Layout.tsx`) instead of failing pages. Admins keep Elever, Forældre and Bestyrelse in the sidebar, with a notice and only read and delete actions.
+
 Not gated: vacation registration windows, the contact directory and the Stå mål med coverage view, which are Basis. A new controller for a paid feature needs the attribute, or the module stops being something a school pays for.
 
 ---
