@@ -15,7 +15,7 @@ import { useSubscription } from '../hooks/useSubscription'
 export default function BoardMembersPage() {
   usePageTitle('Bestyrelse')
   const qc = useQueryClient()
-  const { hasBoardModule, isLoading: modulesLoading } = useSubscription()
+  const { hasBoardModule, isSuccess: modulesLoaded } = useSubscription()
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteName, setInviteName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
@@ -105,7 +105,7 @@ export default function BoardMembersPage() {
         {inviteButton}
       </div>
 
-      {!modulesLoading && !hasBoardModule && (
+      {modulesLoaded && !hasBoardModule && (
         <ModuleInactiveNotice
           testId="board-module-inactive"
           text="Bestyrelsesmodulet er ikke aktivt, så du kan ikke invitere eller ændre bestyrelsesmedlemmer. Du kan stadig fjerne dem."

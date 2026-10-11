@@ -126,7 +126,7 @@ export default function StudentsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null)
   const [filterClassId, setFilterClassId] = useState<string>('')
-  const { hasParentModule, isLoading: modulesLoading } = useSubscription()
+  const { hasParentModule, isSuccess: modulesLoaded } = useSubscription()
 
   const { data: students, isLoading, isError, refetch } = useQuery(getApiV1StudentsOptions())
   const { data: classes } = useQuery(getApiV1ClassesOptions())
@@ -176,7 +176,7 @@ export default function StudentsPage() {
         </div>
       </div>
 
-      {!modulesLoading && !hasParentModule && (
+      {modulesLoaded && !hasParentModule && (
         <ModuleInactiveNotice
           testId="students-module-inactive"
           text="Forældremodulet er ikke aktivt, så du kan ikke oprette eller ændre elever. Du kan stadig se og slette dem."

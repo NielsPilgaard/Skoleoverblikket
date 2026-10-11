@@ -4,14 +4,15 @@ import { useAuth } from '../auth/useAuth'
 
 export function useSubscription() {
   const { authenticated } = useAuth()
-  const { data, isLoading, isSuccess } = useQuery({
+  const { data, isLoading, isSuccess, isError } = useQuery({
     ...getApiV1ModulesOptions(),
     enabled: authenticated,
   })
   const modules: string[] = Array.isArray(data) ? (data as string[]) : []
+  // A failed lookup must not lock users out of valid actions; the API still enforces modules.
   return {
-    hasParentModule: modules.includes('ParentModule'),
-    hasBoardModule: modules.includes('BoardModule'),
+    hasParentModule: isError || modules.includes('ParentModule'),
+    hasBoardModule: isError || modules.includes('BoardModule'),
     isLoading,
     isSuccess,
   }

@@ -394,7 +394,7 @@ export default function ParentsPage() {
   const [showInvite, setShowInvite] = useState(false)
   const [editingParent, setEditingParent] = useState<ParentSummaryDto | null>(null)
   const [detailsTarget, setDetailsTarget] = useState<{ id: string; name: string } | null>(null)
-  const { hasParentModule, isLoading: modulesLoading } = useSubscription()
+  const { hasParentModule, isSuccess: modulesLoaded } = useSubscription()
 
   const { data: parents, isLoading, isError, refetch } = useQuery(getApiV1ParentsOptions())
   const { data: students } = useQuery(getApiV1StudentsOptions())
@@ -439,7 +439,7 @@ export default function ParentsPage() {
         </button>
       </div>
 
-      {!modulesLoading && !hasParentModule && (
+      {modulesLoaded && !hasParentModule && (
         <ModuleInactiveNotice
           testId="parent-module-inactive"
           text="Forældremodulet er ikke aktivt, så du kan ikke invitere eller ændre forældre. Du kan stadig se og slette dem."
