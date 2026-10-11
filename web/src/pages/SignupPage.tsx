@@ -43,10 +43,7 @@ export default function SignupPage() {
     setPending(true)
 
     try {
-      // security: [] keeps this call anonymous. Without it the client's bearer auth would
-      // send the visitor to the Keycloak login page before they have an account.
       const { data, error, response } = await postApiV1Tenants({
-        security: [],
         body: {
           name,
           adminEmail,
