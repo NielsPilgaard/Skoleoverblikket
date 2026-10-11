@@ -291,15 +291,18 @@ public sealed class StaffAbsenceService(
 			absence.StaffId, new Range(absence.Date, absence.EndDate, absence.StartTime, absence.EndTime), cancellationToken);
 		var assignments = await substitutes.GetAssignmentsAsync(lessons.Select(l => l.Lesson.SchemaSlotId).Distinct().ToList(), cancellationToken);
 
-		var result = new List<AffectedLessonDto>();
-		foreach (var (date, lesson) in lessons)
+		var candidates = await substitutes.GetCandidatesAsync(
+			lessons.Select(l => new CandidateLesson(l.Date, l.Lesson.SchemaSlotId, l.Lesson.StartTime, l.Lesson.EndTime)).ToList(),
+			cancellationToken);
+
+		var result = lessons.Select((l, i) =>
 		{
+			var (date, lesson) = l;
 			var (substituteId, substituteName) = CurrentSubstitute(assignments, date, lesson);
-			var candidates = await substitutes.GetCandidatesAsync(date, lesson.SchemaSlotId, lesson.StartTime, lesson.EndTime, cancellationToken);
-			result.Add(new AffectedLessonDto(
+			return new AffectedLessonDto(
 				date, lesson.SchemaSlotId, lesson.ClassId, lesson.ClassName, lesson.CourseName,
-				lesson.StartTime, lesson.EndTime, lesson.Seat, substituteId, substituteName, candidates));
-		}
+				lesson.StartTime, lesson.EndTime, lesson.Seat, substituteId, substituteName, candidates[i]);
+		}).ToList();
 
 		return new StaffAbsenceDetailDto(absence, result);
 	}

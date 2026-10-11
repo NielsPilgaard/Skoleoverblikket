@@ -22,6 +22,9 @@ public sealed record MySubstitutionDto(
 /// <summary>Which seat in the lektion a vikar covers.</summary>
 public enum SubstituteSeat { Teacher, Aide }
 
+/// <summary>One lektion on a date to find free vikar candidates for.</summary>
+public sealed record CandidateLesson(DateOnly Date, Guid SchemaSlotId, TimeOnly Start, TimeOnly End);
+
 public enum SetSubstituteResult { Saved, NotFound, SamePersonBothRoles, UnknownStaff, StaffBusy }
 
 public enum AssignLessonResult { Assigned, LessonNotFound, CandidateNotFound, CandidateBusy }
@@ -79,24 +82,38 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 	}
 
 	/// <summary>
-	/// Free staff for one lektion on a date, ranked: vikarer first, then everyone else, by name. The
+	/// Free staff for each lektion on its date, ranked: vikarer first, then everyone else, by name. The
 	/// absent staff member is never a candidate (they are busy by their own absence). The lektion
 	/// itself does not make anyone busy, so its aide can be offered to take over from the teacher.
+	/// Staff and each date's bookings are loaded once, so a week-long absence costs a few queries,
+	/// not a few per lektion. Results are in the same order as <paramref name="lessons"/>.
 	/// </summary>
-	public async Task<List<AvailableStaffDto>> GetCandidatesAsync(
-		DateOnly date, Guid schemaSlotId, TimeOnly start, TimeOnly end, CancellationToken cancellationToken)
+	public async Task<List<List<AvailableStaffDto>>> GetCandidatesAsync(
+		IReadOnlyList<CandidateLesson> lessons, CancellationToken cancellationToken)
 	{
-		var conflicts = await GetConflictsAsync(date, start, end, cancellationToken, ignoreSchemaSlotId: schemaSlotId);
-		var allStaff = await db.Staff
-			.AsNoTracking()
-			.Select(s => new AvailableStaffDto(s.Id, s.Name, s.Role))
-			.ToListAsync(cancellationToken);
-
-		return allStaff
-			.Where(s => !conflicts.ContainsKey(s.Id))
+		var allStaff = (await db.Staff
+				.AsNoTracking()
+				.Select(s => new AvailableStaffDto(s.Id, s.Name, s.Role))
+				.ToListAsync(cancellationToken))
 			.OrderBy(s => s.Role == StaffRole.Substitute ? 0 : 1)
 			.ThenBy(s => s.Name, StringComparer.Create(Danish, CompareOptions.None))
 			.ToList();
+
+		var bookingsByDate = new Dictionary<DateOnly, DayBookings>();
+		var result = new List<List<AvailableStaffDto>>(lessons.Count);
+		foreach (var lesson in lessons)
+		{
+			if (!bookingsByDate.TryGetValue(lesson.Date, out var bookings))
+			{
+				bookings = await LoadDayBookingsAsync(lesson.Date, cancellationToken);
+				bookingsByDate[lesson.Date] = bookings;
+			}
+
+			var conflicts = bookings.ConflictsAt(lesson.Start, lesson.End, ignoreSchemaSlotId: lesson.SchemaSlotId);
+			result.Add(allStaff.Where(s => !conflicts.ContainsKey(s.Id)).ToList());
+		}
+
+		return result;
 	}
 
 	public Task<Guid?> GetWeekPlanClassIdAsync(Guid weekPlanId, CancellationToken cancellationToken) =>
@@ -379,43 +396,28 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 
 	/// <summary>Staff id → why they are busy for a time range on a date.</summary>
 	private async Task<Dictionary<Guid, string>> GetConflictsAsync(
-		DateOnly date, TimeOnly start, TimeOnly end, CancellationToken cancellationToken, Guid? ignoreSchemaSlotId = null)
+		DateOnly date, TimeOnly start, TimeOnly end, CancellationToken cancellationToken, Guid? ignoreSchemaSlotId = null) =>
+		(await LoadDayBookingsAsync(date, cancellationToken)).ConflictsAt(start, end, ignoreSchemaSlotId);
+
+	/// <summary>Everything that can make a staff member busy on a date: absences, lektioner and vikar cover.</summary>
+	private async Task<DayBookings> LoadDayBookingsAsync(DateOnly date, CancellationToken cancellationToken)
 	{
-		var conflicts = new Dictionary<Guid, string>();
 		var weekday = date.DayOfWeek;
 
-		// A partial-day absence only makes them busy when its window overlaps the lektion.
-		var absentStaffIds = await db.StaffAbsences
+		var absences = await db.StaffAbsences
 			.AsNoTracking()
 			.Where(a => a.Date <= date && (a.EndDate ?? a.Date) >= date)
-			.Where(a => a.StartTime == null || a.EndTime == null || (a.StartTime < end && start < a.EndTime))
-			.Select(a => a.StaffId)
+			.Select(a => new AbsenceBooking(a.StaffId, a.StartTime, a.EndTime))
 			.ToListAsync(cancellationToken);
-
-		foreach (var id in absentStaffIds)
-		{
-			conflicts.TryAdd(id, "Fraværende");
-		}
 
 		var lessons = await db.SchemaSlots
 			.AsNoTracking()
 			.Where(s => s.Weekday == weekday
 					 && (s.Schema.StartDate == null || s.Schema.StartDate <= date)
-					 && (s.Schema.EndDate == null || s.Schema.EndDate >= date)
-					 && s.TimeSlot.StartTime < end && start < s.TimeSlot.EndTime
-					 && s.Id != ignoreSchemaSlotId)
-			.Select(s => new { s.TeacherId, s.AideId, ClassName = s.Schema.Class.Name, CourseName = s.Course.Name })
+					 && (s.Schema.EndDate == null || s.Schema.EndDate >= date))
+			.Select(s => new LessonBooking(
+				s.Id, s.TimeSlot.StartTime, s.TimeSlot.EndTime, s.TeacherId, s.AideId, s.Schema.Class.Name, s.Course.Name))
 			.ToListAsync(cancellationToken);
-
-		foreach (var l in lessons)
-		{
-			var reason = $"Optaget: {l.ClassName} – {l.CourseName}";
-			conflicts.TryAdd(l.TeacherId, reason);
-			if (l.AideId.HasValue)
-			{
-				conflicts.TryAdd(l.AideId.Value, reason);
-			}
-		}
 
 		var isoYear = ISOWeek.GetYear(date.ToDateTime(TimeOnly.MinValue));
 		var isoWeek = ISOWeek.GetWeekOfYear(date.ToDateTime(TimeOnly.MinValue));
@@ -423,33 +425,55 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 			.AsNoTracking()
 			.Where(s => s.WeekPlan.IsoYear == isoYear && s.WeekPlan.IsoWeek == isoWeek
 					 && s.SchemaSlot.Weekday == weekday
-					 && s.SchemaSlot.TimeSlot.StartTime < end && start < s.SchemaSlot.TimeSlot.EndTime
-					 && s.SchemaSlotId != ignoreSchemaSlotId
 					 && (s.SubstituteTeacherId != null || s.SubstituteAideId != null))
-			.Select(s => new
-			{
-				s.SubstituteTeacherId,
-				s.SubstituteAideId,
-				ClassName = s.WeekPlan.Class.Name,
-				CourseName = s.SchemaSlot.Course.Name,
-			})
+			.Select(s => new LessonBooking(
+				s.SchemaSlotId, s.SchemaSlot.TimeSlot.StartTime, s.SchemaSlot.TimeSlot.EndTime,
+				s.SubstituteTeacherId, s.SubstituteAideId, s.WeekPlan.Class.Name, s.SchemaSlot.Course.Name))
 			.ToListAsync(cancellationToken);
 
-		foreach (var c in covering)
+		return new DayBookings(absences, lessons, covering);
+	}
+
+	private sealed record AbsenceBooking(Guid StaffId, TimeOnly? StartTime, TimeOnly? EndTime);
+
+	/// <summary>A lektion on the day: its own teacher/aide, or the vikarer covering it.</summary>
+	private sealed record LessonBooking(
+		Guid SchemaSlotId, TimeOnly StartTime, TimeOnly EndTime, Guid? FirstStaffId, Guid? SecondStaffId, string ClassName, string CourseName);
+
+	private sealed record DayBookings(
+		List<AbsenceBooking> Absences, List<LessonBooking> Lessons, List<LessonBooking> Covering)
+	{
+		public Dictionary<Guid, string> ConflictsAt(TimeOnly start, TimeOnly end, Guid? ignoreSchemaSlotId)
 		{
-			var reason = $"Vikar: {c.ClassName} – {c.CourseName}";
-			if (c.SubstituteTeacherId.HasValue)
+			var conflicts = new Dictionary<Guid, string>();
+
+			// A partial-day absence only makes them busy when its window overlaps the lektion.
+			foreach (var a in Absences.Where(a => a.StartTime is null || a.EndTime is null || (a.StartTime < end && start < a.EndTime)))
 			{
-				conflicts.TryAdd(c.SubstituteTeacherId.Value, reason);
+				conflicts.TryAdd(a.StaffId, "Fraværende");
 			}
 
-			if (c.SubstituteAideId.HasValue)
+			Add(Lessons, "Optaget");
+			Add(Covering, "Vikar");
+			return conflicts;
+
+			void Add(List<LessonBooking> bookings, string label)
 			{
-				conflicts.TryAdd(c.SubstituteAideId.Value, reason);
+				foreach (var b in bookings.Where(b => b.StartTime < end && start < b.EndTime && b.SchemaSlotId != ignoreSchemaSlotId))
+				{
+					var reason = $"{label}: {b.ClassName} – {b.CourseName}";
+					if (b.FirstStaffId.HasValue)
+					{
+						conflicts.TryAdd(b.FirstStaffId.Value, reason);
+					}
+
+					if (b.SecondStaffId.HasValue)
+					{
+						conflicts.TryAdd(b.SecondStaffId.Value, reason);
+					}
+				}
 			}
 		}
-
-		return conflicts;
 	}
 
 	private async Task NotifyAssignedAsync(Guid staffId, Guid schemaSlotId, DateOnly date, CancellationToken cancellationToken)

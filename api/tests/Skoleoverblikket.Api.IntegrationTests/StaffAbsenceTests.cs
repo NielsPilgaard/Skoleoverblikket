@@ -103,6 +103,31 @@ public sealed class StaffAbsenceTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task MultiDayAbsence_CandidatesFollowEachDaysBookings()
+	{
+		var absent = await TestDataBuilder.CreateStaffAsync(factory.Services, _kit.TenantId, "Syg Hele Ugen");
+		var tuesdayOnly = await TestDataBuilder.CreateStaffAsync(factory.Services, _kit.TenantId, "Tirsdagslærer");
+		var (_, schema) = await TestDataBuilder.CreateClassWithSchemaAsync(factory.Services, _kit.TenantId, "7.a");
+		var (_, otherSchema) = await TestDataBuilder.CreateClassWithSchemaAsync(factory.Services, _kit.TenantId, "7.b");
+		foreach (var day in new[] { DayOfWeek.Monday, DayOfWeek.Tuesday })
+		{
+			await TestDataBuilder.CreateSchemaSlotAsync(factory.Services, _kit.TenantId, schema.Id, _first.Id, _course.Id, absent.Id, day);
+		}
+
+		await TestDataBuilder.CreateSchemaSlotAsync(factory.Services, _kit.TenantId, otherSchema.Id, _first.Id, _course.Id, tuesdayOnly.Id, DayOfWeek.Tuesday);
+
+		var response = await _admin.PostAsJsonAsync("/api/v1/staff-absences",
+			new ReportStaffAbsenceRequest(absent.Id, _monday, _monday.AddDays(1), null), JsonOpts);
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+		var id = (await response.Content.ReadFromJsonAsync<CreatedDto>(JsonOpts))!.Id;
+
+		var lessons = (await DetailAsync(id)).Lessons;
+		await Assert.That(lessons.Count).IsEqualTo(2);
+		await Assert.That(lessons.Single(l => l.Date == _monday).Candidates.Select(c => c.Id)).Contains(tuesdayOnly.Id);
+		await Assert.That(lessons.Single(l => l.Date == _monday.AddDays(1)).Candidates.Select(c => c.Id)).DoesNotContain(tuesdayOnly.Id);
+	}
+
+	[Test]
 	public async Task AssignVikar_ShowsInUgeplanAndForVikar_ThenClear()
 	{
 		var (_, absent) = await _kit.TeacherAsync("assign-absent");
