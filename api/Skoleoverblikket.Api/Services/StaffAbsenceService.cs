@@ -90,7 +90,7 @@ public sealed class StaffAbsenceService(
 		public DateOnly Last => EndDate ?? Date;
 	}
 
-	private sealed record LoadedLesson(DateOnly Date, LessonRow Lesson, Guid? SubstituteId);
+	private sealed record LoadedLesson(DateOnly Date, LessonRow Lesson, Guid? SubstituteId, string? SubstituteName);
 
 	private sealed record LoadedAbsence(
 		Guid Id, Guid StaffId, string StaffName, StaffRole Role, DateOnly Date, DateOnly? EndDate,
@@ -278,33 +278,28 @@ public sealed class StaffAbsenceService(
 	public Task<List<StaffAbsenceDto>> GetAllAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken) =>
 		ListAsync(a => a.Date <= to && (a.EndDate ?? a.Date) >= from, isAdmin: true, callerStaffId: null, cancellationToken);
 
+	/// <summary>
+	/// The absence, its lektioner with current vikar, and candidates for each. A fixed handful of
+	/// queries however long the absence: the lektioner come from the same load as the list row, and
+	/// candidates load every day's bookings in one go.
+	/// </summary>
 	public async Task<StaffAbsenceDetailDto?> GetDetailAsync(Guid id, CancellationToken cancellationToken)
 	{
-		var list = await ListAsync(a => a.Id == id, isAdmin: true, callerStaffId: null, cancellationToken);
-		if (list.Count == 0)
+		var absence = (await LoadAsync(a => a.Id == id, cancellationToken)).SingleOrDefault();
+		if (absence is null)
 		{
 			return null;
 		}
 
-		var absence = list[0];
-		var lessons = await GetAffectedLessonsAsync(
-			absence.StaffId, new Range(absence.Date, absence.EndDate, absence.StartTime, absence.EndTime), cancellationToken);
-		var assignments = await substitutes.GetAssignmentsAsync(lessons.Select(l => l.Lesson.SchemaSlotId).Distinct().ToList(), cancellationToken);
-
 		var candidates = await substitutes.GetCandidatesAsync(
-			lessons.Select(l => new CandidateLesson(l.Date, l.Lesson.SchemaSlotId, l.Lesson.StartTime, l.Lesson.EndTime)).ToList(),
+			absence.Lessons.Select(l => new CandidateLesson(l.Date, l.Lesson.SchemaSlotId, l.Lesson.StartTime, l.Lesson.EndTime)).ToList(),
 			cancellationToken);
 
-		var result = lessons.Select((l, i) =>
-		{
-			var (date, lesson) = l;
-			var (substituteId, substituteName) = CurrentSubstitute(assignments, date, lesson);
-			return new AffectedLessonDto(
-				date, lesson.SchemaSlotId, lesson.ClassId, lesson.ClassName, lesson.CourseName,
-				lesson.StartTime, lesson.EndTime, lesson.Seat, substituteId, substituteName, candidates[i]);
-		}).ToList();
+		var lessons = absence.Lessons.Select((l, i) => new AffectedLessonDto(
+			l.Date, l.Lesson.SchemaSlotId, l.Lesson.ClassId, l.Lesson.ClassName, l.Lesson.CourseName,
+			l.Lesson.StartTime, l.Lesson.EndTime, l.Lesson.Seat, l.SubstituteId, l.SubstituteName, candidates[i])).ToList();
 
-		return new StaffAbsenceDetailDto(absence, result);
+		return new StaffAbsenceDetailDto(ToDto(absence, isAdmin: true, callerStaffId: null, SchoolDayCalendar.Today()), lessons);
 	}
 
 	public async Task<AbsenceSubstituteResult> AssignSubstituteAsync(
@@ -383,13 +378,16 @@ public sealed class StaffAbsenceService(
 	{
 		var today = SchoolDayCalendar.Today();
 		return (await LoadAsync(filter, cancellationToken))
-			.Select(a => new StaffAbsenceDto(
-				a.Id, a.StaffId, a.StaffName, a.Role, a.Date, a.EndDate, a.StartTime, a.EndTime,
-				a.Reason, a.ReportedByName, a.CreatedAt,
-				a.Lessons.Count, a.Lessons.Count(l => l.SubstituteId is not null),
-				isAdmin || (a.StaffId == callerStaffId && a.Date > today)))
+			.Select(a => ToDto(a, isAdmin, callerStaffId, today))
 			.ToList();
 	}
+
+	private static StaffAbsenceDto ToDto(LoadedAbsence a, bool isAdmin, Guid? callerStaffId, DateOnly today) =>
+		new(
+			a.Id, a.StaffId, a.StaffName, a.Role, a.Date, a.EndDate, a.StartTime, a.EndTime,
+			a.Reason, a.ReportedByName, a.CreatedAt,
+			a.Lessons.Count, a.Lessons.Count(l => l.SubstituteId is not null),
+			isAdmin || (a.StaffId == callerStaffId && a.Date > today));
 
 	/// <summary>Absences matching <paramref name="filter"/>, newest first, each with its affected lektioner and their current vikar.</summary>
 	private async Task<List<LoadedAbsence>> LoadAsync(
@@ -434,7 +432,11 @@ public sealed class StaffAbsenceService(
 				var range = new Range(a.Date, a.EndDate, a.StartTime, a.EndTime);
 				var lessons = lessonsByStaff[a.StaffId]
 					.Where(l => l.Date >= range.Date && l.Date <= range.Last && InWindow(l.Lesson, range))
-					.Select(l => new LoadedLesson(l.Date, l.Lesson, CurrentSubstitute(assignments, l.Date, l.Lesson).Id))
+					.Select(l =>
+					{
+						var (substituteId, substituteName) = CurrentSubstitute(assignments, l.Date, l.Lesson);
+						return new LoadedLesson(l.Date, l.Lesson, substituteId, substituteName);
+					})
 					.ToList();
 				return new LoadedAbsence(
 					a.Id, a.StaffId, a.StaffName, a.Role, a.Date, a.EndDate, a.StartTime, a.EndTime,

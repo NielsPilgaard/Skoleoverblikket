@@ -85,8 +85,8 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 	/// Free staff for each lektion on its date, ranked: vikarer first, then everyone else, by name. The
 	/// absent staff member is never a candidate (they are busy by their own absence). The lektion
 	/// itself does not make anyone busy, so its aide can be offered to take over from the teacher.
-	/// Staff and each date's bookings are loaded once, so a week-long absence costs a few queries,
-	/// not a few per lektion. Results are in the same order as <paramref name="lessons"/>.
+	/// Staff and the bookings for every date are each loaded in one go, so the query count is fixed
+	/// however many days and lektioner there are. Results are in the same order as <paramref name="lessons"/>.
 	/// </summary>
 	public async Task<List<List<AvailableStaffDto>>> GetCandidatesAsync(
 		IReadOnlyList<CandidateLesson> lessons, CancellationToken cancellationToken)
@@ -99,17 +99,23 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 			.ThenBy(s => s.Name, StringComparer.Create(Danish, CompareOptions.None))
 			.ToList();
 
+		if (lessons.Count == 0)
+		{
+			return [];
+		}
+
+		var bookings = await LoadBookingsAsync(lessons.Select(l => l.Date).Distinct().ToList(), cancellationToken);
 		var bookingsByDate = new Dictionary<DateOnly, DayBookings>();
 		var result = new List<List<AvailableStaffDto>>(lessons.Count);
 		foreach (var lesson in lessons)
 		{
-			if (!bookingsByDate.TryGetValue(lesson.Date, out var bookings))
+			if (!bookingsByDate.TryGetValue(lesson.Date, out var day))
 			{
-				bookings = await LoadDayBookingsAsync(lesson.Date, cancellationToken);
-				bookingsByDate[lesson.Date] = bookings;
+				day = bookings.On(lesson.Date);
+				bookingsByDate[lesson.Date] = day;
 			}
 
-			var conflicts = bookings.ConflictsAt(lesson.Start, lesson.End, ignoreSchemaSlotId: lesson.SchemaSlotId);
+			var conflicts = day.ConflictsAt(lesson.Start, lesson.End, ignoreSchemaSlotId: lesson.SchemaSlotId);
 			result.Add(allStaff.Where(s => !conflicts.ContainsKey(s.Id)).ToList());
 		}
 
@@ -397,48 +403,85 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 	/// <summary>Staff id → why they are busy for a time range on a date.</summary>
 	private async Task<Dictionary<Guid, string>> GetConflictsAsync(
 		DateOnly date, TimeOnly start, TimeOnly end, CancellationToken cancellationToken, Guid? ignoreSchemaSlotId = null) =>
-		(await LoadDayBookingsAsync(date, cancellationToken)).ConflictsAt(start, end, ignoreSchemaSlotId);
+		(await LoadBookingsAsync([date], cancellationToken)).On(date).ConflictsAt(start, end, ignoreSchemaSlotId);
 
-	/// <summary>Everything that can make a staff member busy on a date: absences, lektioner and vikar cover.</summary>
-	private async Task<DayBookings> LoadDayBookingsAsync(DateOnly date, CancellationToken cancellationToken)
+	/// <summary>
+	/// Everything that can make a staff member busy on any of <paramref name="dates"/>: absences,
+	/// lektioner and vikar cover. Three queries however many dates; <see cref="Bookings.On"/> picks one day.
+	/// </summary>
+	private async Task<Bookings> LoadBookingsAsync(IReadOnlyCollection<DateOnly> dates, CancellationToken cancellationToken)
 	{
-		var weekday = date.DayOfWeek;
+		var first = dates.Min();
+		var last = dates.Max();
+		var weekdays = dates.Select(d => d.DayOfWeek).Distinct().ToList();
+		var weekKeys = dates.Select(WeekKey).Distinct().ToList();
 
 		var absences = await db.StaffAbsences
 			.AsNoTracking()
-			.Where(a => a.Date <= date && (a.EndDate ?? a.Date) >= date)
-			.Select(a => new AbsenceBooking(a.StaffId, a.StartTime, a.EndTime))
+			.Where(a => a.Date <= last && (a.EndDate ?? a.Date) >= first)
+			.Select(a => new AbsenceBooking(a.StaffId, a.Date, a.EndDate ?? a.Date, a.StartTime, a.EndTime))
 			.ToListAsync(cancellationToken);
 
 		var lessons = await db.SchemaSlots
 			.AsNoTracking()
-			.Where(s => s.Weekday == weekday
-					 && (s.Schema.StartDate == null || s.Schema.StartDate <= date)
-					 && (s.Schema.EndDate == null || s.Schema.EndDate >= date))
-			.Select(s => new LessonBooking(
-				s.Id, s.TimeSlot.StartTime, s.TimeSlot.EndTime, s.TeacherId, s.AideId, s.Schema.Class.Name, s.Course.Name))
+			.Where(s => weekdays.Contains(s.Weekday)
+					 && (s.Schema.StartDate == null || s.Schema.StartDate <= last)
+					 && (s.Schema.EndDate == null || s.Schema.EndDate >= first))
+			.Select(s => new ScheduledLesson(
+				s.Weekday, s.Schema.StartDate, s.Schema.EndDate,
+				new LessonBooking(s.Id, s.TimeSlot.StartTime, s.TimeSlot.EndTime, s.TeacherId, s.AideId, s.Schema.Class.Name, s.Course.Name)))
 			.ToListAsync(cancellationToken);
 
-		var isoYear = ISOWeek.GetYear(date.ToDateTime(TimeOnly.MinValue));
-		var isoWeek = ISOWeek.GetWeekOfYear(date.ToDateTime(TimeOnly.MinValue));
 		var covering = await db.WeekPlanSlots
 			.AsNoTracking()
-			.Where(s => s.WeekPlan.IsoYear == isoYear && s.WeekPlan.IsoWeek == isoWeek
-					 && s.SchemaSlot.Weekday == weekday
+			.Where(s => weekKeys.Contains(s.WeekPlan.IsoYear * 100 + s.WeekPlan.IsoWeek)
+					 && weekdays.Contains(s.SchemaSlot.Weekday)
 					 && (s.SubstituteTeacherId != null || s.SubstituteAideId != null))
-			.Select(s => new LessonBooking(
-				s.SchemaSlotId, s.SchemaSlot.TimeSlot.StartTime, s.SchemaSlot.TimeSlot.EndTime,
-				s.SubstituteTeacherId, s.SubstituteAideId, s.WeekPlan.Class.Name, s.SchemaSlot.Course.Name))
+			.Select(s => new CoverBooking(
+				s.WeekPlan.IsoYear * 100 + s.WeekPlan.IsoWeek, s.SchemaSlot.Weekday,
+				new LessonBooking(
+					s.SchemaSlotId, s.SchemaSlot.TimeSlot.StartTime, s.SchemaSlot.TimeSlot.EndTime,
+					s.SubstituteTeacherId, s.SubstituteAideId, s.WeekPlan.Class.Name, s.SchemaSlot.Course.Name)))
 			.ToListAsync(cancellationToken);
 
-		return new DayBookings(absences, lessons, covering);
+		return new Bookings(absences, lessons, covering);
 	}
 
-	private sealed record AbsenceBooking(Guid StaffId, TimeOnly? StartTime, TimeOnly? EndTime);
+	/// <summary>ISO year and week as one comparable number (2026 week 41 → 202641), so a set of weeks filters in SQL.</summary>
+	private static int WeekKey(DateOnly date)
+	{
+		var dateTime = date.ToDateTime(TimeOnly.MinValue);
+		return ISOWeek.GetYear(dateTime) * 100 + ISOWeek.GetWeekOfYear(dateTime);
+	}
+
+	private sealed record AbsenceBooking(Guid StaffId, DateOnly Date, DateOnly LastDate, TimeOnly? StartTime, TimeOnly? EndTime);
 
 	/// <summary>A lektion on the day: its own teacher/aide, or the vikarer covering it.</summary>
 	private sealed record LessonBooking(
 		Guid SchemaSlotId, TimeOnly StartTime, TimeOnly EndTime, Guid? FirstStaffId, Guid? SecondStaffId, string ClassName, string CourseName);
+
+	/// <summary>A recurring lektion, held on its weekday while its schema is active.</summary>
+	private sealed record ScheduledLesson(DayOfWeek Weekday, DateOnly? SchemaStart, DateOnly? SchemaEnd, LessonBooking Booking);
+
+	/// <summary>Vikar cover booked on one weekday of one ISO week (<see cref="WeekKey"/>).</summary>
+	private sealed record CoverBooking(int WeekKey, DayOfWeek Weekday, LessonBooking Booking);
+
+	private sealed record Bookings(List<AbsenceBooking> Absences, List<ScheduledLesson> Lessons, List<CoverBooking> Covering)
+	{
+		public DayBookings On(DateOnly date)
+		{
+			var weekKey = WeekKey(date);
+			return new DayBookings(
+				Absences.Where(a => a.Date <= date && a.LastDate >= date).ToList(),
+				Lessons
+					.Where(l => l.Weekday == date.DayOfWeek
+							 && (l.SchemaStart == null || l.SchemaStart <= date)
+							 && (l.SchemaEnd == null || l.SchemaEnd >= date))
+					.Select(l => l.Booking)
+					.ToList(),
+				Covering.Where(c => c.WeekKey == weekKey && c.Weekday == date.DayOfWeek).Select(c => c.Booking).ToList());
+		}
+	}
 
 	private sealed record DayBookings(
 		List<AbsenceBooking> Absences, List<LessonBooking> Lessons, List<LessonBooking> Covering)
