@@ -38,7 +38,9 @@ export default defineConfig({
           stderr: 'pipe',
         },
         {
-          command: 'echo "waiting for keycloak"',
+          // Wait-only entry. The command must outlive the realm import: a process that exits
+          // before the URL answers fails the run with "exited early".
+          command: 'node -e "setInterval(() => {}, 1 << 30)"',
           url: 'http://localhost:8080/realms/Skoleoverblikket/.well-known/openid-configuration',
           timeout: 120_000,
           reuseExistingServer: true,

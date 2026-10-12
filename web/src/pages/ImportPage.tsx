@@ -2,7 +2,10 @@ import { useState, useMemo, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { usePageTitle } from '../hooks/usePageTitle'
 import PasteGrid, { type ColumnDef, type GridRow } from '../components/PasteGrid'
+import ModuleInactiveNotice from '../components/ModuleInactiveNotice'
+import { useSubscription } from '../hooks/useSubscription'
 import { pluralize } from '../lib/pluralize'
+import { problemDetail } from '../lib/problem'
 import {
   getApiV1BoardMembers,
   getApiV1Staff,
@@ -118,6 +121,11 @@ function countBoardRows(rows: GridRow[]) {
   return rows.filter((r) => r.name?.trim() && r.email?.trim()).length
 }
 
+// Calls pass throwOnError, so a failed request throws its ProblemDetails body.
+function errorMessage(e: unknown) {
+  return problemDetail(e) ?? (e instanceof Error ? e.message : 'Der opstod en fejl')
+}
+
 // ── Shared components ──────────────────────────────────────────────────────────
 
 function WarningList({ warnings }: { warnings: ImportsControllerImportWarning[] }) {
@@ -212,7 +220,7 @@ function InvitationStep({
         newlySent.add(record.id)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Der opstod en fejl')
+      setError(errorMessage(e))
     } finally {
       setSentIds((prev) => new Set([...prev, ...newlySent]))
       setSelected((prev) => {
@@ -380,7 +388,10 @@ function StudentsTab() {
     setResult(null)
     setUninvitedParents(null)
     try {
-      const res = await postApiV1ImportsStudentsAndParents({ body: { rows: payload } })
+      const res = await postApiV1ImportsStudentsAndParents({
+        body: { rows: payload },
+        throwOnError: true,
+      })
       setResult(res.data!)
 
       const uninvited = (res.data!.uninvitedParents ?? []).map((p) => ({
@@ -392,14 +403,17 @@ function StudentsTab() {
         setUninvitedParents(uninvited)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Der opstod en fejl')
+      setError(errorMessage(e))
     } finally {
       setIsLoading(false)
     }
   }
 
   const sendParentInvite = useCallback(async (record: InvitableRecord) => {
-    await postApiV1ParentInvitationsByParentIdResend({ path: { parentId: record.id } })
+    await postApiV1ParentInvitationsByParentIdResend({
+      path: { parentId: record.id },
+      throwOnError: true,
+    })
   }, [])
 
   return (
@@ -538,7 +552,7 @@ function StaffTab() {
     setResult(null)
     setUninvitedStaff(null)
     try {
-      const res = await postApiV1ImportsStaff({ body: { rows: payload } })
+      const res = await postApiV1ImportsStaff({ body: { rows: payload }, throwOnError: true })
       setResult(res.data!)
 
       if ((res.data!.staffCreated ?? 0) > 0 || (res.data!.staffUpdated ?? 0) > 0) {
@@ -548,7 +562,7 @@ function StaffTab() {
             .filter((e): e is string => !!e)
             .map((e) => e.toLowerCase())
         )
-        const staffRes = await getApiV1Staff()
+        const staffRes = await getApiV1Staff({ throwOnError: true })
         const uninvited = (staffRes.data ?? [])
           .filter((s) => !s.keycloakSubject && s.email && importedEmails.has(s.email.toLowerCase()))
           .map((s) => ({ id: s.id!, name: s.name!, email: s.email! }))
@@ -557,14 +571,17 @@ function StaffTab() {
         }
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Der opstod en fejl')
+      setError(errorMessage(e))
     } finally {
       setIsLoading(false)
     }
   }
 
   const sendStaffInvite = useCallback(async (record: InvitableRecord) => {
-    await postApiV1StaffInvitationsInviteByStaffId({ path: { staffId: record.id } })
+    await postApiV1StaffInvitationsInviteByStaffId({
+      path: { staffId: record.id },
+      throwOnError: true,
+    })
   }, [])
 
   return (
@@ -693,10 +710,10 @@ function ClassesTab() {
     setError(null)
     setResult(null)
     try {
-      const res = await postApiV1ImportsClasses({ body: { rows: payload } })
+      const res = await postApiV1ImportsClasses({ body: { rows: payload }, throwOnError: true })
       setResult(res.data!)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Der opstod en fejl')
+      setError(errorMessage(e))
     } finally {
       setIsLoading(false)
     }
@@ -781,10 +798,10 @@ function RoomsTab() {
     setError(null)
     setResult(null)
     try {
-      const res = await postApiV1ImportsRooms({ body: { rows: payload } })
+      const res = await postApiV1ImportsRooms({ body: { rows: payload }, throwOnError: true })
       setResult(res.data!)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Der opstod en fejl')
+      setError(errorMessage(e))
     } finally {
       setIsLoading(false)
     }
@@ -869,12 +886,15 @@ function BoardMembersTab() {
     setResult(null)
     setUninvitedMembers(null)
     try {
-      const res = await postApiV1ImportsBoardMembers({ body: { rows: payload } })
+      const res = await postApiV1ImportsBoardMembers({
+        body: { rows: payload },
+        throwOnError: true,
+      })
       setResult(res.data!)
 
       if ((res.data!.boardMembersCreated ?? 0) > 0 || (res.data!.boardMembersUpdated ?? 0) > 0) {
         const importedEmails = new Set(payload.map((r) => r.email.toLowerCase()))
-        const membersRes = await getApiV1BoardMembers()
+        const membersRes = await getApiV1BoardMembers({ throwOnError: true })
         const uninvited = (membersRes.data ?? [])
           .filter((m) => !m.hasAccount && m.email && importedEmails.has(m.email.toLowerCase()))
           .map((m) => ({ id: m.id!, name: m.name!, email: m.email! }))
@@ -883,14 +903,17 @@ function BoardMembersTab() {
         }
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Der opstod en fejl')
+      setError(errorMessage(e))
     } finally {
       setIsLoading(false)
     }
   }
 
   const sendBoardInvite = useCallback(async (record: InvitableRecord) => {
-    await postApiV1BoardMembersInvite({ body: { name: record.name, email: record.email } })
+    await postApiV1BoardMembersInvite({
+      body: { name: record.name, email: record.email },
+      throwOnError: true,
+    })
   }, [])
 
   return (
@@ -1039,6 +1062,7 @@ export default function ImportPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('students')
   const [searchParams] = useSearchParams()
   const fraOpsaetning = searchParams.get('fraOpsaetning') === '1'
+  const { hasParentModule, hasBoardModule, isSuccess: modulesLoaded } = useSubscription()
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -1081,11 +1105,27 @@ export default function ImportPage() {
 
       {/* Tab content */}
       <div>
-        {activeTab === 'students' && <StudentsTab />}
+        {activeTab === 'students' &&
+          (modulesLoaded && !hasParentModule ? (
+            <ModuleInactiveNotice
+              testId="import-students-module-inactive"
+              text="Forældremodulet er ikke aktivt, så du kan ikke importere elever og forældre. Klasser kan du stadig importere under fanen Klasser."
+            />
+          ) : (
+            <StudentsTab />
+          ))}
         {activeTab === 'classes' && <ClassesTab />}
         {activeTab === 'staff' && <StaffTab />}
         {activeTab === 'rooms' && <RoomsTab />}
-        {activeTab === 'board' && <BoardMembersTab />}
+        {activeTab === 'board' &&
+          (modulesLoaded && !hasBoardModule ? (
+            <ModuleInactiveNotice
+              testId="import-board-module-inactive"
+              text="Bestyrelsesmodulet er ikke aktivt, så du kan ikke importere bestyrelsesmedlemmer."
+            />
+          ) : (
+            <BoardMembersTab />
+          ))}
       </div>
     </div>
   )

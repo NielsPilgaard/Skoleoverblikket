@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Modal } from '../components/Modal'
+import ModuleInactiveNotice from '../components/ModuleInactiveNotice'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getApiV1ParentsOptions,
@@ -393,7 +394,7 @@ export default function ParentsPage() {
   const [showInvite, setShowInvite] = useState(false)
   const [editingParent, setEditingParent] = useState<ParentSummaryDto | null>(null)
   const [detailsTarget, setDetailsTarget] = useState<{ id: string; name: string } | null>(null)
-  const { hasParentModule } = useSubscription()
+  const { hasParentModule, isSuccess: modulesLoaded } = useSubscription()
 
   const { data: parents, isLoading, isError, refetch } = useQuery(getApiV1ParentsOptions())
   const { data: students } = useQuery(getApiV1StudentsOptions())
@@ -437,6 +438,13 @@ export default function ParentsPage() {
           <span className="hidden sm:inline">Inviter forælder</span>
         </button>
       </div>
+
+      {modulesLoaded && !hasParentModule && (
+        <ModuleInactiveNotice
+          testId="parent-module-inactive"
+          text="Forældremodulet er ikke aktivt, så du kan ikke invitere eller ændre forældre. Du kan stadig se og slette dem."
+        />
+      )}
 
       {isError && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-5 flex items-center justify-between">
@@ -534,7 +542,7 @@ export default function ParentsPage() {
                           <line x1="12" y1="8" x2="12.01" y2="8" />
                         </svg>
                       </button>
-                      {!p.hasAccount && (
+                      {!p.hasAccount && hasParentModule && (
                         <button
                           onClick={() => resendMutation.mutate({ path: { parentId: p.id! } })}
                           disabled={resendMutation.isPending}
@@ -554,23 +562,25 @@ export default function ParentsPage() {
                           </svg>
                         </button>
                       )}
-                      <button
-                        onClick={() => setEditingParent(p)}
-                        className="p-1.5 text-gray-400 hover:text-brand-600 rounded-md hover:bg-brand-50 transition-colors"
-                        title="Rediger kontaktoplysninger"
-                      >
-                        <svg
-                          width="15"
-                          height="15"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
+                      {hasParentModule && (
+                        <button
+                          onClick={() => setEditingParent(p)}
+                          className="p-1.5 text-gray-400 hover:text-brand-600 rounded-md hover:bg-brand-50 transition-colors"
+                          title="Rediger kontaktoplysninger"
                         >
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                      </button>
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           if (confirm(`Slet "${p.name}"? Adgangen fjernes.`))

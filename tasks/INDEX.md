@@ -26,8 +26,8 @@ status: 'Active'
 
 | # | Task | Size | Owner | Depends on | Why this spot |
 |---|---|---|---|---|---|
-| 1 | [55 Bestyrelse under Stamdata](55-board-in-masterdata.md) | S | Agent | — | Frontend only, fully specced, already staged. Hanne can't find the board today. |
-| 2 | [58 Enforce paid modules in the API](58-enforce-board-module.md) | M | Agent | 55 | BoardModule and ParentModule are sold at 300 kr/md each but no endpoint checks them, so buying one unlocks nothing and every school gets both free. |
+| 1 | [58 Enforce paid modules in the API](58-enforce-board-module.md) | M | Agent | — (55 shipped) | BoardModule and ParentModule are sold at 300 kr/md each but no endpoint checks them, so buying one unlocks nothing and every school gets both free. |
+| 2 | [61 School roles in the API](61-school-roles-in-api.md) | L | Niels + agent | 58 | A teacher with a child at the school, or a parent on the board, gets only one role today, and which one depends on invite order. Since 58 they can be locked out entirely when a module is off. Also fixes shared logins being deleted and signup admins with `IsAdmin = false`. |
 | 3 | [54 Move prod to bigger VPS](54-move-vps.md) | L | Niels + agent | 60 Phase 0 + A (code done 2026-10-07) | VPS could use better speccs for higher volume, prod Postgres is reachable (but secure) from the internet, RPO is 24h. Absorbs 53 phases 3–5, so do it before 53 to avoid building a drill twice. Ships together with 60 Phase A, or the new box has no backups. |
 | 4 | [60 Backup agent and break-glass console](60-backup-console.md) | L | Niels | 54 (ships with the cutover) | Code for Phases 0–C is done and proven on a local stack. Left: OVH repo and ops buckets with keys, elmah.io heartbeats, turning on the `selfhosted-db` profile at the 54 cutover, one real restore through the wizard. |
 | 5 | [53 Restore drill and off-site backup](53-restore-drill.md) | M | Niels + agent | 54, 60 | Drill itself moved to 60. What's left: runbook, off-site copy of DB and files, quarterly full-rebuild drill. Losing a school's data would end the company. Phase 2 waits for the 30-day sub-processor notice. |

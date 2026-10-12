@@ -16,6 +16,9 @@ public sealed class FakeKeycloak : IKeycloakAdminApi, IKeycloakTokenApi
 	/// <summary>Registers an existing login, so creating another user with this email returns 409.</summary>
 	public void AddExistingUser(string email) => _usersByEmail.TryAdd(email, Guid.NewGuid().ToString());
 
+	/// <summary>The Keycloak user id (JWT <c>sub</c>) created for <paramref name="email"/>.</summary>
+	public string SubjectFor(string email) => _usersByEmail[email];
+
 	public Task<HttpResponseMessage> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken)
 	{
 		var id = Guid.NewGuid().ToString();

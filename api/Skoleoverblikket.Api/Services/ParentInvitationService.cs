@@ -14,7 +14,8 @@ public sealed class ParentInvitationService(
 	ITenantContext tenant,
 	IEmailSender email,
 	IOptions<ApplicationOptions> appOptions,
-	KeycloakAdminService keycloakAdmin)
+	KeycloakAdminService keycloakAdmin,
+	SubscriptionService subscriptions)
 {
 	private static readonly TimeSpan InvitationValidity = TimeSpan.FromDays(14);
 	private readonly string BaseUrl = appOptions.Value.SanitizedBaseUrl;
@@ -97,7 +98,25 @@ public sealed class ParentInvitationService(
 					i => i.Token == token && i.AcceptedAt == null && i.ExpiresAt > DateTimeOffset.UtcNow,
 					cancellationToken);
 
-	public async Task MarkAcceptedAsync(ParentInvitation invitation, string keycloakSubject, CancellationToken cancellationToken)
+	public async Task<InvitationAcceptResult> AcceptAsync(string token, string keycloakSubject, CancellationToken cancellationToken)
+	{
+		var invitation = await FindValidAsync(token, cancellationToken);
+		if (invitation is null)
+		{
+			return InvitationAcceptResult.Invalid;
+		}
+
+		// Checked here, not only in ModuleAccessFilter: the accepting user may have no tenant claim yet.
+		if (!await subscriptions.IsModuleActiveAsync(invitation.TenantId, SubscriptionModule.ParentModule, cancellationToken))
+		{
+			return InvitationAcceptResult.ModuleInactive;
+		}
+
+		await MarkAcceptedAsync(invitation, keycloakSubject, cancellationToken);
+		return InvitationAcceptResult.Accepted;
+	}
+
+	private async Task MarkAcceptedAsync(ParentInvitation invitation, string keycloakSubject, CancellationToken cancellationToken)
 	{
 		try
 		{

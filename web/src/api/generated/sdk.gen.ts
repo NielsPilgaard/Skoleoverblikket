@@ -252,17 +252,9 @@ export const patchApiV1BoardFilesFoldersById = <ThrowOnError extends boolean = f
     }
 });
 
-export const getApiV1BoardInvitationsPreview = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1BoardInvitationsPreviewData, ThrowOnError>) => (options?.client ?? client).get<GetApiV1BoardInvitationsPreviewResponses, unknown, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/board-invitations/preview',
-    ...options
-});
+export const getApiV1BoardInvitationsPreview = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1BoardInvitationsPreviewData, ThrowOnError>) => (options?.client ?? client).get<GetApiV1BoardInvitationsPreviewResponses, unknown, ThrowOnError>({ url: '/api/v1/board-invitations/preview', ...options });
 
-export const postApiV1BoardInvitationsByTokenAccept = <ThrowOnError extends boolean = false>(options: Options<PostApiV1BoardInvitationsByTokenAcceptData, ThrowOnError>) => (options.client ?? client).post<PostApiV1BoardInvitationsByTokenAcceptResponses, unknown, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/board-invitations/{token}/accept',
-    ...options
-});
+export const postApiV1BoardInvitationsByTokenAccept = <ThrowOnError extends boolean = false>(options: Options<PostApiV1BoardInvitationsByTokenAcceptData, ThrowOnError>) => (options.client ?? client).post<PostApiV1BoardInvitationsByTokenAcceptResponses, unknown, ThrowOnError>({ url: '/api/v1/board-invitations/{token}/accept', ...options });
 
 export const getApiV1BoardMembers = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1BoardMembersData, ThrowOnError>) => (options?.client ?? client).get<GetApiV1BoardMembersResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
@@ -627,7 +619,6 @@ export const postApiV1DataProcessingAgreementAcceptance = <ThrowOnError extends 
 });
 
 export const postApiV1DemoRequest = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1DemoRequestData, ThrowOnError>) => (options?.client ?? client).post<PostApiV1DemoRequestResponses, unknown, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/demo-request',
     ...options,
     headers: {
@@ -838,11 +829,7 @@ export const postApiV1NotificationsReadAll = <ThrowOnError extends boolean = fal
     ...options
 });
 
-export const getApiV1ParentInvitationsPreview = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1ParentInvitationsPreviewData, ThrowOnError>) => (options?.client ?? client).get<GetApiV1ParentInvitationsPreviewResponses, unknown, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/parent-invitations/preview',
-    ...options
-});
+export const getApiV1ParentInvitationsPreview = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1ParentInvitationsPreviewData, ThrowOnError>) => (options?.client ?? client).get<GetApiV1ParentInvitationsPreviewResponses, unknown, ThrowOnError>({ url: '/api/v1/parent-invitations/preview', ...options });
 
 export const postApiV1ParentInvitationsAccept = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1ParentInvitationsAcceptData, ThrowOnError>) => (options?.client ?? client).post<PostApiV1ParentInvitationsAcceptResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
@@ -1391,11 +1378,7 @@ export const postApiV1StaffInvitationsAccept = <ThrowOnError extends boolean = f
     }
 });
 
-export const getApiV1StaffInvitationsPreview = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1StaffInvitationsPreviewData, ThrowOnError>) => (options?.client ?? client).get<GetApiV1StaffInvitationsPreviewResponses, unknown, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/staff-invitations/preview',
-    ...options
-});
+export const getApiV1StaffInvitationsPreview = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1StaffInvitationsPreviewData, ThrowOnError>) => (options?.client ?? client).get<GetApiV1StaffInvitationsPreviewResponses, unknown, ThrowOnError>({ url: '/api/v1/staff-invitations/preview', ...options });
 
 export const postApiV1StaffMeAvatarPresign = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1StaffMeAvatarPresignData, ThrowOnError>) => (options?.client ?? client).post<PostApiV1StaffMeAvatarPresignResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
@@ -1429,11 +1412,7 @@ export const getApiV1StatsMyDashboard = <ThrowOnError extends boolean = false>(o
     ...options
 });
 
-export const postApiV1StripeWebhook = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1StripeWebhookData, ThrowOnError>) => (options?.client ?? client).post<PostApiV1StripeWebhookResponses, unknown, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/stripe/webhook',
-    ...options
-});
+export const postApiV1StripeWebhook = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1StripeWebhookData, ThrowOnError>) => (options?.client ?? client).post<PostApiV1StripeWebhookResponses, unknown, ThrowOnError>({ url: '/api/v1/stripe/webhook', ...options });
 
 export const getApiV1Students = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1StudentsData, ThrowOnError>) => (options?.client ?? client).get<GetApiV1StudentsResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
@@ -1580,7 +1559,6 @@ export const getApiV1AdminTenantsBySchoolId = <ThrowOnError extends boolean = fa
 });
 
 export const postApiV1Tenants = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1TenantsData, ThrowOnError>) => (options?.client ?? client).post<PostApiV1TenantsResponses, unknown, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/tenants',
     ...options,
     headers: {

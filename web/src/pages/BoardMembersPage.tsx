@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Modal } from '../components/Modal'
+import ModuleInactiveNotice from '../components/ModuleInactiveNotice'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getApiV1BoardMembersOptions,
@@ -15,23 +15,28 @@ import { useSubscription } from '../hooks/useSubscription'
 export default function BoardMembersPage() {
   usePageTitle('Bestyrelse')
   const qc = useQueryClient()
-  const { hasBoardModule, isLoading: modulesLoading } = useSubscription()
+  const { hasBoardModule, isSuccess: modulesLoaded } = useSubscription()
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteName, setInviteName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [inviting, setInviting] = useState(false)
+  const [rowError, setRowError] = useState<string | null>(null)
 
   const { data: members, isLoading, isError, error } = useQuery(getApiV1BoardMembersOptions())
 
   const toggleMutation = useMutation({
     ...patchApiV1BoardMembersByIdTeacherDataAccessMutation(),
+    onMutate: () => setRowError(null),
     onSuccess: () => void qc.invalidateQueries({ queryKey: getApiV1BoardMembersQueryKey() }),
+    onError: () => setRowError('Læreradgangen kunne ikke ændres. Prøv igen.'),
   })
 
   const deleteMutation = useMutation({
     ...deleteApiV1BoardMembersByIdMutation(),
+    onMutate: () => setRowError(null),
     onSuccess: () => void qc.invalidateQueries({ queryKey: getApiV1BoardMembersQueryKey() }),
+    onError: () => setRowError('Bestyrelsesmedlemmet kunne ikke fjernes. Prøv igen.'),
   })
 
   const inviteMutation = useMutation({
@@ -105,16 +110,20 @@ export default function BoardMembersPage() {
         {inviteButton}
       </div>
 
-      {!modulesLoading && !hasBoardModule && (
+      {modulesLoaded && !hasBoardModule && (
+        <ModuleInactiveNotice
+          testId="board-module-inactive"
+          text="Bestyrelsesmodulet er ikke aktivt, så du kan ikke invitere eller ændre bestyrelsesmedlemmer. Du kan stadig fjerne dem."
+        />
+      )}
+
+      {rowError && (
         <div
-          data-testid="board-module-inactive"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-800"
+          role="alert"
+          data-testid="board-members-error"
+          className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700"
         >
-          Bestyrelsesmodulet er ikke aktivt, så du kan ikke invitere nye bestyrelsesmedlemmer.{' '}
-          <Link to="/abonnement" className="font-medium underline hover:text-amber-900">
-            Aktivér det under Abonnement
-          </Link>
-          .
+          {rowError}
         </div>
       )}
 
@@ -160,13 +169,14 @@ export default function BoardMembersPage() {
                     type="checkbox"
                     data-testid="board-member-teacher-access"
                     checked={member.canAccessTeacherData}
+                    disabled={!hasBoardModule || toggleMutation.isPending}
                     onChange={(e) =>
                       toggleMutation.mutate({
                         path: { id: member.id! },
                         body: { canAccessTeacherData: e.target.checked },
                       })
                     }
-                    className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                    className="rounded border-gray-300 text-brand-600 focus:ring-brand-500 disabled:opacity-50"
                   />
                   Læreradgang
                 </label>

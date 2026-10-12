@@ -6,7 +6,7 @@ public static class SwaggerExtensions
 {
 	public static IServiceCollection AddOpenApi(this IServiceCollection services)
 	{
-		const string schemeId = "Bearer";
+		const string schemeId = BearerSecurityOperationFilter.SchemeId;
 
 		services.AddEndpointsApiExplorer();
 		services.AddSwaggerGen(options =>
@@ -31,9 +31,7 @@ public static class SwaggerExtensions
 											  In = ParameterLocation.Header,
 										  });
 
-			options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
-			{ [new OpenApiSecuritySchemeReference(schemeId, document)] = [] });
-
+			options.OperationFilter<BearerSecurityOperationFilter>();
 			options.SchemaFilter<GroupMessageSchemaFilter>();
 			options.SchemaFilter<RequireNonNullableSchemaFilter>();
 			options.SupportNonNullableReferenceTypes();

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.DataProtection.Repositories;
 using Microsoft.Extensions.Options;
+using Skoleoverblikket.Api.OpenApi;
 
 namespace Skoleoverblikket.Api.Storage;
 
@@ -18,6 +19,12 @@ public static class S3DataProtectionExtensions
 	{
 		// Fixed name: the default discriminator is the content root path, which must not decide whether keys match.
 		services.AddDataProtection().SetApplicationName("Skoleoverblikket");
+
+		// The key ring is read on host start, and object storage isn't running during build-time generation.
+		if (OpenApiGeneration.IsRunning)
+		{
+			return services;
+		}
 
 		services.AddSingleton<IConfigureOptions<KeyManagementOptions>>(sp =>
 			new ConfigureOptions<KeyManagementOptions>(options =>

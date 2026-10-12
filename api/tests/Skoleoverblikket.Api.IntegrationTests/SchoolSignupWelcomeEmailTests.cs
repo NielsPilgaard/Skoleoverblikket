@@ -40,6 +40,10 @@ public sealed class SchoolSignupWelcomeEmailTests(ApiFactory factory)
 		AdminPassword: "hemmeligt-123",
 		AcceptDataProcessingAgreement: true);
 
+	/// <summary>Welcome emails only: other tests may email every school (sub-processor notice).</summary>
+	private List<Email.EmailMessage> Welcomes(string address) =>
+		[.. factory.Emails.To(address).Where(m => m.FromName == "Niels Pilgaard")];
+
 	private Task RunJobAsync(TimeSpan afterSignup) =>
 		WelcomeEmailJob.RunAsync(factory.Services.GetRequiredService<IServiceScopeFactory>(), NullLogger.Instance,
 			DateTimeOffset.UtcNow + afterSignup, CancellationToken.None);
@@ -53,14 +57,14 @@ public sealed class SchoolSignupWelcomeEmailTests(ApiFactory factory)
 		var response = await signupFactory.CreateClient().PostAsJsonAsync("/api/v1/tenants", Signup(email));
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-		await Assert.That(factory.Emails.To(email).Count).IsEqualTo(0);
+		await Assert.That(Welcomes(email).Count).IsEqualTo(0);
 
 		await RunJobAsync(TimeSpan.FromHours(23));
-		await Assert.That(factory.Emails.To(email).Count).IsEqualTo(0);
+		await Assert.That(Welcomes(email).Count).IsEqualTo(0);
 
 		await RunJobAsync(TimeSpan.FromHours(25));
 		await RunJobAsync(TimeSpan.FromHours(26));
-		var sent = factory.Emails.To(email);
+		var sent = Welcomes(email);
 		await Assert.That(sent.Count).IsEqualTo(1);
 		var welcome = sent[0];
 		await Assert.That(welcome.ReplyTo).IsEqualTo("niels@skoleoverblikket.dk");
@@ -97,8 +101,8 @@ public sealed class SchoolSignupWelcomeEmailTests(ApiFactory factory)
 
 		await RunJobAsync(TimeSpan.FromHours(25));
 
-		await Assert.That(factory.Emails.To(email).Count).IsEqualTo(1);
-		await Assert.That(factory.Emails.To(office).Count).IsEqualTo(0);
+		await Assert.That(Welcomes(email).Count).IsEqualTo(1);
+		await Assert.That(Welcomes(office).Count).IsEqualTo(0);
 	}
 
 	[Test]
@@ -112,6 +116,6 @@ public sealed class SchoolSignupWelcomeEmailTests(ApiFactory factory)
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
 		await RunJobAsync(TimeSpan.FromHours(25));
-		await Assert.That(factory.Emails.To(email).Count).IsEqualTo(0);
+		await Assert.That(Welcomes(email).Count).IsEqualTo(0);
 	}
 }

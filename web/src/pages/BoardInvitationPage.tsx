@@ -20,13 +20,13 @@ export default function BoardInvitationPage() {
   const [preview, setPreview] = useState<InvitationPreview | null>(null)
   const [loading, setLoading] = useState(true)
   const [accepting, setAccepting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ title: string; message: string } | null>(null)
   const [accepted, setAccepted] = useState(false)
 
   useEffect(() => {
     if (!token) {
       setLoading(false)
-      setError('Ugyldigt invitationslink')
+      setError({ title: 'Ugyldigt link', message: 'Ugyldigt invitationslink' })
       return
     }
     getApiV1BoardInvitationsPreview({ query: { token } })
@@ -34,7 +34,7 @@ export default function BoardInvitationPage() {
         if (res.error) throw new Error('Ugyldigt eller udløbet link')
         setPreview((res.data as InvitationPreview) ?? null)
       })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => setError({ title: 'Ugyldigt link', message: err.message }))
       .finally(() => setLoading(false))
   }, [token])
 
@@ -44,10 +44,19 @@ export default function BoardInvitationPage() {
     setError(null)
     try {
       const res = await postApiV1BoardInvitationsByTokenAccept({ path: { token } })
-      if (res.error) throw new Error('Invitation kunne ikke accepteres')
+      if (res.error) {
+        // 403: the school no longer has the board module, and the detail says so.
+        const detail = (res.error as { detail?: string }).detail
+        setError(
+          res.response.status === 403
+            ? { title: 'Modulet er ikke aktivt', message: detail ?? 'Kontakt skolens kontor.' }
+            : { title: 'Ugyldigt link', message: detail ?? 'Invitation kunne ikke accepteres' }
+        )
+        return
+      }
       setAccepted(true)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Der opstod en fejl')
+    } catch {
+      setError({ title: 'Ugyldigt link', message: 'Der opstod en fejl' })
     } finally {
       setAccepting(false)
     }
@@ -70,8 +79,10 @@ export default function BoardInvitationPage() {
           </div>
         ) : error ? (
           <div className="text-center">
-            <p className="font-semibold text-gray-900">Ugyldigt link</p>
-            <p className="mt-1 text-sm text-gray-500">{error}</p>
+            <p className="font-semibold text-gray-900" data-testid="board-invitation-error-title">
+              {error.title}
+            </p>
+            <p className="mt-1 text-sm text-gray-500">{error.message}</p>
             <button
               onClick={() => navigate('/')}
               className="mt-4 px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
@@ -80,7 +91,7 @@ export default function BoardInvitationPage() {
             </button>
           </div>
         ) : accepted ? (
-          <div className="text-center">
+          <div className="text-center" data-testid="board-invitation-accepted">
             <p className="font-semibold text-gray-900">Invitation accepteret</p>
             <p className="mt-1 text-sm text-gray-500">
               Du kan nu logge ind med din e-mail og den midlertidige adgangskode du modtog.
@@ -93,7 +104,7 @@ export default function BoardInvitationPage() {
             </button>
           </div>
         ) : preview ? (
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-4" data-testid="board-invitation-preview">
             <div>
               <p className="font-semibold text-gray-900">Du er inviteret til bestyrelsen</p>
               <p className="mt-1 text-sm text-gray-500">
@@ -113,6 +124,7 @@ export default function BoardInvitationPage() {
               Linket udløber {new Date(preview.expiresAt).toLocaleDateString('da-DK')}
             </p>
             <button
+              data-testid="board-invitation-accept"
               onClick={handleAccept}
               disabled={accepting}
               className="w-full px-4 py-2.5 text-sm font-medium bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

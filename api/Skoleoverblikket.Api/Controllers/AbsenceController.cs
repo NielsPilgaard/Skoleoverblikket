@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Skoleoverblikket.Api.Auth;
 using Skoleoverblikket.Api.Models;
 using Skoleoverblikket.Api.Services;
+using Skoleoverblikket.Api.Tenancy;
 
 namespace Skoleoverblikket.Api.Controllers;
 
@@ -67,6 +68,7 @@ public sealed class AbsenceController(
 	}
 
 	[HttpPut("{id:guid}/category")]
+	[RequiresModule(SubscriptionModule.ParentModule)]
 	public async Task<IActionResult> ChangeCategory(Guid id, [FromBody] ChangeAbsenceCategoryRequest req, CancellationToken cancellationToken)
 	{
 		var classId = await absence.GetRecordClassIdAsync(id, cancellationToken);
@@ -96,11 +98,13 @@ public sealed class AbsenceController(
 		await absence.GetLeaveRequestsAsync(cancellationToken);
 
 	[HttpPost("{id:guid}/approve")]
+	[RequiresModule(SubscriptionModule.ParentModule)]
 	[Authorize(Roles = Roles.Admin)]
 	public Task<IActionResult> ApproveLeave(Guid id, CancellationToken cancellationToken) =>
 		DecideLeave(id, approve: true, cancellationToken);
 
 	[HttpPost("{id:guid}/reject")]
+	[RequiresModule(SubscriptionModule.ParentModule)]
 	[Authorize(Roles = Roles.Admin)]
 	public Task<IActionResult> RejectLeave(Guid id, CancellationToken cancellationToken) =>
 		DecideLeave(id, approve: false, cancellationToken);
@@ -119,6 +123,7 @@ public sealed class AbsenceController(
 	}
 
 	[HttpPost("follow-ups")]
+	[RequiresModule(SubscriptionModule.ParentModule)]
 	public async Task<IActionResult> MarkParentsInformed([FromBody] MarkParentsInformedRequest req, CancellationToken cancellationToken)
 	{
 		if (req.Quarter is < 1 or > 4 || req.Year is < 2000 or > 2100)

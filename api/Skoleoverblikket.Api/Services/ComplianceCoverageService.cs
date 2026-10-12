@@ -18,7 +18,13 @@ public sealed record ClassCoverageDto(Guid ClassId, string ClassName, int GradeL
 
 public sealed record CoverageResponseDto(List<ClassCoverageDto> Classes, int ClassesMissingGradeLevel, int ActiveSchemaCount);
 
-public sealed record CreateCoverageSnapshotRequest([property: MaxLength(500)] string? Reason);
+// Not positional: MVC rejects validation attributes on a record's properties when they are also
+// constructor parameters, and Swashbuckle only emits maxLength from the property.
+public sealed record CreateCoverageSnapshotRequest
+{
+	[MaxLength(500)]
+	public string? Reason { get; init; }
+}
 
 public sealed record CoverageSnapshotSummaryDto(Guid Id, string SchoolYear, DateTimeOffset CreatedAt, string CreatedByStaffName, string? Reason);
 
