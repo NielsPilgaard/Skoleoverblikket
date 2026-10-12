@@ -109,7 +109,10 @@ for v in pgdata-a pgdata-b pg-control pg-socket wal-receive backup-agent-state; 
 | `Heartbeats_Wal`, `Heartbeats_Backup`, `Heartbeats_Drill`, `Heartbeats_Verify` | Each heartbeat's target: the elmah.io heartbeat id, or the ping URL with `Heartbeats_Provider=Ping`. The WAL heartbeat carries the agent's overall health every 5 minutes (interval 30 min at the vendor), backup daily, drill and verify weekly. |
 | `Heartbeats_Provider` | `ElmahIo` (default) or `Ping`: any service where a request to a URL is a heartbeat and the URL plus `Heartbeats_Ping_FailSuffix` (default `/fail`) a failure, e.g. Healthchecks.io or Better Stack. |
 | `Heartbeats_ElmahIo_ApiKey`, `Heartbeats_ElmahIo_LogId` | elmah.io only. A key with only *Heartbeats – Write*, not the app's logging key. |
+| `Heartbeats_Ping_FailSuffix` | Appended to the ping URL to report a failure. Default `/fail`; Cronitor wants `?state=fail`. |
 | `BACKUP_CONSOLE_SSH` | Shown in the console and the backoffice card, e.g. `ssh -L 9090:127.0.0.1:9090 ubuntu@<vps>`. |
+
+That is every agent variable the compose passes through. The agent's other settings (schedule, paths, WAL caps, retention, ops bucket name) keep their defaults on prod; the complete list with defaults is in the [backup agent README](../infrastructure/backup-agent/README.md#environment).
 
 ---
 

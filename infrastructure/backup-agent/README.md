@@ -106,18 +106,53 @@ Pin the names of every volume except `pg-socket` (`name:` in compose, or externa
 
 ### Environment
 
-| Variable | Purpose |
-|---|---|
-| `PGBACKREST_REPO1_S3_ENDPOINT`, `_S3_REGION`, `_S3_BUCKET`, `_S3_KEY`, `_S3_KEY_SECRET` | The repo bucket. Its own bucket and key, not shared with app files |
-| `PGBACKREST_REPO1_CIPHER_PASS` | Encrypts everything in the repo. Keep it in a password manager: without it the backups are unreadable |
-| `OpsBucket__ServiceUrl`, `__AccessKey`, `__SecretKey`, `__BucketName` | The ops bucket (status, history, ledger). Give anything that only reads status a separate read-only key |
-| `Heartbeats__Provider` | `ElmahIo` (default) or `Ping` |
-| `Heartbeats__Wal`, `__Backup`, `__Verify`, `__Drill` | Each heartbeat's target: the elmah.io heartbeat id, or the ping URL. A heartbeat without one is skipped |
-| `Heartbeats__ElmahIo__ApiKey`, `__ElmahIo__LogId` | elmah.io. Use a key with only *Heartbeats - Write* |
-| `Heartbeats__Ping__FailSuffix` | Appended to the ping URL to report Unhealthy. Default `/fail` (Healthchecks.io, Better Stack); Cronitor wants `?state=fail`. Degraded pings as a success |
-| `Agent__SshTunnelCommand` | Shown in the console |
-| `Agent__VolumeNamePrefix` | Volume names as the console shows them and asks you to type (default `pgdata-`). Set it to the real prefix, e.g. `myapp-pgdata-` |
-| `Agent__*` | Everything else in [AgentOptions.cs](AgentOptions.cs): schedule, caps, retention |
+Every setting the agent reads. Bound in [Program.cs](Program.cs) from the `Agent`, `OpsBucket` and `Heartbeats` sections ([AgentOptions.cs](AgentOptions.cs)); pgBackRest reads its own `PGBACKREST_*` variables, which the agent's child processes inherit. **Prod compose** says whether [docker-compose.prod.yml](../docker/docker-compose.prod.yml) passes it through from Dokploy (and under which name). A setting marked *no* uses its default on prod; to change it, add it to the agent's environment in [ProdCompose.cs](../aspire/Skoleoverblikket.AppHost/ProdCompose.cs) and regenerate.
+
+**Secrets and endpoints** (set these on every deploy):
+
+| Variable | Default | Prod compose | Purpose |
+|---|---|---|---|
+| `PGBACKREST_REPO1_S3_ENDPOINT`, `_S3_REGION`, `_S3_BUCKET` | – | same name | The repo bucket. Its own bucket, not shared with app files or the ops bucket |
+| `PGBACKREST_REPO1_S3_KEY`, `_S3_KEY_SECRET` | – | same name | Read-write key for the repo bucket only |
+| `PGBACKREST_REPO1_CIPHER_PASS` | – | same name | Encrypts everything in the repo. Keep it in a password manager: without it the backups are unreadable |
+| `OpsBucket__ServiceUrl`, `__AccessKey`, `__SecretKey` | – | `OpsBucket_*` | The ops bucket (status, history, ledger), read-write. Give anything that only reads status a separate read-only key. Unset: nothing is written to S3 |
+| `OpsBucket__BucketName` | `skoleoverblikket-ops` | no | |
+| `Heartbeats__Provider` | `ElmahIo` | `Heartbeats_Provider` | `ElmahIo` or `Ping` |
+| `Heartbeats__Wal`, `__Backup`, `__Verify`, `__Drill` | – | `Heartbeats_*` | Each heartbeat's target: the elmah.io heartbeat id, or the ping URL. A heartbeat without one is skipped |
+| `Heartbeats__ElmahIo__ApiKey`, `__ElmahIo__LogId` | – | `Heartbeats_ElmahIo_*` | elmah.io. Use a key with only *Heartbeats - Write* |
+| `Heartbeats__ElmahIo__BaseUrl` | `https://api.elmah.io` | no | Only for pointing a local stack at a mock |
+| `Heartbeats__Ping__FailSuffix` | `/fail` | `Heartbeats_Ping_FailSuffix` | Appended to the ping URL to report Unhealthy. `/fail` suits Healthchecks.io and Better Stack; Cronitor wants `?state=fail`. Degraded pings as a success |
+| `Agent__SshTunnelCommand` | – | `BACKUP_CONSOLE_SSH` | Shown in the console and the backoffice card |
+| `Agent__VolumeNamePrefix` | `pgdata-` | fixed `skoleoverblikket-pgdata-` | Volume names as the console shows them and asks you to type. Display only: the agent finds the volumes by path |
+| `Agent__ConsoleKey` | random | no | Dev only: a fixed console key so the Aspire dashboard can link into the console. Never set on prod |
+
+**Paths, names and schedule** (`Agent__*`). The defaults match the Postgres image, the roles in [10-roles.sh](../postgres/initdb/10-roles.sh) and the compose mounts, so prod sets none of them:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `Agent__Stanza` | `main` | pgBackRest stanza, matching [pgbackrest.conf](pgbackrest.conf) |
+| `Agent__SocketDirectory` | `/var/run/postgresql` | Postgres socket, shared through the `pg-socket` volume |
+| `Agent__DataRoot` | `/pgdata` | Both data volumes are mounted under it as `a` and `b` |
+| `Agent__ControlDirectory` | `/pg-control` | Holds `active`, which picks the data volume at Postgres' next start |
+| `Agent__StateDirectory` | `/var/lib/backup-agent` | `state.json`, the console key, antiforgery keys, local copies of the ops files |
+| `Agent__DrillDirectory` | `/drill` | tmpfs for the weekly drill |
+| `Agent__WalReceiveDirectory` | `/wal-receive` | pg_receivewal's directory. The only copy of WAL until it's pushed to the repo |
+| `Agent__AppDatabase`, `Agent__KeycloakDatabase` | `skoleoverblikket`, `keycloak` | Databases the drill and restore checks look at |
+| `Agent__KeycloakRealm` | `Skoleoverblikket` | Realm the Keycloak check looks for |
+| `Agent__DatabaseUser` | `backup_agent` | Role the agent logs in as |
+| `Agent__SlotName` | `agent` | Replication slot for WAL streaming |
+| `Agent__WalSpoolMaxBytes` | `4294967296` (4 GiB) | Unpushed WAL before the agent pauses streaming. Postgres then holds WAL up to `max_slot_wal_keep_size` |
+| `Agent__SlotWarnBytes` | `2147483648` (2 GiB) | WAL retained by the slot that raises a warning |
+| `Agent__RetentionDays` | `14` | The DPA promise. Keep in step with `repo1-retention-full` in pgbackrest.conf |
+| `Agent__TimeZone` | `Europe/Copenhagen` | Time zone of the schedule below |
+| `Agent__FullBackupHour` | `2` | Daily full backup |
+| `Agent__VerifyDay`, `Agent__VerifyHour` | `Wednesday`, `3` | Weekly repo verify |
+| `Agent__DrillDay`, `Agent__DrillHour` | `Sunday`, `4` | Weekly drill |
+| `Agent__WalSwitchInterval` | `00:05:00` | Heartbeat row plus WAL switch, so the RPO holds on quiet nights |
+| `Agent__StatusInterval` | `00:05:00` | How often status and the WAL heartbeat are sent |
+| `Agent__MaxDataLoss` | `00:15:00` | The RPO. Data secured longer ago than this makes the agent unhealthy |
+
+The image sets `ASPNETCORE_URLS=http://+:9090` and `DOTNET_ENVIRONMENT=Production` ([Dockerfile](Dockerfile)). Compose also sizes the container with `BACKUP_AGENT_MEMORY` and `DRILL_TMPFS_SIZE` ([DEPLOYMENT.md](../../docs/DEPLOYMENT.md#self-hosted-postgres-and-the-backup-agent)).
 
 ## Adapting it to another project
 
