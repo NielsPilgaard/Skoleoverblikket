@@ -4,4 +4,3 @@
 !infrastructure/backup-agent/**
 infrastructure/backup-agent/bin/
 infrastructure/backup-agent/obj/
-infrastructure/backup-agent/dev/

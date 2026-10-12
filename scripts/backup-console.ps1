@@ -7,7 +7,7 @@
     SSH target, e.g. ubuntu@203.0.113.10 or a Host alias from ~/.ssh/config.
     Defaults to $env:BACKUP_CONSOLE_SERVER, so set that once and run the script with no arguments.
 .PARAMETER LocalPort
-    Local end of the tunnel. Change it when 9090 is taken, e.g. by the local dev stack.
+    Local end of the tunnel. Change it when 9090 is taken, e.g. by a local `aspire run`.
 .PARAMETER RemotePort
     The agent's port on the server (127.0.0.1:<port>). Only differs when several projects share a server.
 .PARAMETER Project
@@ -46,7 +46,7 @@ try {
     $probe.Start()
     $probe.Stop()
 } catch {
-    Write-Host "Port $LocalPort is in use (the local dev stack?). Run again with -LocalPort 9091." -ForegroundColor Red
+    Write-Host "Port $LocalPort is in use (a local aspire run?). Run again with -LocalPort 9091." -ForegroundColor Red
     exit 1
 }
 

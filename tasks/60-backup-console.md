@@ -20,7 +20,7 @@ Task [54](54-move-vps.md) moves Postgres into compose with pgBackRest, so Dokplo
 
 ## Implementation status (2026-10-07)
 
-**Code done, proven on a local stack, not on prod yet.** Phase 0 passed: streamed WAL is the design, no spool-copy fallback ([postgres-backup-agent](../docs/adr/postgres-backup-agent.md) has the results). Phases A–C are built: `infrastructure/postgres/`, `infrastructure/backup-agent/` (agent, console, `docker-compose.dev.yml`), the `SchoolDeletionRecords` ledger, the backoffice card, CI publish jobs, [RESTORE.md](../docs/RESTORE.md). The prod compose has `postgres` and `backup-agent` behind the `selfhosted-db` profile, so nothing changes on prod until the [54](54-move-vps.md) cutover turns it on.
+**Code done, proven on a local stack, not on prod yet.** Phase 0 passed: streamed WAL is the design, no spool-copy fallback ([postgres-backup-agent](../docs/adr/postgres-backup-agent.md) has the results). Phases A–C are built: `infrastructure/postgres/`, `infrastructure/backup-agent/` (agent, console), both running under `aspire run`, the `SchoolDeletionRecords` ledger, the backoffice card, CI publish jobs, [RESTORE.md](../docs/RESTORE.md). The prod compose has `postgres` and `backup-agent` behind the `selfhosted-db` profile, so nothing changes on prod until the [54](54-move-vps.md) cutover turns it on.
 
 Left, all Niels (accounts and servers):
 

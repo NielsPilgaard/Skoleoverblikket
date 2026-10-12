@@ -77,6 +77,12 @@ public sealed class AgentOptions
 	/// <summary>Shown in the backoffice card and the console, e.g. <c>ssh -L 9090:127.0.0.1:9090 ubuntu@vps</c>.</summary>
 	public string? SshTunnelCommand { get; init; }
 
+	/// <summary>
+	/// Dev only: a fixed console key, so the Aspire dashboard can link straight into the console.
+	/// Leave unset on prod, where the key is random and only readable with <c>docker exec</c>.
+	/// </summary>
+	public string? ConsoleKey { get; init; }
+
 	public string WalSpoolDirectory => WalReceiveDirectory;
 
 	/// <summary>Finished segments set aside when streaming restarts from a new slot. pg_receivewal ignores subdirectories.</summary>

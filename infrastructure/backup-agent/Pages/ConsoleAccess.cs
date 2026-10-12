@@ -30,7 +30,7 @@ public sealed class ConsoleAccess
 			File.SetUnixFileMode(keyFile, UnixFileMode.UserRead | UnixFileMode.UserWrite);
 		}
 
-		var key = File.ReadAllText(keyFile).Trim();
+		var key = string.IsNullOrWhiteSpace(options.Value.ConsoleKey) ? File.ReadAllText(keyFile).Trim() : options.Value.ConsoleKey.Trim();
 		_key = Encoding.ASCII.GetBytes(key);
 		var linkFile = Path.Combine(directory, "console-link");
 		File.WriteAllText(linkFile, $"http://localhost:9090/access?key={key}\n");

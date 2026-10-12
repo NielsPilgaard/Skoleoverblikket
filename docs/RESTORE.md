@@ -32,7 +32,7 @@ The console runs in the `backup-agent` container. It doesn't need Keycloak, the 
 pwsh scripts/backup-console.ps1 <user>@<vps>
 ```
 
-It reads the access link from the agent over SSH, opens the tunnel and opens the link in your browser. Keep the window open; Ctrl+C closes the tunnel. Set `BACKUP_CONSOLE_SERVER=<user>@<vps>` once and run it with no arguments. If 9090 is taken (the local dev stack), add `-LocalPort 9091`.
+It reads the access link from the agent over SSH, opens the tunnel and opens the link in your browser. Keep the window open; Ctrl+C closes the tunnel. Set `BACKUP_CONSOLE_SERVER=<user>@<vps>` once and run it with no arguments. If 9090 is taken (a local `aspire run`), add `-LocalPort 9091`.
 
 Without the script:
 

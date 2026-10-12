@@ -74,9 +74,9 @@ flowchart LR
 | [Status.cs](Status.cs) | Health and issues. This is what the heartbeat and `status.json` carry |
 | [OpsBucket.cs](OpsBucket.cs) | `status.json`, `history/`, `ledger.json`, `migrations.json` in S3, and the elmah.io heartbeats |
 | [Pages/](Pages/) | The console: server-rendered HTML, no JavaScript framework |
-| [docker-compose.dev.yml](docker-compose.dev.yml) | A local stack with Silo standing in for S3, for trying everything by hand |
 
 **Elsewhere:**
+- [AppHost Program.cs](../aspire/Skoleoverblikket.AppHost/Program.cs) runs Postgres and the agent under `aspire run`, with Silo standing in for S3.
 - [scripts/backup-console.ps1](../../scripts/backup-console.ps1) opens the tunnel, reads the access link and opens the browser.
 - [docker-compose.prod.yml](../docker/docker-compose.prod.yml) wires the `postgres` and `backup-agent` services for prod.
 - The API's read-only status card (`SuperAdminBackupStatusController`) reads `status.json`. It's optional.
@@ -242,13 +242,9 @@ Notes:
 
 ## Trying it locally
 
-```bash
-docker compose -f infrastructure/backup-agent/docker-compose.dev.yml up -d --build
-docker compose -f infrastructure/backup-agent/docker-compose.dev.yml exec postgres bash /dev-seed/seed.sh
-docker exec $(docker ps -qf label=com.docker.compose.project=backup-agent-dev -f label=com.docker.compose.service=backup-agent) cat /var/lib/backup-agent/console-link
-```
+It's part of the normal dev stack. `aspire run` starts our Postgres image and the agent next to it, with the same volumes as prod and Silo standing in for both buckets (a one-shot `silo-buckets` container creates them). Open **Backup console** on the `backup-agent` resource in the Aspire dashboard: the link carries a fixed dev key (`Agent__ConsoleKey`), so there's no `docker exec` step. The backoffice backup card reads the same Silo ops bucket.
 
-Silo stands in for S3 over plain HTTP: pgBackRest defaults to HTTPS, but an `http://` scheme on `repo1-s3-endpoint` turns that off (works on 2.59.3, not in its option help). The slot cap is 256 MB and the WAL switch runs every minute, so lost-slot and RPO cases take minutes to try. Go live the same way as on prod: **Go live** in the console, then `up -d --force-recreate`.
+The slot cap is 256 MB and the WAL switch and status run every minute, so lost-slot and RPO cases take minutes to try. To go live with a restore: **Go live** in the console, then restart `postgres` in the dashboard (its entrypoint reads the marker on start). Silo runs over plain HTTP: pgBackRest defaults to HTTPS, but an `http://` scheme on `repo1-s3-endpoint` turns that off (works on 2.59.3, not in its option help). The drill's tmpfs is 1 GB; under `aspire run` there's no memory limit.
 
 The agent is infrastructure, so it's proven by breaking it on purpose rather than by unit tests. The list (agent killed past the slot cap, wrong S3 key, container recreated with unpushed WAL, Postgres stopped, reaching the console from another container, a full restore with go-live and switch back) is under Testing in [task 60](../../tasks/60-backup-console.md). Run it again after adapting.
 
