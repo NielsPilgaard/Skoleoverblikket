@@ -76,6 +76,25 @@ jobs:
         run: npm run build
         working-directory: web
 
+  # Dokploy deploys the committed docker-compose.prod.yml, so it must match the AppHost.
+  prod-compose:
+    name: Prod compose — up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install Aspire CLI
+        run: dotnet tool install --global Aspire.Cli --version 13.6.1
+
+      - name: Check generated compose
+        shell: pwsh
+        run: pwsh scripts/generate-prod-compose.ps1 -Check
+
   docs:
     name: Docs — ryni
     runs-on: ubuntu-latest

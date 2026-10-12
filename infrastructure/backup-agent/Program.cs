@@ -27,6 +27,12 @@ builder.Services.AddSingleton<PgBackRest>();
 builder.Services.AddSingleton<RepoInfoCache>();
 builder.Services.AddSingleton<OpsBucket>();
 builder.Services.AddSingleton<Heartbeats>();
+builder.Services.AddSingleton<ElmahIoHeartbeatSender>();
+builder.Services.AddSingleton<PingHeartbeatSender>();
+builder.Services.AddSingleton<IHeartbeatSender>(sp =>
+	sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<HeartbeatOptions>>().Value.Provider == HeartbeatProvider.Ping
+		? sp.GetRequiredService<PingHeartbeatSender>()
+		: sp.GetRequiredService<ElmahIoHeartbeatSender>());
 builder.Services.AddSingleton<JobRunner>();
 builder.Services.AddSingleton<BackupService>();
 builder.Services.AddSingleton<DrillChecks>();

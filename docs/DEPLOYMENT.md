@@ -65,6 +65,12 @@ These have non-empty values in `appsettings.json` that are correct for productio
 
 From the task [54](../tasks/54-move-vps.md) cutover, Postgres and the backup agent run in `docker-compose.prod.yml` behind the `selfhosted-db` profile ([postgres-backup-agent](adr/postgres-backup-agent.md)). Until then these variables are unused. Runbook: [RESTORE.md](RESTORE.md).
 
+`docker-compose.prod.yml` is generated from the Aspire AppHost: edit `ProdCompose.cs`, then run `pwsh scripts/generate-prod-compose.ps1`. Its volumes are **external**, so create them once per server before the first deploy with the profile. Compose refuses to start without them, so a typo can't start an empty database:
+
+```bash
+for v in pgdata-a pgdata-b pg-control pg-socket wal-receive backup-agent-state; do docker volume create skoleoverblikket-$v; done
+```
+
 | Variable (Dokploy env) | Description |
 | --- | --- |
 | `COMPOSE_PROFILES` | `selfhosted-db` starts `postgres` and `backup-agent`. Leave unset until the cutover. |
@@ -78,7 +84,9 @@ From the task [54](../tasks/54-move-vps.md) cutover, Postgres and the backup age
 | `PGBACKREST_REPO1_S3_KEY`, `PGBACKREST_REPO1_S3_KEY_SECRET` | Read-write key for the repo bucket only. |
 | `PGBACKREST_REPO1_CIPHER_PASS` | Encrypts every backup and WAL file. Keep it in the password manager: without it the backups are unreadable. Generate with `openssl rand -base64 48`. |
 | `OpsBucket_ServiceUrl`, `OpsBucket_AccessKey`, `OpsBucket_SecretKey` | The agent's **read-write** key for `skoleoverblikket-ops` (status, history, deleted-schools ledger). Give the API a separate read-only key (`BackupStatus_*` above). Lifecycle rule: delete `history/` after 400 days. |
-| `Heartbeats_ApiKey`, `Heartbeats_LogId`, `Heartbeats_WalId`, `Heartbeats_BackupId`, `Heartbeats_DrillId`, `Heartbeats_VerifyId` | elmah.io heartbeats. A key with only *Heartbeats – Write*, not the app's logging key. The WAL heartbeat carries the agent's overall health every 5 minutes (interval 30 min in elmah.io), backup daily, drill and verify weekly. |
+| `Heartbeats_Wal`, `Heartbeats_Backup`, `Heartbeats_Drill`, `Heartbeats_Verify` | Each heartbeat's target: the elmah.io heartbeat id, or the ping URL with `Heartbeats_Provider=Ping`. The WAL heartbeat carries the agent's overall health every 5 minutes (interval 30 min at the vendor), backup daily, drill and verify weekly. |
+| `Heartbeats_Provider` | `ElmahIo` (default) or `Ping`: any service where a request to a URL is a heartbeat and the URL plus `Heartbeats_Ping_FailSuffix` (default `/fail`) a failure, e.g. Healthchecks.io or Better Stack. |
+| `Heartbeats_ElmahIo_ApiKey`, `Heartbeats_ElmahIo_LogId` | elmah.io only. A key with only *Heartbeats – Write*, not the app's logging key. |
 | `BACKUP_CONSOLE_SSH` | Shown in the console and the backoffice card, e.g. `ssh -L 9090:127.0.0.1:9090 ubuntu@<vps>`. |
 
 ---

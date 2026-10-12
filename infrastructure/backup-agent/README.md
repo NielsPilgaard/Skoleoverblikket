@@ -11,7 +11,7 @@ This README covers what it does, where everything is, and how to move it to anot
 - **A restore never touches live.** It goes into the other of two data volumes (A/B), gets checked, and only goes live when a person clicks **Go live** and redeploys. The old volume stays for forensics until you delete it.
 - **Backups can't take Postgres down.** Postgres has no `archive_command`. If pgBackRest, S3 or the agent breaks, the result is a WAL gap and an alert, never a full disk.
 - **Weekly drill.** Every Sunday the agent restores the newest backup into tmpfs, checks it against live, and throws it away. Restore time (RTO) is tracked per drill.
-- **Alerts through elmah.io heartbeats:** WAL (carries overall health every 5 minutes), backup, verify, drill. A quarterly manual drill that is overdue also raises an alert.
+- **Alerts through heartbeats** (elmah.io, or any ping-URL service such as Healthchecks.io): WAL (carries overall health every 5 minutes), backup, verify, drill. A quarterly manual drill that is overdue also raises an alert.
 - **History** of every run, action and checklist tick, in the console and in an S3 ops bucket. No row content is ever stored, only names and counts.
 
 ## Pinned versions
@@ -34,7 +34,7 @@ flowchart LR
   agent --- vols
   agent -- "WAL + backups (encrypted)" --> repo[("S3: pgBackRest repo")]
   agent -- "status, history, ledger" --> ops[("S3: ops bucket")]
-  agent -- "heartbeats" --> elmah["elmah.io"]
+  agent -- "heartbeats" --> elmah["elmah.io or ping URLs"]
   you["you"] -- "ssh -L 9090" --> agent
 ```
 
@@ -72,13 +72,14 @@ flowchart LR
 | [PgBackRest.cs](PgBackRest.cs) | The pgBackRest CLI wrapper, repo listing, restorable ranges |
 | [Postgres.cs](Postgres.cs) | Live queries (as `backup_agent`) and the throwaway restore server |
 | [Status.cs](Status.cs) | Health and issues. This is what the heartbeat and `status.json` carry |
-| [OpsBucket.cs](OpsBucket.cs) | `status.json`, `history/`, `ledger.json`, `migrations.json` in S3, and the elmah.io heartbeats |
+| [OpsBucket.cs](OpsBucket.cs) | `status.json`, `history/`, `ledger.json`, `migrations.json` in S3 |
+| [Heartbeats.cs](Heartbeats.cs) | Heartbeats, one sender per vendor: elmah.io or ping URLs |
 | [Pages/](Pages/) | The console: server-rendered HTML, no JavaScript framework |
 
 **Elsewhere:**
 - [AppHost Program.cs](../aspire/Skoleoverblikket.AppHost/Program.cs) runs Postgres and the agent under `aspire run`, with Silo standing in for S3.
 - [scripts/backup-console.ps1](../../scripts/backup-console.ps1) opens the tunnel, reads the access link and opens the browser.
-- [docker-compose.prod.yml](../docker/docker-compose.prod.yml) wires the `postgres` and `backup-agent` services for prod.
+- [ProdCompose.cs](../aspire/Skoleoverblikket.AppHost/ProdCompose.cs) is their prod side. `aspire publish` generates [docker-compose.prod.yml](../docker/docker-compose.prod.yml) from it ([scripts/generate-prod-compose.ps1](../../scripts/generate-prod-compose.ps1)); CI fails when the committed file is stale.
 - The API's read-only status card (`SuperAdminBackupStatusController`) reads `status.json`. It's optional.
 
 ## The contract another project must reproduce
@@ -110,7 +111,10 @@ Pin the names of every volume except `pg-socket` (`name:` in compose, or externa
 | `PGBACKREST_REPO1_S3_ENDPOINT`, `_S3_REGION`, `_S3_BUCKET`, `_S3_KEY`, `_S3_KEY_SECRET` | The repo bucket. Its own bucket and key, not shared with app files |
 | `PGBACKREST_REPO1_CIPHER_PASS` | Encrypts everything in the repo. Keep it in a password manager: without it the backups are unreadable |
 | `OpsBucket__ServiceUrl`, `__AccessKey`, `__SecretKey`, `__BucketName` | The ops bucket (status, history, ledger). Give anything that only reads status a separate read-only key |
-| `Heartbeats__ApiKey`, `__LogId`, `__WalId`, `__BackupId`, `__VerifyId`, `__DrillId` | elmah.io. Use a key with only *Heartbeats - Write*. A heartbeat with no id is skipped |
+| `Heartbeats__Provider` | `ElmahIo` (default) or `Ping` |
+| `Heartbeats__Wal`, `__Backup`, `__Verify`, `__Drill` | Each heartbeat's target: the elmah.io heartbeat id, or the ping URL. A heartbeat without one is skipped |
+| `Heartbeats__ElmahIo__ApiKey`, `__ElmahIo__LogId` | elmah.io. Use a key with only *Heartbeats - Write* |
+| `Heartbeats__Ping__FailSuffix` | Appended to the ping URL to report Unhealthy. Default `/fail` (Healthchecks.io, Better Stack); Cronitor wants `?state=fail`. Degraded pings as a success |
 | `Agent__SshTunnelCommand` | Shown in the console |
 | `Agent__VolumeNamePrefix` | Volume names as the console shows them and asks you to type (default `pgdata-`). Set it to the real prefix, e.g. `myapp-pgdata-` |
 | `Agent__*` | Everything else in [AgentOptions.cs](AgentOptions.cs): schedule, caps, retention |
@@ -165,7 +169,7 @@ To adapt, change the three queries (`LedgerAsync`, `ResurrectedAsync`, `PrepareR
 
 ### Hand-written docker compose
 
-Copy the `postgres` and `backup-agent` services, their networks and the volumes from [docker-compose.prod.yml](../docker/docker-compose.prod.yml). Keep:
+Copy the `postgres` and `backup-agent` services, their networks and the volumes from [docker-compose.prod.yml](../docker/docker-compose.prod.yml) (generated from Aspire here, but plain compose). Keep:
 
 - the agent off the app network, on its own;
 - `ports: ["127.0.0.1:<port>:9090"]`;
@@ -175,7 +179,7 @@ Copy the `postgres` and `backup-agent` services, their networks and the volumes 
 
 ### Aspire-generated compose
 
-Aspire 13.4 can publish all of this, but it can't write a volume's `name:`. Declare the pinned volumes as **external** instead. This snippet is checked with `aspire publish` and `docker compose config` (Aspire 13.4.3, `Aspire.Hosting.Docker`):
+This is what Skoleoverblikket does: [ProdCompose.cs](../aspire/Skoleoverblikket.AppHost/ProdCompose.cs) is the full version. Aspire 13.4 can publish all of this, but it can't write a volume's `name:`. Declare the pinned volumes as **external** instead. This snippet is checked with `aspire publish` and `docker compose config` (Aspire 13.4.3, `Aspire.Hosting.Docker`):
 
 ```csharp
 using Aspire.Hosting.Docker.Resources.ComposeNodes;

@@ -103,18 +103,43 @@ public sealed class OpsBucketOptions
 		!string.IsNullOrWhiteSpace(ServiceUrl) && !string.IsNullOrWhiteSpace(AccessKey) && !string.IsNullOrWhiteSpace(SecretKey);
 }
 
-/// <summary>elmah.io heartbeats (task 53 D3). A heartbeat without an id is skipped.</summary>
+public enum HeartbeatProvider
+{
+	ElmahIo,
+	Ping,
+}
+
+/// <summary>
+/// Heartbeats (task 53 D3). <see cref="Wal"/>, <see cref="Backup"/>, <see cref="Drill"/> and
+/// <see cref="Verify"/> are each heartbeat's target: the heartbeat id for elmah.io, the ping URL for
+/// <see cref="HeartbeatProvider.Ping"/>. A heartbeat without a target is skipped.
+/// </summary>
 public sealed class HeartbeatOptions
 {
 	public const string SectionName = "Heartbeats";
 
+	public HeartbeatProvider Provider { get; init; } = HeartbeatProvider.ElmahIo;
+
+	public string Wal { get; init; } = "";
+	public string Backup { get; init; } = "";
+	public string Drill { get; init; } = "";
+	public string Verify { get; init; } = "";
+
+	public ElmahIoHeartbeatOptions ElmahIo { get; init; } = new();
+	public PingHeartbeatOptions Ping { get; init; } = new();
+}
+
+public sealed class ElmahIoHeartbeatOptions
+{
 	/// <summary>Overridable so a local stack can point at a mock.</summary>
 	public string BaseUrl { get; init; } = "https://api.elmah.io";
 
 	public string ApiKey { get; init; } = "";
 	public string LogId { get; init; } = "";
-	public string WalId { get; init; } = "";
-	public string BackupId { get; init; } = "";
-	public string DrillId { get; init; } = "";
-	public string VerifyId { get; init; } = "";
+}
+
+public sealed class PingHeartbeatOptions
+{
+	/// <summary>Appended to the ping URL to report a failure. <c>/fail</c> suits Healthchecks.io and Better Stack; Cronitor wants <c>?state=fail</c>.</summary>
+	public string FailSuffix { get; init; } = "/fail";
 }

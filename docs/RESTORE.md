@@ -134,7 +134,7 @@ docker run -d --name backup-agent -p 127.0.0.1:9090:9090 \
   ghcr.io/nielspilgaard/skoleoverblikket-backup-agent:<tag>
 ```
 
-`agent.env` holds the `PGBACKREST_REPO1_*` values (endpoint, bucket, keys, cipher pass) and the `OpsBucket__*` keys from the password manager. Open the console (§1); it shows Postgres as down, which is right, and treats `pgdata-a` as live, so the wizard restores into `pgdata-b`. Restore, click Go live (it writes `b` to the marker), stop this container, then install Dokploy and deploy the compose app with `COMPOSE_PROFILES=selfhosted-db` (task 54 §4 lists everything else to recreate). Postgres starts on `pgdata-b`. Without the cipher pass the backups are unreadable.
+`agent.env` holds the `PGBACKREST_REPO1_*` values (endpoint, bucket, keys, cipher pass) and the `OpsBucket__*` keys from the password manager. Open the console (§1); it shows Postgres as down, which is right, and treats `pgdata-a` as live, so the wizard restores into `pgdata-b`. Restore, click Go live (it writes `b` to the marker), stop this container, create the volumes that don't exist yet ([DEPLOYMENT.md](DEPLOYMENT.md#self-hosted-postgres-and-the-backup-agent); `docker volume create` leaves existing ones alone), then install Dokploy and deploy the compose app with `COMPOSE_PROFILES=selfhosted-db` (task 54 §4 lists everything else to recreate). Postgres starts on `pgdata-b`. Without the cipher pass the backups are unreadable.
 
 ## 11. A backup is older than 14 days
 
