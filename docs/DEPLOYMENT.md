@@ -20,12 +20,12 @@ ASP.NET Core maps environment variables to the config key hierarchy using `__` (
 
 | Environment variable                   | Config key                            | Description                                                                                                                |
 | -------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `ConnectionStrings__DefaultConnection` | `ConnectionStrings:DefaultConnection` | PostgreSQL connection string. Example: `Host=db;Database=skoleoverblikket;Username=app;Password=…`                              |
+| `ConnectionStrings__skoleoverblikket-db` | `ConnectionStrings:skoleoverblikket-db` | PostgreSQL connection string. Example: `Host=db;Database=skoleoverblikket;Username=app;Password=…`                              |
 | `Keycloak__AdminClientId`              | `Keycloak:AdminClientId`              | Client ID of the Keycloak service-account used for admin API calls (e.g. `skoleoverblikket-admin`).                             |
 | `Keycloak__AdminClientSecret`          | `Keycloak:AdminClientSecret`          | Secret for the admin Keycloak client. Generate in the Keycloak console → Clients → Credentials.                            |
 | `ObjectStorage__AccessKey`             | `ObjectStorage:AccessKey`             | OVHCloud Object Storage access key (S3-compatible).                                                                        |
 | `ObjectStorage__SecretKey`             | `ObjectStorage:SecretKey`             | OVHCloud Object Storage secret key.                                                                                        |
-| `PresignedUpload__SigningKey`          | `PresignedUpload:SigningKey`          | Random secret used to HMAC-sign upload confirm tokens. **Minimum 32 characters.** Generate with: `openssl rand -base64 32` |
+| `ObjectStorage__PresignedUploadSigningKey` | `ObjectStorage:PresignedUploadSigningKey` | Random secret used to HMAC-sign upload confirm tokens. **Minimum 32 characters.** Generate with: `openssl rand -base64 32` |
 | `Stripe__SecretKey`                    | `Stripe:SecretKey`                    | Stripe live secret key (`sk_live_…`).                                                                                      |
 | `Stripe__WebhookSecret`                | `Stripe:WebhookSecret`                | Stripe webhook signing secret (`whsec_…`). Set after creating the webhook endpoint in the Stripe dashboard.                |
 
@@ -49,7 +49,6 @@ These have non-empty values in `appsettings.json` that are correct for productio
 
 | Environment variable        | Default                     | Description                                                                                 |
 | --------------------------- | --------------------------- | ------------------------------------------------------------------------------------------- |
-| `Stripe__PriceId`           | _(set in appsettings)_      | Stripe price ID for the monthly subscription. Override to switch plans without redeploying. |
 | `App__BaseUrl`              | `https://skoleoverblikket.dk`    | Used to construct absolute URLs in emails and webhooks.                                     |
 | `Keycloak__MetadataAddress` | _(empty — auto-discovered)_ | Override only if your Keycloak OIDC discovery endpoint is at a non-standard path.           |
 | `ElmahIo__ApiKey`           | _(empty — disabled)_        | elmah.io API key. Error logging to elmah.io activates only when both this and `ElmahIo__LogId` are set. In `docker-compose.prod.yml`, set the host-side variable `ElmahIo_ApiKey` (single underscore) — Compose maps it to the container config key `ElmahIo__ApiKey`. |
@@ -58,6 +57,29 @@ These have non-empty values in `appsettings.json` that are correct for productio
 | `BackupStatus__SecretKey`   | _(empty)_                   | Secret for the key above. In `docker-compose.prod.yml`: `BackupStatus_SecretKey`. `BackupStatus__ServiceUrl` comes from `OpsBucket_ServiceUrl` (OVH RBX when unset), and `BackupStatus__BucketName` defaults to `skoleoverblikket-ops`. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | _(empty — disabled)_      | Grafana Cloud OTLP gateway URL. Logs, metrics and traces are exported only when set. Dashboards and alert rules: [infrastructure/grafana/](../infrastructure/grafana/README.md). |
 | `OTEL_EXPORTER_OTLP_HEADERS`  | _(empty)_                 | `Authorization=Basic <base64 instanceId:token>` for the Grafana Cloud OTLP gateway.         |
+
+---
+
+## Dokploy variables for the app stack
+
+What Dokploy's Environment tab sets for `docker-compose.prod.yml`. Compose maps each one to the container setting in the second column (single `_` on the host, `__` in the container). The optional ones above (`ElmahIo_*`, `BackupStatus_*`, `OTEL_*`) work the same way.
+
+| Variable (Dokploy env) | Container setting | Description |
+| --- | --- | --- |
+| `DATABASE_URL` | API `ConnectionStrings__skoleoverblikket-db` | App database connection string. |
+| `Keycloak_WebClientId` | API `Keycloak__WebClientId` | Public client of the web app, `skoleoverblikket-web`. |
+| `Keycloak_AdminClientId`, `Keycloak_AdminClientSecret` | API `Keycloak__AdminClientId`, `__AdminClientSecret` | Service-account client for the Keycloak admin API, `skoleoverblikket-admin`. Rotate the secret in Keycloak → Clients → Credentials. |
+| `ObjectStorage_ServiceUrl`, `ObjectStorage_PublicEndpoint`, `ObjectStorage_DefaultBucketName` | API `ObjectStorage__*` | File storage endpoint and bucket. Compose passes these as set, so set them in Dokploy even though `appsettings.json` has the same values. |
+| `ObjectStorage_AccessKey`, `ObjectStorage_SecretKey` | API `ObjectStorage__AccessKey`, `__SecretKey` | Key for the files bucket. |
+| `ObjectStorage_PresignedUploadSigningKey` | API `ObjectStorage__PresignedUploadSigningKey` | HMAC key for upload confirm tokens, at least 32 characters. See [Generating secrets](#generating-secrets). |
+| `Smtp_Username`, `Smtp_Password` | API `Smtp__Username`, `__Password` | Scaleway TEM SMTP credentials. |
+| `Stripe_SecretKey`, `Stripe_WebhookSecret` | API `Stripe__SecretKey`, `__WebhookSecret` | Stripe live secret key and webhook signing secret. |
+| `Stripe_BasePriceIdMonthly`, `Stripe_BasePriceIdYearly` | API `Stripe__BasePriceId*` | Price IDs of the base plan ([PRICING.md](PRICING.md)). |
+| `Stripe_ModulePriceIds_ParentModule_Monthly`, `_Yearly`, `Stripe_ModulePriceIds_BoardModule_Monthly`, `_Yearly` | API `Stripe__ModulePriceIds__<Module>__<Interval>` | Price IDs of the paid modules. |
+| `KEYCLOAK_DB_URL` | Keycloak `KC_DB_URL` | JDBC URL of Keycloak's database, e.g. `jdbc:postgresql://<host>:5432/keycloak`. |
+| `KEYCLOAK_DB_USERNAME`, `KEYCLOAK_DB_PASSWORD` | Keycloak `KC_DB_USERNAME`, `KC_DB_PASSWORD` | Keycloak's database login. |
+| `KEYCLOAK_ADMIN_PASSWORD` | Keycloak `KC_BOOTSTRAP_ADMIN_PASSWORD` | Password of Keycloak's `admin` user. Strong and random. |
+| `API_IMAGE`, `WEB_IMAGE`, `KEYCLOAK_IMAGE` | image | Optional, default `ghcr.io/nielspilgaard/skoleoverblikket-<name>:latest`. `deploy.mjs` sets all three to the release tag on every deploy. |
 
 ---
 
@@ -106,7 +128,7 @@ Set in the CI/CD pipeline before running `npm run build`. See [web/.env.example]
 ## Generating secrets
 
 ```bash
-# PresignedUpload__SigningKey — 32 random bytes as base64
+# ObjectStorage_PresignedUploadSigningKey — 32 random bytes as base64
 openssl rand -base64 32
 
 # Or with PowerShell
