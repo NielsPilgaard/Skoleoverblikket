@@ -40,14 +40,16 @@ public sealed class Heartbeats(IHeartbeatSender sender, IOptions<HeartbeatOption
 			return;
 		}
 
-		_lastSent[kind] = (DateTimeOffset.UtcNow, result);
 		try
 		{
 			using var response = await sender.SendAsync(Target(kind).Trim(), result, reason, took, cancellationToken);
 			if (!response.IsSuccessStatusCode)
 			{
 				logger.LogWarning("{Provider} heartbeat {Kind} returned {Status}", options.Value.Provider, kind, (int)response.StatusCode);
+				return;
 			}
+
+			_lastSent[kind] = (DateTimeOffset.UtcNow, result);
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
