@@ -46,6 +46,7 @@ public sealed class ImportsController(AppDbContext db, ITenantContext tenant) : 
 	public record UninvitedParentDto([Required] Guid Id, [Required] string Name, [Required] string Email);
 
 	[HttpPost("students-and-parents")]
+	[RequiresModule(SubscriptionModule.ParentModule)]
 	public async Task<ActionResult<ImportStudentsAndParentsResponse>> ImportStudentsAndParents(
 		[FromBody] ImportStudentsAndParentsRequest req,
 		CancellationToken cancellationToken)
@@ -669,6 +670,7 @@ public sealed class ImportsController(AppDbContext db, ITenantContext tenant) : 
 		[Required] IReadOnlyList<ImportWarning> Warnings);
 
 	[HttpPost("board-members")]
+	[RequiresModule(SubscriptionModule.BoardModule)]
 	public async Task<ActionResult<ImportBoardMembersResponse>> ImportBoardMembers(
 		[FromBody] ImportBoardMembersRequest req,
 		CancellationToken cancellationToken)

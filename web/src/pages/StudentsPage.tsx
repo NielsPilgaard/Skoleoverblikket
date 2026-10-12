@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Modal } from '../components/Modal'
+import ModuleInactiveNotice from '../components/ModuleInactiveNotice'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getApiV1StudentsOptions,
@@ -11,6 +12,7 @@ import {
 } from '../api/generated/@tanstack/react-query.gen'
 import type { StudentDto, ClassDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { useSubscription } from '../hooks/useSubscription'
 
 interface StudentModalProps {
   initial?: StudentDto
@@ -124,6 +126,7 @@ export default function StudentsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null)
   const [filterClassId, setFilterClassId] = useState<string>('')
+  const { hasParentModule, isSuccess: modulesLoaded } = useSubscription()
 
   const { data: students, isLoading, isError, refetch } = useQuery(getApiV1StudentsOptions())
   const { data: classes } = useQuery(getApiV1ClassesOptions())
@@ -147,8 +150,11 @@ export default function StudentsPage() {
         <div className="flex flex-col items-end gap-1">
           <button
             onClick={() => setShowCreate(true)}
-            disabled={!classes || classes.length === 0}
+            disabled={!classes || classes.length === 0 || !hasParentModule}
             aria-label="Opret elev"
+            title={
+              !hasParentModule ? 'Kræver forældremodulet — aktivér under Abonnement' : undefined
+            }
             className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <svg
@@ -169,6 +175,13 @@ export default function StudentsPage() {
           )}
         </div>
       </div>
+
+      {modulesLoaded && !hasParentModule && (
+        <ModuleInactiveNotice
+          testId="students-module-inactive"
+          text="Forældremodulet er ikke aktivt, så du kan ikke oprette eller ændre elever. Du kan stadig se og slette dem."
+        />
+      )}
 
       {classes && classes.length > 0 && (
         <div>
@@ -245,23 +258,25 @@ export default function StudentsPage() {
                   </td>
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => setEditingStudent(s)}
-                        className="p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-                        title="Rediger"
-                      >
-                        <svg
-                          width="15"
-                          height="15"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
+                      {hasParentModule && (
+                        <button
+                          onClick={() => setEditingStudent(s)}
+                          className="p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+                          title="Rediger"
                         >
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                      </button>
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           if (confirm(`Slet "${s.name}"?`))

@@ -1,16 +1,21 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Skoleoverblikket.Api.Auth;
+using Skoleoverblikket.Api.Models;
 using Skoleoverblikket.Api.Services;
+using Skoleoverblikket.Api.Tenancy;
 
 namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/compliance-coverage")]
 [Authorize(Roles = $"{Roles.Admin},{Roles.Board}")]
+[RequiresModule(SubscriptionModule.BoardModule)]
 public sealed class ComplianceCoverageController(ComplianceCoverageService complianceCoverage) : ControllerBase
 {
+	// The live view is the feature itself, so it needs the module too. Saved versions stay readable.
 	[HttpGet("coverage")]
+	[RequiresModule(SubscriptionModule.BoardModule, GatesReads = true)]
 	public async Task<ActionResult<CoverageResponseDto>> GetCoverage(CancellationToken cancellationToken) =>
 		Ok(await complianceCoverage.GetCoverageAsync(cancellationToken));
 

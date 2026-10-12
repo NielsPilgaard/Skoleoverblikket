@@ -12,6 +12,7 @@ import os
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboards")
 PROM = {"type": "prometheus", "uid": "grafanacloud-prom"}
 LOKI = {"type": "loki", "uid": "grafanacloud-logs"}
+TEMPO = {"type": "tempo", "uid": "grafanacloud-traces"}
 JOB = 'job="Skoleoverblikket.Api"'
 SVC = '{service_name="Skoleoverblikket.Api"}'
 
@@ -36,6 +37,13 @@ def tgt(expr, legend="", ref="A", instant=False):
 
 def loki(expr, ref="A", legend="", qtype="range"):
     return {"datasource": LOKI, "refId": ref, "expr": expr, "legendFormat": legend, "queryType": qtype}
+
+
+def tempo(query, ref="A", limit=50):
+    # tableType "spans": one flat row per matched span, with the select()ed attributes as columns
+    # and a link to the trace. Tempo search covers at most 30 days.
+    return {"datasource": TEMPO, "refId": ref, "queryType": "traceql", "query": query,
+            "limit": limit, "spss": 3, "tableType": "spans"}
 
 
 def row(title, y):
@@ -191,8 +199,55 @@ def cnt(stream, rng="$__interval", by=None, extra=""):
     return f"sum by ({', '.join(by)}) ({inner})" if by else f"sum({inner})"
 
 
-def lat(q, rng="$__interval", by="service_name", extra=""):
-    return f"quantile_over_time({q}, {DUR}{extra} | unwrap Duration [{rng}]) by ({by})"
+# Latency. With ~100 API requests a month a bare p95 is just "the slowest few requests", and those
+# are almost all cold starts: the first page load after a deploy fires 6-8 parallel calls at a fresh
+# instance (OIDC discovery, EF model build, JIT) that take 0.5-1 s, while the same endpoints take
+# 1-40 ms warm. So the latency panels split cold from warm, show sample counts, hide percentiles
+# that rest on too few requests, and list the slow requests with a link to their trace.
+#
+# Warm = the request arrived on a reused connection (HttpLogging RequestId "<ConnectionId>:<seq>"
+# with seq > 1). A freshly started instance has no connections yet, so every cold-start request is
+# seq 00000001. Browsers also open new connections on a warm instance (about a third of requests),
+# so "new connection" is cold starts plus some fast warm requests; that's fine for both uses.
+API = ' | RequestPath=~"/api/v1/.*"'
+WARM = ' | RequestId!~".*:00000001"'
+CONN = ('label_format conn=`{{ if hasSuffix ":00000001" .RequestId }}new connection (cold starts land here)'
+        '{{ else }}reused connection (warm){{ end }}`')
+SLOW_MS = 300  # "slow request" in the trace table; warm requests take 1-40 ms
+
+
+def gated_p95(stream, rng, by, min_n, sentinel=False):
+    """p95 only where at least min_n requests back it. With sentinel=True, groups with too few
+    requests return -1, which the stat panel maps to "too few" instead of a number."""
+    q = f"quantile_over_time(0.95, {stream} | unwrap Duration [{rng}]) by ({by})"
+    n = f"sum by ({by}) (count_over_time({stream} [{rng}]))"
+    expr = f"{q} and on ({by}) ({n} >= {min_n})"
+    return f"({expr}) or on ({by}) ({n} < {min_n}) * 0 - 1" if sentinel else expr
+
+
+MS_THRESHOLDS = {"mode": "absolute", "steps": [{"color": "green", "value": None}, {"color": "orange", "value": 500},
+                                                {"color": "red", "value": 1500}]}
+
+
+def warm_p95_stat(x, y):
+    stream = DUR + API + WARM
+    p = stat("API p95, warm", [
+        loki(gated_p95(stream, "$__range", "service_name", 50, sentinel=True), "A", qtype="instant"),
+        loki(cnt(stream, "$__range"), "B", qtype="instant"),
+    ], x, y, unit="ms", decimals=0, thresholds=MS_THRESHOLDS["steps"], no_value="no requests",
+        mappings=[{"type": "range", "options": {"from": -1.5, "to": -0.5,
+                                                 "result": {"text": "too few", "color": "text"}}}],
+        desc="95th percentile of /api/v1 requests on reused connections, so cold starts after a deploy are left out "
+             "(see Latency below). Shown only with at least 50 such requests in the range; below that a "
+             "percentile is just the slowest one or two requests. 'warm requests' is the sample size.")
+    p["options"]["textMode"] = "value_and_name"
+    p["fieldConfig"]["overrides"] = [
+        {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "displayName", "value": "p95"}]},
+        {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [
+            {"id": "displayName", "value": "warm requests"}, {"id": "unit", "value": "short"},
+            {"id": "color", "value": {"mode": "fixed", "fixedColor": "text"}}]},
+    ]
+    return p
 
 
 # ================================================================ Service health
@@ -210,9 +265,7 @@ P += [
     stat("5xx error rate", [loki(f'({cnt(RESP, "$__range", extra=" | StatusCode=~`5..`")} or vector(0)) / {cnt(RESP, "$__range")}', qtype="instant")],
          8, y, unit="percentunit", decimals=1,
          thresholds=[{"color": "green", "value": None}, {"color": "orange", "value": 0.01}, {"color": "red", "value": 0.05}]),
-    stat("p95 latency (API)", [loki(lat(0.95, "$__range", extra=' | RequestPath=~"/api/v1/.*"'), qtype="instant")],
-         12, y, unit="ms", decimals=0,
-         thresholds=[{"color": "green", "value": None}, {"color": "orange", "value": 500}, {"color": "red", "value": 1500}]),
+    warm_p95_stat(12, y),
     stat("Unhandled exceptions", [loki(cnt(EXC, "$__range"), qtype="instant")],
          16, y, decimals=0, thresholds=[{"color": "green", "value": None}, {"color": "red", "value": 1}]),
     stat("Deploys / restarts", [loki(cnt(SVC + ' | scope_name="Microsoft.Hosting.Lifetime" |= "Application started"', "$__range"), qtype="instant")],
@@ -223,22 +276,105 @@ y += 4
 P.append(row("Traffic", y)); y += 1
 P += [
     ts("Requests by status class", [loki(f"sum by (status) (count_over_time({RESP} | {STATUS} [$__interval]))", legend="{{status}}")],
-       0, y, stack=True, overrides=status_overrides(), draw="bars", desc="Requests per time bucket."),
-    ts("API latency", [
-        loki(lat(0.50, extra=' | RequestPath=~"/api/v1/.*"'), "A", "p50"),
-        loki(lat(0.95, extra=' | RequestPath=~"/api/v1/.*"'), "B", "p95"),
-        loki(lat(0.99, extra=' | RequestPath=~"/api/v1/.*"'), "C", "p99"),
-    ], 12, y, unit="ms", draw="points",
-       desc="Server time per request from HttpLogging. Spikes right after a deploy are cold starts (JIT + EF model build)."),
-]
-y += 8
-P += [
+       0, y, w=8, stack=True, overrides=status_overrides(), draw="bars", desc="Requests per time bucket."),
     ts("5xx by route", [loki(f'sum by (route, StatusCode) (count_over_time({RESP} | StatusCode=~"5.." | {ROUTE} [$__interval]))', legend="{{StatusCode}} {{route}}")],
-       0, y, draw="bars", stack=True, desc="Server errors. Each one is a school user who hit a broken page."),
+       8, y, w=8, draw="bars", stack=True, desc="Server errors. Each one is a school user who hit a broken page."),
     ts("Auth failures (401 / 403)", [loki(f'sum by (route, StatusCode) (count_over_time({RESP} | StatusCode=~"401|403" | {ROUTE} [$__interval]))', legend="{{StatusCode}} {{route}}")],
-       12, y, draw="bars", stack=True, desc="Spikes after a deploy usually mean a role/policy change or a Keycloak problem."),
+       16, y, w=8, draw="bars", stack=True, desc="Spikes after a deploy usually mean a role/policy change or a Keycloak problem."),
 ]
 y += 8
+
+P.append(row("Latency: what is slow, and why", y)); y += 1
+P.append(ts("Slowest API request per time bucket", [
+    loki(f"max_over_time({DUR}{API} | {CONN} | unwrap Duration [$__interval]) by (conn)", "A", "slowest, {{conn}}"),
+    loki(gated_p95(DUR + API + WARM, "$__interval", "service_name", 20), "B", "p95 warm (buckets with 20+ requests)"),
+    loki(cnt(DUR + API, "$__interval"), "C", "requests"),
+], 0, y, w=24, h=8, unit="ms", draw="points",
+    desc="Each point is the slowest /api/v1 request in its time bucket, split by connection. Purple markers are deploys. "
+         "A purple dot at a deploy marker is a cold start (first page load on a fresh instance). A blue dot is a slow "
+         "request on a warm instance: find it in 'Slow API requests' below. The p95 line only appears in buckets with "
+         "20+ warm requests; grey bars (right axis) are the request count behind the dots.",
+    overrides=[
+        {"matcher": {"id": "byRegexp", "options": ".*new connection.*"},
+         "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "purple"}}]},
+        {"matcher": {"id": "byRegexp", "options": ".*reused connection.*"},
+         "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "blue"}}]},
+        {"matcher": {"id": "byFrameRefID", "options": "B"},
+         "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}},
+                        {"id": "custom.drawStyle", "value": "line"}, {"id": "custom.lineWidth", "value": 2},
+                        {"id": "custom.showPoints", "value": "always"}]},
+        {"matcher": {"id": "byFrameRefID", "options": "C"},
+         "properties": [{"id": "unit", "value": "short"}, {"id": "decimals", "value": 0},
+                        {"id": "custom.axisPlacement", "value": "right"}, {"id": "custom.axisLabel", "value": "requests"},
+                        {"id": "custom.drawStyle", "value": "bars"}, {"id": "custom.fillOpacity", "value": 25},
+                        {"id": "custom.showPoints", "value": "never"},
+                        {"id": "color", "value": {"mode": "fixed", "fixedColor": "#8080804d"}}]},
+    ]))
+y += 8
+
+
+def status_cell():
+    return [{"id": "custom.cellOptions", "value": {"type": "color-text"}},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [
+                {"color": "green", "value": None}, {"color": "orange", "value": 400}, {"color": "red", "value": 500}]}}]
+
+
+def duration_cell():
+    # Tempo reports span duration in nanoseconds.
+    return [{"id": "unit", "value": "ns"},
+            {"id": "custom.cellOptions", "value": {"type": "color-text"}},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [
+                {"color": "green", "value": None}, {"color": "orange", "value": 500_000_000}, {"color": "red", "value": 1_500_000_000}]}}]
+
+
+TRACE_SVC = 'resource.service.name="Skoleoverblikket.Api"'
+
+
+def trace_table(title, query, x, y, desc, renames, hide, extra_overrides, order):
+    # The Tempo "spans" frame has helper columns (traceIdHidden feeds the Span ID link, so it is hidden,
+    # not removed). "Trace Name" is the root span name, i.e. the API request, e.g. "GET api/v1/staff/me".
+    hidden = "|".join(["traceIdHidden", "Spans traceIdHidden", "Trace Service", "kind", "service\\.name", "url\\.path"] + hide)
+    return table(title, [tempo(query)], x, y, w=12, h=10, sort="Duration", desc=desc,
+                 transformations=[{"id": "organize", "options": {
+                     "renameByName": {"Trace Name": "Request", **renames},
+                     # Keyed by the original column names. Request, Duration and the Span ID link stay in view.
+                     "indexByName": {name: i for i, name in enumerate(order)}}}],
+                 overrides=[{"matcher": {"id": "byRegexp", "options": f"^({hidden})$"},
+                             "properties": [{"id": "custom.hidden", "value": True}]},
+                            {"matcher": {"id": "byName", "options": "Span ID"}, "properties": [{"id": "custom.width", "value": 150}]},
+                            {"matcher": {"id": "byName", "options": "Start time"}, "properties": [{"id": "custom.width", "value": 160}]},
+                            {"matcher": {"id": "byName", "options": "Duration"}, "properties": duration_cell()}] + extra_overrides)
+
+
+P += [
+    trace_table(
+        f"Slow API requests (over {SLOW_MS} ms)",
+        f'{{{TRACE_SVC} && kind=server && span.url.path=~"/api/v1/.*" && duration > {SLOW_MS}ms}}'
+        ' | select(span.http.response.status_code, resource.service.instance.id)',
+        0, y,
+        "From Tempo traces. Click the span ID to open the trace and see where the time went. "
+        "Several requests in the same second on one instance = cold start after a deploy. "
+        "A 5xx status = the error path, not slowness. Tempo search covers at most 30 days.",
+        {"http.response.status_code": "Status", "service.instance.id": "Instance"},
+        ["Name"],
+        [{"matcher": {"id": "byName", "options": "Status"}, "properties": status_cell()}],
+        ["Trace Name", "Duration", "http.response.status_code", "Start time", "Span ID", "service.instance.id"]),
+    trace_table(
+        "Slow calls inside API requests (over 50 ms)",
+        f'{{{TRACE_SVC} && kind=server}} >> {{kind=client && duration > 50ms}}'
+        ' | select(name, span.server.address, span.url.full, span.db.system, span.db.query.text, span.db.statement)',
+        12, y,
+        "Outgoing HTTP and database calls made while serving a request: the usual causes. "
+        "auth.skoleoverblikket.dk .well-known/openid-configuration = Keycloak discovery on a cold instance; "
+        "api.stripe.com = Stripe (expected for checkout); db spans = slow SQL. "
+        "'Request' is the API request the call belongs to.",
+        {"Name": "Call", "server.address": "Host", "url.full": "URL",
+         "db.system": "DB", "db.query.text": "SQL", "db.statement": "Statement"},
+        [], [],
+        ["Trace Name", "Duration", "server.address", "Start time", "Span ID", "Name", "url.full",
+         "db.system", "db.query.text", "db.statement"]),
+]
+y += 10
 
 P.append(row("Endpoints", y)); y += 1
 P.append(table("Endpoints (selected range)", [
@@ -246,23 +382,27 @@ P.append(table("Endpoints (selected range)", [
     loki(f'sum by (route) (count_over_time({RESP} | StatusCode=~"4.." | {ROUTE} [$__range]))', "B", qtype="instant"),
     loki(f'sum by (route) (count_over_time({RESP} | StatusCode=~"5.." | {ROUTE} [$__range]))', "C", qtype="instant"),
     loki(f"quantile_over_time(0.5, {DUR} | {ROUTE} | unwrap Duration [$__range]) by (route)", "D", qtype="instant"),
-    loki(f"quantile_over_time(0.95, {DUR} | {ROUTE} | unwrap Duration [$__range]) by (route)", "E", qtype="instant"),
+    loki(gated_p95(f"{DUR} | {ROUTE}", "$__range", "route", 20), "E", qtype="instant"),
+    loki(f"max_over_time({DUR} | {ROUTE} | unwrap Duration [$__range]) by (route)", "F", qtype="instant"),
 ], 0, y, h=12, sort="Requests",
-    desc="GUIDs, ISO weeks and dates in the path are replaced with {id}, {week}, {date}.",
+    desc="GUIDs, ISO weeks and dates in the path are replaced with {id}, {week}, {date}. "
+         "p95 is blank for paths with fewer than 20 requests (too few to mean anything). A high Max with a low "
+         "Median is usually one cold start; look it up in 'Slow API requests'.",
     transformations=[
         {"id": "merge", "options": {}},
         {"id": "organize", "options": {"excludeByName": {"Time": True},
                                        "renameByName": {"route": "Path", "Value #A": "Requests", "Value #B": "4xx",
-                                                        "Value #C": "5xx", "Value #D": "p50", "Value #E": "p95"}}},
+                                                        "Value #C": "5xx", "Value #D": "Median", "Value #E": "p95 (20+ req)",
+                                                        "Value #F": "Max"}}},
     ],
     overrides=[
-        {"matcher": {"id": "byName", "options": "Path"}, "properties": [{"id": "custom.width", "value": 520}]},
+        {"matcher": {"id": "byName", "options": "Path"}, "properties": [{"id": "custom.width", "value": 480}]},
         {"matcher": {"id": "byName", "options": "5xx"}, "properties": [
             {"id": "custom.cellOptions", "value": {"type": "color-text"}},
             {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": None}, {"color": "red", "value": 0.5}]}}]},
-        {"matcher": {"id": "byRegexp", "options": "p50|p95"}, "properties": [
+        {"matcher": {"id": "byRegexp", "options": "Median|p95.*|Max"}, "properties": [
             {"id": "unit", "value": "ms"}, {"id": "decimals", "value": 0}, {"id": "custom.cellOptions", "value": {"type": "color-text"}},
-            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": None}, {"color": "orange", "value": 500}, {"color": "red", "value": 1500}]}}]},
+            {"id": "thresholds", "value": MS_THRESHOLDS}]},
     ]))
 y += 12
 
@@ -319,8 +459,11 @@ y += 13
 F += [
     ts("Errors per module (4xx + 5xx, excl. 401/404)", [loki(f'sum by (feature) (count_over_time({RESP}{REAL} | StatusCode=~"4..|5.." | StatusCode!="401" | {FEATURE} [$__interval]))', legend="{{feature}}")],
        0, y, w=12, draw="bars", stack=True, desc="Validation errors (400), forbidden (403), conflicts (409) and server errors per module."),
-    ts("p95 latency per module", [loki(f"quantile_over_time(0.95, {DUR}{API_PATH} | {FEATURE} | unwrap Duration [$__interval]) by (feature)", legend="{{feature}}")],
-       12, y, w=12, unit="ms", draw="points"),
+    ts("Slowest request per module", [loki(f"max_over_time({DUR}{API_PATH} | {FEATURE} | unwrap Duration [$__interval]) by (feature)", legend="{{feature}}")],
+       12, y, w=12, unit="ms", draw="points",
+       desc="The single slowest request per module and time bucket. At this traffic a p95 is just the slowest request "
+            "anyway, and most of those are cold starts after a deploy (purple markers). The Service health dashboard "
+            "splits cold from warm and links each slow request to its trace."),
 ]
 y += 8
 F.append(row("Weekly rhythm", y)); y += 1

@@ -14,6 +14,7 @@ namespace Skoleoverblikket.Api.Controllers;
 [ApiController]
 [Route("api/v1/board-members")]
 [Authorize]
+[RequiresModule(SubscriptionModule.BoardModule)]
 public sealed class BoardMembersController(
 	AppDbContext db,
 	ITenantContext tenant,

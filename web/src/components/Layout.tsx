@@ -8,6 +8,7 @@ import NotificationBell from './NotificationBell'
 import { useQuery } from '@tanstack/react-query'
 import { getApiV1BillingSubscriptionOptions } from '../api/generated/@tanstack/react-query.gen'
 import { useAuth } from '../auth/useAuth'
+import { useSubscription } from '../hooks/useSubscription'
 
 function SubscriptionBanner() {
   const { isAdmin } = useAuth()
@@ -28,8 +29,54 @@ function SubscriptionBanner() {
   )
 }
 
+/**
+ * Board and parent users only exist while their module is active, and the API rejects them
+ * without it (ModuleAccessFilter). Returns the module to name when every such role is off.
+ */
+function useInactiveModule(): string | null {
+  const { isAdmin, isParent, isBoard, isSuperAdmin } = useAuth()
+  const { hasParentModule, hasBoardModule, isSuccess } = useSubscription()
+  if (isAdmin || isSuperAdmin || !isSuccess) return null
+  const off = [
+    isBoard && !hasBoardModule && 'Bestyrelsesmodulet',
+    isParent && !hasParentModule && 'Forældremodulet',
+  ].filter((m): m is string => typeof m === 'string')
+  const held = Number(isBoard) + Number(isParent)
+  return held > 0 && off.length === held ? off[0] : null
+}
+
+function ModuleInactiveScreen({ moduleName }: { moduleName: string }) {
+  const { logout } = useAuth()
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div
+        data-testid="module-inactive-screen"
+        className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-4 text-center"
+      >
+        <div className="flex justify-center">
+          <Logo variant="light" size={40} />
+        </div>
+        <p className="font-semibold text-gray-900">Modulet er ikke aktivt</p>
+        <p className="text-sm text-gray-500">
+          Skolen har ikke længere {moduleName}. Kontakt skolens kontor.
+        </p>
+        <button
+          type="button"
+          onClick={logout}
+          className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
+        >
+          Log ud
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const inactiveModule = useInactiveModule()
+
+  if (inactiveModule) return <ModuleInactiveScreen moduleName={inactiveModule} />
 
   return (
     <div className="flex h-screen bg-brand-50 overflow-hidden">

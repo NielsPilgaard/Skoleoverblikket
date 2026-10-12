@@ -55,5 +55,6 @@ app.MapControllers();
 app.MapDefaultEndpoints();
 
 await app.MigrateAndSeedAsync();
+await app.WarmUpAsync();
 
 app.Run();

@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Skoleoverblikket.Api.Auth;
 using Skoleoverblikket.Api.Services;
+using Skoleoverblikket.Api.Models;
+using Skoleoverblikket.Api.Tenancy;
 
 namespace Skoleoverblikket.Api.Controllers;
 
@@ -12,6 +14,7 @@ namespace Skoleoverblikket.Api.Controllers;
 [ApiController]
 [Route("api/v1/attendance")]
 [Authorize]
+[RequiresModule(SubscriptionModule.ParentModule)]
 public sealed class AttendanceController(AbsenceService absence, IAuthorizationService authorization) : ControllerBase
 {
 	[HttpGet("classes/{classId:guid}")]

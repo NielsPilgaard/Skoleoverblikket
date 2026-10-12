@@ -13,6 +13,7 @@ namespace Skoleoverblikket.Api.Controllers;
 [ApiController]
 [Route("api/v1/parents")]
 [Authorize(Roles = Roles.Admin)]
+[RequiresModule(SubscriptionModule.ParentModule)]
 public sealed class ParentsController(
 	AppDbContext db,
 	ITenantContext tenant,

@@ -42,7 +42,12 @@ public static class ServicesExtensions
 
 		services.AddProblemDetails();
 
-		services.AddControllers(options => options.Filters.AddService<SubscriptionAccessFilter>())
+		services.AddControllers(options =>
+			{
+				// Order matters: an expired subscription blocks writes before module checks run.
+				options.Filters.AddService<SubscriptionAccessFilter>();
+				options.Filters.AddService<ModuleAccessFilter>();
+			})
 			.AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 		return services;

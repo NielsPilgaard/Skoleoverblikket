@@ -16,6 +16,7 @@ public sealed class BoardMemberInvitationService(
 	IEmailSender email,
 	IOptions<ApplicationOptions> appOptions,
 	KeycloakAdminService keycloakAdmin,
+	SubscriptionService subscriptions,
 	ILogger<BoardMemberInvitationService> logger)
 {
 	private static readonly TimeSpan InvitationValidity = TimeSpan.FromDays(14);
@@ -99,10 +100,23 @@ public sealed class BoardMemberInvitationService(
 					i => i.Token == token && i.AcceptedAt == null && i.ExpiresAt > DateTimeOffset.UtcNow,
 					cancellationToken);
 
-	public async Task MarkAcceptedAsync(BoardMemberInvitation invitation, CancellationToken cancellationToken)
+	public async Task<InvitationAcceptResult> AcceptAsync(string token, CancellationToken cancellationToken)
 	{
+		var invitation = await FindValidAsync(token, cancellationToken);
+		if (invitation is null)
+		{
+			return InvitationAcceptResult.Invalid;
+		}
+
+		// The accepting user has no tenant claim yet, so ModuleAccessFilter can't check the school.
+		if (!await subscriptions.IsModuleActiveAsync(invitation.TenantId, SubscriptionModule.BoardModule, cancellationToken))
+		{
+			return InvitationAcceptResult.ModuleInactive;
+		}
+
 		invitation.AcceptedAt = DateTimeOffset.UtcNow;
 		await db.SaveChangesAsync(cancellationToken);
+		return InvitationAcceptResult.Accepted;
 	}
 
 	private static string GenerateToken()
