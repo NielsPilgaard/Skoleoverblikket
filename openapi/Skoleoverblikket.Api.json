@@ -12270,7 +12270,6 @@
         "type": "object",
         "properties": {
           "reason": {
-            "maxLength": 500,
             "type": "string",
             "nullable": true
           }
