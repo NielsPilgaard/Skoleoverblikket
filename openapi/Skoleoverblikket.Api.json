@@ -8821,7 +8821,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
       }
     },
     "/api/v1/admin/email-preview/staff-invitation": {
