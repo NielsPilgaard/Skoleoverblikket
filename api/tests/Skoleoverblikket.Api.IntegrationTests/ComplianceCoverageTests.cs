@@ -341,4 +341,21 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 		await Assert.That(danskSubject).IsNotNull();
 		await Assert.That(danskSubject!.Status).IsEqualTo("extra");
 	}
+
+	// ── POST /api/v1/compliance-coverage/snapshots ─────────────────────────────────────
+
+	[Test]
+	public async Task CreateSnapshot_Admin_SavesVersionThatIsListed()
+	{
+		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Hanne Sekretær", isAdmin: true, keycloakSubject: "staamaal-admin-subject");
+
+		var response = await _adminClient.PostAsJsonAsync(
+			"/api/v1/compliance-coverage/snapshots",
+			new CreateCoverageSnapshotRequest("Før tilsynsbesøg"));
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
+
+		var snapshots = await _adminClient.GetFromJsonAsync<List<CoverageSnapshotSummaryDto>>(
+			"/api/v1/compliance-coverage/snapshots", JsonOpts);
+		await Assert.That(snapshots!.Select(s => s.Reason)).Contains("Før tilsynsbesøg");
+	}
 }

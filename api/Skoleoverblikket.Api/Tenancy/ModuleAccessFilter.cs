@@ -11,7 +11,8 @@ namespace Skoleoverblikket.Api.Tenancy;
 /// Enforces the paid modules (BoardModule, ParentModule). Runs after <see cref="SubscriptionAccessFilter"/>.
 /// R1: board and parent users only exist while their module is active, so a principal acting only as
 /// such a user gets 403 without it. R2: writes (POST/PUT/PATCH) on actions marked
-/// <see cref="RequiresModuleAttribute"/> get 403 without the module; GET and DELETE still work.
+/// <see cref="RequiresModuleAttribute"/> get 403 without the module; GET and DELETE still work,
+/// unless the attribute sets <see cref="RequiresModuleAttribute.GatesReads"/>.
 /// A trial counts as having every module. See docs/AUTHORIZATION.md, "Paid modules".
 /// </summary>
 public sealed class ModuleAccessFilter(SubscriptionService subscriptions, ITenantContext tenantContext) : IAsyncActionFilter
@@ -40,9 +41,14 @@ public sealed class ModuleAccessFilter(SubscriptionService subscriptions, ITenan
 		var checkRoles = heldGatedRoles.Count > 0
 			&& !metadata.OfType<IAllowAnonymous>().Any()
 			&& !IsModulesEndpoint(request);
-		var requiredModules = WriteMethods.Contains(request.Method)
-			? metadata.OfType<RequiresModuleAttribute>().Select(a => a.Module).Distinct().ToList()
-			: [];
+		var isWrite = WriteMethods.Contains(request.Method);
+		var isRead = HttpMethods.IsGet(request.Method);
+		var requiredModules = metadata
+			.OfType<RequiresModuleAttribute>()
+			.Where(a => isWrite || (isRead && a.GatesReads))
+			.Select(a => a.Module)
+			.Distinct()
+			.ToList();
 
 		if (!checkRoles && requiredModules.Count == 0)
 		{

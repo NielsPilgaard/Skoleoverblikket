@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { useAuth } from '../auth/useAuth'
 import { Modal } from '../components/Modal'
+import ModuleInactiveNotice from '../components/ModuleInactiveNotice'
+import { useSubscription } from '../hooks/useSubscription'
 import {
   getApiV1ComplianceCoverageCoverageOptions,
   getApiV1ComplianceCoverageSnapshotsOptions,
@@ -420,6 +422,10 @@ export default function ComplianceCoveragePage() {
   usePageTitle('Stå mål med')
   const [tab, setTab] = useState<'live' | 'snapshots'>('live')
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null)
+  const { hasBoardModule, isSuccess: modulesLoaded } = useSubscription()
+  // Without the board module the live view is off; saved versions stay readable.
+  const locked = modulesLoaded && !hasBoardModule
+  const activeTab = locked ? 'snapshots' : tab
 
   return (
     <div className="p-6 lg:p-8 max-w-full mx-auto space-y-6">
@@ -430,27 +436,36 @@ export default function ComplianceCoveragePage() {
         </p>
       </div>
 
+      {locked && (
+        <ModuleInactiveNotice
+          testId="compliance-module-inactive"
+          text="Bestyrelsesmodulet er ikke aktivt, så du kan ikke se den nuværende faglige dækning eller gemme nye versioner. Du kan stadig se gemte versioner."
+        />
+      )}
+
       <div className="flex gap-1 border-b border-gray-200">
-        <button
-          onClick={() => {
-            setTab('live')
-            setSelectedSnapshotId(null)
-          }}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            tab === 'live'
-              ? 'border-brand-600 text-brand-700'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Nuværende dækning
-        </button>
+        {!locked && (
+          <button
+            onClick={() => {
+              setTab('live')
+              setSelectedSnapshotId(null)
+            }}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === 'live'
+                ? 'border-brand-600 text-brand-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Nuværende dækning
+          </button>
+        )}
         <button
           onClick={() => {
             setTab('snapshots')
             setSelectedSnapshotId(null)
           }}
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            tab === 'snapshots'
+            activeTab === 'snapshots'
               ? 'border-brand-600 text-brand-700'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
@@ -459,7 +474,7 @@ export default function ComplianceCoveragePage() {
         </button>
       </div>
 
-      {tab === 'live' ? (
+      {activeTab === 'live' ? (
         <LiveCoverageTab />
       ) : selectedSnapshotId ? (
         <SnapshotDetail id={selectedSnapshotId} onBack={() => setSelectedSnapshotId(null)} />

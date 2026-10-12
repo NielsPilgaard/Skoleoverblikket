@@ -42,7 +42,7 @@ Additional capabilities are sold as opt-in modules on top of Basis, each billed 
 
 | Module | Unlocks |
 |---|---|
-| Board module | Bestyrelse: board member accounts, board files and the board's overview |
+| Board module | Bestyrelse: board member accounts, board files, the board's overview and Stå mål med |
 | Parent module | Parent portal: schema/calendar/ugeplan views, kontaktbog, beskeder, kontakt directory, fraværsregistrering, ferieindmelding — see [AGENTS.md](../AGENTS.md) built-features list |
 
 More modules may be added over time; check `ModulePriceIds` in Stripe config for the current list rather than assuming this table is exhaustive.

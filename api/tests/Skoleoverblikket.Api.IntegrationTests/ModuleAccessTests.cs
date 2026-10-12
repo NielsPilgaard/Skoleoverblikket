@@ -10,6 +10,7 @@ using Skoleoverblikket.Api.Auth;
 using Skoleoverblikket.Api.Controllers;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using Skoleoverblikket.Api.Models;
+using Skoleoverblikket.Api.Services;
 
 namespace Skoleoverblikket.Api.IntegrationTests;
 
@@ -142,6 +143,19 @@ public sealed partial class ModuleAccessTests(ApiFactory factory)
 		await AssertModuleInactiveAsync(await _admin.PostAsJsonAsync(
 			"/api/v1/students",
 			new StudentsController.UpsertStudentRequest("Emil Elev", Guid.NewGuid(), false)));
+	}
+
+	[Test]
+	public async Task Admin_WithoutBoardModule_CannotUseStaaMaalMedButCanReadSavedVersions()
+	{
+		await TestDataBuilder.CreateActiveSubscriptionAsync(_app.Services, _tenantId);
+
+		await AssertModuleInactiveAsync(await _admin.GetAsync("/api/v1/compliance-coverage/coverage"));
+		await AssertModuleInactiveAsync(await _admin.PostAsJsonAsync(
+			"/api/v1/compliance-coverage/snapshots",
+			new CreateCoverageSnapshotRequest("Før tilsyn")));
+		await Assert.That((await _admin.GetAsync("/api/v1/compliance-coverage/snapshots")).StatusCode)
+			.IsEqualTo(HttpStatusCode.OK);
 	}
 
 	// ── R3: invitations ──────────────────────────────────────────────────────────

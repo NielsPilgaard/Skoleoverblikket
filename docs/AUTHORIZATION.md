@@ -172,7 +172,7 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 `BoardModule` and `ParentModule` are enforced in the API by `ModuleAccessFilter` (`Tenancy/`), a global filter that runs after `SubscriptionAccessFilter`. A trial counts as having every module, and so does a school with no `Subscription` row yet. Every 403 is a `ProblemDetails` titled "Modulet er ikke aktivt".
 
 - **R1, users.** Board users need `BoardModule`, parent users need `ParentModule`. A principal can hold several realm roles (admin and board, say), so the filter drops the roles whose module is off and checks the rest against the action's `[Authorize(Roles = …)]` attributes. An action with no role list needs any remaining role among admin, superadmin, board and parent. Staff have no realm role, so a staff member who became a board member acts as board. Exempt: `GET /api/v1/modules` and `[AllowAnonymous]` actions.
-- **R2, features.** Actions marked `[RequiresModule(X)]` reject `POST`/`PUT`/`PATCH` without module X. `GET` and `DELETE` still work, so a school that drops a module can read and clean up. An expired subscription blocks `DELETE` first, in `SubscriptionAccessFilter`.
+- **R2, features.** Actions marked `[RequiresModule(X)]` reject `POST`/`PUT`/`PATCH` without module X. `GET` and `DELETE` still work, so a school that drops a module can read and clean up. `GatesReads = true` also rejects `GET`, for a view that computes the feature from Basis data rather than returning stored data. An expired subscription blocks `DELETE` first, in `SubscriptionAccessFilter`.
 - **R3, invitations.** `BoardMemberInvitationService.AcceptAsync` and `ParentInvitationService.AcceptAsync` check the inviting school's module, because the accepting user has no tenant claim yet.
 
 Marked with `[RequiresModule]`:
@@ -181,14 +181,15 @@ Marked with `[RequiresModule]`:
 |---|---|---|
 | Board | `BoardMembersController`, `BoardFilesController` | all writes |
 | Board | `ImportsController` | `POST board-members` |
+| Board | `ComplianceCoverageController` (Stå mål med) | all writes, and `GET coverage` (the live view) |
 | Parent | `ParentsController`, `StudentsController`, `AttendanceController`, `ContactThreadsController`, `MessagesController`, `ClassChatController` | all writes |
 | Parent | `ParentInvitationsController` | `POST {parentId}/resend` |
 | Parent | `ImportsController` | `POST students-and-parents` |
 | Parent | `AbsenceController` | `PUT {id}/category`, `POST {id}/approve`, `POST {id}/reject`, `POST follow-ups` |
 
-The frontend mirrors this. A board or parent user whose module is off sees "Modulet er ikke aktivt" (`Layout.tsx`) instead of failing pages. Admins keep Elever, Forældre and Bestyrelse in the sidebar, with a notice and only read and delete actions.
+The frontend mirrors this. A board or parent user whose module is off sees "Modulet er ikke aktivt" (`Layout.tsx`) instead of failing pages. Admins keep Elever, Forældre, Bestyrelse and Stå mål med in the sidebar, with a notice and only read and delete actions. Stå mål med then shows only saved versions.
 
-Not gated: vacation registration windows, the contact directory and the Stå mål med coverage view, which are Basis. A new controller for a paid feature needs the attribute, or the module stops being something a school pays for.
+Not gated: vacation registration windows and the contact directory, which are Basis. A new controller for a paid feature needs the attribute, or the module stops being something a school pays for.
 
 ---
 

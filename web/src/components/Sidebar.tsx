@@ -84,6 +84,7 @@ const navItemDefinitions = [
     to: '/staa-maal-med',
     label: 'Stå mål med',
     adminOnly: true,
+    module: 'board',
     group: 'Planlægning',
     order: 11,
     icon: (
