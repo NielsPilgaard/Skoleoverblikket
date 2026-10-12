@@ -56,19 +56,9 @@ public sealed class ModuleAccessFilter(SubscriptionService subscriptions, ITenan
 			return;
 		}
 
-		Guid schoolId;
-		try
-		{
-			schoolId = tenantContext.TenantId;
-		}
-		catch (MissingTenantClaimException)
-		{
-			// No tenant claim — let auth handle it.
-			await next();
-			return;
-		}
-
-		var activeModules = await subscriptions.GetActiveModulesAsync(schoolId, context.HttpContext.RequestAborted);
+		// A module check is needed, so fail closed: without a tenant claim this throws
+		// MissingTenantClaimException, which MissingTenantClaimExceptionHandler turns into a 401.
+		var activeModules = await subscriptions.GetActiveModulesAsync(tenantContext.TenantId, context.HttpContext.RequestAborted);
 		bool IsActive(SubscriptionModule module) => activeModules.Contains(module.ToString());
 
 		if (checkRoles)

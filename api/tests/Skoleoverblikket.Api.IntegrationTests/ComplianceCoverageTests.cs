@@ -351,7 +351,7 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 
 		var response = await _adminClient.PostAsJsonAsync(
 			"/api/v1/compliance-coverage/snapshots",
-			new CreateCoverageSnapshotRequest("Før tilsynsbesøg"));
+			new CreateCoverageSnapshotRequest { Reason = "Før tilsynsbesøg" });
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
 
 		var snapshots = await _adminClient.GetFromJsonAsync<List<CoverageSnapshotSummaryDto>>(
@@ -366,7 +366,7 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 
 		var response = await _adminClient.PostAsJsonAsync(
 			"/api/v1/compliance-coverage/snapshots",
-			new CreateCoverageSnapshotRequest(new string('A', 501)));
+			new CreateCoverageSnapshotRequest { Reason = new string('A', 501) });
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 	}

@@ -153,7 +153,7 @@ public sealed partial class ModuleAccessTests(ApiFactory factory)
 		await AssertModuleInactiveAsync(await _admin.GetAsync("/api/v1/compliance-coverage/coverage"));
 		await AssertModuleInactiveAsync(await _admin.PostAsJsonAsync(
 			"/api/v1/compliance-coverage/snapshots",
-			new CreateCoverageSnapshotRequest("Før tilsyn")));
+			new CreateCoverageSnapshotRequest { Reason = "Før tilsyn" }));
 		await Assert.That((await _admin.GetAsync("/api/v1/compliance-coverage/snapshots")).StatusCode)
 			.IsEqualTo(HttpStatusCode.OK);
 	}
