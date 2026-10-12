@@ -8,11 +8,14 @@ export function useSubscription() {
     ...getApiV1ModulesOptions(),
     enabled: authenticated,
   })
-  const modules: string[] = Array.isArray(data) ? (data as string[]) : []
+  const hasData = Array.isArray(data)
+  const modules: string[] = hasData ? (data as string[]) : []
   // A failed lookup must not lock users out of valid actions; the API still enforces modules.
+  // Cached data from an earlier success wins over a failed refetch.
+  const failOpen = isError && !hasData
   return {
-    hasParentModule: isError || modules.includes('ParentModule'),
-    hasBoardModule: isError || modules.includes('BoardModule'),
+    hasParentModule: failOpen || modules.includes('ParentModule'),
+    hasBoardModule: failOpen || modules.includes('BoardModule'),
     isLoading,
     isSuccess,
   }
