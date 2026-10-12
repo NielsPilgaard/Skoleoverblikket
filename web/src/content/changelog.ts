@@ -12,6 +12,15 @@ interface ChangelogEntry {
  */
 export const changelog: ChangelogEntry[] = [
   {
+    date: '2026-10-12',
+    title: 'Hent alle skolens data på én gang',
+    changes: [
+      'Under Eksporter kan I nu hente alle skolens data og uploadede filer samlet i én ZIP-fil med knappen "Hent alt".',
+      'Bestyrelsesmedlemmer har fået deres egen side, Bestyrelse, under Stamdata i menuen, i stedet for at ligge i skolens indstillinger.',
+      'Hvis det ikke lykkes at fjerne et bestyrelsesmedlem eller slå Læreradgang til eller fra, får du nu en besked om det.',
+    ],
+  },
+  {
     date: '2026-10-05',
     title: 'Fravær og vikardækning',
     changes: [
