@@ -18,7 +18,7 @@ public sealed record ClassCoverageDto(Guid ClassId, string ClassName, int GradeL
 
 public sealed record CoverageResponseDto(List<ClassCoverageDto> Classes, int ClassesMissingGradeLevel, int ActiveSchemaCount);
 
-public sealed record CreateCoverageSnapshotRequest([MaxLength(500)] string? Reason);
+public sealed record CreateCoverageSnapshotRequest([MaxLength(500)][property: MaxLength(500)] string? Reason);
 
 public sealed record CoverageSnapshotSummaryDto(Guid Id, string SchoolYear, DateTimeOffset CreatedAt, string CreatedByStaffName, string? Reason);
 
