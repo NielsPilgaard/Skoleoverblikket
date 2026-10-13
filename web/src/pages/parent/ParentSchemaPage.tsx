@@ -7,24 +7,9 @@ import type {
   ParentMeControllerParentStudentDto as ParentStudentDto,
   ParentMeControllerParentMeDto as ParentMeDto,
 } from '../../api/generated/types.gen'
+import { buildTimeAxis } from '../../lib/timeAxis'
 import { WEEKDAY_LABELS, WEEKDAY_NUM } from '../../lib/weekdays'
 import { usePageTitle } from '../../hooks/usePageTitle'
-
-function buildTimeAxis(slots: ScheduleSlotDto[]) {
-  const seen = new Map<string, { startTime: string; endTime: string; sort: number }>()
-  for (const s of slots) {
-    if (!s.startTime || !s.endTime) continue
-    const key = `${s.startTime}-${s.endTime}`
-    if (!seen.has(key)) {
-      seen.set(key, {
-        startTime: s.startTime,
-        endTime: s.endTime,
-        sort: parseInt(s.startTime.replace(':', ''), 10),
-      })
-    }
-  }
-  return [...seen.values()].sort((a, b) => a.sort - b.sort)
-}
 
 function ClassScheduleGrid({ classId, className }: { classId: string; className: string }) {
   const {

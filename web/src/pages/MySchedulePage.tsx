@@ -5,28 +5,13 @@ import {
   getApiV1StaffByStaffIdScheduleOptions,
 } from '../api/generated/@tanstack/react-query.gen'
 import type { ScheduleSlotDto } from '../api/client'
+import { buildTimeAxis } from '../lib/timeAxis'
 import { WEEKDAYS, toWeekdayNum as toNum } from '../lib/weekdays'
 
 function hexToAlpha(color: string, alpha: string): string {
   const hex = color.startsWith('#') ? color.slice(1) : color
   if (hex.length === 3 || hex.length === 6) return color + alpha
   return '#f3f4f6'
-}
-
-function buildTimeAxis(slots: ScheduleSlotDto[]) {
-  const seen = new Map<string, { startTime: string; endTime: string; sort: number }>()
-  for (const s of slots) {
-    if (!s.startTime || !s.endTime) continue
-    const key = `${s.startTime}-${s.endTime}`
-    if (!seen.has(key)) {
-      seen.set(key, {
-        startTime: s.startTime,
-        endTime: s.endTime,
-        sort: parseInt(s.startTime.replace(':', ''), 10),
-      })
-    }
-  }
-  return [...seen.values()].sort((a, b) => a.sort - b.sort)
 }
 
 export default function MySchedulePage() {
