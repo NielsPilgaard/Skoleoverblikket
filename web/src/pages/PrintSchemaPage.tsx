@@ -10,31 +10,13 @@ import {
   getApiV1RoomsByRoomIdScheduleOptions,
 } from '../api/generated/@tanstack/react-query.gen'
 import type { ScheduleSlotDto } from '../api/client'
+import { buildTimeAxis } from '../lib/timeAxis'
 import { WEEKDAY_LABELS, WEEKDAY_NUM } from '../lib/weekdays'
 
 const WEEKDAYS = WEEKDAY_LABELS
 
 function toWeekdayNumber(weekday: number | string): number {
   return typeof weekday === 'string' ? (WEEKDAY_NUM[weekday] ?? -1) : weekday
-}
-
-// Collects unique time labels across all active slots, sorted by start time
-function buildTimeAxis(
-  slots: ScheduleSlotDto[]
-): { startTime: string; endTime: string; sortOrder: number }[] {
-  const seen = new Map<string, { startTime: string; endTime: string; sortOrder: number }>()
-  for (const s of slots) {
-    if (!s.startTime || !s.endTime) continue
-    const key = `${s.startTime}-${s.endTime}`
-    if (!seen.has(key)) {
-      seen.set(key, {
-        startTime: s.startTime,
-        endTime: s.endTime,
-        sortOrder: parseInt(s.startTime.replace(':', ''), 10),
-      })
-    }
-  }
-  return [...seen.values()].sort((a, b) => a.sortOrder - b.sortOrder)
 }
 
 type PrintMode = 'class' | 'staff' | 'room'

@@ -5,19 +5,10 @@ import { Helmet } from 'react-helmet-async'
 import { getApiV1SfoWeekPlanOptions } from '../api/generated/@tanstack/react-query.gen'
 import type { SfoWeekPlanShiftDto } from '../api/client'
 import { Markdown } from '../components/markdown/Markdown'
+import { buildTimeAxis } from '../lib/timeAxis'
 import { getISOWeek, getISOWeekYear } from '../utils/isoWeek'
 
 const WEEKDAYS = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag']
-
-function buildTimeAxis(shifts: SfoWeekPlanShiftDto[]): { startTime: string; endTime: string }[] {
-  const seen = new Map<string, { startTime: string; endTime: string }>()
-  for (const s of shifts) {
-    if (!s.startTime || !s.endTime) continue
-    const key = `${s.startTime}-${s.endTime}`
-    if (!seen.has(key)) seen.set(key, { startTime: s.startTime, endTime: s.endTime })
-  }
-  return [...seen.values()].sort((a, b) => a.startTime.localeCompare(b.startTime))
-}
 
 export default function SfoPrintPage() {
   const [searchParams] = useSearchParams()

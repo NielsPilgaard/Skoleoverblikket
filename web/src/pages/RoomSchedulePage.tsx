@@ -5,26 +5,11 @@ import {
   getApiV1RoomsByRoomIdScheduleOptions,
 } from '../api/generated/@tanstack/react-query.gen'
 import type { ScheduleSlotDto } from '../api/client'
+import { buildTimeAxis } from '../lib/timeAxis'
 import { WEEKDAYS, WEEKDAY_NUM } from '../lib/weekdays'
 
 function toNum(weekday: string | number): number {
   return typeof weekday === 'string' ? (WEEKDAY_NUM[weekday] ?? -1) : weekday
-}
-
-function buildTimeAxis(slots: ScheduleSlotDto[]) {
-  const seen = new Map<string, { startTime: string; endTime: string; sort: number }>()
-  for (const s of slots) {
-    if (!s.startTime || !s.endTime) continue
-    const key = `${s.startTime}-${s.endTime}`
-    if (!seen.has(key)) {
-      seen.set(key, {
-        startTime: s.startTime,
-        endTime: s.endTime,
-        sort: parseInt(s.startTime.replace(':', ''), 10),
-      })
-    }
-  }
-  return [...seen.values()].sort((a, b) => a.sort - b.sort)
 }
 
 export default function RoomSchedulePage() {
