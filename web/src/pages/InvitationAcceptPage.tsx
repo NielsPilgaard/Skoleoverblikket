@@ -19,6 +19,21 @@ interface InvitationPreview {
   type: InvitationType
 }
 
+// The preview endpoints return anonymous objects, so the generated client has no types for them.
+interface StaffInvitationPreviewResponse {
+  staffName: string
+  email: string
+  schoolName: string
+  expiresAt: string
+}
+
+interface ParentInvitationPreviewResponse {
+  parentName: string
+  email: string
+  schoolName: string
+  expiresAt: string
+}
+
 type PageState =
   | 'loading'
   | 'invalid'
@@ -51,6 +66,7 @@ export default function InvitationAcceptPage() {
       setState('invalid')
       return
     }
+    const inviteToken = token
 
     const controller = new AbortController()
 
@@ -58,41 +74,47 @@ export default function InvitationAcceptPage() {
       // Use plain fetch for these [AllowAnonymous] endpoints to avoid the SDK's
       // auth interceptor triggering a Keycloak login redirect for unauthenticated users.
       const staffRes = await fetch(
-        `/api/v1/staff-invitations/preview?token=${encodeURIComponent(token!)}`,
+        `/api/v1/staff-invitations/preview?token=${encodeURIComponent(inviteToken)}`,
         { signal: controller.signal }
       )
 
-      let type: InvitationType = 'staff'
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let data: any = staffRes.status !== 404 ? await staffRes.json() : null
-
+      let normalized: InvitationPreview
       if (staffRes.status === 404) {
         const parentRes = await fetch(
-          `/api/v1/parent-invitations/preview?token=${encodeURIComponent(token!)}`,
+          `/api/v1/parent-invitations/preview?token=${encodeURIComponent(inviteToken)}`,
           { signal: controller.signal }
         )
-        data = await parentRes.json()
-        type = 'parent'
         if (!parentRes.ok) {
           setState('invalid')
           return
         }
-      } else if (!staffRes.ok) {
-        setState('invalid')
-        return
-      }
-      const normalized: InvitationPreview = {
-        name: type === 'staff' ? data.staffName : data.parentName,
-        email: data.email,
-        schoolName: data.schoolName,
-        expiresAt: data.expiresAt,
-        type,
+        const data: ParentInvitationPreviewResponse = await parentRes.json()
+        normalized = {
+          name: data.parentName,
+          email: data.email,
+          schoolName: data.schoolName,
+          expiresAt: data.expiresAt,
+          type: 'parent',
+        }
+      } else {
+        if (!staffRes.ok) {
+          setState('invalid')
+          return
+        }
+        const data: StaffInvitationPreviewResponse = await staffRes.json()
+        normalized = {
+          name: data.staffName,
+          email: data.email,
+          schoolName: data.schoolName,
+          expiresAt: data.expiresAt,
+          type: 'staff',
+        }
       }
       setPreview(normalized)
 
       if (returningFromLogin && keycloak.authenticated && keycloak.token) {
         setState('accepting')
-        await acceptInvitation(token!, keycloak.token, type)
+        await acceptInvitation(inviteToken, keycloak.token, normalized.type)
       } else if (keycloak.authenticated) {
         keycloak.logout({ redirectUri: window.location.href })
       } else {
@@ -142,12 +164,13 @@ export default function InvitationAcceptPage() {
   }
 
   async function submitContactInfo() {
+    if (!preview) return
     setSubmittingContact(true)
     setContactError('')
     try {
       await patchApiV1ParentsMeContact({
         body: {
-          name: preview!.name,
+          name: preview.name,
           phone: phone || null,
           address: address || null,
           postalCode: postalCode || null,
