@@ -72,10 +72,7 @@ export default function VacationRegistrationPage() {
   const [form, setForm] = useState(emptyForm)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  const { data: windows = [] } = useQuery({
-    ...getApiV1VacationRegistrationOptions(),
-    select: (d) => d as WindowDto[],
-  })
+  const { data: windows = [] } = useQuery(getApiV1VacationRegistrationOptions())
 
   const createMutation = useMutation({
     ...postApiV1VacationRegistrationMutation(),

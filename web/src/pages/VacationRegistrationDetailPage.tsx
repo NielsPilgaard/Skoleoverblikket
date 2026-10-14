@@ -8,7 +8,6 @@ import {
   putApiV1VacationRegistrationByIdMutation,
 } from '../api/generated/@tanstack/react-query.gen'
 import type {
-  VacationRegistrationControllerWindowDto as WindowDto,
   VacationRegistrationControllerEntryDto as EntryDto,
   VacationRegistrationGranularity,
 } from '../api/generated/types.gen'
@@ -68,7 +67,6 @@ export default function VacationRegistrationDetailPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
 
-  const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<{
     title: string
     registrationDeadline: string
@@ -80,24 +78,20 @@ export default function VacationRegistrationDetailPage() {
 
   const WINDOWS_KEY = [{ _id: 'getApiV1VacationRegistration' }] as const
 
-  const { data: windows = [] } = useQuery({
-    ...getApiV1VacationRegistrationOptions(),
-    select: (d) => d as WindowDto[],
-  })
+  const { data: windows = [] } = useQuery(getApiV1VacationRegistrationOptions())
 
   const window_ = windows.find((w) => w.id === id)
 
   const { data: entries = [] } = useQuery({
     ...getApiV1VacationRegistrationByIdEntriesOptions({ path: { id: id! } }),
     enabled: !!id,
-    select: (d) => d as EntryDto[],
   })
 
   const updateMutation = useMutation({
     ...putApiV1VacationRegistrationByIdMutation(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: WINDOWS_KEY })
-      setEditing(false)
+      setForm(null)
     },
   })
 
@@ -111,7 +105,6 @@ export default function VacationRegistrationDetailPage() {
       granularity: window_.granularity ?? 'Weeks',
       isOpen: window_.isOpen ?? false,
     })
-    setEditing(true)
   }
 
   function handleSave(e: React.FormEvent) {
@@ -144,7 +137,7 @@ export default function VacationRegistrationDetailPage() {
       </button>
 
       {/* Header */}
-      {!editing ? (
+      {!form ? (
         <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -182,7 +175,7 @@ export default function VacationRegistrationDetailPage() {
             <input
               type="text"
               required
-              value={form!.title}
+              value={form.title}
               onChange={(e) => setForm((f) => f && { ...f, title: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
@@ -193,7 +186,7 @@ export default function VacationRegistrationDetailPage() {
               <input
                 type="date"
                 required
-                value={form!.careStartDate}
+                value={form.careStartDate}
                 onChange={(e) => setForm((f) => f && { ...f, careStartDate: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
@@ -203,7 +196,7 @@ export default function VacationRegistrationDetailPage() {
               <input
                 type="date"
                 required
-                value={form!.careEndDate}
+                value={form.careEndDate}
                 onChange={(e) => setForm((f) => f && { ...f, careEndDate: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
@@ -216,7 +209,7 @@ export default function VacationRegistrationDetailPage() {
             <input
               type="date"
               required
-              value={form!.registrationDeadline}
+              value={form.registrationDeadline}
               onChange={(e) => setForm((f) => f && { ...f, registrationDeadline: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
@@ -224,7 +217,7 @@ export default function VacationRegistrationDetailPage() {
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={form!.isOpen}
+              checked={form.isOpen}
               onChange={(e) => setForm((f) => f && { ...f, isOpen: e.target.checked })}
               className="accent-brand-600"
             />
@@ -243,7 +236,7 @@ export default function VacationRegistrationDetailPage() {
             </button>
             <button
               type="button"
-              onClick={() => setEditing(false)}
+              onClick={() => setForm(null)}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               Annuller
