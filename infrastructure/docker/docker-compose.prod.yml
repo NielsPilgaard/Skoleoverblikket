@@ -10,7 +10,7 @@
 name: "skoleoverblikket"
 services:
   postgres:
-    image: "${POSTGRES_IMAGE:-ghcr.io/nielspilgaard/skoleoverblikket-postgres:sha-PIN_ME}"
+    image: "ghcr.io/nielspilgaard/skoleoverblikket-postgres:sha-PIN_ME"
     command:
       - "postgres"
       - "-c"
@@ -103,7 +103,7 @@ services:
       traefik.http.routers.keycloak.tls.certresolver: "letsencrypt"
       traefik.http.services.keycloak.loadbalancer.server.port: "8080"
   backup-agent:
-    image: "${BACKUP_AGENT_IMAGE:-ghcr.io/nielspilgaard/skoleoverblikket-backup-agent:sha-PIN_ME}"
+    image: "ghcr.io/nielspilgaard/skoleoverblikket-backup-agent:sha-PIN_ME"
     environment:
       Agent__SshTunnelCommand: "${BACKUP_CONSOLE_SSH:-}"
       Agent__VolumeNamePrefix: "skoleoverblikket-pgdata-"

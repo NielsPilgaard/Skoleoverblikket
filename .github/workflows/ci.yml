@@ -186,8 +186,8 @@ jobs:
           build-args: |
             VITE_KEYCLOAK_URL=https://auth.skoleoverblikket.dk
 
-  # Task 54/60. Not deployed by deploy.mjs: compose pins POSTGRES_IMAGE and BACKUP_AGENT_IMAGE to a
-  # sha tag in Dokploy, so a normal deploy never restarts the database.
+  # Task 54/60. Not deployed by deploy.mjs: ProdCompose.cs pins both images to a sha tag in git,
+  # so a normal deploy never restarts the database.
   publish-postgres:
     name: Publish Postgres image
     runs-on: ubuntu-latest

@@ -18,6 +18,33 @@ status: 'Proposed'
 
 Stand up a new, bigger OVH VPS (France) with a **fresh** Dokploy install. Don't clone the old one. Postgres becomes a service in `docker-compose.prod.yml`: one cluster holding both the app DB and the Keycloak DB. The Postgres image stays free of backup tooling. A separate `backup-agent` container ([task 60](60-backup-console.md)) streams WAL over a shared socket and runs **pgBackRest** to OVH Object Storage, encrypted. Migrations become a one-shot `migrate` service, so CI no longer talks to the DB and port 5432 closes. Rehearse the whole move on the new VPS first. Then cut over: stop old → final dump → restore → start new → DNS. Keep the old VPS stopped but intact for 7 days, then wipe it. This also counts as the first full-rebuild drill from [task 53](53-restore-drill.md) Phase 3.
 
+## Switching to the backup agent, step by step
+
+The short version of everything below that concerns Postgres and the backup agent. Secrets go in the password manager, never the repo. Variables: [DEPLOYMENT.md](../docs/DEPLOYMENT.md#self-hosted-postgres-and-the-backup-agent). Fits into the cutover runbook in §6.
+
+**Prepare (any time)**
+
+1. OVH: create the pgBackRest repo bucket with its own read-write key, and `skoleoverblikket-ops` with an agent key (read-write) and an API key (read-only). Lifecycle rule on the ops bucket: delete `history/` after 400 days.
+2. Heartbeats: create four (WAL every 30 min, backup daily, drill and verify weekly) and a key that can only write heartbeats.
+3. Generate `PGBACKREST_REPO1_CIPHER_PASS` (`openssl rand -base64 48`) and the three Postgres passwords.
+
+**Pin the images (any time, one PR)**
+
+4. In [ProdCompose.cs](../infrastructure/aspire/Skoleoverblikket.AppHost/ProdCompose.cs), set `PostgresTag` and `BackupAgentTag` to `sha-<commit>` of a `main` commit whose publish jobs passed. Run `pwsh scripts/generate-prod-compose.ps1`, merge. The old box doesn't change: the profile is still off there.
+
+**On the new box (rehearsal, then cutover)**
+
+5. In Dokploy, check that the compose type is **Docker Compose**, not Stack (Stack ignores profiles).
+6. `pwsh scripts/create-prod-volumes.ps1 ubuntu@<new-vps>`
+7. Dokploy env: `COMPOSE_PROFILES=selfhosted-db`, the variables from step 1–3, and `DATABASE_URL` and `KEYCLOAK_DB_URL` with host `postgres`.
+8. Deploy. Postgres creates its roles and databases; the agent creates the pgBackRest stanza by itself.
+9. Restore the dump (§6 step 3), then run the `GRANT` from [RESTORE.md](../docs/RESTORE.md#13-after-a-pg_restore-into-a-new-cluster) §13.
+10. `pwsh scripts/backup-console.ps1 ubuntu@<new-vps>`, then **Back up now**. Done when the console is green, WAL is less than 15 minutes old and all four heartbeats have checked in.
+
+**After the cutover (old box stopped, GitHub `production` secrets point at the new box)**
+
+11. Remove the `selfhosted-db` profile from ProdCompose.cs, regenerate, and drop the profile from DEPLOYMENT.md, RESTORE.md §10 and the [ADR](../docs/adr/postgres-backup-agent.md). Merge, then delete `COMPOSE_PROFILES` in Dokploy. Not earlier: CD deploys `main` to whatever box the secrets point at.
+
 ## Context
 
 Today ([phase-0-vps](completed/phase-0-vps.md), [self-hosted-postgres-backups](../docs/adr/self-hosted-postgres-backups.md)):

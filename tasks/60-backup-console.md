@@ -26,7 +26,7 @@ Left, all Niels (accounts and servers):
 
 - OVH: the pgBackRest repo bucket, the `skoleoverblikket-ops` bucket with an agent key (RW) and an API key (read-only, test it with `rclone touch`), the 400-day lifecycle on `history/`.
 - elmah.io (or a ping-URL service, `Heartbeats_Provider=Ping`): create the four heartbeats and a heartbeats-only key.
-- Ship with 54: set the env from [DEPLOYMENT.md](../docs/DEPLOYMENT.md), pin `POSTGRES_IMAGE`/`BACKUP_AGENT_IMAGE` to a sha tag, create the external volumes (same doc), `COMPOSE_PROFILES=selfhosted-db`.
+- Ship with 54: follow [Switching to the backup agent, step by step](54-move-vps.md#switching-to-the-backup-agent-step-by-step).
 - The full restore through the wizard on a real server (staging here is the CI runner, so there's no persistent staging box; do it on the new VPS during the 54 rehearsal). Log the measured time in the console.
 
 Where the build differs from the spec above:

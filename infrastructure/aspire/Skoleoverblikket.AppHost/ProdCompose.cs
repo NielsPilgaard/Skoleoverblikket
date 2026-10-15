@@ -18,6 +18,12 @@ internal static class ProdCompose
     // Postgres and the backup agent only start with COMPOSE_PROFILES=selfhosted-db, set at the task 54 cutover.
     private const string SelfHostedDb = "selfhosted-db";
 
+    // The images prod runs, as sha-<main commit> (CI publishes both on every push to main). Pinned here,
+    // not in Dokploy, so a normal deploy never restarts the database and an upgrade is a reviewed PR.
+    // Separate tags, so upgrading the agent doesn't restart Postgres. sha-PIN_ME doesn't exist on purpose.
+    private const string PostgresTag = "sha-PIN_ME";
+    private const string BackupAgentTag = "sha-PIN_ME";
+
     private static string Var(string name, string? fallback = null) =>
         fallback is null ? $"${{{name}}}" : $"${{{name}:-{fallback}}}";
 
@@ -163,8 +169,7 @@ internal static class ProdCompose
     /// <summary>One cluster for the app and Keycloak databases (task 54 D2). No published port: only dokploy-network reaches it.</summary>
     public static void Postgres(Service service)
     {
-        // The default tag doesn't exist on purpose: Dokploy pins a sha, so a normal deploy never restarts the database.
-        Reset(service, Var("POSTGRES_IMAGE", "ghcr.io/nielspilgaard/skoleoverblikket-postgres:sha-PIN_ME"));
+        Reset(service, $"ghcr.io/nielspilgaard/skoleoverblikket-postgres:{PostgresTag}");
         service.Profiles = [SelfHostedDb];
         service.Command =
         [
@@ -196,7 +201,7 @@ internal static class ProdCompose
     /// </summary>
     public static void BackupAgent(Service service)
     {
-        Reset(service, Var("BACKUP_AGENT_IMAGE", "ghcr.io/nielspilgaard/skoleoverblikket-backup-agent:sha-PIN_ME"));
+        Reset(service, $"ghcr.io/nielspilgaard/skoleoverblikket-backup-agent:{BackupAgentTag}");
         service.Profiles = [SelfHostedDb];
         service.Ports.Add("127.0.0.1:9090:9090");
         // The drill's tmpfs counts against the memory limit, so a drill can't starve Postgres.
