@@ -90,8 +90,10 @@ From the task [54](../tasks/54-move-vps.md) cutover, Postgres and the backup age
 `docker-compose.prod.yml` is generated from the Aspire AppHost: edit `ProdCompose.cs`, then run `pwsh scripts/generate-prod-compose.ps1`. Its volumes are **external**, so create them once per server before the first deploy with the profile. Compose refuses to start without them, so a typo can't start an empty database:
 
 ```bash
-for v in pgdata-a pgdata-b pg-control pg-socket wal-receive backup-agent-state; do docker volume create skoleoverblikket-$v; done
+pwsh scripts/create-prod-volumes.ps1 ubuntu@<vps>
 ```
+
+It reads the names from `docker-compose.prod.yml` and only creates the ones that are missing, so running it twice, or on a server that already has the database, changes nothing.
 
 | Variable (Dokploy env) | Description |
 | --- | --- |
