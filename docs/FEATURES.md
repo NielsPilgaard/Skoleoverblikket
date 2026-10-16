@@ -3,7 +3,7 @@
 Built features beyond the core schema planner, with the controllers and services that own them. The product is the full admin backbone for a small school, not just a schema grid.
 
 - SFO week plan (`SfoWeekPlanController`, `SfoController`) — weekly SFO schedule with print view
-- Ugeplan / weekplan (`WeekPlanController`) — per-class weekly plan with file attachments per slot, shown to parents
+- Ugeplan / weekplan (`WeekPlanController`, `WeekPlanService`) — per-class weekly plan with file attachments per slot, shown to parents
 - Vikar overview (`SubstituteController`) — free/busy staff lookup per time slot and one-click substitute assignment when a teacher or aide is out
 - Staff absence + vikardækning (`StaffAbsenceController`, `StaffAbsenceService`, `SubstituteService`) — staff report themselves absent (or the office does it for them); admin sees each affected lektion with ranked free candidates and assigns a vikar per lektion (stored on `WeekPlanSlot`, shown in ugeplan and on the staff dashboard)
 - Parent module (`ParentsController`, `ParentMeController`, `ParentInvitationsController`) — parent portal with schema/calendar/ugeplan views
@@ -19,10 +19,11 @@ Built features beyond the core schema planner, with the controllers and services
 - Bestyrelse / board module (`BoardMembersController`, `BoardInvitationsController`, `BoardFilesController`) — board member invitations and a board-only file space, separate from staff/parent files
 - Stå mål med / compliance publishing (`ComplianceCoverageController`) — lets friskoler publish teaching goals and plans per course/grade to satisfy Friskoleloven §1a public-disclosure requirements
 - Stats dashboard (`StatsController`) — school-wide overview numbers (classes, staff, schema completeness) for the admin dashboard
-- Reports (`ReportsController`) — Excel export of teacher/staff hours and UVM timetal comparisons
+- Reports (`ReportsController`) — Excel export of teacher/staff hours, hours per course, the full schema and UVM timetal comparisons
 - CSV import (`ImportsController`) — bulk import of parents/students onto existing classes, admin-only, with per-row warnings
 - Demo requests (`DemoRequestController`) — public "book a demo" form on the marketing site, emailed to sales
-- Module billing (`SubscriptionModulesController`) — parent module gated behind Stripe subscription
+- School data export (`SchoolExportController`, `SchoolExportService`) — admin downloads one ZIP with a CSV per table plus every uploaded file (GDPR art. 20 portability), still available after the subscription is canceled
+- Module billing (`SubscriptionModulesController`) — parent and board modules gated behind the Stripe subscription (see [PRICING.md](PRICING.md#modules-optional-add-ons))
 - Backoffice (`SuperAdminTenantsController`, `SuperAdminEmailPreviewController`) — isSuperAdmin role, view-as mode
 - Avatar uploads — presign+confirm pattern for Parent, Staff, Student avatars stored in OVHCloud
 - Data retention (`SchoolDeletionService`, `SchoolRetentionJob`) — 90 days after Stripe cancellation, admins are warned 7 days ahead and then all school data (rows, files, Keycloak logins) is permanently deleted
