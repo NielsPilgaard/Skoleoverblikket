@@ -104,6 +104,23 @@ export type AvailableStaffDto = {
     role: StaffRole;
 };
 
+export type BackupHealth = 'Healthy' | 'Degraded' | 'Unhealthy';
+
+export type BackupStatusDto = {
+    generatedAt: string;
+    health: BackupHealth;
+    issues?: Array<string>;
+    dataSecuredAt?: string | null;
+    lastFullBackupAt?: string | null;
+    oldestRestorableAt?: string | null;
+    retentionDays: number;
+    retentionOk: boolean;
+    lastDrillAt?: string | null;
+    lastDrillOk?: boolean | null;
+    lastDrillMinutes?: number | null;
+    sshTunnelCommand?: string | null;
+};
+
 export type BillingControllerCheckoutRequest = {
     interval: BillingInterval;
 };
@@ -4937,6 +4954,22 @@ export type GetApiV1SubstitutionsMineResponses = {
 };
 
 export type GetApiV1SubstitutionsMineResponse = GetApiV1SubstitutionsMineResponses[keyof GetApiV1SubstitutionsMineResponses];
+
+export type GetApiV1AdminBackupStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/backup-status';
+};
+
+export type GetApiV1AdminBackupStatusResponses = {
+    /**
+     * OK
+     */
+    200: BackupStatusDto;
+};
+
+export type GetApiV1AdminBackupStatusResponse = GetApiV1AdminBackupStatusResponses[keyof GetApiV1AdminBackupStatusResponses];
 
 export type GetApiV1AdminEmailPreviewStaffInvitationData = {
     body?: never;

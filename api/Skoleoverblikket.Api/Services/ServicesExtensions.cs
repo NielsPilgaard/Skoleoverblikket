@@ -29,6 +29,7 @@ public static class ServicesExtensions
 		services.AddScoped<SchoolSignupService>();
 		services.AddScoped<INotificationService, NotificationService>();
 		services.AddSingleton<UvmTimetableService>();
+		services.AddBackupStatus();
 
 		services.AddHostedService<ClassChatAttachmentSweeper>();
 		services.AddHostedService<AbsenceRetentionJob>();

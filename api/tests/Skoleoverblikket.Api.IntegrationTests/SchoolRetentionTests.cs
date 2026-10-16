@@ -18,7 +18,8 @@ namespace Skoleoverblikket.Api.IntegrationTests;
 /// The subscription is canceled through signed Stripe webhooks, then <see cref="SchoolRetentionJob"/>
 /// runs with a future "now". Covers: warning email 7 days ahead, nothing deleted before 90 days or
 /// before the warning is 7 days old, every row and file of the school deleted afterwards, other
-/// schools untouched, resubscribing stops the clock, and failed login-account deletion keeps the data.
+/// schools untouched, resubscribing stops the clock, failed login-account deletion keeps the data, and
+/// a deleted school leaves one <see cref="SchoolDeletionRecord"/> until it is out of every backup.
 /// </summary>
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
 [NotInParallel(nameof(SchoolRetentionTests))]
@@ -218,6 +219,24 @@ public sealed class SchoolRetentionTests(ApiFactory factory)
 		await Assert.That(await RowCountAsync(otherSchoolId)).IsEqualTo(otherRows);
 		await Assert.That(await FileCountAsync(otherSchoolId)).IsEqualTo(SchoolDeletionService.StoragePrefixes(otherSchoolId).Count);
 		await Assert.That(Warnings(otherAdminEmail).Count).IsEqualTo(0);
+
+		// The backup console's ledger knows the school was deleted, until it is out of every backup.
+		var records = await DeletionRecordsAsync(schoolId);
+		await Assert.That(records.Count).IsEqualTo(1);
+		await Assert.That(records[0].SchoolName).IsEqualTo("Retention Friskole");
+		await Assert.That(await DeletionRecordsAsync(otherSchoolId)).IsEmpty();
+
+		await RunAsync(canceledAt + 91 * Day + SchoolDeletionRecord.BackupRetention - Day);
+		await Assert.That((await DeletionRecordsAsync(schoolId)).Count).IsEqualTo(1);
+		await RunAsync(canceledAt + 92 * Day + SchoolDeletionRecord.BackupRetention);
+		await Assert.That(await DeletionRecordsAsync(schoolId)).IsEmpty();
+	}
+
+	private async Task<List<SchoolDeletionRecord>> DeletionRecordsAsync(Guid schoolId)
+	{
+		using var scope = factory.Services.CreateScope();
+		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+		return await db.SchoolDeletionRecords.AsNoTracking().Where(r => r.SchoolId == schoolId).ToListAsync();
 	}
 
 	[Test]

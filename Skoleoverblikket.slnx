@@ -5,7 +5,9 @@
   <Folder Name="/api/tests/">
     <Project Path="api/tests/Skoleoverblikket.Api.IntegrationTests/Skoleoverblikket.Api.IntegrationTests.csproj" />
   </Folder>
-  <Folder Name="/infrastructure/" />
+  <Folder Name="/infrastructure/">
+    <Project Path="infrastructure/backup-agent/Skoleoverblikket.BackupAgent.csproj" />
+  </Folder>
   <Folder Name="/infrastructure/aspire/">
     <Project Path="infrastructure/aspire/Skoleoverblikket.AppHost/Skoleoverblikket.AppHost.csproj" />
     <Project Path="infrastructure/aspire/Skoleoverblikket.ServiceDefaults/Skoleoverblikket.ServiceDefaults.csproj" />

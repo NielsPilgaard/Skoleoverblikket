@@ -48,6 +48,9 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 			.ForStatusCode(HttpStatusCode.Unauthorized)))
 		.Build();
 
+	/// <summary>The backup agent's ops bucket (task 60), in the same Silo as the files bucket.</summary>
+	public const string OpsBucketName = "skoleoverblikket-ops-test";
+
 	/// <summary>Every email the API sent during the test session. Filter by a per-test address.</summary>
 	public RecordingEmailSender Emails { get; } = new();
 
@@ -83,6 +86,10 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 				["ObjectStorage:DefaultBucketName"] = "skoleoverblikket-test",
 				["ObjectStorage:PublicEndpoint"] = siloUrl,
 				["ObjectStorage:PresignedUploadSigningKey"] = "test-signing-key",
+				["BackupStatus:ServiceUrl"] = siloUrl,
+				["BackupStatus:AccessKey"] = _silo.GetAccessKey(),
+				["BackupStatus:SecretKey"] = _silo.GetSecretKey(),
+				["BackupStatus:BucketName"] = OpsBucketName,
 			});
 		});
 

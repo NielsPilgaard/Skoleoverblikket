@@ -95,6 +95,7 @@ Constraints:
 
 - [tech-stack](tech-stack.md) — the EU-residency constraint this extends to AI
 - [transactional-email](transactional-email.md) — same EU-first reasoning (Scaleway also does transcription here)
+- [postgres-backup-agent](postgres-backup-agent.md) — backup drills and restores run on the VPS, never in GitHub Actions
 
 ## References
 
