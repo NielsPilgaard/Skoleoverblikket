@@ -54,19 +54,13 @@ public static class TestDataBuilder
 		return staff;
 	}
 
-	public static async Task<Course> CreateCourseAsync(IServiceProvider services, Guid tenantId, string name = "Dansk")
+	public static async Task<CoursesController.CourseDto> CreateCourseAsync(
+		IServiceProvider services, Guid tenantId, string name = "Dansk", SubjectCategory? category = null)
 	{
-		using var scope = services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-		var course = new Course
-		{
-			Id = Guid.NewGuid(),
-			TenantId = tenantId,
-			Name = name,
-		};
-		db.Courses.Add(course);
-		await db.SaveChangesAsync();
-		return course;
+		await using var scope = services.CreateAsyncScope();
+		scope.ServiceProvider.GetRequiredService<HttpTenantContext>().UseBackgroundTenant(tenantId);
+		return await scope.ServiceProvider.GetRequiredService<CourseService>()
+			.CreateCourseAsync(new CoursesController.UpsertCourseRequest(name, null, null, category), CancellationToken.None);
 	}
 
 	public static async Task<TimeSlot> CreateTimeSlotAsync(
