@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
+using Skoleoverblikket.Api.Controllers;
 using Skoleoverblikket.Api.Services;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
@@ -73,21 +74,8 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 		return (klass, schema);
 	}
 
-	private async Task<Course> CreateCourseWithCategoryAsync(SubjectCategory category, string name)
-	{
-		using var scope = _factory.Services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-		var course = new Course
-		{
-			Id = Guid.NewGuid(),
-			TenantId = _tenantId,
-			Name = name,
-			Category = category,
-		};
-		db.Courses.Add(course);
-		await db.SaveChangesAsync();
-		return course;
-	}
+	private Task<CoursesController.CourseDto> CreateCourseWithCategoryAsync(SubjectCategory category, string name) =>
+		TestDataBuilder.CreateCourseAsync(_factory.Services, _tenantId, name, category);
 
 	// ── GET /api/v1/compliance-coverage/coverage ───────────────────────────────────────
 
