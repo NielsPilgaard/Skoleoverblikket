@@ -24,7 +24,7 @@ public sealed class StaffAbsenceTests(ApiFactory factory)
 	private DateOnly _monday;
 	private TimeSlot _first = null!;
 	private TimeSlot _second = null!;
-	private Course _course = null!;
+	private CoursesController.CourseDto _course = null!;
 
 	[Before(Test)]
 	public async Task SetUp()
