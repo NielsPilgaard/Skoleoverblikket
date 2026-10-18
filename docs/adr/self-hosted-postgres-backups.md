@@ -5,7 +5,7 @@ date: '2026-04-02'
 authors: 'Niels Pilgaard Grøndahl'
 tags: ['infrastructure', 'database']
 supersedes: ''
-superseded_by: ''
+superseded_by: 'postgres-backup-agent (backup part)'
 description: >-
   PostgreSQL runs self-hosted on the OVH VPS rather than managed DBaaS, to
   avoid the ~€44/month managed-Postgres cost pre-revenue; backups use
@@ -21,6 +21,8 @@ PostgreSQL is self-hosted as a Docker Compose service on the OVH VPS — not OVH
 ## Status
 
 **Accepted** (updated 2026-04-02 — backup mechanism changed from a custom cron/script approach to Dokploy's built-in backup feature; decision to self-host rather than use managed DBaaS is unchanged)
+
+**Backup part superseded 2026-10-07** by [postgres-backup-agent](postgres-backup-agent.md): Postgres moves into compose and a backup agent streams WAL to pgBackRest (15-minute RPO, 14-day retention, weekly drill). The Dokploy `pg_dump` backups below stay in use until the task 54 cutover. Self-hosting is unchanged.
 
 ## Context
 
@@ -65,6 +67,8 @@ PostgreSQL runs self-hosted in Docker Compose on the OVH VPS. Dokploy's built-in
 - **ALT-004**: **Rejection Reason**: superseded by Dokploy's built-in backup feature, which provides the same `pg_dump`-based mechanism with scheduling, retention, and S3 destination configuration out of the box — no reason to maintain custom scripts once the platform feature existed.
 
 ## Related Decisions
+
+- [postgres-backup-agent](postgres-backup-agent.md) — supersedes the backup part of this ADR
 
 - [tech-stack](tech-stack.md) — the self-hosted PostgreSQL choice this ADR elaborates on
 - [file-storage-approach](file-storage-approach.md) — shares the same OVHCloud Object Storage destination for backups

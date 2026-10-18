@@ -4,8 +4,9 @@ namespace Skoleoverblikket.Api.Services;
 
 /// <summary>
 /// Pass every 6 hours that warns and then deletes schools whose subscription was canceled more
-/// than <see cref="SchoolDeletionService.RetentionPeriod"/> ago. Each school runs in its own DI
-/// scope pinned to that school, like <see cref="AbsenceRetentionJob"/>.
+/// than <see cref="SchoolDeletionService.RetentionPeriod"/> ago, and forgets deleted schools once they
+/// are out of every backup. Each school runs in its own DI scope pinned to that school, like
+/// <see cref="AbsenceRetentionJob"/>.
 /// </summary>
 public sealed class SchoolRetentionJob(
 	IServiceScopeFactory scopeFactory,
@@ -50,8 +51,9 @@ public sealed class SchoolRetentionJob(
 		IReadOnlyList<Guid> schoolIds;
 		await using (var scope = scopeFactory.CreateAsyncScope())
 		{
-			schoolIds = await scope.ServiceProvider.GetRequiredService<SchoolDeletionService>()
-				.ListSchoolsDueAsync(now, cancellationToken);
+			var deletion = scope.ServiceProvider.GetRequiredService<SchoolDeletionService>();
+			await deletion.PruneDeletionRecordsAsync(now, cancellationToken);
+			schoolIds = await deletion.ListSchoolsDueAsync(now, cancellationToken);
 		}
 
 		foreach (var schoolId in schoolIds)

@@ -119,4 +119,5 @@ With `CLAUDE_CODE_REMOTE=true` there is no Docker, so the steps above don't appl
 | [docs/TESTING.md](docs/TESTING.md) | Which test layer, what to skip |
 | [docs/PRICING.md](docs/PRICING.md) | Basis tier, module add-ons, trial, intervals |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production environment variables |
+| [docs/RESTORE.md](docs/RESTORE.md) | Incident runbook: backup console, restore wizard, A/B volume flip, WAL gaps, VPS gone |
 | [docs/STRIPE_LOCAL.md](docs/STRIPE_LOCAL.md) | Testing Stripe flows locally with the Stripe CLI |
