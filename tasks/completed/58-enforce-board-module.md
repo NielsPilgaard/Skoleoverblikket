@@ -8,7 +8,7 @@ description: >-
   block writes without it but still allow reads and deletes, as long as the
   subscription itself is active.
   One global filter plus one attribute, no per-action checks.
-status: 'Ready'
+status: 'Done'
 ---
 
 # Enforce paid modules in the API
@@ -25,7 +25,7 @@ No new frontend. The UI already hides the sidebar items and disables the invite 
 
 ## Context
 
-- `SubscriptionAccessFilter` ([Tenancy/SubscriptionAccessFilter.cs](../api/Skoleoverblikket.Api/Tenancy/SubscriptionAccessFilter.cs)) is the model: a global action filter that blocks writes when the subscription has expired and returns a Danish `ProblemDetails` 403.
+- `SubscriptionAccessFilter` ([Tenancy/SubscriptionAccessFilter.cs](../../api/Skoleoverblikket.Api/Tenancy/SubscriptionAccessFilter.cs)) is the model: a global action filter that blocks writes when the subscription has expired and returns a Danish `ProblemDetails` 403.
 - Today only `BillingController`, `StatsController` (a parent-related count) and `SubscriptionModulesController` read modules.
 - Board and Parent role access is spread across `ClassesController`, `SchemasController`, `StaffController`, `StatsController`, `ComplianceCoverageController`, `AttendanceController`, `SubstituteController`, `StaffAbsenceController`, `AbsenceController`, `VacationRegistrationController`, `ContactThreadsController`, `MessagesController`, `ClassChatController`, `ContactDirectoryController` and `NotificationsController`. That is why R1 checks the role in one filter instead of adding attributes to each action.
 - Since task 55 the sidebar uses `module: 'parent' | 'board'`. R2 below follows what that hides today.
@@ -65,14 +65,14 @@ The `StudentsController` row follows today's sidebar, which hides Elever without
 
 ## Scope
 
-- [ ] `RequiresModuleAttribute(SubscriptionModule module)` (class or method level) in `Tenancy/`.
-- [ ] `ModuleAccessFilter` in `Tenancy/`, registered globally after `SubscriptionAccessFilter` in `ServicesExtensions.cs`. It implements R1, then R2. 403 `ProblemDetails`:
+- [x] `RequiresModuleAttribute(SubscriptionModule module)` (class or method level) in `Tenancy/`.
+- [x] `ModuleAccessFilter` in `Tenancy/`, registered globally after `SubscriptionAccessFilter` in `ServicesExtensions.cs`. It implements R1, then R2. 403 `ProblemDetails`:
   - R1: title `Modulet er ikke aktivt`, detail `Skolen har ikke længere {Bestyrelsesmodulet|Forældremodulet}. Kontakt skolens kontor.`
   - R2: detail `Kræver {bestyrelsesmodulet|forældremodulet}. Aktivér det under Abonnement.`
-- [ ] Put the attributes on the actions in the table.
-- [ ] R3 in both invitation services, mapped to 403 in their controllers.
-- [ ] [docs/AUTHORIZATION.md](../docs/AUTHORIZATION.md): new "Paid modules" section with R1–R3 and a link to this table (or move the table there).
-- [ ] [docs/PRICING.md](../docs/PRICING.md): one line saying modules are enforced server side and what happens when one is turned off (D3).
+- [x] Put the attributes on the actions in the table.
+- [x] R3 in both invitation services, mapped to 403 in their controllers.
+- [x] [docs/AUTHORIZATION.md](../../docs/AUTHORIZATION.md): new "Paid modules" section with R1–R3 and a link to this table (or move the table there).
+- [x] [docs/PRICING.md](../../docs/PRICING.md): one line saying modules are enforced server side and what happens when one is turned off (D3).
 
 ## Testing
 

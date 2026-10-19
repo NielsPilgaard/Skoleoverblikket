@@ -24,7 +24,7 @@ status: 'Ready'
 
 ## Context
 
-Grilled 2026-10-10 while finishing [58](58-enforce-board-module.md). What happens today when one person has two roles:
+Grilled 2026-10-10 while finishing [58](completed/58-enforce-board-module.md). What happens today when one person has two roles:
 
 | Order | Result |
 |---|---|
