@@ -30,7 +30,7 @@ The short version of everything below that concerns Postgres and the backup agen
 
 **Pin the images (any time, one PR)**
 
-4. In [ProdCompose.cs](../infrastructure/aspire/Skoleoverblikket.AppHost/ProdCompose.cs), set `PostgresTag` and `BackupAgentTag` to `sha-<commit>` of a `main` commit whose publish jobs passed. Run `pwsh scripts/generate-prod-compose.ps1`, merge. The old box doesn't change: the profile is still off there.
+4. In [ProdCompose.cs](../infrastructure/aspire/Skoleoverblikket.AppHost/ProdCompose.cs), set `PostgresTag` and `BackupAgentTag` to `sha-<commit>` of a `main` commit whose publish jobs passed. Run `pwsh scripts/generate-prod-compose.ps1`, merge. The old box doesn't change: the profile is still off there. **Done 2026-10-19:** both pinned to the PR #35 merge commit `af85693`. Move a pin only when the Postgres image or the agent changes.
 
 **On the new box (rehearsal, then cutover)**
 
