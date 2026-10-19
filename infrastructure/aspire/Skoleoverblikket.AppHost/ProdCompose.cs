@@ -20,9 +20,9 @@ internal static class ProdCompose
 
     // The images prod runs, as sha-<main commit> (CI publishes both on every push to main). Pinned here,
     // not in Dokploy, so a normal deploy never restarts the database and an upgrade is a reviewed PR.
-    // Separate tags, so upgrading the agent doesn't restart Postgres. sha-PIN_ME doesn't exist on purpose.
-    private const string PostgresTag = "sha-PIN_ME";
-    private const string BackupAgentTag = "sha-PIN_ME";
+    // Separate tags, so upgrading the agent doesn't restart Postgres. Both are the PR #35 merge commit.
+    private const string PostgresTag = "sha-af85693a0235c8490b1ad2736ab30a89c04bf858";
+    private const string BackupAgentTag = "sha-af85693a0235c8490b1ad2736ab30a89c04bf858";
 
     private static string Var(string name, string? fallback = null) =>
         fallback is null ? $"${{{name}}}" : $"${{{name}:-{fallback}}}";
