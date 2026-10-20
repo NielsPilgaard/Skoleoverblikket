@@ -22,14 +22,18 @@ export default function ParentCalendarPage() {
   const [schoolStartYear, setSchoolStartYear] = useState(defaultYear)
   const { startYear, endYear } = getSchoolYears(schoolStartYear)
 
-  const { data: entriesStartYear = [] } = useQuery({
+  const startYearQuery = useQuery({
     ...getApiV1CalendarOptions({ query: { year: startYear } }),
     select: (d) => (d ?? []) as CalendarEntryDto[],
   })
-  const { data: entriesEndYear = [] } = useQuery({
+  const endYearQuery = useQuery({
     ...getApiV1CalendarOptions({ query: { year: endYear } }),
     select: (d) => (d ?? []) as CalendarEntryDto[],
   })
+  const entriesStartYear = startYearQuery.data ?? []
+  const entriesEndYear = endYearQuery.data ?? []
+  const isLoading = startYearQuery.isLoading || endYearQuery.isLoading
+  const isError = startYearQuery.isError || endYearQuery.isError
 
   const allEntries: CalendarEntryDto[] = [
     ...entriesStartYear,
@@ -85,7 +89,24 @@ export default function ParentCalendarPage() {
         </div>
       )}
 
-      {schoolYearEntries.length === 0 ? (
+      {isError ? (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-center">
+          <p className="text-red-700 text-sm font-medium">Kunne ikke hente kalenderen</p>
+          <button
+            onClick={() => {
+              startYearQuery.refetch()
+              endYearQuery.refetch()
+            }}
+            className="mt-3 px-4 py-2 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+          >
+            Prøv igen
+          </button>
+        </div>
+      ) : isLoading ? (
+        <div className="flex justify-center py-16">
+          <div className="w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : schoolYearEntries.length === 0 ? (
         <p className="text-sm text-gray-500">Ingen kalenderbegivenheder endnu.</p>
       ) : (
         <CalendarGrid
