@@ -4224,6 +4224,40 @@
         ]
       }
     },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "Me"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeController_MeDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeController_MeDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeController_MeDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/messages/inbox": {
       "get": {
         "tags": [
@@ -13106,6 +13140,48 @@
         ],
         "type": "string"
       },
+      "MeController_MeDto": {
+        "required": [
+          "isAdmin",
+          "isSuperAdmin"
+        ],
+        "type": "object",
+        "properties": {
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeController_MeRoleDto"
+            }
+          },
+          "actingAs": {
+            "type": "string",
+            "nullable": true
+          },
+          "isAdmin": {
+            "type": "boolean"
+          },
+          "isSuperAdmin": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MeController_MeRoleDto": {
+        "required": [
+          "active",
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "MessagesController_GroupPreviewDto": {
         "required": [
           "recipientCount"
@@ -16825,6 +16901,9 @@
     },
     {
       "name": "Imports"
+    },
+    {
+      "name": "Me"
     },
     {
       "name": "Messages"

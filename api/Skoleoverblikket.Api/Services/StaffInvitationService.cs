@@ -19,11 +19,39 @@ public sealed class StaffInvitationService(
 {
 	private static readonly TimeSpan InvitationValidity = TimeSpan.FromDays(14);
 
-	public async Task<StaffInvitation> CreateAndSendAsync(Staff staff, CancellationToken cancellationToken)
+	/// <summary>Null when the email belongs to a login at another school; nothing is saved then.</summary>
+	public async Task<StaffInvitation?> CreateAndSendAsync(Staff staff, CancellationToken cancellationToken)
 	{
 		if (string.IsNullOrWhiteSpace(staff.Email))
 		{
 			throw new InvalidOperationException("Staff member has no email address.");
+		}
+
+		// Find or create the login first, so an email used at another school fails before anything is saved.
+		// A new login gets a temporary password with the UPDATE_PASSWORD required action, forcing the
+		// user to choose a new password on first login. An existing login at this school is linked.
+		string? temporaryPassword = null;
+		var existingAccount = false;
+		if (string.IsNullOrWhiteSpace(staff.KeycloakSubject))
+		{
+			try
+			{
+				var password = GenerateTemporaryPassword();
+				var nameParts = staff.Name.Split(' ', 2);
+				var login = await keycloakAdmin.CreateOrFindInviteeAsync(
+					staff.Email, nameParts[0], nameParts.Length > 1 ? nameParts[1] : string.Empty, password, tenant.TenantId, cancellationToken);
+				staff.KeycloakSubject = login.Subject;
+				existingAccount = login.Existing;
+				temporaryPassword = login.Existing ? null : password;
+			}
+			catch (KeycloakUserInOtherSchoolException)
+			{
+				return null;
+			}
+			catch (KeycloakException ex)
+			{
+				logger.LogWarning(ex, "Could not pre-create Keycloak account for invited staff {Email}; invitation email will still be sent", staff.Email);
+			}
 		}
 
 		// Expire any existing pending invitations for this staff member
@@ -47,29 +75,6 @@ public sealed class StaffInvitationService(
 		db.StaffInvitations.Add(invitation);
 		await db.SaveChangesAsync(cancellationToken);
 
-		// Create a Keycloak account for the invited user if one doesn't exist yet.
-		// A temporary password is set so the user can log in; UPDATE_PASSWORD required action
-		// forces them to choose a new password immediately on first login.
-		string? temporaryPassword = null;
-		if (string.IsNullOrWhiteSpace(staff.KeycloakSubject))
-		{
-			try
-			{
-				temporaryPassword = GenerateTemporaryPassword();
-				var nameParts = staff.Name.Split(' ', 2);
-				var firstName = nameParts[0];
-				var lastName = nameParts.Length > 1 ? nameParts[1] : string.Empty;
-				var keycloakSubject = await keycloakAdmin.CreateStaffUserAsync(staff.Email, firstName, lastName, temporaryPassword, tenant.TenantId, cancellationToken);
-				staff.KeycloakSubject = keycloakSubject;
-				await db.SaveChangesAsync(cancellationToken);
-			}
-			catch (KeycloakException ex)
-			{
-				logger.LogWarning(ex, "Could not pre-create Keycloak account for invited staff {Email}; invitation email will still be sent", staff.Email);
-				temporaryPassword = null;
-			}
-		}
-
 		var school = await db.Schools
 							 .IgnoreQueryFilters()
 							 .Where(s => s.Id == tenant.TenantId)
@@ -82,8 +87,8 @@ public sealed class StaffInvitationService(
 		await email.SendAsync(new EmailMessage(
 								  To: staff.Email,
 								  Subject: StaffInvitationEmail.Subject(school),
-								  HtmlBody: StaffInvitationEmail.BuildHtml(staff.Name, school, link, temporaryPassword),
-								  PlainTextBody: StaffInvitationEmail.BuildPlainText(staff.Name, school, link, temporaryPassword)
+								  HtmlBody: StaffInvitationEmail.BuildHtml(staff.Name, school, link, temporaryPassword, existingAccount),
+								  PlainTextBody: StaffInvitationEmail.BuildPlainText(staff.Name, school, link, temporaryPassword, existingAccount)
 							  ),
 							  cancellationToken);
 

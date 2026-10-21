@@ -14,7 +14,6 @@ namespace Skoleoverblikket.Api.Controllers;
 public sealed class StaffInvitationsController(
 	AppDbContext db,
 	StaffInvitationService invitationService,
-	KeycloakAdminService keycloak,
 	ILogger<StaffInvitationsController> logger) : ControllerBase
 {
 	public record InvitationDto(
@@ -93,6 +92,14 @@ public sealed class StaffInvitationsController(
 		try
 		{
 			var invitation = await invitationService.CreateAndSendAsync(staff, cancellationToken);
+			if (invitation is null)
+			{
+				return Problem(
+					title: "E-mailadressen bruges på en anden skole",
+					detail: "Denne e-mail bruges allerede på en anden skole. Brug en anden e-mailadresse.",
+					statusCode: StatusCodes.Status409Conflict);
+			}
+
 			var withStaff = await db.StaffInvitations
 									.AsNoTracking()
 									.Include(i => i.Staff)
@@ -143,20 +150,8 @@ public sealed class StaffInvitationsController(
 				statusCode: 400);
 		}
 
+		// Admin comes from Staff.IsAdmin, which the invite already set, so there's no role to grant.
 		await invitationService.MarkAcceptedAsync(invitation, keycloakSubject, cancellationToken);
-
-		if (invitation.Staff.IsAdmin)
-		{
-			try
-			{
-				await keycloak.SetAdminRoleAsync(keycloakSubject, grant: true, cancellationToken);
-			}
-			catch (KeycloakException ex)
-			{
-				return Problem(title: "Keycloak-synkronisering fejlede", detail: ex.Message, statusCode: 502);
-			}
-		}
-
 		return NoContent();
 	}
 

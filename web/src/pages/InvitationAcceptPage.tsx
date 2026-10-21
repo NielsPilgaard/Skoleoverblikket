@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import keycloak from '../auth/keycloak'
+import { useAuth } from '../auth/useAuth'
 import CookieBanner from '../components/CookieBanner'
 import {
   postApiV1StaffInvitationsAccept,
@@ -45,6 +46,7 @@ type PageState =
 
 export default function InvitationAcceptPage() {
   const { token } = useParams<{ token: string }>()
+  const { isAdmin } = useAuth()
   const [searchParams] = useSearchParams()
   const [state, setState] = useState<PageState>('loading')
   const [preview, setPreview] = useState<InvitationPreview | null>(null)
@@ -243,16 +245,7 @@ export default function InvitationAcceptPage() {
   }
 
   if (state === 'success') {
-    const parsed = keycloak.tokenParsed as Record<string, unknown> | undefined
-    const realmAccess = parsed?.realm_access
-    const rawRoles =
-      realmAccess !== null && typeof realmAccess === 'object' && !Array.isArray(realmAccess)
-        ? (realmAccess as Record<string, unknown>).roles
-        : undefined
-    const roles = Array.isArray(rawRoles)
-      ? rawRoles.filter((r): r is string => typeof r === 'string')
-      : []
-    const destination = roles.includes('admin') ? '/dashboard' : '/mig/skema'
+    const destination = isAdmin ? '/dashboard' : '/mig/skema'
 
     return (
       <div className="min-h-screen bg-brand-50 flex items-center justify-center p-4">

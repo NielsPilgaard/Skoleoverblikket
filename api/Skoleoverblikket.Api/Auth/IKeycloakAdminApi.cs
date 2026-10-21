@@ -12,8 +12,8 @@ public interface IKeycloakAdminApi
 	[Get("/roles/{roleName}")]
 	Task<RoleRepresentation> GetRoleAsync(string roleName, CancellationToken cancellationToken);
 
-	[Post("/users/{userId}/role-mappings/realm")]
-	Task AssignRoleMappingsAsync(string userId, [Body] IReadOnlyList<RoleRepresentation> roles, CancellationToken cancellationToken);
+	[Get("/roles/{roleName}/users")]
+	Task<IReadOnlyList<UserRepresentation>> GetRoleUsersAsync(string roleName, [AliasAs("first")] int first, [AliasAs("max")] int max, CancellationToken cancellationToken);
 
 	[Delete("/users/{userId}/role-mappings/realm")]
 	Task RemoveRoleMappingsAsync(string userId, [Body] IReadOnlyList<RoleRepresentation> roles, CancellationToken cancellationToken);
@@ -48,4 +48,5 @@ public record UpdateUserRequest(
 
 public record UserRepresentation(
 	[property: JsonPropertyName("id")] string Id,
-	[property: JsonPropertyName("email")] string Email);
+	[property: JsonPropertyName("email")] string? Email,
+	[property: JsonPropertyName("attributes")] Dictionary<string, IReadOnlyList<string>>? Attributes = null);

@@ -54,6 +54,28 @@ public static class TestDataBuilder
 		return staff;
 	}
 
+	/// <summary>
+	/// A board member with a login. BoardMemberInvitationService creates the login through Keycloak,
+	/// which the default <see cref="ApiFactory"/> doesn't have, so the row is added directly.
+	/// </summary>
+	public static async Task<BoardMember> CreateBoardMemberAsync(
+		IServiceProvider services, Guid tenantId, string keycloakSubject, string name = "Bente Bestyrelse")
+	{
+		using var scope = services.CreateScope();
+		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+		var member = new BoardMember
+		{
+			Id = Guid.NewGuid(),
+			TenantId = tenantId,
+			Name = name,
+			Email = $"{keycloakSubject}@bestyrelse.test",
+			KeycloakSubject = keycloakSubject,
+		};
+		db.BoardMembers.Add(member);
+		await db.SaveChangesAsync();
+		return member;
+	}
+
 	public static async Task<CoursesController.CourseDto> CreateCourseAsync(
 		IServiceProvider services, Guid tenantId, string name = "Dansk", SubjectCategory? category = null)
 	{

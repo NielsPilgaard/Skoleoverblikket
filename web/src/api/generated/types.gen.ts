@@ -730,6 +730,18 @@ export type ImportsControllerUninvitedParentDto = {
 
 export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected';
 
+export type MeControllerMeDto = {
+    roles?: Array<MeControllerMeRoleDto>;
+    actingAs?: string | null;
+    isAdmin: boolean;
+    isSuperAdmin: boolean;
+};
+
+export type MeControllerMeRoleDto = {
+    role: string;
+    active: boolean;
+};
+
 export type MessagesControllerGroupPreviewDto = {
     recipientCount: number;
 };
@@ -3240,6 +3252,22 @@ export type PostApiV1ImportsBoardMembersResponses = {
 };
 
 export type PostApiV1ImportsBoardMembersResponse = PostApiV1ImportsBoardMembersResponses[keyof PostApiV1ImportsBoardMembersResponses];
+
+export type GetApiV1MeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/me';
+};
+
+export type GetApiV1MeResponses = {
+    /**
+     * OK
+     */
+    200: MeControllerMeDto;
+};
+
+export type GetApiV1MeResponse = GetApiV1MeResponses[keyof GetApiV1MeResponses];
 
 export type GetApiV1MessagesInboxData = {
     body?: never;

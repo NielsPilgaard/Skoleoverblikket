@@ -95,6 +95,7 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 	[Test]
 	public async Task GetCoverage_BoardRole_Returns200()
 	{
+		await TestDataBuilder.CreateBoardMemberAsync(_factory.Services, _tenantId, "board-staamaal");
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
 		client.DefaultRequestHeaders.Add("X-Test-Roles", "board");

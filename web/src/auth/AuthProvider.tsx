@@ -1,8 +1,32 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import keycloak, { getInitPromise } from './keycloak'
-import { AuthContext, type ViewAs } from './AuthContext'
-import type { StaffRole } from '../api/generated/types.gen'
-import { getApiV1StaffMe } from '../api/generated/sdk.gen'
+import { AuthContext, type SchoolRoleState, type ViewAs } from './AuthContext'
+import {
+  isSchoolRole,
+  readStoredActingAs,
+  setActingAs,
+  storeActingAs,
+  type SchoolRole,
+} from './actingAs'
+import type { MeControllerMeDto, StaffRole } from '../api/generated/types.gen'
+import { getApiV1Me, getApiV1StaffMe } from '../api/generated/sdk.gen'
+
+/**
+ * The stored "Vis som" choice if the person still holds that role and its module is on,
+ * otherwise the API's default (staff, then parent, then board, skipping roles whose module is off).
+ */
+function chooseActingAs(me: MeControllerMeDto): SchoolRole | null {
+  const stored = readStoredActingAs()
+  if (stored && (me.roles ?? []).some((r) => r.role === stored && r.active)) return stored
+  return isSchoolRole(me.actingAs) ? me.actingAs : null
+}
+
+/** Where each role lands, like HomeRedirect, which would send a superadmin to /backoffice instead. */
+function startPage(role: SchoolRole, isAdmin: boolean): string {
+  if (role === 'parent') return '/foraeldrevisning/skema'
+  if (role === 'board') return '/bestyrelse/oversigt'
+  return isAdmin ? '/dashboard' : '/mig/oversigt'
+}
 
 /**
  * Always renders children, so public pages stay mounted when Keycloak finishes initializing.
@@ -10,7 +34,10 @@ import { getApiV1StaffMe } from '../api/generated/sdk.gen'
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false)
-  const [initialized, setInitialized] = useState(false)
+  const [keycloakReady, setKeycloakReady] = useState(false)
+  const [me, setMe] = useState<MeControllerMeDto | null>(null)
+  const [rolesLoaded, setRolesLoaded] = useState(false)
+  const [actingAs, setActingAsState] = useState<SchoolRole | null>(null)
   const [staffRole, setStaffRole] = useState<StaffRole | null>(null)
   const [staffId, setStaffId] = useState<string | null>(null)
   const [viewAs, setViewAs] = useState<ViewAs>('default')
@@ -28,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getInitPromise()
       .then((auth) => {
         setAuthenticated(auth)
-        setInitialized(true)
+        setKeycloakReady(true)
 
         if (!auth) return
 
@@ -42,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }, 60_000)
       })
       .catch(() => {
-        setInitialized(true)
+        setKeycloakReady(true)
       })
 
     return () => {
@@ -53,6 +80,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!authenticated) return
+
+    // Roles come from the API (Staff, BoardMember and Parent rows), not from the Keycloak token.
+    // Asked without X-Acting-As, so the API returns its default role alongside the list.
+    getApiV1Me()
+      .then((res) => {
+        if (!res.data) return
+        const acting = chooseActingAs(res.data)
+        setActingAs(acting)
+        setActingAsState(acting)
+        setMe(res.data)
+      })
+      .catch(() => {
+        // Leaves the person without school roles; the API still enforces access.
+      })
+      .finally(() => setRolesLoaded(true))
 
     getApiV1StaffMe()
       .then((res) => {
@@ -75,34 +117,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       : typeof preferredRaw === 'string'
         ? preferredRaw
         : undefined
-  const realmAccess = parsed?.realm_access
-  const rawRoles =
-    realmAccess !== null && typeof realmAccess === 'object' && !Array.isArray(realmAccess)
-      ? (realmAccess as Record<string, unknown>).roles
-      : undefined
-  // UI-only: used for display/UI hints only. Server enforces actual authorization.
-  const roles = Array.isArray(rawRoles)
-    ? rawRoles.filter((r): r is string => typeof r === 'string')
-    : []
-  const isSuperAdmin = roles.includes('superadmin')
 
+  const schoolRoles: SchoolRoleState[] = (me?.roles ?? []).flatMap((r) =>
+    isSchoolRole(r.role) ? [{ role: r.role, active: r.active }] : []
+  )
+  // UI-only: used for display/UI hints only. Server enforces actual authorization.
+  const isSuperAdmin = me?.isSuperAdmin ?? false
   const effectiveViewAs = isSuperAdmin ? viewAs : 'default'
+  const isDefault = effectiveViewAs === 'default'
   const isAdmin =
-    effectiveViewAs === 'admin' || (effectiveViewAs === 'default' && roles.includes('admin'))
-  const isParent =
-    effectiveViewAs === 'parent' || (effectiveViewAs === 'default' && roles.includes('parent'))
-  const isBoard =
-    effectiveViewAs === 'board' || (effectiveViewAs === 'default' && roles.includes('board'))
+    effectiveViewAs === 'admin' || (isDefault && actingAs === 'staff' && (me?.isAdmin ?? false))
+  const isParent = effectiveViewAs === 'parent' || (isDefault && actingAs === 'parent')
+  const isBoard = effectiveViewAs === 'board' || (isDefault && actingAs === 'board')
 
   return (
     <AuthContext.Provider
       value={{
-        initialized,
+        initialized: keycloakReady && (!authenticated || rolesLoaded),
         authenticated,
         isAdmin,
         isParent,
         isBoard,
         isSuperAdmin,
+        schoolRoles,
+        actingAs,
+        switchRole: (role) => {
+          storeActingAs(role)
+          // A full reload re-reads every page's data as the new role and lands on its start page.
+          window.location.assign(startPage(role, me?.isAdmin ?? false))
+        },
         staffRole,
         staffId,
         token: keycloak.token,

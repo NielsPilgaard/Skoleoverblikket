@@ -94,7 +94,8 @@ export default function BoardInvitationPage() {
           <div className="text-center" data-testid="board-invitation-accepted">
             <p className="font-semibold text-gray-900">Invitation accepteret</p>
             <p className="mt-1 text-sm text-gray-500">
-              Du kan nu logge ind med din e-mail og den midlertidige adgangskode du modtog.
+              Du kan nu logge ind med din e-mail. Fik du en midlertidig adgangskode i invitationen,
+              så brug den. Ellers bruger du din eksisterende adgangskode.
             </p>
             <button
               onClick={() => navigate('/login')}

@@ -263,8 +263,9 @@ public sealed class AbsenceTests(ApiFactory factory)
 		await ReportAsync(otherParent, sibling.Id, AbsenceCategory.Illness, SickDay());
 
 		await Assert.That((await ParentRecordsAsync(_parent)).Count).IsEqualTo(0);
-		var staffList = await _parent.GetFromJsonAsync<List<AbsenceRecordDto>>("/api/v1/absence", JsonOpts);
-		await Assert.That(staffList!.Count).IsEqualTo(0);
+		// The staff register is staff-only.
+		var staffList = await _parent.GetAsync("/api/v1/absence");
+		await Assert.That(staffList.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
 	}
 
 	[Test]

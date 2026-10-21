@@ -53,7 +53,7 @@ public static class AuthExtensions
 		services.AddScoped<IAuthorizationHandler, ParentClassAccessHandler>();
 		services.AddScoped<IAuthorizationHandler, GroupMessageAuthorizationHandler>();
 		services.AddScoped<IAuthorizationHandler, TeacherDataAccessHandler>();
-		services.AddScoped<IClaimsTransformation, KeycloakRolesClaimsTransformer>();
+		services.AddScoped<IClaimsTransformation, SchoolRolesClaimsTransformer>();
 
 		return services;
 	}

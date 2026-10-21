@@ -3,6 +3,7 @@ namespace Skoleoverblikket.Api.Auth;
 public static class Roles
 {
 	public const string Admin = "admin";
+	public const string Staff = "staff";
 	public const string Parent = "parent";
 	public const string SuperAdmin = "superadmin";
 	public const string Board = "board";

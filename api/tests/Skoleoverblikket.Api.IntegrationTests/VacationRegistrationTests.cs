@@ -90,6 +90,14 @@ public sealed class VacationRegistrationTests(ApiFactory factory)
 	/// <summary>
 	/// Creates a Parent linked to the given Student in the DB.
 	/// </summary>
+	/// <summary>A parent user needs a Parent row: roles come from the database, not the token.</summary>
+	private async Task CreateParentOfNewStudentAsync(string keycloakSubject, string className)
+	{
+		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId, className);
+		var student = await CreateStudentAsync(klass.Id);
+		await CreateParentAsync(keycloakSubject, student.Id);
+	}
+
 	private async Task<Parent> CreateParentAsync(string keycloakSubject, Guid studentId, string name = "Forælder Testsen")
 	{
 		using var scope = _factory.Services.CreateScope();
@@ -240,6 +248,7 @@ public sealed class VacationRegistrationTests(ApiFactory factory)
 	{
 		var openWindow = await CreateWindowAsync(isOpen: true);
 		const string subject = "parent-open-windows";
+		await CreateParentOfNewStudentAsync(subject, "OpenWindowsClass");
 		using var parentClient = CreateParentClient(subject);
 
 		var response = await parentClient.GetAsync("/api/v1/vacation-registration/open");
@@ -466,6 +475,7 @@ public sealed class VacationRegistrationTests(ApiFactory factory)
 		var closedWindow = await CreateWindowAsync(isOpen: false);
 		var expiredWindow = await CreateWindowAsync(isOpen: true, deadlineInDays: -1);
 		var lastDayWindow = await CreateWindowAsync(isOpen: true, deadlineInDays: 0);
+		await CreateParentOfNewStudentAsync("parent-open-windows-filter", "OpenWindowsFilterClass");
 		using var parentClient = CreateParentClient("parent-open-windows-filter");
 
 		var response = await parentClient.GetAsync("/api/v1/vacation-registration/open");

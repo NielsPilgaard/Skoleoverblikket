@@ -17,7 +17,7 @@ namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/messages")]
-[Authorize]
+[Authorize(Roles = $"{Roles.Staff},{Roles.Parent}")]
 [RequiresModule(SubscriptionModule.ParentModule)]
 public sealed class MessagesController(
 	AppDbContext db,

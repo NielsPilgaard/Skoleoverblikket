@@ -6,13 +6,14 @@ internal static class ParentInvitationEmail
 {
 	internal static string Subject(string schoolName) => $"Invitation til {schoolName} på Skoleoverblikket";
 
-	internal static string BuildHtml(string name, string schoolName, string link, string? temporaryPassword)
+	internal static string BuildHtml(string name, string schoolName, string link, string? temporaryPassword, bool existingAccount = false)
 	{
 		var encodedName = HtmlEncoder.Default.Encode(name);
 		var encodedSchoolName = HtmlEncoder.Default.Encode(schoolName);
 		var encodedLink = HtmlEncoder.Default.Encode(link);
 
-		var passwordBlock = temporaryPassword is not null
+		var passwordBlock = existingAccount ? ExistingAccountNotice.Html
+			: temporaryPassword is not null
 			? $"""
 			  <div style="margin:0 0 24px;padding:16px;background:#f3f4f6;border-radius:8px;border:1px solid #e5e7eb;">
 			    <p style="margin:0 0 8px;font-size:13px;color:#6b7280;">Din midlertidige adgangskode (skal ændres ved første login):</p>
@@ -38,9 +39,10 @@ internal static class ParentInvitationEmail
 			""");
 	}
 
-	internal static string BuildPlainText(string name, string schoolName, string link, string? temporaryPassword)
+	internal static string BuildPlainText(string name, string schoolName, string link, string? temporaryPassword, bool existingAccount = false)
 	{
-		var passwordLine = temporaryPassword is not null
+		var passwordLine = existingAccount ? ExistingAccountNotice.PlainText
+			: temporaryPassword is not null
 			? $"\nDin midlertidige adgangskode: {temporaryPassword}\n(Skal ændres ved første login.)\n"
 			: string.Empty;
 

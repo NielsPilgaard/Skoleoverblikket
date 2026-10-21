@@ -15,12 +15,119 @@ public sealed class ParentInvitationService(
 	IEmailSender email,
 	IOptions<ApplicationOptions> appOptions,
 	KeycloakAdminService keycloakAdmin,
-	SubscriptionService subscriptions)
+	SchoolLoginService logins,
+	SubscriptionService subscriptions,
+	ILogger<ParentInvitationService> logger)
 {
 	private static readonly TimeSpan InvitationValidity = TimeSpan.FromDays(14);
 	private readonly string BaseUrl = appOptions.Value.SanitizedBaseUrl;
 
-	public async Task<ParentInvitation> CreateAndSendAsync(Parent parent, CancellationToken cancellationToken)
+	public enum InviteResult
+	{
+		Invited,
+		StudentsNotFound,
+
+		/// <summary>The email belongs to a login at another school.</summary>
+		EmailInOtherSchool,
+	}
+
+	/// <summary>
+	/// Creates a parent linked to <paramref name="studentIds"/>, finds or creates their login and emails
+	/// the invitation. The login is resolved before the parent is saved, so an email used at another
+	/// school leaves nothing behind. Keycloak and email failures throw.
+	/// </summary>
+	public async Task<(InviteResult Result, Guid? ParentId)> InviteAsync(
+		string name, string email, IReadOnlyList<Guid> studentIds, CancellationToken cancellationToken)
+	{
+		var students = await db.Students
+			.Where(s => studentIds.Contains(s.Id))
+			.ToListAsync(cancellationToken);
+		if (students.Count != studentIds.Count)
+		{
+			return (InviteResult.StudentsNotFound, null);
+		}
+
+		if (string.IsNullOrWhiteSpace(name))
+		{
+			throw new InvalidOperationException("Cannot create Keycloak account for a parent with an empty name.");
+		}
+
+		var temporaryPassword = GenerateTemporaryPassword();
+		KeycloakLogin login;
+		try
+		{
+			login = await FindOrCreateLoginAsync(name, email, temporaryPassword, cancellationToken);
+		}
+		catch (KeycloakUserInOtherSchoolException)
+		{
+			return (InviteResult.EmailInOtherSchool, null);
+		}
+
+		var parent = new Parent
+		{
+			Id = Guid.NewGuid(),
+			TenantId = tenant.TenantId,
+			Name = name,
+			Email = email,
+			KeycloakSubject = login.Subject,
+		};
+		foreach (var student in students)
+		{
+			parent.Students.Add(student);
+		}
+
+		db.Parents.Add(parent);
+		await db.SaveChangesAsync(cancellationToken);
+
+		await SendAsync(parent, login.Existing ? null : temporaryPassword, login.Existing, cancellationToken);
+		return (InviteResult.Invited, parent.Id);
+	}
+
+	/// <summary>
+	/// Sends a new invitation to an existing parent, creating their login if they have none.
+	/// False when the email belongs to a login at another school.
+	/// </summary>
+	public async Task<bool> ResendAsync(Parent parent, CancellationToken cancellationToken)
+	{
+		if (!string.IsNullOrWhiteSpace(parent.KeycloakSubject))
+		{
+			await SendAsync(parent, temporaryPassword: null, existingAccount: false, cancellationToken);
+			return true;
+		}
+
+		if (string.IsNullOrWhiteSpace(parent.Name))
+		{
+			throw new InvalidOperationException($"Cannot create Keycloak account for parent {parent.Id}: name is empty.");
+		}
+
+		var temporaryPassword = GenerateTemporaryPassword();
+		try
+		{
+			var login = await FindOrCreateLoginAsync(parent.Name, parent.Email, temporaryPassword, cancellationToken);
+			parent.KeycloakSubject = login.Subject;
+			await db.SaveChangesAsync(cancellationToken);
+			await SendAsync(parent, login.Existing ? null : temporaryPassword, login.Existing, cancellationToken);
+			return true;
+		}
+		catch (KeycloakUserInOtherSchoolException)
+		{
+			return false;
+		}
+	}
+
+	private Task<KeycloakLogin> FindOrCreateLoginAsync(string name, string email, string temporaryPassword, CancellationToken cancellationToken)
+	{
+		var nameParts = name.Trim().Split(' ', 2);
+		return keycloakAdmin.CreateOrFindInviteeAsync(
+			email,
+			nameParts[0],
+			nameParts.Length > 1 ? nameParts[1] : string.Empty,
+			temporaryPassword,
+			tenant.TenantId,
+			cancellationToken);
+	}
+
+	private async Task SendAsync(Parent parent, string? temporaryPassword, bool existingAccount, CancellationToken cancellationToken)
 	{
 		var pending = await db.ParentInvitations
 			.Where(i => i.ParentId == parent.Id && i.AcceptedAt == null)
@@ -41,8 +148,6 @@ public sealed class ParentInvitationService(
 		db.ParentInvitations.Add(invitation);
 		await db.SaveChangesAsync(cancellationToken);
 
-		var temporaryPassword = await EnsureKeycloakAccountAsync(parent, cancellationToken);
-
 		var school = await db.Schools
 			.IgnoreQueryFilters()
 			.Where(s => s.Id == tenant.TenantId)
@@ -54,40 +159,38 @@ public sealed class ParentInvitationService(
 		await email.SendAsync(new EmailMessage(
 			To: parent.Email,
 			Subject: ParentInvitationEmail.Subject(school),
-			HtmlBody: ParentInvitationEmail.BuildHtml(parent.Name, school, link, temporaryPassword),
-			PlainTextBody: ParentInvitationEmail.BuildPlainText(parent.Name, school, link, temporaryPassword)
+			HtmlBody: ParentInvitationEmail.BuildHtml(parent.Name, school, link, temporaryPassword, existingAccount),
+			PlainTextBody: ParentInvitationEmail.BuildPlainText(parent.Name, school, link, temporaryPassword, existingAccount)
 		), cancellationToken);
-
-		return invitation;
 	}
 
-	private async Task<string?> EnsureKeycloakAccountAsync(Parent parent, CancellationToken cancellationToken)
+	/// <summary>
+	/// Removes the parent, and their login unless they are also staff or a board member. False when
+	/// not found. A Keycloak failure is logged; the parent is removed anyway.
+	/// </summary>
+	public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
 	{
+		var parent = await db.Parents.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+		if (parent is null)
+		{
+			return false;
+		}
+
 		if (!string.IsNullOrWhiteSpace(parent.KeycloakSubject))
 		{
-
-			return null;
+			try
+			{
+				await logins.DeleteIfUnusedAsync(parent.KeycloakSubject, parent.Id, cancellationToken);
+			}
+			catch (KeycloakException ex)
+			{
+				logger.LogError(ex, "Failed to delete Keycloak account for parent {ParentId}", id);
+			}
 		}
 
-		if (string.IsNullOrWhiteSpace(parent.Name))
-		{
-
-			throw new InvalidOperationException($"Cannot create Keycloak account for parent {parent.Id}: name is empty.");
-		}
-
-		var temporaryPassword = GenerateTemporaryPassword();
-		var nameParts = parent.Name.Trim().Split(' ', 2);
-		parent.KeycloakSubject = await keycloakAdmin.CreateUserAsync(
-			parent.Email,
-			nameParts[0],
-			nameParts.Length > 1 ? nameParts[1] : string.Empty,
-			temporaryPassword,
-			tenant.TenantId,
-			realmRole: Roles.Parent,
-			forcePasswordReset: true,
-			cancellationToken);
+		db.Parents.Remove(parent);
 		await db.SaveChangesAsync(cancellationToken);
-		return temporaryPassword;
+		return true;
 	}
 
 	public async Task<ParentInvitation?> FindValidAsync(string token, CancellationToken cancellationToken) =>

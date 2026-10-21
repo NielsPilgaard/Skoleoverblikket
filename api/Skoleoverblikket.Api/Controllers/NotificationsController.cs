@@ -115,7 +115,7 @@ public sealed class NotificationsController(AppDbContext db) : ControllerBase
 				.FirstOrDefaultAsync(cancellationToken);
 			return (parentId, RecipientType.Parent);
 		}
-		else
+		else if (User.IsInRole(Roles.Staff))
 		{
 			var staffId = await db.Staff
 				.AsNoTracking()
@@ -124,6 +124,8 @@ public sealed class NotificationsController(AppDbContext db) : ControllerBase
 				.FirstOrDefaultAsync(cancellationToken);
 			return (staffId, RecipientType.Staff);
 		}
+
+		return (null, default);
 	}
 }
 
@@ -211,7 +213,7 @@ public sealed class NotificationPreferencesController(AppDbContext db, ITenantCo
 				.FirstOrDefaultAsync(cancellationToken);
 			return (parentId, RecipientType.Parent);
 		}
-		else
+		else if (User.IsInRole(Roles.Staff))
 		{
 			var staffId = await db.Staff
 				.AsNoTracking()
@@ -220,5 +222,7 @@ public sealed class NotificationPreferencesController(AppDbContext db, ITenantCo
 				.FirstOrDefaultAsync(cancellationToken);
 			return (staffId, RecipientType.Staff);
 		}
+
+		return (null, default);
 	}
 }

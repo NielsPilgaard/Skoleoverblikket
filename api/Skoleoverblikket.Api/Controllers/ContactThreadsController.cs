@@ -11,7 +11,7 @@ namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/contact-threads")]
-[Authorize]
+[Authorize(Roles = $"{Roles.Staff},{Roles.Parent}")]
 [RequiresModule(SubscriptionModule.ParentModule)]
 public sealed class ContactThreadsController(
 	AppDbContext db,

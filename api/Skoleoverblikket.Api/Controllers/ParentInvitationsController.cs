@@ -77,7 +77,11 @@ public sealed class ParentInvitationsController(
 			return NotFound();
 		}
 
-		await invitationService.CreateAndSendAsync(parent, cancellationToken);
-		return NoContent();
+		return await invitationService.ResendAsync(parent, cancellationToken)
+			? NoContent()
+			: Problem(
+			title: "E-mailadressen bruges på en anden skole",
+			detail: "Denne e-mail bruges allerede på en anden skole. Brug en anden e-mailadresse.",
+			statusCode: StatusCodes.Status409Conflict);
 	}
 }

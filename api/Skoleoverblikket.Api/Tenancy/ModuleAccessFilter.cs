@@ -9,8 +9,8 @@ namespace Skoleoverblikket.Api.Tenancy;
 
 /// <summary>
 /// Enforces the paid modules (BoardModule, ParentModule). Runs after <see cref="SubscriptionAccessFilter"/>.
-/// R1: board and parent users only exist while their module is active, so a principal acting only as
-/// such a user gets 403 without it. R2: writes (POST/PUT/PATCH) on actions marked
+/// R1: board and parent users only exist while their module is active, so a request acting as board
+/// or parent (one acting role per request, see SchoolRolesClaimsTransformer) gets 403 without it. R2: writes (POST/PUT/PATCH) on actions marked
 /// <see cref="RequiresModuleAttribute"/> get 403 without the module; GET and DELETE still work,
 /// unless the attribute sets <see cref="RequiresModuleAttribute.GatesReads"/>.
 /// A trial counts as having every module. See docs/AUTHORIZATION.md, "Paid modules".
@@ -21,9 +21,6 @@ public sealed class ModuleAccessFilter(SubscriptionService subscriptions, ITenan
 
 	private static readonly HashSet<string> WriteMethods =
 		new(StringComparer.OrdinalIgnoreCase) { "POST", "PUT", "PATCH" };
-
-	// Realm roles that decide what a principal can do. Staff have none of them.
-	private static readonly string[] AppRoles = [Roles.Admin, Roles.SuperAdmin, Roles.Board, Roles.Parent];
 
 	private static readonly (string Role, SubscriptionModule Module)[] GatedRoles =
 	[
@@ -37,10 +34,11 @@ public sealed class ModuleAccessFilter(SubscriptionService subscriptions, ITenan
 		var user = context.HttpContext.User;
 		var metadata = context.ActionDescriptor.EndpointMetadata;
 
-		var heldGatedRoles = GatedRoles.Where(g => user.IsInRole(g.Role)).ToList();
-		var checkRoles = heldGatedRoles.Count > 0
-			&& !metadata.OfType<IAllowAnonymous>().Any()
-			&& !IsModulesEndpoint(request);
+		// The module the acting role needs (R1). Staff is never gated, and the transformer leaves
+		// at most one of board and parent.
+		var roleModule = metadata.OfType<IAllowAnonymous>().Any() || IsRoleStateEndpoint(request)
+			? null
+			: GatedRoles.Where(g => user.IsInRole(g.Role)).Select(g => (SubscriptionModule?)g.Module).FirstOrDefault();
 		var isWrite = WriteMethods.Contains(request.Method);
 		var isRead = HttpMethods.IsGet(request.Method);
 		var requiredModules = metadata
@@ -50,7 +48,7 @@ public sealed class ModuleAccessFilter(SubscriptionService subscriptions, ITenan
 			.Distinct()
 			.ToList();
 
-		if (!checkRoles && requiredModules.Count == 0)
+		if (roleModule is null && requiredModules.Count == 0)
 		{
 			await next();
 			return;
@@ -61,27 +59,17 @@ public sealed class ModuleAccessFilter(SubscriptionService subscriptions, ITenan
 		var activeModules = await subscriptions.GetActiveModulesAsync(tenantContext.TenantId, context.HttpContext.RequestAborted);
 		bool IsActive(SubscriptionModule module) => activeModules.Contains(module.ToString());
 
-		if (checkRoles)
+		if (roleModule is { } module && !IsActive(module))
 		{
-			var inactiveRoles = heldGatedRoles.Where(g => !IsActive(g.Module)).ToList();
-			if (inactiveRoles.Count > 0)
-			{
-				var usableRoles = AppRoles
-					.Where(r => user.IsInRole(r) && inactiveRoles.All(g => g.Role != r))
-					.ToHashSet();
-				if (!CanActWith(usableRoles, metadata))
-				{
-					context.Result = Forbidden($"Skolen har ikke længere {ModuleName(inactiveRoles[0].Module)}. Kontakt skolens kontor.");
-					return;
-				}
-			}
+			context.Result = Forbidden($"Skolen har ikke længere {ModuleName(module)}. Kontakt skolens kontor.");
+			return;
 		}
 
-		foreach (var module in requiredModules)
+		foreach (var required in requiredModules)
 		{
-			if (!IsActive(module))
+			if (!IsActive(required))
 			{
-				context.Result = Forbidden($"Kræver {ModuleName(module).ToLowerInvariant()}. Aktivér det under Abonnement.");
+				context.Result = Forbidden($"Kræver {ModuleName(required).ToLowerInvariant()}. Aktivér det under Abonnement.");
 				return;
 			}
 		}
@@ -89,26 +77,13 @@ public sealed class ModuleAccessFilter(SubscriptionService subscriptions, ITenan
 		await next();
 	}
 
-	// The frontend reads the module state here, so a blocked user can still be shown why.
-	private static bool IsModulesEndpoint(HttpRequest request) =>
+	// The frontend reads the module state and the person's roles here, so a blocked user can still be
+	// shown why and switch to another role.
+	private static readonly string[] RoleStatePaths = ["/api/v1/modules", "/api/v1/me"];
+
+	private static bool IsRoleStateEndpoint(HttpRequest request) =>
 		HttpMethods.IsGet(request.Method)
-		&& string.Equals(request.Path.Value?.TrimEnd('/'), "/api/v1/modules", StringComparison.OrdinalIgnoreCase);
-
-	// Each [Authorize(Roles = ...)] on the controller and action must be met by a role whose module is
-	// active. Without a role list, any such role will do: a principal is only blocked when every role it
-	// holds is gated and off.
-	private static bool CanActWith(HashSet<string> usableRoles, IList<object> metadata)
-	{
-		var roleLists = metadata
-			.OfType<IAuthorizeData>()
-			.Where(a => !string.IsNullOrWhiteSpace(a.Roles))
-			.Select(a => a.Roles!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-			.ToList();
-
-		return roleLists.Count == 0
-			? usableRoles.Count > 0
-			: roleLists.All(roles => roles.Any(usableRoles.Contains));
-	}
+		&& RoleStatePaths.Contains(request.Path.Value?.TrimEnd('/'), StringComparer.OrdinalIgnoreCase);
 
 	private static string ModuleName(SubscriptionModule module) => module switch
 	{

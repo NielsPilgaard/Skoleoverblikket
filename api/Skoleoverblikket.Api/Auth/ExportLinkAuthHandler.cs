@@ -83,12 +83,14 @@ public sealed class ExportLinkAuthHandler(
 			return Task.FromResult(AuthenticateResult.Fail("Invalid or expired export link."));
 		}
 
-		// Same claims HttpTenantContext and [Authorize(Roles = Admin)] read from a Keycloak token.
+		// Same claims as a Keycloak token; SchoolRolesClaimsTransformer works out the roles from the
+		// database. Only POST school.zip/link (admin only) creates a token, so the realm_access admin role
+		// mirrors the admin's token while Keycloak's admin role still counts (Phase A of task 61).
 		var identity = new ClaimsIdentity(
 			[
 				new Claim("sub", link.Subject),
 				new Claim("tenant_id", link.TenantId.ToString()),
-				new Claim(ClaimTypes.Role, Roles.Admin),
+				new Claim("realm_access", $$"""{"roles":["{{Roles.Admin}}"]}"""),
 			],
 			SchemeName,
 			nameType: "sub",

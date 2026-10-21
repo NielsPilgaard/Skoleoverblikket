@@ -59,6 +59,7 @@ public sealed class AbsenceController(
 
 	/// <summary>The register, limited to the classes the caller may register fravær for.</summary>
 	[HttpGet]
+	[Authorize(Roles = Roles.Staff)]
 	public async Task<ActionResult<IReadOnlyList<AbsenceRecordDto>>> GetAbsences(
 		[FromQuery] Guid? classId, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] AbsenceCategory? category,
 		CancellationToken cancellationToken)
@@ -68,6 +69,7 @@ public sealed class AbsenceController(
 	}
 
 	[HttpPut("{id:guid}/category")]
+	[Authorize(Roles = Roles.Staff)]
 	[RequiresModule(SubscriptionModule.ParentModule)]
 	public async Task<IActionResult> ChangeCategory(Guid id, [FromBody] ChangeAbsenceCategoryRequest req, CancellationToken cancellationToken)
 	{
@@ -110,6 +112,7 @@ public sealed class AbsenceController(
 		DecideLeave(id, approve: false, cancellationToken);
 
 	[HttpGet("stats")]
+	[Authorize(Roles = Roles.Staff)]
 	public async Task<ActionResult<QuarterStatsDto>> GetStats(
 		[FromQuery] int year, [FromQuery] int quarter, [FromQuery] Guid? classId, CancellationToken cancellationToken)
 	{
@@ -123,6 +126,7 @@ public sealed class AbsenceController(
 	}
 
 	[HttpPost("follow-ups")]
+	[Authorize(Roles = Roles.Staff)]
 	[RequiresModule(SubscriptionModule.ParentModule)]
 	public async Task<IActionResult> MarkParentsInformed([FromBody] MarkParentsInformedRequest req, CancellationToken cancellationToken)
 	{
