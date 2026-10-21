@@ -24,6 +24,7 @@ public static class ServicesExtensions
 		services.AddScoped<WeekPlanService>();
 		services.AddScoped<RoomService>();
 		services.AddScoped<CourseService>();
+		services.AddScoped<VacationRegistrationService>();
 		services.AddScoped<SchoolDeletionService>();
 		services.AddScoped<SchoolExportService>();
 		services.AddScoped<DataProcessingAgreementService>();

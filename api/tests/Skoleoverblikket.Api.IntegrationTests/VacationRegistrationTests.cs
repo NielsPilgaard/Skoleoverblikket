@@ -115,31 +115,8 @@ public sealed class VacationRegistrationTests(ApiFactory factory)
 		return parent;
 	}
 
-	/// <summary>
-	/// Creates a VacationRegistrationWindow directly in the DB for use as test prerequisite.
-	/// </summary>
-	private async Task<VacationRegistrationWindow> CreateWindowAsync(bool isOpen = true, int deadlineInDays = 30)
-	{
-		using var scope = _factory.Services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-		var today = DateOnly.FromDateTime(DateTime.UtcNow);
-		var window = new VacationRegistrationWindow
-		{
-			Id = Guid.NewGuid(),
-			TenantId = _tenantId,
-			Title = "Sommerferie tilmelding",
-			RegistrationDeadline = today.AddDays(deadlineInDays),
-			CareStartDate = today.AddDays(60),
-			CareEndDate = today.AddDays(90),
-			Granularity = VacationRegistrationGranularity.Weeks,
-			IsOpen = isOpen,
-		};
-
-		db.VacationRegistrationWindows.Add(window);
-		await db.SaveChangesAsync();
-		return window;
-	}
+	private Task<VacationRegistrationController.WindowDto> CreateWindowAsync(bool isOpen = true, int deadlineInDays = 30) =>
+		TestDataBuilder.CreateVacationWindowAsync(_factory.Services, _tenantId, isOpen, deadlineInDays);
 
 	// ── Admin window CRUD ─────────────────────────────────────────────────────────
 

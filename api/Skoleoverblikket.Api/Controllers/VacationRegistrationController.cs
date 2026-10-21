@@ -5,14 +5,13 @@ using Skoleoverblikket.Api.Auth;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Models;
 using Skoleoverblikket.Api.Services;
-using Skoleoverblikket.Api.Tenancy;
 
 namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/vacation-registration")]
 [Authorize]
-public sealed class VacationRegistrationController(AppDbContext db, ITenantContext tenant, INotificationService notifications) : ControllerBase
+public sealed class VacationRegistrationController(AppDbContext db, VacationRegistrationService vacationRegistrations) : ControllerBase
 {
 	// ── DTOs ────────────────────────────────────────────────────────────────
 
@@ -85,76 +84,19 @@ public sealed class VacationRegistrationController(AppDbContext db, ITenantConte
 	[Authorize(Roles = Roles.Admin)]
 	public async Task<IActionResult> CreateWindow([FromBody] CreateWindowRequest req, CancellationToken cancellationToken)
 	{
-		var window = new VacationRegistrationWindow
-		{
-			TenantId = tenant.TenantId,
-			Title = req.Title,
-			RegistrationDeadline = req.RegistrationDeadline,
-			CareStartDate = req.CareStartDate,
-			CareEndDate = req.CareEndDate,
-			Granularity = req.Granularity,
-			IsOpen = req.IsOpen,
-		};
-
-		db.VacationRegistrationWindows.Add(window);
-		await db.SaveChangesAsync(cancellationToken);
-
-		if (req.IsOpen)
-		{
-			await NotifyAllParentsAsync(window, cancellationToken);
-		}
-
+		await vacationRegistrations.CreateWindowAsync(req, cancellationToken);
 		return CreatedAtAction(nameof(GetWindows), new { }, null);
 	}
 
 	[HttpPut("{id:guid}")]
 	[Authorize(Roles = Roles.Admin)]
-	public async Task<IActionResult> UpdateWindow(Guid id, [FromBody] UpdateWindowRequest req, CancellationToken cancellationToken)
-	{
-		var window = await db.VacationRegistrationWindows
-			.FirstOrDefaultAsync(w => w.Id == id, cancellationToken);
-
-		if (window is null)
-		{
-			return NotFound();
-		}
-
-		var wasOpen = window.IsOpen;
-
-		window.Title = req.Title;
-		window.RegistrationDeadline = req.RegistrationDeadline;
-		window.CareStartDate = req.CareStartDate;
-		window.CareEndDate = req.CareEndDate;
-		window.Granularity = req.Granularity;
-		window.IsOpen = req.IsOpen;
-
-		await db.SaveChangesAsync(cancellationToken);
-
-		if (!wasOpen && req.IsOpen)
-		{
-			await NotifyAllParentsAsync(window, cancellationToken);
-		}
-
-		return NoContent();
-	}
+	public async Task<IActionResult> UpdateWindow(Guid id, [FromBody] UpdateWindowRequest req, CancellationToken cancellationToken) =>
+		await vacationRegistrations.UpdateWindowAsync(id, req, cancellationToken) ? NoContent() : NotFound();
 
 	[HttpDelete("{id:guid}")]
 	[Authorize(Roles = Roles.Admin)]
-	public async Task<IActionResult> DeleteWindow(Guid id, CancellationToken cancellationToken)
-	{
-		var window = await db.VacationRegistrationWindows
-			.FirstOrDefaultAsync(w => w.Id == id, cancellationToken);
-
-		if (window is null)
-		{
-			return NotFound();
-		}
-
-		db.VacationRegistrationWindows.Remove(window);
-		await db.SaveChangesAsync(cancellationToken);
-
-		return NoContent();
-	}
+	public async Task<IActionResult> DeleteWindow(Guid id, CancellationToken cancellationToken) =>
+		await vacationRegistrations.DeleteWindowAsync(id, cancellationToken) ? NoContent() : NotFound();
 
 	[HttpGet("{id:guid}/entries")]
 	[Authorize(Roles = Roles.Admin)]
@@ -381,23 +323,5 @@ public sealed class VacationRegistrationController(AppDbContext db, ITenantConte
 		await db.SaveChangesAsync(cancellationToken);
 
 		return NoContent();
-	}
-
-	// ── Helpers ──────────────────────────────────────────────────────────────
-
-	private async Task NotifyAllParentsAsync(VacationRegistrationWindow window, CancellationToken cancellationToken)
-	{
-		var allParents = await db.Parents.AsNoTracking().ToListAsync(cancellationToken);
-
-		foreach (var parent in allParents)
-		{
-			await notifications.CreateAsync(
-				parent.Id,
-				RecipientType.Parent,
-				NotificationType.VacationRegistrationOpened,
-				window.Id,
-				$"Ferietilmelding åben: {window.Title}. Frist: {window.RegistrationDeadline:d. MMMM}.",
-				cancellationToken);
-		}
 	}
 }
