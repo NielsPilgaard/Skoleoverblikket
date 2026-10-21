@@ -8,10 +8,23 @@ description: >-
   roles come from Staff, BoardMember and Parent rows matched on the login, and the
   frontend picks the active role with a switcher and an X-Acting-As header. Keycloak
   keeps login, tenant_id and superadmin.
-status: 'Ready'
+status: 'In progress'
 ---
 
 # School roles in the API, one login with several roles
+
+## Status (2026-10-19)
+
+**Phase A is built** (D1–D9, D10 Phase A, tests, docs). Choices made while building it:
+
+- **Revoking admin still removes the Keycloak role** (`KeycloakAdminService.RemoveAdminRoleAsync`). Phase A reads that role, so a database-only revoke would leave the person admin.
+- **Keycloak `admin` only counts for a login with a Staff row or no other school row.** A former teacher who is still a parent can't keep admin through a leftover Keycloak role.
+- **`EditClassAuthorizationHandler` keeps `Staff.IsAdmin` authoritative** for anyone with a Staff row, as before. Collapsing it onto the admin claim (D9) only holds once the claim equals `Staff.IsAdmin`, so it moves to Phase B.
+- **D5:** the "acting as board" checks in Staff, Schemas and Classes stay `IsInRole(Board)`. They gate teacher data for board members and would wrongly gate parents as "not staff". Staff-only controllers got `[Authorize(Roles = Roles.Staff)]`; ContactThreads, ContactDirectory, Messages and ClassChat got `staff,parent`.
+
+**Phase B is left:** deploy, check every school has an `IsAdmin` staff member, then remove the Keycloak `admin` reading (transformer, `RemoveAdminRoleAsync`, `AdminRoleBackfillJob`, `GetAdminRoleMemberIdsAsync`, the `realm_access` claim in `ExportLinkAuthHandler`), simplify `EditClass`/`EditWeekPlan` step 2–3, and have `TestDataBuilder.CreateSchoolAsync` create an admin Staff row so tests stop sending Keycloak `admin`. Niels then deletes the realm roles.
+
+**Prod Keycloak checked (2026-10-21):** the `skoleoverblikket-admin` service account has `realm-management` `view-realm`, which the backfill's role-members lookup needs, and users can't edit `tenant_id` in the account console.
 
 ## TL;DR
 
@@ -49,7 +62,7 @@ Realm roles are global per person, but school roles are per school. A realm role
   | `parent` | a `Parent` row |
 
   Each match is on `KeycloakSubject == sub` and `TenantId == tenant_id` claim. `superadmin` stays a Keycloak realm role, because it's the operator, not a school role. `admin`, `board` and `parent` from `realm_access` are ignored, so a stale Keycloak role grants nothing. Keycloak only does login, `tenant_id` and superadmin.
-- **D2 — Where the roles are worked out.** Extend [KeycloakRolesClaimsTransformer](../api/Skoleoverblikket.Api/Auth/KeycloakRolesClaimsTransformer.cs), or replace it with a `SchoolRolesClaimsTransformer`.
+- **D2 — Where the roles are worked out.** Extend `KeycloakRolesClaimsTransformer`, or replace it with a `SchoolRolesClaimsTransformer` (done: [SchoolRolesClaimsTransformer](../api/Skoleoverblikket.Api/Auth/SchoolRolesClaimsTransformer.cs)).
   - **The query:** one per request, with all three lookups combined. Cache the result in `HttpContext.Items`, because ASP.NET can call `IClaimsTransformation` more than once per request.
   - **Tenant filter:** `HttpTenantContext` may not see the principal yet at this point. Use `IgnoreQueryFilters()` with an explicit `TenantId == tenant_id claim` filter and a comment, plus a tenant-isolation test: a subject with rows in school A gets no roles when its token says school B.
   - **Export links:** `ExportLinkAuthHandler` sets the `admin` claim itself. Keep it working: its subject is an admin, so the DB lookup gives admin back. Test it.
@@ -88,7 +101,7 @@ Realm roles are global per person, but school roles are per school. A realm role
 
 - **`X-Test-*` headers:** only read by `TestAuthHandler` in the test project. Production registers only JWT bearer and `ExportLinkAuthHandler`, which needs a single-use token signed with data protection.
 - **JWT:** validated against Authority and Audience. `MapInboundClaims = false`.
-- **`tenant_id`:** a Keycloak user attribute whose user-profile permissions are `edit: ["admin"]` in the dev realm, so users can't change it in the account console. **Check that the prod realm has the same user-profile config.**
+- **`tenant_id`:** a Keycloak user attribute whose user-profile permissions are `edit: ["admin"]` in the dev realm, so users can't change it in the account console. Prod checked 2026-10-21: users can't edit it there either.
 - **`X-Acting-As`:** can only narrow (D3).
 
 ## Files to Create/Modify
