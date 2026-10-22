@@ -42,6 +42,7 @@ These have non-empty values in `appsettings.json` that are correct for productio
 | `ObjectStorage__DefaultBucketName` | `skoleoverblikket`                                    | Only if you use a different bucket name.                           |
 | `ObjectStorage__PublicEndpoint`    | `https://s3.rbx.io.cloud.ovh.net`                | Only if the public download base URL differs from the service URL. |
 | `Smtp__Host`                       | `smtp.tem.scaleway.com`                          | Only if you switch transactional email providers.                  |
+| `Smtp__MaxRecipientsPerMessage`    | `10`                                             | When Scaleway Support raises the recipients-per-email quota. Bcc batches use one less (To takes a slot). |
 
 ---
 
