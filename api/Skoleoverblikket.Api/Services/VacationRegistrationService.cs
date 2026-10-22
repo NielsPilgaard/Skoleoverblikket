@@ -34,7 +34,7 @@ public sealed class VacationRegistrationService(AppDbContext db, ITenantContext 
 
 		if (window.IsOpen)
 		{
-			await NotifyAllParentsAsync(window, cancellationToken);
+			await NotifyAllParentsAsync(window);
 		}
 
 		return new WindowDto(
@@ -66,7 +66,7 @@ public sealed class VacationRegistrationService(AppDbContext db, ITenantContext 
 
 		if (!wasOpen && window.IsOpen)
 		{
-			await NotifyAllParentsAsync(window, cancellationToken);
+			await NotifyAllParentsAsync(window);
 		}
 
 		return true;
@@ -89,19 +89,20 @@ public sealed class VacationRegistrationService(AppDbContext db, ITenantContext 
 	}
 
 	// One batch for the whole school: preferences, inserts and e-mail lookups are a handful of queries
-	// instead of several per parent.
-	private async Task NotifyAllParentsAsync(VacationRegistrationWindow window, CancellationToken cancellationToken)
+	// instead of several per parent. Not cancellable: the window is already saved as open, so a closed tab
+	// must not leave parents unnotified, and a retry would not notify them again.
+	private async Task NotifyAllParentsAsync(VacationRegistrationWindow window)
 	{
 		var parentIds = await db.Parents
 			.AsNoTracking()
 			.Select(p => p.Id)
-			.ToListAsync(cancellationToken);
+			.ToListAsync(CancellationToken.None);
 
 		var body = $"Ferietilmelding åben: {window.Title}. Frist: {window.RegistrationDeadline:d. MMMM}.";
 
 		await notifications.CreateBatchAsync(
 			parentIds.Select(id => new NotificationRequest(
 				id, RecipientType.Parent, NotificationType.VacationRegistrationOpened, window.Id, body)),
-			cancellationToken);
+			CancellationToken.None);
 	}
 }
