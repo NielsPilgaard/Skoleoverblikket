@@ -632,7 +632,7 @@ public sealed class MessagesController(
 			try
 			{
 				var html = BuildHtml(callerName, req.Subject, req.Body, schoolName, inboxUrl, settingsUrl);
-				const int batchSize = 50;
+				var batchSize = smtpOptions.Value.BccBatchSize;
 				for (int i = 0; i < emails.Count; i += batchSize)
 				{
 					var batch = emails.Skip(i).Take(batchSize).ToList();

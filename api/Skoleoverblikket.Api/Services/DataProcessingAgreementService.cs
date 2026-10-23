@@ -153,9 +153,8 @@ public sealed class DataProcessingAgreementService(
 		// Bcc in batches so schools never see each other's addresses.
 		// A failed batch aborts the run; resending then repeats the earlier batches. Acceptable for a
 		// rare manual notice, so the log says how far it got instead of tracking delivery per batch.
-		const int BatchSize = 50;
 		var sent = 0;
-		foreach (var batch in recipients.Chunk(BatchSize))
+		foreach (var batch in recipients.Chunk(smtpOptions.Value.BccBatchSize))
 		{
 			try
 			{

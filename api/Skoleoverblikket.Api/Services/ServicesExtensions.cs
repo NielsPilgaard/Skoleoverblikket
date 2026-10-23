@@ -24,11 +24,14 @@ public static class ServicesExtensions
 		services.AddScoped<WeekPlanService>();
 		services.AddScoped<RoomService>();
 		services.AddScoped<CourseService>();
+		services.AddScoped<VacationRegistrationService>();
 		services.AddScoped<SchoolDeletionService>();
 		services.AddScoped<SchoolExportService>();
 		services.AddScoped<DataProcessingAgreementService>();
 		services.AddScoped<SchoolSignupService>();
 		services.AddScoped<INotificationService, NotificationService>();
+		services.AddSingleton<NotificationEmailQueue>();
+		services.AddHostedService(sp => sp.GetRequiredService<NotificationEmailQueue>());
 		services.AddSingleton<UvmTimetableService>();
 		services.AddBackupStatus();
 

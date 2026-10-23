@@ -8,7 +8,7 @@ using Skoleoverblikket.Api.Tenancy;
 
 namespace Skoleoverblikket.Api.Services;
 
-public sealed class NotificationService(AppDbContext db, ITenantContext tenantContext, IEmailSender email, IOptions<ApplicationOptions> appOptions) : INotificationService
+public sealed class NotificationService(AppDbContext db, ITenantContext tenantContext, NotificationEmailQueue emailQueue, IOptions<ApplicationOptions> appOptions, IOptions<SmtpOptions> smtpOptions) : INotificationService
 {
 	public async Task CreateAsync(
 		Guid recipientId,
@@ -54,12 +54,12 @@ public sealed class NotificationService(AppDbContext db, ITenantContext tenantCo
 			{
 				var baseUrl = appOptions.Value.SanitizedBaseUrl;
 				var settingsUrl = $"{baseUrl}/indstillinger/notifikationer";
-				await email.SendAsync(new EmailMessage(
+				emailQueue.Enqueue(new EmailMessage(
 					To: recipientEmail,
 					Subject: body,
 					HtmlBody: BuildHtmlEmail(body, settingsUrl),
 					PlainTextBody: BuildPlainEmail(body, settingsUrl)
-				), cancellationToken);
+				));
 			}
 		}
 	}
@@ -85,7 +85,7 @@ public sealed class NotificationService(AppDbContext db, ITenantContext tenantCo
 		var prefLookup = prefs.ToDictionary(p => (p.UserId, p.UserType, p.Type));
 
 		var now = DateTimeOffset.UtcNow;
-		var emailsToSend = new List<(string Email, string Subject, string Body)>();
+		var emailRequests = new List<NotificationRequest>();
 
 		foreach (var req in list)
 		{
@@ -110,19 +110,19 @@ public sealed class NotificationService(AppDbContext db, ITenantContext tenantCo
 
 			if (emailEnabled)
 			{
-				emailsToSend.Add((req.RecipientId.ToString(), req.Body, req.Body));
+				emailRequests.Add(req);
 			}
 		}
 
 		await db.SaveChangesAsync(cancellationToken);
 
-		if (emailsToSend.Count > 0)
+		if (emailRequests.Count > 0)
 		{
 			var baseUrl = appOptions.Value.SanitizedBaseUrl;
 			var settingsUrl = $"{baseUrl}/indstillinger/notifikationer";
 
-			var parentIds = list.Where(r => r.RecipientType == RecipientType.Parent).Select(r => r.RecipientId).Distinct().ToList();
-			var staffAndBoardIds = list.Where(r => r.RecipientType == RecipientType.Staff || r.RecipientType == RecipientType.Board).Select(r => r.RecipientId).Distinct().ToList();
+			var parentIds = emailRequests.Where(r => r.RecipientType == RecipientType.Parent).Select(r => r.RecipientId).Distinct().ToList();
+			var staffAndBoardIds = emailRequests.Where(r => r.RecipientType == RecipientType.Staff || r.RecipientType == RecipientType.Board).Select(r => r.RecipientId).Distinct().ToList();
 
 			var parentEmails = parentIds.Count > 0
 				? await db.Parents.AsNoTracking().Where(p => parentIds.Contains(p.Id) && p.Email != null)
@@ -134,29 +134,27 @@ public sealed class NotificationService(AppDbContext db, ITenantContext tenantCo
 					.ToDictionaryAsync(s => s.Id, s => s.Email!, cancellationToken)
 				: new Dictionary<Guid, string>();
 
-			foreach (var req in list)
-			{
-				prefLookup.TryGetValue((req.RecipientId, req.RecipientType, req.Type), out var pref);
-				if (!(pref?.Email ?? NotificationDefaults.EmailEnabledByDefault(req.Type)))
-				{
-					continue;
-				}
-
-				var recipientEmail = req.RecipientType == RecipientType.Parent
+			var recipientsByBody = emailRequests
+				.Select(req => (req.Body, Email: req.RecipientType == RecipientType.Parent
 					? parentEmails.GetValueOrDefault(req.RecipientId)
-					: staffEmails.GetValueOrDefault(req.RecipientId);
+					: staffEmails.GetValueOrDefault(req.RecipientId)))
+				.Where(r => !string.IsNullOrWhiteSpace(r.Email))
+				.GroupBy(r => r.Body, r => r.Email!.Trim());
 
-				if (string.IsNullOrEmpty(recipientEmail))
+			// The e-mail has nothing per recipient, so everyone with the same text shares one message in Bcc
+			// batches: a notification to every parent is a handful of SMTP sends instead of one per parent.
+			foreach (var group in recipientsByBody)
+			{
+				foreach (var batch in group.Distinct(StringComparer.OrdinalIgnoreCase).Chunk(smtpOptions.Value.BccBatchSize))
 				{
-					continue;
+					emailQueue.Enqueue(new EmailMessage(
+						To: smtpOptions.Value.FromAddress,
+						Subject: group.Key,
+						HtmlBody: BuildHtmlEmail(group.Key, settingsUrl),
+						PlainTextBody: BuildPlainEmail(group.Key, settingsUrl),
+						Bcc: batch
+					));
 				}
-
-				await email.SendAsync(new EmailMessage(
-					To: recipientEmail,
-					Subject: req.Body,
-					HtmlBody: BuildHtmlEmail(req.Body, settingsUrl),
-					PlainTextBody: BuildPlainEmail(req.Body, settingsUrl)
-				), cancellationToken);
 			}
 		}
 	}

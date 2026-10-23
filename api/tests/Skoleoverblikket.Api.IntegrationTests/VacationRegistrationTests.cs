@@ -8,6 +8,7 @@ using Skoleoverblikket.Api.Controllers;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using Skoleoverblikket.Api.Models;
+using Skoleoverblikket.Api.Services;
 
 namespace Skoleoverblikket.Api.IntegrationTests;
 
@@ -15,6 +16,7 @@ namespace Skoleoverblikket.Api.IntegrationTests;
 /// Integration tests for VacationRegistrationController.
 /// Covers:
 ///   - Admin window CRUD: create, list, update, delete, 403 for non-admin, list entries.
+///   - Parents at the school are notified once when a window opens (on create or closed → open), never for closed windows.
 ///   - Parent operations: list open windows, upsert own student, 403 for other student, 409 for closed window.
 ///   - Parent entry lifecycle: read own entries, edit without duplicating, delete, 409 after the deadline,
 ///     and closed or expired windows hidden from the parent's open list.
@@ -115,31 +117,8 @@ public sealed class VacationRegistrationTests(ApiFactory factory)
 		return parent;
 	}
 
-	/// <summary>
-	/// Creates a VacationRegistrationWindow directly in the DB for use as test prerequisite.
-	/// </summary>
-	private async Task<VacationRegistrationWindow> CreateWindowAsync(bool isOpen = true, int deadlineInDays = 30)
-	{
-		using var scope = _factory.Services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-		var today = DateOnly.FromDateTime(DateTime.UtcNow);
-		var window = new VacationRegistrationWindow
-		{
-			Id = Guid.NewGuid(),
-			TenantId = _tenantId,
-			Title = "Sommerferie tilmelding",
-			RegistrationDeadline = today.AddDays(deadlineInDays),
-			CareStartDate = today.AddDays(60),
-			CareEndDate = today.AddDays(90),
-			Granularity = VacationRegistrationGranularity.Weeks,
-			IsOpen = isOpen,
-		};
-
-		db.VacationRegistrationWindows.Add(window);
-		await db.SaveChangesAsync();
-		return window;
-	}
+	private Task<VacationRegistrationController.WindowDto> CreateWindowAsync(bool isOpen = true, int deadlineInDays = 30) =>
+		TestDataBuilder.CreateVacationWindowAsync(_factory.Services, _tenantId, isOpen, deadlineInDays);
 
 	// ── Admin window CRUD ─────────────────────────────────────────────────────────
 
@@ -231,6 +210,80 @@ public sealed class VacationRegistrationTests(ApiFactory factory)
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 		var entries = await response.Content.ReadFromJsonAsync<List<VacationRegistrationController.EntryDto>>(JsonOpts);
 		await Assert.That(entries).IsNotNull();
+	}
+
+	// ── Notifying parents when a window opens ─────────────────────────────────────
+
+	private async Task<Guid[]> CreateTwoParentsAsync()
+	{
+		var first = await CreateParentAsync($"vacation-notify-{Guid.NewGuid():N}", Guid.NewGuid());
+		var second = await CreateParentAsync($"vacation-notify-{Guid.NewGuid():N}", Guid.NewGuid());
+		return [first.Id, second.Id];
+	}
+
+	private static Guid[] NotifiedParents(Guid windowId) =>
+		NoOpNotificationService.BatchRequests
+			.Where(r => r.ReferenceId == windowId
+				&& r.Type == NotificationType.VacationRegistrationOpened
+				&& r.RecipientType == RecipientType.Parent)
+			.Select(r => r.RecipientId)
+			.Order()
+			.ToArray();
+
+	private async Task<Guid> PostWindowAsync(string title, bool isOpen)
+	{
+		var today = DateOnly.FromDateTime(DateTime.UtcNow);
+		var response = await _adminClient.PostAsJsonAsync("/api/v1/vacation-registration",
+			new VacationRegistrationController.CreateWindowRequest(
+				title, today.AddDays(14), today.AddDays(30), today.AddDays(44), VacationRegistrationGranularity.Weeks, isOpen),
+			JsonOpts);
+		response.EnsureSuccessStatusCode();
+
+		var windows = await _adminClient.GetFromJsonAsync<List<VacationRegistrationController.WindowDto>>(
+			"/api/v1/vacation-registration", JsonOpts);
+		return windows!.Single(w => w.Title == title).Id;
+	}
+
+	private async Task PutWindowAsync(Guid windowId, string title, bool isOpen)
+	{
+		var today = DateOnly.FromDateTime(DateTime.UtcNow);
+		var response = await _adminClient.PutAsJsonAsync($"/api/v1/vacation-registration/{windowId}",
+			new VacationRegistrationController.UpdateWindowRequest(
+				title, today.AddDays(14), today.AddDays(30), today.AddDays(44), VacationRegistrationGranularity.Weeks, isOpen),
+			JsonOpts);
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+	}
+
+	[Test]
+	public async Task CreateWindow_Open_NotifiesEveryParentAtTheSchoolOnly()
+	{
+		var parentIds = await CreateTwoParentsAsync();
+
+		var windowId = await PostWindowAsync("Åben fra start", isOpen: true);
+
+		await Assert.That(NotifiedParents(windowId)).IsEquivalentTo(parentIds.Order().ToArray());
+	}
+
+	[Test]
+	public async Task CreateWindow_Closed_NotifiesNoOne()
+	{
+		await CreateTwoParentsAsync();
+
+		var windowId = await PostWindowAsync("Lukket kladde", isOpen: false);
+
+		await Assert.That(NotifiedParents(windowId)).IsEmpty();
+	}
+
+	[Test]
+	public async Task UpdateWindow_ClosedToOpen_NotifiesOnce()
+	{
+		var parentIds = await CreateTwoParentsAsync();
+		var window = await CreateWindowAsync(isOpen: false);
+
+		await PutWindowAsync(window.Id, "Nu åben", isOpen: true);
+		await PutWindowAsync(window.Id, "Stadig åben, ny titel", isOpen: true);
+
+		await Assert.That(NotifiedParents(window.Id)).IsEquivalentTo(parentIds.Order().ToArray());
 	}
 
 	// ── Parent operations ─────────────────────────────────────────────────────────
