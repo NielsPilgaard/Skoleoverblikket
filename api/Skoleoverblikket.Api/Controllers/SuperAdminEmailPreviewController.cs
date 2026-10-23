@@ -18,13 +18,12 @@ public sealed class SuperAdminEmailPreviewController(IOptions<ApplicationOptions
 	public ContentResult StaffInvitation(
 		[FromQuery] string name = "Mette Hansen",
 		[FromQuery] string school = "Testskolen",
-		[FromQuery] bool withPassword = true)
+		[FromQuery] bool existingAccount = false)
 	{
 		var baseUrl = appOptions.Value.SanitizedBaseUrl;
 		var link = $"{baseUrl}/invitation/preview-token";
-		const string password = "Abc!12345xyz";
 
-		var html = StaffInvitationEmail.BuildHtml(name, school, link, withPassword ? password : null);
+		var html = StaffInvitationEmail.BuildHtml(name, school, link, existingAccount);
 		return Content(html, "text/html");
 	}
 
@@ -33,13 +32,12 @@ public sealed class SuperAdminEmailPreviewController(IOptions<ApplicationOptions
 	public ContentResult ParentInvitation(
 		[FromQuery] string name = "Lars Andersen",
 		[FromQuery] string school = "Testskolen",
-		[FromQuery] bool withPassword = true)
+		[FromQuery] bool existingAccount = false)
 	{
 		var baseUrl = appOptions.Value.SanitizedBaseUrl;
 		var link = $"{baseUrl}/parent-invitation/preview-token";
-		const string password = "Abc!12345xyz";
 
-		var html = ParentInvitationEmail.BuildHtml(name, school, link, withPassword ? password : null);
+		var html = ParentInvitationEmail.BuildHtml(name, school, link, existingAccount);
 		return Content(html, "text/html");
 	}
 

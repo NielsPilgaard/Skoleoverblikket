@@ -157,7 +157,7 @@ public sealed class StaffInvitationsController(
 
 	[HttpGet("preview")]
 	[AllowAnonymous]
-	public async Task<ActionResult> PreviewInvitation([FromQuery] string token, CancellationToken cancellationToken)
+	public async Task<ActionResult<StaffInvitationService.InvitationPreview>> PreviewInvitation([FromQuery] string token, CancellationToken cancellationToken)
 	{
 		if (string.IsNullOrEmpty(token))
 		{
@@ -169,28 +169,33 @@ public sealed class StaffInvitationsController(
 			});
 		}
 
-		var invitation = await invitationService.FindValidAsync(token, cancellationToken);
-		if (invitation is null)
-		{
-			return Problem(
+		var preview = await invitationService.PreviewAsync(token, cancellationToken);
+		return preview is null
+			? Problem(
 				title: "Ugyldig eller udløbet invitation",
 				detail: "Invitationslinket er ugyldigt eller udløbet.",
-				statusCode: 404);
-		}
+				statusCode: 404)
+			: Ok(preview);
+	}
 
-		var school = await db.Schools
-							 .IgnoreQueryFilters()
-							 .Where(s => s.Id == invitation.TenantId)
-							 .Select(s => new { s.Name })
-							 .FirstOrDefaultAsync(cancellationToken);
-
-		return Ok(new
+	/// <summary>A new invitee chooses their password. Returns tokens for their first session.</summary>
+	[HttpPost("password")]
+	[AllowAnonymous]
+	public async Task<ActionResult<InvitationLoginDto>> SetPassword([FromBody] SetInvitationPasswordRequest req, CancellationToken cancellationToken)
+	{
+		var (result, login) = await invitationService.SetPasswordAsync(req.Token, req.Password, cancellationToken);
+		return result switch
 		{
-			staffName = invitation.Staff.Name,
-			email = invitation.Email,
-			schoolName = school?.Name ?? "Skoleoverblikket",
-			expiresAt = invitation.ExpiresAt,
-		});
+			SetInvitationPasswordResult.Set => Ok(login),
+			SetInvitationPasswordResult.PasswordAlreadySet => Problem(
+				title: "Du har allerede en adgangskode",
+				detail: "Log ind med din eksisterende adgangskode.",
+				statusCode: StatusCodes.Status409Conflict),
+			_ => Problem(
+				title: "Ugyldig eller udløbet invitation",
+				detail: "Invitationslinket er ugyldigt eller udløbet.",
+				statusCode: StatusCodes.Status404NotFound),
+		};
 	}
 
 	private static InvitationDto ToDto(StaffInvitation i) => new(

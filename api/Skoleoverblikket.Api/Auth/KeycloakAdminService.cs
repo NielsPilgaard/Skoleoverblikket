@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
+using Refit;
 
 namespace Skoleoverblikket.Api.Auth;
 
@@ -15,25 +16,26 @@ public record CredentialRepresentation(
 public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTokenApi tokenApi, IOptions<KeycloakOptions> options)
 {
 	/// <summary>
-	/// The login for an invited staff member, board member or parent: a new account with a temporary
-	/// password, or the person's existing account at the same school. Roles come from the Staff,
-	/// BoardMember and Parent rows (SchoolRolesClaimsTransformer), so no realm role is assigned.
+	/// The login for an invited staff member, board member or parent: a new account without a password,
+	/// or the person's existing account at the same school. The invitee chooses the password on the
+	/// invitation page (<see cref="SetPasswordAsync"/>). Roles come from the Staff, BoardMember and
+	/// Parent rows (SchoolRolesClaimsTransformer), so no realm role is assigned.
 	/// </summary>
 	/// <exception cref="KeycloakUserInOtherSchoolException">The email belongs to a login at another school.</exception>
-	public async Task<KeycloakLogin> CreateOrFindInviteeAsync(
+	/// <returns>The login's Keycloak user id (JWT <c>sub</c>).</returns>
+	public async Task<string> CreateOrFindInviteeAsync(
 		string email,
 		string firstName,
 		string lastName,
-		string temporaryPassword,
 		Guid tenantId,
 		CancellationToken cancellationToken)
 	{
 		var createResponse = await adminApi.CreateUserAsync(
-			NewUser(email, firstName, lastName, temporaryPassword, tenantId, forcePasswordReset: true),
+			NewUser(email, firstName, lastName, password: null, tenantId),
 			cancellationToken);
 		if (createResponse.StatusCode != System.Net.HttpStatusCode.Conflict)
 		{
-			return new KeycloakLogin(await ReadCreatedUserIdAsync(createResponse, cancellationToken), Existing: false);
+			return await ReadCreatedUserIdAsync(createResponse, cancellationToken);
 		}
 
 		var existing = (await adminApi.GetUsersByEmailAsync(email, exact: true, cancellationToken)).FirstOrDefault()
@@ -47,7 +49,7 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 			throw new KeycloakUserInOtherSchoolException();
 		}
 
-		return new KeycloakLogin(existing.Id, Existing: true);
+		return existing.Id;
 	}
 
 	/// <summary>
@@ -65,7 +67,7 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 		CancellationToken cancellationToken)
 	{
 		var createResponse = await adminApi.CreateUserAsync(
-			NewUser(email, firstName, lastName, password, tenantId, forcePasswordReset: false),
+			NewUser(email, firstName, lastName, password, tenantId),
 			cancellationToken);
 		if (createResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
 		{
@@ -75,7 +77,7 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 		return await ReadCreatedUserIdAsync(createResponse, cancellationToken);
 	}
 
-	private static CreateUserRequest NewUser(string email, string firstName, string lastName, string password, Guid tenantId, bool forcePasswordReset) =>
+	private static CreateUserRequest NewUser(string email, string firstName, string lastName, string? password, Guid tenantId) =>
 		new(
 			Username: email,
 			Email: email,
@@ -83,9 +85,43 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 			LastName: lastName,
 			Enabled: true,
 			EmailVerified: true,
-			Credentials: [new CredentialRepresentation("password", password, Temporary: forcePasswordReset)],
-			Attributes: new Dictionary<string, IReadOnlyList<string>> { ["tenant_id"] = [tenantId.ToString()] },
-			RequiredActions: forcePasswordReset ? ["UPDATE_PASSWORD"] : null);
+			Credentials: password is null ? [] : [new CredentialRepresentation("password", password, Temporary: false)],
+			Attributes: new Dictionary<string, IReadOnlyList<string>> { ["tenant_id"] = [tenantId.ToString()] });
+
+	/// <summary>
+	/// True when the person has chosen a password. Logins from invitations sent before task 61 hold a
+	/// temporary password with UPDATE_PASSWORD pending; that does not count.
+	/// </summary>
+	public async Task<bool> HasOwnPasswordAsync(string keycloakUserId, CancellationToken cancellationToken)
+	{
+		try
+		{
+			var credentials = await adminApi.GetCredentialsAsync(keycloakUserId, cancellationToken);
+			if (!credentials.Any(c => c.Type == "password"))
+			{
+				return false;
+			}
+
+			var user = await adminApi.GetUserAsync(keycloakUserId, cancellationToken);
+			return user.RequiredActions?.Contains("UPDATE_PASSWORD") != true;
+		}
+		catch (ApiException ex)
+		{
+			throw new KeycloakException($"Failed to read Keycloak user {keycloakUserId}: {ex.StatusCode}");
+		}
+	}
+
+	/// <summary>Sets a permanent password. Keycloak also clears a pending UPDATE_PASSWORD.</summary>
+	public async Task SetPasswordAsync(string keycloakUserId, string password, CancellationToken cancellationToken)
+	{
+		var response = await adminApi.ResetPasswordAsync(
+			keycloakUserId, new CredentialRepresentation("password", password, Temporary: false), cancellationToken);
+		if (!response.IsSuccessStatusCode)
+		{
+			var err = await response.Content.ReadAsStringAsync(cancellationToken);
+			throw new KeycloakException($"Failed to set password for Keycloak user {keycloakUserId}: {response.StatusCode} — {err}");
+		}
+	}
 
 	private static async Task<string> ReadCreatedUserIdAsync(HttpResponseMessage createResponse, CancellationToken cancellationToken)
 	{
@@ -185,6 +221,3 @@ public sealed class KeycloakUserExistsException() : KeycloakException("A Keycloa
 /// callers that tolerate Keycloak being down must still refuse this invite.
 /// </summary>
 public sealed class KeycloakUserInOtherSchoolException() : Exception("A Keycloak user with this email belongs to another school.");
-
-/// <summary>A Keycloak login. <see cref="Existing"/> is true when the person already had an account.</summary>
-public sealed record KeycloakLogin(string Subject, bool Existing);

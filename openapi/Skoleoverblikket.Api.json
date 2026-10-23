@@ -1347,7 +1347,72 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardMemberInvitationService_InvitationPreview"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardMemberInvitationService_InvitationPreview"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardMemberInvitationService_InvitationPreview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/board-invitations/password": {
+      "post": {
+        "tags": [
+          "BoardInvitations"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetInvitationPasswordRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetInvitationPasswordRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetInvitationPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationLoginDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationLoginDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationLoginDto"
+                }
+              }
+            }
           }
         }
       }
@@ -4794,7 +4859,72 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentInvitationService_InvitationPreview"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentInvitationService_InvitationPreview"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentInvitationService_InvitationPreview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/parent-invitations/password": {
+      "post": {
+        "tags": [
+          "ParentInvitations"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetInvitationPasswordRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetInvitationPasswordRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetInvitationPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationLoginDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationLoginDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationLoginDto"
+                }
+              }
+            }
           }
         }
       }
@@ -8105,7 +8235,72 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffInvitationService_InvitationPreview"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffInvitationService_InvitationPreview"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffInvitationService_InvitationPreview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/staff-invitations/password": {
+      "post": {
+        "tags": [
+          "StaffInvitations"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetInvitationPasswordRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetInvitationPasswordRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetInvitationPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationLoginDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationLoginDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationLoginDto"
+                }
+              }
+            }
           }
         }
       }
@@ -8886,11 +9081,11 @@
             }
           },
           {
-            "name": "withPassword",
+            "name": "existingAccount",
             "in": "query",
             "schema": {
               "type": "boolean",
-              "default": true
+              "default": false
             }
           }
         ],
@@ -8929,11 +9124,11 @@
             }
           },
           {
-            "name": "withPassword",
+            "name": "existingAccount",
             "in": "query",
             "schema": {
               "type": "boolean",
-              "default": true
+              "default": false
             }
           }
         ],
@@ -11174,6 +11369,35 @@
         },
         "additionalProperties": false
       },
+      "BoardMemberInvitationService_InvitationPreview": {
+        "required": [
+          "boardMemberName",
+          "email",
+          "expiresAt",
+          "needsPassword",
+          "schoolName"
+        ],
+        "type": "object",
+        "properties": {
+          "boardMemberName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "schoolName": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "needsPassword": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "BoardMembersController_BoardMemberDto": {
         "required": [
           "canAccessTeacherData",
@@ -13132,6 +13356,22 @@
         },
         "additionalProperties": false
       },
+      "InvitationLoginDto": {
+        "required": [
+          "accessToken"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "LeaveStatus": {
         "enum": [
           "Pending",
@@ -13790,6 +14030,35 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ParentInvitationService_InvitationPreview": {
+        "required": [
+          "email",
+          "expiresAt",
+          "needsPassword",
+          "parentName",
+          "schoolName"
+        ],
+        "type": "object",
+        "properties": {
+          "parentName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "schoolName": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "needsPassword": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -14795,6 +15064,22 @@
         ],
         "type": "string"
       },
+      "SetInvitationPasswordRequest": {
+        "required": [
+          "password",
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "SfoController_SfoShiftDto": {
         "required": [
           "dayOfWeek",
@@ -15205,6 +15490,35 @@
             "$ref": "#/components/schemas/StaffRole"
           },
           "isAdmin": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StaffInvitationService_InvitationPreview": {
+        "required": [
+          "email",
+          "expiresAt",
+          "needsPassword",
+          "schoolName",
+          "staffName"
+        ],
+        "type": "object",
+        "properties": {
+          "staffName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "schoolName": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "needsPassword": {
             "type": "boolean"
           }
         },

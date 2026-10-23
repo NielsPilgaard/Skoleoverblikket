@@ -14,10 +14,12 @@ public sealed class StaffInvitationService(
 	ITenantContext tenant,
 	IEmailSender email,
 	IOptions<ApplicationOptions> appOptions,
-	KeycloakAdminService keycloakAdmin,
+	SchoolLoginService logins,
 	ILogger<StaffInvitationService> logger)
 {
 	private static readonly TimeSpan InvitationValidity = TimeSpan.FromDays(14);
+
+	public sealed record InvitationPreview(string StaffName, string Email, string SchoolName, DateTimeOffset ExpiresAt, bool NeedsPassword);
 
 	/// <summary>Null when the email belongs to a login at another school; nothing is saved then.</summary>
 	public async Task<StaffInvitation?> CreateAndSendAsync(Staff staff, CancellationToken cancellationToken)
@@ -28,30 +30,25 @@ public sealed class StaffInvitationService(
 		}
 
 		// Find or create the login first, so an email used at another school fails before anything is saved.
-		// A new login gets a temporary password with the UPDATE_PASSWORD required action, forcing the
-		// user to choose a new password on first login. An existing login at this school is linked.
-		string? temporaryPassword = null;
+		// A new login has no password; the invitee chooses one on the invitation page.
 		var existingAccount = false;
-		if (string.IsNullOrWhiteSpace(staff.KeycloakSubject))
+		try
 		{
-			try
+			if (string.IsNullOrWhiteSpace(staff.KeycloakSubject))
 			{
-				var password = GenerateTemporaryPassword();
-				var nameParts = staff.Name.Split(' ', 2);
-				var login = await keycloakAdmin.CreateOrFindInviteeAsync(
-					staff.Email, nameParts[0], nameParts.Length > 1 ? nameParts[1] : string.Empty, password, tenant.TenantId, cancellationToken);
-				staff.KeycloakSubject = login.Subject;
-				existingAccount = login.Existing;
-				temporaryPassword = login.Existing ? null : password;
+				staff.KeycloakSubject = await logins.FindOrCreateAsync(staff.Name, staff.Email, tenant.TenantId, cancellationToken);
 			}
-			catch (KeycloakUserInOtherSchoolException)
-			{
-				return null;
-			}
-			catch (KeycloakException ex)
-			{
-				logger.LogWarning(ex, "Could not pre-create Keycloak account for invited staff {Email}; invitation email will still be sent", staff.Email);
-			}
+
+			existingAccount = !await logins.NeedsPasswordAsync(staff.KeycloakSubject, cancellationToken);
+		}
+		catch (KeycloakUserInOtherSchoolException)
+		{
+			return null;
+		}
+		catch (KeycloakException ex)
+		{
+			// The invitation page creates the login when the invitee chooses a password.
+			logger.LogWarning(ex, "Could not pre-create Keycloak account for invited staff {Email}; invitation email will still be sent", staff.Email);
 		}
 
 		// Expire any existing pending invitations for this staff member
@@ -87,8 +84,8 @@ public sealed class StaffInvitationService(
 		await email.SendAsync(new EmailMessage(
 								  To: staff.Email,
 								  Subject: StaffInvitationEmail.Subject(school),
-								  HtmlBody: StaffInvitationEmail.BuildHtml(staff.Name, school, link, temporaryPassword, existingAccount),
-								  PlainTextBody: StaffInvitationEmail.BuildPlainText(staff.Name, school, link, temporaryPassword, existingAccount)
+								  HtmlBody: StaffInvitationEmail.BuildHtml(staff.Name, school, link, existingAccount),
+								  PlainTextBody: StaffInvitationEmail.BuildPlainText(staff.Name, school, link, existingAccount)
 							  ),
 							  cancellationToken);
 
@@ -102,6 +99,52 @@ public sealed class StaffInvitationService(
 				.FirstOrDefaultAsync(
 					i => i.Token == token && i.AcceptedAt == null && i.ExpiresAt > DateTimeOffset.UtcNow,
 					cancellationToken);
+
+	/// <summary>What the invitation page shows before login. Null when the token is invalid or expired.</summary>
+	public async Task<InvitationPreview?> PreviewAsync(string token, CancellationToken cancellationToken)
+	{
+		var invitation = await FindValidAsync(token, cancellationToken);
+		if (invitation is null)
+		{
+			return null;
+		}
+
+		var school = await db.Schools
+							 .IgnoreQueryFilters()
+							 .Where(s => s.Id == invitation.TenantId)
+							 .Select(s => s.Name)
+							 .FirstOrDefaultAsync(cancellationToken);
+
+		return new InvitationPreview(
+			invitation.Staff.Name,
+			invitation.Email,
+			school ?? "Skoleoverblikket",
+			invitation.ExpiresAt,
+			await logins.NeedsPasswordAsync(invitation.Staff.KeycloakSubject, cancellationToken));
+	}
+
+	/// <summary>Sets the password a new invitee chose and logs them in. The invitation is accepted afterwards.</summary>
+	public async Task<(SetInvitationPasswordResult Result, InvitationLoginDto? Login)> SetPasswordAsync(
+		string token, string password, CancellationToken cancellationToken)
+	{
+		var invitation = await FindValidAsync(token, cancellationToken);
+		if (invitation is null)
+		{
+			return (SetInvitationPasswordResult.Invalid, null);
+		}
+
+		var staff = invitation.Staff;
+		var login = await logins.SetInviteePasswordAsync(
+			staff.KeycloakSubject, staff.Name, invitation.Email, invitation.TenantId, password, cancellationToken);
+		if (login is null)
+		{
+			return (SetInvitationPasswordResult.PasswordAlreadySet, null);
+		}
+
+		staff.KeycloakSubject = login.Value.Subject;
+		await db.SaveChangesAsync(cancellationToken);
+		return (SetInvitationPasswordResult.Set, new InvitationLoginDto(login.Value.Token.AccessToken, login.Value.Token.RefreshToken));
+	}
 
 	public async Task MarkAcceptedAsync(StaffInvitation invitation, string keycloakSubject, CancellationToken cancellationToken)
 	{
@@ -139,30 +182,5 @@ public sealed class StaffInvitationService(
 					  .Replace('+', '-')
 					  .Replace('/', '_')
 					  .TrimEnd('=');
-	}
-
-	// Generates a temporary password that satisfies common Keycloak password policies:
-	// at least one uppercase, one lowercase, one digit, one special char, 12 chars total.
-	private static string GenerateTemporaryPassword()
-	{
-		const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-		const string lower = "abcdefghjkmnpqrstuvwxyz";
-		const string digits = "23456789";
-		const string special = "!@#$%&*";
-		const string all = upper + lower + digits + special;
-
-		var rng = RandomNumberGenerator.GetBytes(12);
-		var chars = new char[12];
-		chars[0] = upper[rng[0] % upper.Length];
-		chars[1] = lower[rng[1] % lower.Length];
-		chars[2] = digits[rng[2] % digits.Length];
-		chars[3] = special[rng[3] % special.Length];
-		for (var i = 4; i < 12; i++)
-		{
-			chars[i] = all[rng[i] % all.Length];
-		}
-
-		RandomNumberGenerator.Shuffle(chars.AsSpan());
-		return new string(chars);
 	}
 }

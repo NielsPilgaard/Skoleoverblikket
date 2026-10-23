@@ -51,6 +51,7 @@ public sealed class MultiRoleTests(ApiFactory factory)
 	{
 		var email = UniqueEmail("laerer-forælder");
 		var subject = await InviteTeacherAsync(email);
+		await ChoosePasswordAsync("staff-invitations", "invitation", email);
 		var studentId = await CreateStudentAsync();
 
 		var invite = await InviteParentAsync(email, studentId);
@@ -58,7 +59,6 @@ public sealed class MultiRoleTests(ApiFactory factory)
 		await Assert.That(invite.StatusCode).IsEqualTo(HttpStatusCode.Created);
 		var parentEmail = factory.Emails.To(email).Last();
 		await Assert.That(parentEmail.PlainTextBody!).Contains("Log ind med din eksisterende konto");
-		await Assert.That(parentEmail.PlainTextBody!).DoesNotContain("midlertidige adgangskode");
 
 		var person = Client(subject);
 		var me = await GetMeAsync(person);
@@ -254,6 +254,15 @@ public sealed class MultiRoleTests(ApiFactory factory)
 		var invite = await _admin.PostAsync($"/api/v1/staff-invitations/invite/{staff!.Id}", null);
 		await Assert.That(invite.StatusCode).IsEqualTo(HttpStatusCode.OK);
 		return _keycloak.SubjectFor(email);
+	}
+
+	/// <summary>The invitee chooses a password from the newest invitation link, as on the invitation page.</summary>
+	private async Task ChoosePasswordAsync(string api, string linkPath, string email)
+	{
+		var token = factory.Emails.LastInvitationToken(email, linkPath);
+		var response = await _app.CreateClient().PostAsJsonAsync(
+			$"/api/v1/{api}/password", new SetInvitationPasswordRequest(token, "mit-eget-kodeord"));
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 	}
 
 	private async Task<Guid> CreateStudentAsync()

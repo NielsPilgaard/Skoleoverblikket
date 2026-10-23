@@ -47,7 +47,8 @@ A person can be staff, parent and board member at the same school with one login
 - **`admin`** is only kept when acting as staff.
 - **`GET /api/v1/me`** lists the held roles, whether each one's module is on, the default acting role, `isAdmin` and `isSuperAdmin`. The frontend shows a "Vis som" switcher in the sidebar for two or more roles and sends the choice on every request.
 - **Removing a role never deletes a shared login** (`SchoolLoginService`): deleting a `Staff`, `BoardMember` or `Parent` row deletes the Keycloak user only when no other row in any school uses it.
-- **Inviting an existing login** links the new row to it and emails "Log ind med din eksisterende konto" instead of a temporary password. A login that belongs to another school gets 409 "Denne e-mail bruges allerede på en anden skole"; one login across several schools isn't supported yet.
+- **Invitations never email a password.** A new invitee's login has no password; the invitation page asks them to choose one (`POST /api/v1/{staff,parent,board}-invitations/password`, anonymous, the invitation token proves the email) and returns tokens so they are logged in straight away. A lost or failed email can simply be resent. The endpoint refuses (409) once the login has a password the person chose, so an invitation link can never replace it.
+- **Inviting an existing login** links the new row to it and emails "Log ind med din eksisterende konto". A login that belongs to another school gets 409 "Denne e-mail bruges allerede på en anden skole"; one login across several schools isn't supported yet.
 
 ---
 
@@ -187,6 +188,7 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 | `ContactThreadsController`, `ContactDirectoryController`, `MessagesController`, `ClassChatController` | `[Authorize(Roles = "staff,parent")]` | Board members don't use these |
 | `PUT /api/v1/week-plans/{id}/slots/{slotId}/substitute` | `EditClass` on the week plan's class | |
 | `GET /api/v1/exports/school.zip`, `POST school.zip/link` | `[Authorize(Roles = "admin")]` | |
+| `GET {staff,parent,board}-invitations/preview`, `POST …/password` | `[AllowAnonymous]` | The invitation token is the credential. `password` only sets a login's first password (409 otherwise) |
 | `GET /api/v1/exports/school.zip/download?token=…` | `ExportLink` scheme, admin | The only endpoint not authenticated by a Keycloak JWT. The token comes from `POST school.zip/link`, carries the admin's tenant and subject (data protection, signed and encrypted), lasts one minute and works once (`ExportLinkAuthHandler`) |
 
 ---
@@ -220,5 +222,3 @@ Not gated: vacation registration windows and the contact directory, which are Ba
 ## Known gaps
 
 `WeekPlanController` write endpoints (`PUT slots`, `POST/DELETE files`) enforce `[Authorize]` only — any authenticated tenant user can annotate any class's week plan, regardless of ClassPermissions. This is intentional for the teacher annotation flow but means ClassPermissions do not fully restrict week-plan writes.
-
-One login can't reliably hold two roles. Staff has no realm role, so code treats "has `board` or `parent`" as "is not staff". An invite that reuses an existing account doesn't add the role either. A teacher who is also a parent or board member therefore gets only one role, depending on invite order, and is blocked entirely when that role's module is off. [Task 61](../tasks/61-school-roles-in-api.md) moves school roles to the API to fix this.

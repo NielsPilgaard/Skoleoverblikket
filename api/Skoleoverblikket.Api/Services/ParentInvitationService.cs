@@ -14,13 +14,14 @@ public sealed class ParentInvitationService(
 	ITenantContext tenant,
 	IEmailSender email,
 	IOptions<ApplicationOptions> appOptions,
-	KeycloakAdminService keycloakAdmin,
 	SchoolLoginService logins,
 	SubscriptionService subscriptions,
 	ILogger<ParentInvitationService> logger)
 {
 	private static readonly TimeSpan InvitationValidity = TimeSpan.FromDays(14);
 	private readonly string BaseUrl = appOptions.Value.SanitizedBaseUrl;
+
+	public sealed record InvitationPreview(string ParentName, string Email, string SchoolName, DateTimeOffset ExpiresAt, bool NeedsPassword);
 
 	public enum InviteResult
 	{
@@ -52,11 +53,10 @@ public sealed class ParentInvitationService(
 			throw new InvalidOperationException("Cannot create Keycloak account for a parent with an empty name.");
 		}
 
-		var temporaryPassword = GenerateTemporaryPassword();
-		KeycloakLogin login;
+		string subject;
 		try
 		{
-			login = await FindOrCreateLoginAsync(name, email, temporaryPassword, cancellationToken);
+			subject = await logins.FindOrCreateAsync(name, email, tenant.TenantId, cancellationToken);
 		}
 		catch (KeycloakUserInOtherSchoolException)
 		{
@@ -69,7 +69,7 @@ public sealed class ParentInvitationService(
 			TenantId = tenant.TenantId,
 			Name = name,
 			Email = email,
-			KeycloakSubject = login.Subject,
+			KeycloakSubject = subject,
 		};
 		foreach (var student in students)
 		{
@@ -79,7 +79,7 @@ public sealed class ParentInvitationService(
 		db.Parents.Add(parent);
 		await db.SaveChangesAsync(cancellationToken);
 
-		await SendAsync(parent, login.Existing ? null : temporaryPassword, login.Existing, cancellationToken);
+		await SendAsync(parent, cancellationToken);
 		return (InviteResult.Invited, parent.Id);
 	}
 
@@ -89,46 +89,37 @@ public sealed class ParentInvitationService(
 	/// </summary>
 	public async Task<bool> ResendAsync(Parent parent, CancellationToken cancellationToken)
 	{
-		if (!string.IsNullOrWhiteSpace(parent.KeycloakSubject))
+		if (string.IsNullOrWhiteSpace(parent.KeycloakSubject))
 		{
-			await SendAsync(parent, temporaryPassword: null, existingAccount: false, cancellationToken);
-			return true;
-		}
+			if (string.IsNullOrWhiteSpace(parent.Name))
+			{
+				throw new InvalidOperationException($"Cannot create Keycloak account for parent {parent.Id}: name is empty.");
+			}
 
-		if (string.IsNullOrWhiteSpace(parent.Name))
-		{
-			throw new InvalidOperationException($"Cannot create Keycloak account for parent {parent.Id}: name is empty.");
-		}
+			try
+			{
+				parent.KeycloakSubject = await logins.FindOrCreateAsync(parent.Name, parent.Email, tenant.TenantId, cancellationToken);
+			}
+			catch (KeycloakUserInOtherSchoolException)
+			{
+				return false;
+			}
 
-		var temporaryPassword = GenerateTemporaryPassword();
-		try
-		{
-			var login = await FindOrCreateLoginAsync(parent.Name, parent.Email, temporaryPassword, cancellationToken);
-			parent.KeycloakSubject = login.Subject;
 			await db.SaveChangesAsync(cancellationToken);
-			await SendAsync(parent, login.Existing ? null : temporaryPassword, login.Existing, cancellationToken);
-			return true;
 		}
-		catch (KeycloakUserInOtherSchoolException)
-		{
-			return false;
-		}
+
+		await SendAsync(parent, cancellationToken);
+		return true;
 	}
 
-	private Task<KeycloakLogin> FindOrCreateLoginAsync(string name, string email, string temporaryPassword, CancellationToken cancellationToken)
+	/// <summary>
+	/// Emails a new invitation link, replacing pending ones. Nobody gets a password by email: the
+	/// invitation page asks a new invitee to choose one, so a lost or failed email can simply be resent.
+	/// </summary>
+	private async Task SendAsync(Parent parent, CancellationToken cancellationToken)
 	{
-		var nameParts = name.Trim().Split(' ', 2);
-		return keycloakAdmin.CreateOrFindInviteeAsync(
-			email,
-			nameParts[0],
-			nameParts.Length > 1 ? nameParts[1] : string.Empty,
-			temporaryPassword,
-			tenant.TenantId,
-			cancellationToken);
-	}
+		var existingAccount = !await logins.NeedsPasswordAsync(parent.KeycloakSubject, cancellationToken);
 
-	private async Task SendAsync(Parent parent, string? temporaryPassword, bool existingAccount, CancellationToken cancellationToken)
-	{
 		var pending = await db.ParentInvitations
 			.Where(i => i.ParentId == parent.Id && i.AcceptedAt == null)
 			.ToListAsync(cancellationToken);
@@ -159,8 +150,8 @@ public sealed class ParentInvitationService(
 		await email.SendAsync(new EmailMessage(
 			To: parent.Email,
 			Subject: ParentInvitationEmail.Subject(school),
-			HtmlBody: ParentInvitationEmail.BuildHtml(parent.Name, school, link, temporaryPassword, existingAccount),
-			PlainTextBody: ParentInvitationEmail.BuildPlainText(parent.Name, school, link, temporaryPassword, existingAccount)
+			HtmlBody: ParentInvitationEmail.BuildHtml(parent.Name, school, link, existingAccount),
+			PlainTextBody: ParentInvitationEmail.BuildPlainText(parent.Name, school, link, existingAccount)
 		), cancellationToken);
 	}
 
@@ -200,6 +191,52 @@ public sealed class ParentInvitationService(
 				.FirstOrDefaultAsync(
 					i => i.Token == token && i.AcceptedAt == null && i.ExpiresAt > DateTimeOffset.UtcNow,
 					cancellationToken);
+
+	/// <summary>What the invitation page shows before login. Null when the token is invalid or expired.</summary>
+	public async Task<InvitationPreview?> PreviewAsync(string token, CancellationToken cancellationToken)
+	{
+		var invitation = await FindValidAsync(token, cancellationToken);
+		if (invitation is null)
+		{
+			return null;
+		}
+
+		var school = await db.Schools
+							 .IgnoreQueryFilters()
+							 .Where(s => s.Id == invitation.TenantId)
+							 .Select(s => s.Name)
+							 .FirstOrDefaultAsync(cancellationToken);
+
+		return new InvitationPreview(
+			invitation.Parent.Name,
+			invitation.Email,
+			school ?? "Skoleoverblikket",
+			invitation.ExpiresAt,
+			await logins.NeedsPasswordAsync(invitation.Parent.KeycloakSubject, cancellationToken));
+	}
+
+	/// <summary>Sets the password a new invitee chose and logs them in. The invitation is accepted afterwards.</summary>
+	public async Task<(SetInvitationPasswordResult Result, InvitationLoginDto? Login)> SetPasswordAsync(
+		string token, string password, CancellationToken cancellationToken)
+	{
+		var invitation = await FindValidAsync(token, cancellationToken);
+		if (invitation is null)
+		{
+			return (SetInvitationPasswordResult.Invalid, null);
+		}
+
+		var parent = invitation.Parent;
+		var login = await logins.SetInviteePasswordAsync(
+			parent.KeycloakSubject, parent.Name, invitation.Email, invitation.TenantId, password, cancellationToken);
+		if (login is null)
+		{
+			return (SetInvitationPasswordResult.PasswordAlreadySet, null);
+		}
+
+		parent.KeycloakSubject = login.Value.Subject;
+		await db.SaveChangesAsync(cancellationToken);
+		return (SetInvitationPasswordResult.Set, new InvitationLoginDto(login.Value.Token.AccessToken, login.Value.Token.RefreshToken));
+	}
 
 	public async Task<InvitationAcceptResult> AcceptAsync(string token, string keycloakSubject, CancellationToken cancellationToken)
 	{
@@ -248,26 +285,4 @@ public sealed class ParentInvitationService(
 		return Convert.ToBase64String(bytes).Replace('+', '-').Replace('/', '_').TrimEnd('=');
 	}
 
-	private static string GenerateTemporaryPassword()
-	{
-		const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-		const string lower = "abcdefghjkmnpqrstuvwxyz";
-		const string digits = "23456789";
-		const string special = "!@#$%&*";
-		const string all = upper + lower + digits + special;
-
-		var rng = RandomNumberGenerator.GetBytes(12);
-		var chars = new char[12];
-		chars[0] = upper[rng[0] % upper.Length];
-		chars[1] = lower[rng[1] % lower.Length];
-		chars[2] = digits[rng[2] % digits.Length];
-		chars[3] = special[rng[3] % special.Length];
-		for (var i = 4; i < 12; i++)
-		{
-			chars[i] = all[rng[i] % all.Length];
-		}
-
-		RandomNumberGenerator.Shuffle(chars.AsSpan());
-		return new string(chars);
-	}
 }
