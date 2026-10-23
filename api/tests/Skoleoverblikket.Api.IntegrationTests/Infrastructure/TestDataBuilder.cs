@@ -244,4 +244,24 @@ public static class TestDataBuilder
 		return await scope.ServiceProvider.GetRequiredService<RoomService>()
 			.CreateRoomAsync(new RoomsController.UpsertRoomRequest(name, null, null), CancellationToken.None);
 	}
+
+	public static async Task<VacationRegistrationController.WindowDto> CreateVacationWindowAsync(
+		IServiceProvider services,
+		Guid tenantId,
+		bool isOpen = true,
+		int deadlineInDays = 30,
+		string title = "Sommerferie tilmelding")
+	{
+		await using var scope = services.CreateAsyncScope();
+		scope.ServiceProvider.GetRequiredService<HttpTenantContext>().UseBackgroundTenant(tenantId);
+		var today = DateOnly.FromDateTime(DateTime.UtcNow);
+		return await scope.ServiceProvider.GetRequiredService<VacationRegistrationService>()
+			.CreateWindowAsync(new VacationRegistrationController.CreateWindowRequest(
+				title,
+				today.AddDays(deadlineInDays),
+				today.AddDays(60),
+				today.AddDays(90),
+				VacationRegistrationGranularity.Weeks,
+				isOpen), CancellationToken.None);
+	}
 }

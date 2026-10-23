@@ -142,28 +142,9 @@ public sealed class StatsControllerTests(ApiFactory factory)
 		response.EnsureSuccessStatusCode();
 	}
 
-	private async Task<VacationRegistrationWindow> CreateWindowAsync(
-		Guid tenantId, bool isOpen, int deadlineInDays, string title = "Sommerferie tilmelding")
-	{
-		using var scope = _factory.Services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-		var today = DateOnly.FromDateTime(DateTime.UtcNow);
-		var window = new VacationRegistrationWindow
-		{
-			Id = Guid.NewGuid(),
-			TenantId = tenantId,
-			Title = title,
-			RegistrationDeadline = today.AddDays(deadlineInDays),
-			CareStartDate = today.AddDays(60),
-			CareEndDate = today.AddDays(90),
-			Granularity = VacationRegistrationGranularity.Weeks,
-			IsOpen = isOpen,
-		};
-		db.VacationRegistrationWindows.Add(window);
-		await db.SaveChangesAsync();
-		return window;
-	}
+	private Task<VacationRegistrationController.WindowDto> CreateWindowAsync(
+		Guid tenantId, bool isOpen, int deadlineInDays, string title = "Sommerferie tilmelding") =>
+		TestDataBuilder.CreateVacationWindowAsync(_factory.Services, tenantId, isOpen, deadlineInDays, title);
 
 	private async Task CreateMessageAsync(Guid tenantId, Guid recipientId, bool read)
 	{
