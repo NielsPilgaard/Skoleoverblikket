@@ -363,7 +363,7 @@ function SkeletonTable({ rows = 4 }: { rows?: number }) {
 
 export default function DashboardPage() {
   usePageTitle('Oversigt')
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isError, refetch } = useQuery({
     ...getApiV1StatsDashboardOptions(),
     staleTime: 0,
   })
@@ -390,6 +390,9 @@ export default function DashboardPage() {
     )
   }
 
+  const classesWithoutSchema = data?.unassignedClasses?.filter((c) => !c.hasSchema).length ?? 0
+  const unassignedCount = data?.unassignedClasses?.length ?? 0
+
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-8">
       {/* Header */}
@@ -402,36 +405,32 @@ export default function DashboardPage() {
       {onboarding && <OnboardingCard status={onboarding} />}
 
       {/* Attention alerts — hidden entirely when nothing needs action */}
-      {!isLoading && data && <AlertsSection data={data} />}
+      {data && <AlertsSection data={data} />}
 
       {/* Quick actions — always shown, not data-dependent */}
       <QuickActionsGrid />
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {isLoading ? (
+        {!data ? (
           Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
         ) : (
           <>
-            <StatCard label="Klasser" value={data!.classCount ?? 0} />
-            <StatCard label="Medarbejdere" value={data!.staffCount ?? 0} />
-            <StatCard label="Fag" value={data!.courseCount ?? 0} />
-            <StatCard label="Lokaler" value={data!.roomCount ?? 0} />
+            <StatCard label="Klasser" value={data.classCount ?? 0} />
+            <StatCard label="Medarbejdere" value={data.staffCount ?? 0} />
+            <StatCard label="Fag" value={data.courseCount ?? 0} />
+            <StatCard label="Lokaler" value={data.roomCount ?? 0} />
             <StatCard
               label="Færdige skemaer"
               value={
-                data!.schemasTotal === 0 ? '–' : `${data!.schemasComplete} / ${data!.schemasTotal}`
+                data.schemasTotal === 0 ? '–' : `${data.schemasComplete} / ${data.schemasTotal}`
               }
-              sub={data!.schemasTotal === 0 ? 'Ingen skemaer oprettet' : 'af de oprettede skemaer'}
+              sub={data.schemasTotal === 0 ? 'Ingen skemaer oprettet' : 'af de oprettede skemaer'}
             />
             <StatCard
               label="Klasser u. skema"
-              value={data!.unassignedClasses?.filter((c) => !c.hasSchema).length ?? 0}
-              sub={
-                (data!.unassignedClasses?.filter((c) => !c.hasSchema).length ?? 0) === 0
-                  ? 'Alle klasser har et skema'
-                  : 'mangler skema'
-              }
+              value={classesWithoutSchema}
+              sub={classesWithoutSchema === 0 ? 'Alle klasser har et skema' : 'mangler skema'}
             />
           </>
         )}
@@ -440,14 +439,14 @@ export default function DashboardPage() {
       {/* Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Hours per staff */}
-        {isLoading ? (
+        {!data ? (
           <SkeletonTable rows={5} />
         ) : (
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
               <h2 className="text-sm font-semibold text-gray-700">Timer pr. medarbejder</h2>
             </div>
-            {!data?.hoursPerStaff || data.hoursPerStaff.length === 0 ? (
+            {!data.hoursPerStaff || data.hoursPerStaff.length === 0 ? (
               <p className="px-5 py-6 text-sm text-gray-400 text-center">Ingen data endnu</p>
             ) : (
               <table className="w-full text-sm">
@@ -465,7 +464,7 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {[...(data?.hoursPerStaff ?? [])]
+                  {[...data.hoursPerStaff]
                     .sort((a, b) =>
                       new Intl.Collator('da', {
                         numeric: true,
@@ -490,14 +489,14 @@ export default function DashboardPage() {
         )}
 
         {/* Unassigned classes */}
-        {isLoading ? (
+        {!data ? (
           <SkeletonTable rows={5} />
         ) : (
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
               <h2 className="text-sm font-semibold text-gray-700">Klasser med mangler</h2>
             </div>
-            {(data!.unassignedClasses?.length ?? 0) === 0 && (data?.classCount ?? 0) > 0 ? (
+            {unassignedCount === 0 && (data.classCount ?? 0) > 0 ? (
               <div className="px-5 py-8 text-center">
                 <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-brand-50 mb-3">
                   <svg
@@ -514,7 +513,7 @@ export default function DashboardPage() {
                 </div>
                 <p className="text-sm text-gray-500">Alle klasser har et færdigt skema</p>
               </div>
-            ) : (data!.unassignedClasses?.length ?? 0) === 0 ? (
+            ) : unassignedCount === 0 ? (
               <p className="px-5 py-6 text-sm text-gray-400 text-center">
                 Ingen klasser oprettet endnu
               </p>
@@ -531,7 +530,7 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {[...(data?.unassignedClasses ?? [])]
+                  {[...(data.unassignedClasses ?? [])]
                     .sort((a, b) =>
                       new Intl.Collator('da', {
                         numeric: true,
