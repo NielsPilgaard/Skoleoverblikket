@@ -10,6 +10,8 @@ public static class ServicesExtensions
 	{
 		services.AddScoped<ConflictDetectionService>();
 		services.AddScoped<StaffInvitationService>();
+		services.AddScoped<StaffService>();
+		services.AddScoped<SchoolLoginService>();
 		services.AddScoped<ParentInvitationService>();
 		services.AddScoped<BoardMemberInvitationService>();
 		services.AddScoped<ExcelReportBuilder>();
@@ -39,6 +41,7 @@ public static class ServicesExtensions
 		services.AddHostedService<AbsenceRetentionJob>();
 		services.AddHostedService<SchoolRetentionJob>();
 		services.AddHostedService<WelcomeEmailJob>();
+		services.AddHostedService<AdminRoleBackfillJob>();
 
 		services.AddOptions<ApplicationOptions>()
 			.BindConfiguration(ApplicationOptions.SectionName)

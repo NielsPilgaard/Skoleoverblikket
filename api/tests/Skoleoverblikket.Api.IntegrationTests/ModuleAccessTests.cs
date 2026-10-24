@@ -106,13 +106,19 @@ public sealed partial class ModuleAccessTests(ApiFactory factory)
 	}
 
 	[Test]
-	public async Task AdminAndBoardUser_WithoutBoardModule_KeepsAdminAccessOnly()
+	public async Task AdminAndBoardMember_WithoutBoardModule_KeepsAdminAccessOnly()
 	{
 		await TestDataBuilder.CreateActiveSubscriptionAsync(_app.Services, _tenantId);
-		var adminAndBoard = Client($"{Roles.Admin},{Roles.Board}", "admin-and-board");
+		const string subject = "admin-and-board";
+		await TestDataBuilder.CreateStaffAsync(_app.Services, _tenantId, "Anne Admin", isAdmin: true, keycloakSubject: subject);
+		await TestDataBuilder.CreateBoardMemberAsync(_app.Services, _tenantId, subject);
 
-		await Assert.That((await adminAndBoard.GetAsync("/api/v1/board-members")).StatusCode).IsEqualTo(HttpStatusCode.OK);
-		await AssertModuleInactiveAsync(await adminAndBoard.GetAsync("/api/v1/board-members/me"));
+		// No header: board is off, so the default role is staff, with admin.
+		var person = Client("user", subject);
+		await Assert.That((await person.GetAsync("/api/v1/board-members")).StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+		person.DefaultRequestHeaders.Add(SchoolRolesClaimsTransformer.ActingAsHeader, Roles.Board);
+		await AssertModuleInactiveAsync(await person.GetAsync("/api/v1/board-members/me"));
 	}
 
 	// ── R2: admin writes on a module's features ──────────────────────────────────

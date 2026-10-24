@@ -204,6 +204,14 @@ export type BoardFilesControllerRenameFolderRequest = {
     name: string;
 };
 
+export type BoardMemberInvitationServiceInvitationPreview = {
+    boardMemberName: string;
+    email: string;
+    schoolName: string;
+    expiresAt: string;
+    needsPassword: boolean;
+};
+
 export type BoardMembersControllerBoardMemberDto = {
     id: string;
     name: string;
@@ -728,7 +736,24 @@ export type ImportsControllerUninvitedParentDto = {
     email: string;
 };
 
+export type InvitationLoginDto = {
+    accessToken: string;
+    refreshToken?: string | null;
+};
+
 export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected';
+
+export type MeControllerMeDto = {
+    roles?: Array<MeControllerMeRoleDto>;
+    actingAs?: string | null;
+    isAdmin: boolean;
+    isSuperAdmin: boolean;
+};
+
+export type MeControllerMeRoleDto = {
+    role: string;
+    active: boolean;
+};
 
 export type MessagesControllerGroupPreviewDto = {
     recipientCount: number;
@@ -866,6 +891,14 @@ export type NotificationsControllerNotificationDto = {
     createdAt: string;
     readAt?: string | null;
     referenceId?: string | null;
+};
+
+export type ParentInvitationServiceInvitationPreview = {
+    parentName: string;
+    email: string;
+    schoolName: string;
+    expiresAt: string;
+    needsPassword: boolean;
 };
 
 export type ParentMeControllerAvatarConfirmRequest = {
@@ -1134,6 +1167,11 @@ export type SchoolsControllerUpdateSchoolSettingsRequest = {
 
 export type SenderType = 'Parent' | 'Staff';
 
+export type SetInvitationPasswordRequest = {
+    token: string;
+    password: string;
+};
+
 export type SfoControllerSfoShiftDto = {
     id: string;
     dayOfWeek: number;
@@ -1243,6 +1281,14 @@ export type StaffControllerUpsertStaffRequest = {
     phone?: string | null;
     role: StaffRole;
     isAdmin: boolean;
+};
+
+export type StaffInvitationServiceInvitationPreview = {
+    staffName: string;
+    email: string;
+    schoolName: string;
+    expiresAt: string;
+    needsPassword: boolean;
 };
 
 export type StaffInvitationsControllerAcceptInvitationRequest = {
@@ -2186,8 +2232,26 @@ export type GetApiV1BoardInvitationsPreviewResponses = {
     /**
      * OK
      */
-    200: unknown;
+    200: BoardMemberInvitationServiceInvitationPreview;
 };
+
+export type GetApiV1BoardInvitationsPreviewResponse = GetApiV1BoardInvitationsPreviewResponses[keyof GetApiV1BoardInvitationsPreviewResponses];
+
+export type PostApiV1BoardInvitationsPasswordData = {
+    body?: SetInvitationPasswordRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/board-invitations/password';
+};
+
+export type PostApiV1BoardInvitationsPasswordResponses = {
+    /**
+     * OK
+     */
+    200: InvitationLoginDto;
+};
+
+export type PostApiV1BoardInvitationsPasswordResponse = PostApiV1BoardInvitationsPasswordResponses[keyof PostApiV1BoardInvitationsPasswordResponses];
 
 export type PostApiV1BoardInvitationsByTokenAcceptData = {
     body?: never;
@@ -3241,6 +3305,22 @@ export type PostApiV1ImportsBoardMembersResponses = {
 
 export type PostApiV1ImportsBoardMembersResponse = PostApiV1ImportsBoardMembersResponses[keyof PostApiV1ImportsBoardMembersResponses];
 
+export type GetApiV1MeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/me';
+};
+
+export type GetApiV1MeResponses = {
+    /**
+     * OK
+     */
+    200: MeControllerMeDto;
+};
+
+export type GetApiV1MeResponse = GetApiV1MeResponses[keyof GetApiV1MeResponses];
+
 export type GetApiV1MessagesInboxData = {
     body?: never;
     path?: never;
@@ -3458,8 +3538,26 @@ export type GetApiV1ParentInvitationsPreviewResponses = {
     /**
      * OK
      */
-    200: unknown;
+    200: ParentInvitationServiceInvitationPreview;
 };
+
+export type GetApiV1ParentInvitationsPreviewResponse = GetApiV1ParentInvitationsPreviewResponses[keyof GetApiV1ParentInvitationsPreviewResponses];
+
+export type PostApiV1ParentInvitationsPasswordData = {
+    body?: SetInvitationPasswordRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/parent-invitations/password';
+};
+
+export type PostApiV1ParentInvitationsPasswordResponses = {
+    /**
+     * OK
+     */
+    200: InvitationLoginDto;
+};
+
+export type PostApiV1ParentInvitationsPasswordResponse = PostApiV1ParentInvitationsPasswordResponses[keyof PostApiV1ParentInvitationsPasswordResponses];
 
 export type PostApiV1ParentInvitationsAcceptData = {
     body?: never;
@@ -4699,8 +4797,26 @@ export type GetApiV1StaffInvitationsPreviewResponses = {
     /**
      * OK
      */
-    200: unknown;
+    200: StaffInvitationServiceInvitationPreview;
 };
+
+export type GetApiV1StaffInvitationsPreviewResponse = GetApiV1StaffInvitationsPreviewResponses[keyof GetApiV1StaffInvitationsPreviewResponses];
+
+export type PostApiV1StaffInvitationsPasswordData = {
+    body?: SetInvitationPasswordRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/staff-invitations/password';
+};
+
+export type PostApiV1StaffInvitationsPasswordResponses = {
+    /**
+     * OK
+     */
+    200: InvitationLoginDto;
+};
+
+export type PostApiV1StaffInvitationsPasswordResponse = PostApiV1StaffInvitationsPasswordResponses[keyof PostApiV1StaffInvitationsPasswordResponses];
 
 export type PostApiV1StaffMeAvatarPresignData = {
     body?: StaffMeControllerAvatarPresignRequest;
@@ -4977,7 +5093,7 @@ export type GetApiV1AdminEmailPreviewStaffInvitationData = {
     query?: {
         name?: string;
         school?: string;
-        withPassword?: boolean;
+        existingAccount?: boolean;
     };
     url: '/api/v1/admin/email-preview/staff-invitation';
 };
@@ -4995,7 +5111,7 @@ export type GetApiV1AdminEmailPreviewParentInvitationData = {
     query?: {
         name?: string;
         school?: string;
-        withPassword?: boolean;
+        existingAccount?: boolean;
     };
     url: '/api/v1/admin/email-preview/parent-invitation';
 };

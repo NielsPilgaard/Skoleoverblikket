@@ -1,46 +1,44 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Skoleoverblikket.Api.Auth;
-using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Services;
 
 namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/board-invitations")]
-public sealed class BoardInvitationsController(
-	AppDbContext db,
-	BoardMemberInvitationService invitationService) : ControllerBase
+public sealed class BoardInvitationsController(BoardMemberInvitationService invitationService) : ControllerBase
 {
 	[HttpGet("preview")]
 	[AllowAnonymous]
-	public async Task<ActionResult> Preview([FromQuery] string token, CancellationToken cancellationToken)
+	public async Task<ActionResult<BoardMemberInvitationService.InvitationPreview>> Preview([FromQuery] string token, CancellationToken cancellationToken)
 	{
 		if (string.IsNullOrEmpty(token))
 		{
 			return BadRequest(new ProblemDetails { Title = "Token mangler" });
 		}
 
-		var invitation = await invitationService.FindValidAsync(token, cancellationToken);
-		if (invitation is null)
-		{
-			return Problem(title: "Ugyldig eller udløbet invitation", statusCode: 404);
-		}
+		var preview = await invitationService.PreviewAsync(token, cancellationToken);
+		return preview is null ? Problem(title: "Ugyldig eller udløbet invitation", statusCode: 404) : Ok(preview);
+	}
 
-		var school = await db.Schools
-			.IgnoreQueryFilters()
-			.Where(s => s.Id == invitation.TenantId)
-			.Select(s => s.Name)
-			.FirstOrDefaultAsync(cancellationToken);
-
-		return Ok(new
+	/// <summary>A new invitee chooses their password. Returns tokens for their first session.</summary>
+	[HttpPost("password")]
+	[AllowAnonymous]
+	public async Task<ActionResult<InvitationLoginDto>> SetPassword([FromBody] SetInvitationPasswordRequest req, CancellationToken cancellationToken)
+	{
+		var (result, login) = await invitationService.SetPasswordAsync(req.Token, req.Password, cancellationToken);
+		return result switch
 		{
-			boardMemberName = invitation.BoardMember.Name,
-			email = invitation.Email,
-			schoolName = school ?? "Skoleoverblikket",
-			expiresAt = invitation.ExpiresAt,
-		});
+			SetInvitationPasswordResult.Set => Ok(login),
+			SetInvitationPasswordResult.PasswordAlreadySet => Problem(
+				title: "Du har allerede en adgangskode",
+				detail: "Log ind med din eksisterende adgangskode.",
+				statusCode: StatusCodes.Status409Conflict),
+			_ => Problem(
+				title: "Ugyldig eller udløbet invitation",
+				detail: "Invitationslinket er ugyldigt eller udløbet.",
+				statusCode: StatusCodes.Status404NotFound),
+		};
 	}
 
 	[HttpPost("{token}/accept")]

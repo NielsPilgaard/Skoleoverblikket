@@ -41,7 +41,7 @@ export default function BackofficeEmailPreviewPage() {
   const [type, setType] = useState<EmailType>(initialType)
   const [name, setName] = useState('Mette Hansen')
   const [school, setSchool] = useState('Testskolen')
-  const [withPassword, setWithPassword] = useState(true)
+  const [existingAccount, setExistingAccount] = useState(false)
   const [notificationBody, setNotificationBody] = useState(
     'Dit barns skema er blevet opdateret for uge 22.'
   )
@@ -66,7 +66,7 @@ export default function BackofficeEmailPreviewPage() {
     } else {
       params.name = name
       params.school = school
-      params.withPassword = String(withPassword)
+      params.existingAccount = String(existingAccount)
     }
 
     fetchEmailPreview(type, params)
@@ -75,7 +75,7 @@ export default function BackofficeEmailPreviewPage() {
         setError(null)
       })
       .catch((e) => setError(String(e)))
-  }, [type, name, school, withPassword, notificationBody, change])
+  }, [type, name, school, existingAccount, notificationBody, change])
 
   const isInvitation = type === 'staff-invitation' || type === 'parent-invitation'
 
@@ -137,11 +137,11 @@ export default function BackofficeEmailPreviewPage() {
             <label className="flex items-center gap-2 text-sm text-gray-700 pb-1.5">
               <input
                 type="checkbox"
-                checked={withPassword}
-                onChange={(e) => setWithPassword(e.target.checked)}
+                checked={existingAccount}
+                onChange={(e) => setExistingAccount(e.target.checked)}
                 className="rounded"
               />
-              Med midlertidig adgangskode
+              Har allerede en konto
             </label>
           )}
 

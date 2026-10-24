@@ -6,13 +6,40 @@ const keycloak = new Keycloak({
   clientId: 'skoleoverblikket-web',
 })
 
-// Module-level promise so init() is only ever called once,
-// even if AuthProvider mounts twice (React 18 Strict Mode).
 const SIGNUP_TOKEN_KEY = 'skoleoverblikket_signup_token'
 
-/** Call before navigating to /setup after signup to seed the token so init() skips the login redirect. */
+type SeededTokens = { accessToken: string; refreshToken: string; idToken?: string }
+
+/**
+ * Logs this tab in with tokens the API issued after signup or an invitation password. They come from
+ * a password grant, so Keycloak has no SSO session to find on the next page load. The tokens stay in
+ * sessionStorage, kept fresh on every refresh, so a reload in this tab stays logged in.
+ */
 export function seedPostSignupToken(accessToken: string, refreshToken: string) {
   sessionStorage.setItem(SIGNUP_TOKEN_KEY, JSON.stringify({ accessToken, refreshToken }))
+}
+
+function readSeededTokens(): SeededTokens | null {
+  try {
+    const raw = sessionStorage.getItem(SIGNUP_TOKEN_KEY)
+    return raw ? (JSON.parse(raw) as SeededTokens) : null
+  } catch {
+    return null
+  }
+}
+
+function forgetSeededTokens() {
+  try {
+    sessionStorage.removeItem(SIGNUP_TOKEN_KEY)
+  } catch {
+    // Storage blocked: nothing was kept.
+  }
+}
+
+/** Use instead of keycloak.logout(), so a seeded session does not log the tab straight back in. */
+export function logout(options?: Parameters<typeof keycloak.logout>[0]) {
+  forgetSeededTokens()
+  return keycloak.logout(options)
 }
 
 // Module-level promise so init() is only ever called once,
@@ -21,12 +48,28 @@ let initPromise: Promise<boolean> | null = null
 
 export function getInitPromise(): Promise<boolean> {
   if (!initPromise) {
-    const raw = sessionStorage.getItem(SIGNUP_TOKEN_KEY)
-    const seeded = raw ? (JSON.parse(raw) as { accessToken: string; refreshToken: string }) : null
-    if (seeded) sessionStorage.removeItem(SIGNUP_TOKEN_KEY)
+    const seeded = readSeededTokens()
+    if (seeded) {
+      keycloak.onAuthRefreshSuccess = () => {
+        if (!keycloak.token || !keycloak.refreshToken) return
+        const tokens: SeededTokens = {
+          accessToken: keycloak.token,
+          refreshToken: keycloak.refreshToken,
+          idToken: keycloak.idToken,
+        }
+        try {
+          sessionStorage.setItem(SIGNUP_TOKEN_KEY, JSON.stringify(tokens))
+        } catch {
+          // Storage blocked: the tab stays logged in until the next reload.
+        }
+      }
+      // Keycloak refused the refresh token (expired or revoked), so the seeded session is over.
+      keycloak.onAuthLogout = forgetSeededTokens
+    }
 
     const keycloakInit = keycloak.init({
-      onLoad: seeded ? undefined : 'check-sso',
+      // With seeded tokens init refreshes them first and only checks SSO if Keycloak refuses them.
+      onLoad: 'check-sso',
       // Check the SSO session in a hidden iframe instead of a full-page redirect to Keycloak.
       // A redirect on every anonymous visit makes Google see the marketing pages as redirects.
       // No fallback to the redirect when the browser blocks the iframe's cookies: the visitor
@@ -37,7 +80,9 @@ export function getInitPromise(): Promise<boolean> {
       checkLoginIframe: false,
       // tokenStore is a valid runtime option not yet reflected in the @types/keycloak-js typings
       ...({ tokenStore: 'localStorage' } as object),
-      ...(seeded ? { token: seeded.accessToken, refreshToken: seeded.refreshToken } : {}),
+      ...(seeded
+        ? { token: seeded.accessToken, refreshToken: seeded.refreshToken, idToken: seeded.idToken }
+        : {}),
     })
 
     // If Keycloak is slow to start (e.g. during dev stack startup), don't block

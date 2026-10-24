@@ -47,6 +47,7 @@ app.UseHttpLogging();
 app.UseExceptionHandler();
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseActingAs();
 app.UseAuthorization();
 
 app.UseElmahIoErrorLogging();

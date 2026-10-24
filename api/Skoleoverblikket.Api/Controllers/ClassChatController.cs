@@ -17,7 +17,7 @@ namespace Skoleoverblikket.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/class-chats")]
-[Authorize]
+[Authorize(Roles = $"{Roles.Staff},{Roles.Parent}")]
 [RequiresModule(SubscriptionModule.ParentModule)]
 public sealed class ClassChatController(
 	AppDbContext db,

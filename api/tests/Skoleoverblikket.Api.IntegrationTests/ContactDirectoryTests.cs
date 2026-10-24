@@ -35,8 +35,9 @@ public sealed class ContactDirectoryTests(ApiFactory factory)
 
 	// ── Private helpers ───────────────────────────────────────────────────────────
 
-	private HttpClient CreateStaffClient(string subject)
+	private async Task<HttpClient> CreateStaffClientAsync(string subject)
 	{
+		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Thomas Lærer", keycloakSubject: subject);
 		var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
 		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
@@ -154,7 +155,7 @@ public sealed class ContactDirectoryTests(ApiFactory factory)
 			"staff-test-nonconsenting-parent", klass.Id, shareContactInfo: false, "Dennis Nej");
 
 		// Act
-		using var staffClient = CreateStaffClient("staff-test-caller");
+		using var staffClient = await CreateStaffClientAsync("staff-test-caller");
 		var response = await staffClient.GetAsync("/api/v1/contact-directory");
 
 		// Assert: staff sees only the consenting parent

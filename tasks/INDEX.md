@@ -26,23 +26,22 @@ status: 'Active'
 
 | # | Task | Size | Owner | Depends on | Why this spot |
 |---|---|---|---|---|---|
-| 1 | [58 Enforce paid modules in the API](58-enforce-board-module.md) | M | Agent | — (55 shipped) | BoardModule and ParentModule are sold at 300 kr/md each but no endpoint checks them, so buying one unlocks nothing and every school gets both free. |
-| 2 | [61 School roles in the API](61-school-roles-in-api.md) | L | Niels + agent | 58 | A teacher with a child at the school, or a parent on the board, gets only one role today, and which one depends on invite order. Since 58 they can be locked out entirely when a module is off. Also fixes shared logins being deleted and signup admins with `IsAdmin = false`. |
-| 3 | [54 Move prod to bigger VPS](54-move-vps.md) | L | Niels + agent | 60 Phase 0 + A (code done 2026-10-07) | VPS could use better speccs for higher volume, prod Postgres is reachable (but secure) from the internet, RPO is 24h. Absorbs 53 phases 3–5, so do it before 53 to avoid building a drill twice. Ships together with 60 Phase A, or the new box has no backups. |
-| 4 | [60 Backup agent and break-glass console](60-backup-console.md) | L | Niels | 54 (ships with the cutover) | Code for Phases 0–C is done and proven on a local stack. Left: OVH repo and ops buckets with keys, elmah.io heartbeats, turning on the `selfhosted-db` profile at the 54 cutover, one real restore through the wizard. |
-| 5 | [53 Restore drill and off-site backup](53-restore-drill.md) | M | Niels + agent | 54, 60 | Drill itself moved to 60. What's left: runbook, off-site copy of DB and files, quarterly full-rebuild drill. Losing a school's data would end the company. Phase 2 waits for the 30-day sub-processor notice. |
-| 6 | [44 Auto-rollback and deploy safety net](44-auto-rollback.md) | M | Agent | — (coordinate migration check with 54) | A bad deploy currently stays live until someone notices. Prerequisite for the feedback chain (45–47). |
-| 7 | [43 Links](43-links.md) | M | Agent | — | Grilled and specced. Basis feature that gives parents a reason to open the app and saves Hanne repeat questions. |
-| 8 | [20 Stå mål med — Fase 3](20-staa-maal-med-fase3.md) | L | Agent | — | Status Ready. §1a publishing is a legal need for every friskole (primary market) and the copy promising it was pulled until it ships. Sells the board/governance module. |
-| 9 | [37 Skole-hjem-samtaler sign-up](37-parent-teacher-signup.md) | M | Agent | — | Every school runs these twice a year, today on paper or email. Visible to every parent, strengthens the paid parent module. |
-| 10 | [25 Schema import via AI](25-schema-import.md) | M | Niels + agent | Alexandra Instituttet DPA and pricing | Re-typing the old schema is the biggest switching barrier for a new school. Builds the shared Alexandra LLM client that 46 and 21 reuse. |
-| 11 | [45 Feedback button](feedback/45-feedback-capture.md) | L | Agent | 44 | Two-click bug reports with context. More valuable once there are more schools than Niels can talk to directly. |
-| 12 | [41 Uncovered lesson tracking](41-uncovered-lesson-tracking.md) | S | Agent | — (task 38 shipped) | Small read-only count next to the Stå mål med coverage view. Pairs naturally with 20 Fase 3. |
-| 13 | [50 Parent dashboard](50-parent-dashboard.md) | M | Agent | 43, grill first | Stub with open questions. Reuses the Links card from 43. |
-| 14 | [46 Feedback AI triage](feedback/46-feedback-ai-triage.md) | M | Niels + agent | 45, Alexandra pricing | Only pays off once 45 produces real report volume. |
-| 15 | [47 Feedback AI fix PRs](feedback/47-feedback-ai-fix-prs.md) | M | Agent | 44, 46 | Last link in the feedback chain. Auto-merge ships disabled. |
-| 16 | [21 AI schema suggestions](21-ai-suggestions-for-schema.md) | M | Agent | Shared LLM client (25 or 46) | Nice to have. Hanne builds a schema once a year, and 25 covers the switching case. |
-| 17 | [59 Microsoft and Google login](59-microsoft-google-login.md) | M | Niels + agent | Ask schools which accounts staff use | Free replacement for UNI•Login (07, parked over STIL fees). One password fewer for staff. Niels checks with schools first. |
+| 1 | [61 School roles in the API](61-school-roles-in-api.md) | M | Niels + agent | Phase A deployed | **Phase A built 2026-10-19.** Left: deploy, check every school has an `IsAdmin` staff member, then Phase B removes the Keycloak `admin` fallback and Niels deletes the realm roles. |
+| 2 | [54 Move prod to bigger VPS](54-move-vps.md) | L | Niels + agent | 60 Phase 0 + A (code done 2026-10-07) | VPS could use better speccs for higher volume, prod Postgres is reachable (but secure) from the internet, RPO is 24h. Absorbs 53 phases 3–5, so do it before 53 to avoid building a drill twice. Ships together with 60 Phase A, or the new box has no backups. |
+| 3 | [60 Backup agent and break-glass console](60-backup-console.md) | L | Niels | 54 (ships with the cutover) | Code for Phases 0–C is done and proven on a local stack. Left: OVH repo and ops buckets with keys, elmah.io heartbeats, turning on the `selfhosted-db` profile at the 54 cutover, one real restore through the wizard. |
+| 4 | [53 Restore drill and off-site backup](53-restore-drill.md) | M | Niels + agent | 54, 60 | Drill itself moved to 60. What's left: runbook, off-site copy of DB and files, quarterly full-rebuild drill. Losing a school's data would end the company. Phase 2 waits for the 30-day sub-processor notice. |
+| 5 | [44 Auto-rollback and deploy safety net](44-auto-rollback.md) | M | Agent | — (coordinate migration check with 54) | A bad deploy currently stays live until someone notices. Prerequisite for the feedback chain (45–47). |
+| 6 | [43 Links](43-links.md) | M | Agent | — | Grilled and specced. Basis feature that gives parents a reason to open the app and saves Hanne repeat questions. |
+| 7 | [20 Stå mål med — Fase 3](20-staa-maal-med-fase3.md) | L | Agent | — | Status Ready. §1a publishing is a legal need for every friskole (primary market) and the copy promising it was pulled until it ships. Sells the board/governance module. |
+| 8 | [37 Skole-hjem-samtaler sign-up](37-parent-teacher-signup.md) | M | Agent | — | Every school runs these twice a year, today on paper or email. Visible to every parent, strengthens the paid parent module. |
+| 9 | [25 Schema import via AI](25-schema-import.md) | M | Niels + agent | Alexandra Instituttet DPA and pricing | Re-typing the old schema is the biggest switching barrier for a new school. Builds the shared Alexandra LLM client that 46 and 21 reuse. |
+| 10 | [45 Feedback button](feedback/45-feedback-capture.md) | L | Agent | 44 | Two-click bug reports with context. More valuable once there are more schools than Niels can talk to directly. |
+| 11 | [41 Uncovered lesson tracking](41-uncovered-lesson-tracking.md) | S | Agent | — (task 38 shipped) | Small read-only count next to the Stå mål med coverage view. Pairs naturally with 20 Fase 3. |
+| 12 | [50 Parent dashboard](50-parent-dashboard.md) | M | Agent | 43, grill first | Stub with open questions. Reuses the Links card from 43. |
+| 13 | [46 Feedback AI triage](feedback/46-feedback-ai-triage.md) | M | Niels + agent | 45, Alexandra pricing | Only pays off once 45 produces real report volume. |
+| 14 | [47 Feedback AI fix PRs](feedback/47-feedback-ai-fix-prs.md) | M | Agent | 44, 46 | Last link in the feedback chain. Auto-merge ships disabled. |
+| 15 | [21 AI schema suggestions](21-ai-suggestions-for-schema.md) | M | Agent | Shared LLM client (25 or 46) | Nice to have. Hanne builds a schema once a year, and 25 covers the switching case. |
+| 16 | [59 Microsoft and Google login](59-microsoft-google-login.md) | M | Niels + agent | Ask schools which accounts staff use | Free replacement for UNI•Login (07, parked over STIL fees). One password fewer for staff. Niels checks with schools first. |
 
 ## Folkeskole track (blocked on STIL / Aula)
 

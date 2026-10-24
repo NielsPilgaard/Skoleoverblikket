@@ -1,4 +1,5 @@
 import keycloak from '../auth/keycloak'
+import { ACTING_AS_HEADER, actingAsHeaders, getActingAs } from '../auth/actingAs'
 import { client } from './generated/client.gen'
 
 export const API_BASE = '/api/v1'
@@ -21,6 +22,13 @@ client.setConfig({
   auth: getToken,
 })
 
+// One login can be staff, parent and board member; the API acts as the role chosen under "Vis som".
+client.interceptors.request.use((request) => {
+  const actingAs = getActingAs()
+  if (actingAs) request.headers.set(ACTING_AS_HEADER, actingAs)
+  return request
+})
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -37,6 +45,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
+      ...actingAsHeaders(),
     },
     ...options,
   })
@@ -53,7 +62,7 @@ async function requestForm<T>(path: string, body: FormData): Promise<T> {
 
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}`, ...actingAsHeaders() },
     body,
   })
   if (!res.ok) {

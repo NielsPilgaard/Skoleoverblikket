@@ -1,8 +1,9 @@
 ---
 title: 'Authorization Model'
 description: >-
-  JWT + role/ClassPermission authorization: admin vs. staff roles, the
-  superadmin-mode/restricted-mode class-editing logic, tenant isolation, paid
+  JWT + role/ClassPermission authorization: school roles (admin, staff, parent,
+  board) read from the database with one acting role per request (X-Acting-As),
+  the superadmin-mode/restricted-mode class-editing logic, tenant isolation, paid
   module enforcement, and the endpoint authorization summary.
 status: 'Living'
 purpose: Reference before touching any endpoint's auth — the ClassPermission superadmin/restricted-mode interaction is non-obvious and easy to get wrong.
@@ -15,20 +16,39 @@ purpose: Reference before touching any endpoint's auth — the ClassPermission s
 Two layers protect every request:
 
 1. **JWT authentication** — Keycloak-issued bearer token required on all endpoints except one: the school ZIP download (`GET /api/v1/exports/school.zip/download`), which is authenticated by a single-use `ExportLink` token instead (see the endpoint table). The `tenant_id` claim is mandatory; a missing claim returns 401.
-2. **Role- and resource-based authorization** — what an authenticated user can do depends on their Keycloak role and, for schema editing, whether `ClassPermission` rows exist.
+2. **Role- and resource-based authorization** — what an authenticated user can do depends on their school role, which the API reads from its own database, and, for schema editing, whether `ClassPermission` rows exist.
 
 ---
 
 ## Roles
 
-| Role | Source | What it means |
+Keycloak authenticates, the API authorizes. `SchoolRolesClaimsTransformer` (`Auth/`) adds the role claims on every request from the rows that match the token's `sub` in the token's `tenant_id` school. School roles in the token are ignored, so a stale Keycloak role grants nothing.
+
+| Role | Comes from | What it means |
 |---|---|---|
-| `admin` | Keycloak realm role, mapped to `ClaimTypes.Role` | Full administrative access. See below for interaction with ClassPermissions. |
-| _(no role)_ | Any authenticated JWT | Staff member (lærer, pædagog, vikar). Read-only or week-plan write access only. |
+| `staff` | a `Staff` row | Staff member (lærer, pædagog, vikar). Read-only or week-plan write access, plus `EditClass` per the ClassPermission rules. |
+| `admin` | `Staff.IsAdmin` | Full administrative access. Only present while acting as staff. See below for interaction with ClassPermissions. |
+| `parent` | a `Parent` row | Parent portal. Needs `ParentModule` (R1 under Paid modules). |
+| `board` | a `BoardMember` row | Board area. Needs `BoardModule`. |
+| `superadmin` | Keycloak realm role | The operator, not a school role. Back office only. |
+
+A login with none of these rows has no role and is refused by every endpoint that names one.
 
 `StaffRole` (Teacher / Aide / Substitute) is an informational field on the `Staff` model. It has no effect on authorization — it is only used for display.
 
-`Staff.IsAdmin` mirrors the Keycloak admin role in the database. It is the authoritative flag inside `EditClassAuthorizationHandler` (guards against Keycloak/DB desync).
+**Phase A of task 61 (current).** Keycloak's `admin` realm role still counts alongside `Staff.IsAdmin`, but only for a login that has a Staff row or no other school row. `AdminRoleBackfillJob` copies the Keycloak role to `Staff.IsAdmin` at startup, and revoking admin also removes the Keycloak role. Inside `EditClassAuthorizationHandler`, `Staff.IsAdmin` stays authoritative for anyone with a Staff row. Phase B stops reading the Keycloak role.
+
+### One login, several roles
+
+A person can be staff, parent and board member at the same school with one login, for example a teacher with a child at the school. Each request acts as exactly one school role:
+
+- **`X-Acting-As: staff|parent|board`** picks it. Any other value is 400. A role the person doesn't hold is 403. The header can only narrow to a role the database already grants, so forging it gains nothing.
+- **Without the header** the request acts as the first held role in the order staff, parent, board, skipping roles whose module is off. If every role is off, the first one, so R1 can explain why.
+- **`admin`** is only kept when acting as staff.
+- **`GET /api/v1/me`** lists the held roles, whether each one's module is on, the default acting role, `isAdmin` and `isSuperAdmin`. The frontend shows a "Vis som" switcher in the sidebar for two or more roles and sends the choice on every request.
+- **Removing a role never deletes a shared login** (`SchoolLoginService`): deleting a `Staff`, `BoardMember` or `Parent` row deletes the Keycloak user only when no other row in any school uses it.
+- **Invitations never email a password.** A new invitee's login has no password; the invitation page asks them to choose one (`POST /api/v1/{staff,parent,board}-invitations/password`, anonymous, the invitation token proves the email) and returns tokens so they are logged in straight away. A lost or failed email can simply be resent. The endpoint refuses (409) once the login has a password the person chose, so an invitation link can never replace it.
+- **Inviting an existing login** links the new row to it and emails "Log ind med din eksisterende konto". A login that belongs to another school gets 409 "Denne e-mail bruges allerede på en anden skole"; one login across several schools isn't supported yet.
 
 ---
 
@@ -61,22 +81,25 @@ Revoking the **last** permission row returns the tenant to superadmin mode.
 ### Decision logic (evaluated per request in `EditClassAuthorizationHandler`)
 
 ```
-1. No Staff row for this Keycloak subject AND has admin role claim
-   → Succeed (superuser account not enrolled as staff)
+1. Not acting as staff (a parent or board member, or staff acting as one)
+   → Deny (403)
 
-2. Staff row found AND Staff.IsAdmin = true
+2. No Staff row for this Keycloak subject AND has admin role claim
+   → Succeed (admin not enrolled as staff; Phase A only)
+
+3. Staff row found AND Staff.IsAdmin = true
    → Succeed (admin always has full access)
 
-3. No ClassPermission rows exist for this class (class-level open mode)
+4. No ClassPermission rows exist for this class (class-level open mode)
    → Succeed for all authenticated staff
 
-4. ClassPermission row exists for (StaffId, ClassId)
+5. ClassPermission row exists for (StaffId, ClassId)
    → Succeed
 
-5. Otherwise → Deny (403)
+6. Otherwise → Deny (403)
 ```
 
-Step 3 is a **class-scoped** check: a class with no permission rows is editable by any authenticated staff member, even when other classes in the tenant are restricted. This lets admins lock down individual classes without affecting unrestricted ones.
+Step 4 is a **class-scoped** check: a class with no permission rows is editable by any authenticated staff member, even when other classes in the tenant are restricted. This lets admins lock down individual classes without affecting unrestricted ones.
 
 This policy (`Policies.EditClass`) is enforced on all mutating schema endpoints in `SchemasController`:
 - Create / rename / delete schema
@@ -130,9 +153,9 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 
 | Claim | Required | Purpose |
 |---|---|---|
-| `sub` | Yes | Identifies the user; matched against `Staff.KeycloakSubject` |
-| `tenant_id` | Yes | Resolves the tenant; missing → 401 |
-| `realm_access.roles` | No | Contains `["admin"]` for admin users; transformed to `ClaimTypes.Role` by `KeycloakRolesClaimsTransformer` |
+| `sub` | Yes | Identifies the user; matched against `KeycloakSubject` on `Staff`, `BoardMember` and `Parent` to work out the school roles |
+| `tenant_id` | Yes | Resolves the tenant; missing → 401. Only rows in this school give roles |
+| `realm_access.roles` | No | Only `superadmin` is read (and `admin` during Phase A of task 61), by `SchoolRolesClaimsTransformer` |
 | `email` | No | Display only |
 
 ---
@@ -143,26 +166,29 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 |---|---|---|
 | `GET /api/v1/classes` | `[Authorize]` | Results filtered by ClassPermission when rows exist |
 | `POST/PUT/DELETE /api/v1/classes` | `[Authorize(Roles = "admin")]` | |
+| `GET /api/v1/me` | `[Authorize]` | The caller's school roles and acting role. Not gated by modules |
 | `GET /api/v1/staff/me` | `[Authorize]` | Returns own staff record |
 | `POST/PUT/DELETE /api/v1/staff` | `[Authorize(Roles = "admin")]` | |
-| `PATCH /api/v1/staff/{id}/admin` | `[Authorize(Roles = "admin")]` | Cannot remove self or last admin |
+| `PATCH /api/v1/staff/{id}/admin-permission` | `[Authorize(Roles = "admin")]` | Sets `Staff.IsAdmin`. Cannot remove self or last admin |
 | `GET/POST/DELETE /api/v1/classes/{id}/permissions` | `[Authorize(Roles = "admin")]` | |
 | Schema mutations (`SchemasController` writes) | `EditClass` policy | Enforces ClassPermission logic |
 | `GET /api/v1/classes/{id}/ugeplan` | `[Authorize]` | Any authenticated user |
 | `PUT /api/v1/classes/{id}/ugeplan/slots` | `[Authorize]` | Any authenticated user — no EditClass check |
 | `POST/DELETE /api/v1/classes/{id}/ugeplan/slots/{slotId}/files` | `[Authorize]` | Any authenticated user |
 | `POST /api/v1/absence`, `GET mine`, `DELETE {id}` | `[Authorize(Roles = "parent")]` | Own children only, checked in `AbsenceService` |
-| `GET /api/v1/absence`, `GET stats` | `[Authorize]` | Filtered to classes the caller passes `EditClass` for (admins: all) |
+| `GET /api/v1/absence`, `GET stats` | `[Authorize(Roles = "staff")]` | Filtered to classes the caller passes `EditClass` for (admins: all) |
 | `PUT /api/v1/absence/{id}/category`, `POST follow-ups` | `EditClass` on the student's class | |
 | `GET leave-requests`, `POST {id}/approve`, `POST {id}/reject`, `GET export`, `GET flagged-export` | `[Authorize(Roles = "admin")]` | The principal grants ekstraordinær frihed |
 | `GET/PUT /api/v1/attendance/classes/{classId}` | `EditClass` on the class | Requires a staff row, so parents/board are rejected |
 | `GET /api/v1/attendance/overview` | `[Authorize(Roles = "admin")]` | |
-| `GET /api/v1/attendance/mine/pending` | `[Authorize]`, not parent/board | |
-| `POST /api/v1/staff-absences`, `GET mine`, `DELETE {id}` | `[Authorize]`, not parent/board | Staff report themselves; admins may report for anyone and delete any |
+| `GET /api/v1/attendance/mine/pending` | `[Authorize(Roles = "staff")]` | The whole `AttendanceController` is staff-only |
+| `POST /api/v1/staff-absences`, `GET mine`, `DELETE {id}` | `[Authorize(Roles = "staff")]` | Staff report themselves; admins may report for anyone and delete any |
 | `GET /api/v1/staff-absences`, `GET {id}`, `PUT {id}/substitute` | `[Authorize(Roles = "admin")]` | Whole-school action, no ClassPermission check |
-| `GET /api/v1/staff/available`, `GET /api/v1/substitutions/mine` | `[Authorize]`, not parent/board | |
+| `GET /api/v1/staff/available`, `GET /api/v1/substitutions/mine` | `[Authorize(Roles = "staff")]` | |
+| `ContactThreadsController`, `ContactDirectoryController`, `MessagesController`, `ClassChatController` | `[Authorize(Roles = "staff,parent")]` | Board members don't use these |
 | `PUT /api/v1/week-plans/{id}/slots/{slotId}/substitute` | `EditClass` on the week plan's class | |
 | `GET /api/v1/exports/school.zip`, `POST school.zip/link` | `[Authorize(Roles = "admin")]` | |
+| `GET {staff,parent,board}-invitations/preview`, `POST …/password` | `[AllowAnonymous]` | The invitation token is the credential. `password` only sets a login's first password (409 otherwise) |
 | `GET /api/v1/exports/school.zip/download?token=…` | `ExportLink` scheme, admin | The only endpoint not authenticated by a Keycloak JWT. The token comes from `POST school.zip/link`, carries the admin's tenant and subject (data protection, signed and encrypted), lasts one minute and works once (`ExportLinkAuthHandler`) |
 
 ---
@@ -171,7 +197,7 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 
 `BoardModule` and `ParentModule` are enforced in the API by `ModuleAccessFilter` (`Tenancy/`), a global filter that runs after `SubscriptionAccessFilter`. A trial counts as having every module, and so does a school with no `Subscription` row yet. Every 403 is a `ProblemDetails` titled "Modulet er ikke aktivt".
 
-- **R1, users.** Board users need `BoardModule`, parent users need `ParentModule`. A principal can hold several realm roles (admin and board, say), so the filter drops the roles whose module is off and checks the rest against the action's `[Authorize(Roles = …)]` attributes. An action with no role list needs any remaining role among admin, superadmin, board and parent. Staff have no realm role, so a staff member who became a board member acts as board. Exempt: `GET /api/v1/modules` and `[AllowAnonymous]` actions.
+- **R1, users.** A request acting as board needs `BoardModule`, one acting as parent needs `ParentModule`. Each request acts as one role (see "One login, several roles"), so a teacher who is also on the board keeps working as staff when the board module is off. Staff is never gated. Exempt: `GET /api/v1/modules`, `GET /api/v1/me` and `[AllowAnonymous]` actions.
 - **R2, features.** Actions marked `[RequiresModule(X)]` reject `POST`/`PUT`/`PATCH` without module X. `GET` and `DELETE` still work, so a school that drops a module can read and clean up. `GatesReads = true` also rejects `GET`, for a view that computes the feature from Basis data rather than returning stored data. An expired subscription blocks `DELETE` first, in `SubscriptionAccessFilter`.
 - **R3, invitations.** `BoardMemberInvitationService.AcceptAsync` and `ParentInvitationService.AcceptAsync` check the inviting school's module, because the accepting user has no tenant claim yet.
 
@@ -187,7 +213,7 @@ Marked with `[RequiresModule]`:
 | Parent | `ImportsController` | `POST students-and-parents` |
 | Parent | `AbsenceController` | `PUT {id}/category`, `POST {id}/approve`, `POST {id}/reject`, `POST follow-ups` |
 
-The frontend mirrors this. A board or parent user whose module is off sees "Modulet er ikke aktivt" (`Layout.tsx`) instead of failing pages. Admins keep Elever, Forældre, Bestyrelse and Stå mål med in the sidebar, with a notice and only read and delete actions. Stå mål med then shows only saved versions.
+The frontend mirrors this. A board member or parent whose module is off, and who holds no other role with its module on, sees "Modulet er ikke aktivt" (`Layout.tsx`) instead of failing pages. Someone with another role is switched to it, and "Vis som" shows the off role disabled. Admins keep Elever, Forældre, Bestyrelse and Stå mål med in the sidebar, with a notice and only read and delete actions. Stå mål med then shows only saved versions.
 
 Not gated: vacation registration windows and the contact directory, which are Basis. A new controller for a paid feature needs the attribute, or the module stops being something a school pays for.
 
@@ -196,5 +222,3 @@ Not gated: vacation registration windows and the contact directory, which are Ba
 ## Known gaps
 
 `WeekPlanController` write endpoints (`PUT slots`, `POST/DELETE files`) enforce `[Authorize]` only — any authenticated tenant user can annotate any class's week plan, regardless of ClassPermissions. This is intentional for the teacher annotation flow but means ClassPermissions do not fully restrict week-plan writes.
-
-One login can't reliably hold two roles. Staff has no realm role, so code treats "has `board` or `parent`" as "is not staff". An invite that reuses an existing account doesn't add the role either. A teacher who is also a parent or board member therefore gets only one role, depending on invite order, and is blocked entirely when that role's module is off. [Task 61](../tasks/61-school-roles-in-api.md) moves school roles to the API to fix this.

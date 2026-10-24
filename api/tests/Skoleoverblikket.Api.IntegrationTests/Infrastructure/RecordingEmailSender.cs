@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 using Skoleoverblikket.Api.Email;
 
 namespace Skoleoverblikket.Api.IntegrationTests.Infrastructure;
@@ -20,4 +21,8 @@ public sealed class RecordingEmailSender : IEmailSender
 	public IReadOnlyList<EmailMessage> To(string address) =>
 		[.. _sent.Where(m => string.Equals(m.To, address, StringComparison.OrdinalIgnoreCase)
 			|| (m.Bcc?.Contains(address, StringComparer.OrdinalIgnoreCase) ?? false))];
+
+	/// <summary>The token in the newest invitation link to <paramref name="address"/>, such as /<paramref name="linkPath"/>/{token}.</summary>
+	public string LastInvitationToken(string address, string linkPath) =>
+		Regex.Match(To(address).Last().PlainTextBody!, $"/{linkPath}/([A-Za-z0-9_-]+)").Groups[1].Value;
 }
