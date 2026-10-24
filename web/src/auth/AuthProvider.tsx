@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import keycloak, { getInitPromise } from './keycloak'
+import keycloak, { getInitPromise, logout } from './keycloak'
 import { AuthContext, type SchoolRoleState, type ViewAs } from './AuthContext'
 import {
   isSchoolRole,
@@ -150,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         staffId,
         token: keycloak.token,
         userName,
-        logout: () => keycloak.logout({ redirectUri: 'https://skoleoverblikket.dk' }),
+        logout: () => logout({ redirectUri: 'https://skoleoverblikket.dk' }),
         viewAs: effectiveViewAs,
         setViewAs,
       }}

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { setActingAs, storeActingAs } from '../auth/actingAs'
-import keycloak, { seedPostSignupToken } from '../auth/keycloak'
+import keycloak, { logout, seedPostSignupToken } from '../auth/keycloak'
 import { useAuth } from '../auth/useAuth'
 import CookieBanner from '../components/CookieBanner'
 import {
@@ -89,12 +89,22 @@ export default function InvitationAcceptPage() {
         { signal: controller.signal }
       )
 
+      // 503: the login service is down. The link is fine, so don't call it invalid.
+      const showUnavailable = () => {
+        setErrorMsg('Vi kan ikke hente invitationen lige nu. Vent et øjeblik, og genindlæs siden.')
+        setState('error')
+      }
+
       let normalized: InvitationPreview
       if (staffRes.status === 404) {
         const parentRes = await fetch(
           `/api/v1/parent-invitations/preview?token=${encodeURIComponent(inviteToken)}`,
           { signal: controller.signal }
         )
+        if (parentRes.status === 503) {
+          showUnavailable()
+          return
+        }
         if (!parentRes.ok) {
           setState('invalid')
           return
@@ -109,6 +119,10 @@ export default function InvitationAcceptPage() {
           type: 'parent',
         }
       } else {
+        if (staffRes.status === 503) {
+          showUnavailable()
+          return
+        }
         if (!staffRes.ok) {
           setState('invalid')
           return
@@ -129,7 +143,7 @@ export default function InvitationAcceptPage() {
         setState('accepting')
         await acceptInvitation(inviteToken, keycloak.token, normalized.type)
       } else if (keycloak.authenticated) {
-        keycloak.logout({ redirectUri: window.location.href })
+        logout({ redirectUri: window.location.href })
       } else {
         setState('ready')
       }

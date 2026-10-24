@@ -26,6 +26,7 @@ public static class KeycloakAdminExtensions
 			.AddHttpMessageHandler<KeycloakBearerHandler>();
 
 		services.AddScoped<KeycloakAdminService>();
+		services.AddExceptionHandler<KeycloakExceptionHandler>();
 
 		return services;
 	}

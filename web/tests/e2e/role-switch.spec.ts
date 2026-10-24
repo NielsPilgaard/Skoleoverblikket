@@ -74,15 +74,16 @@ async function parentInvitationToken(page: Page, email: string, since: number): 
     const list = (await (await page.request.get(`${MAILPIT_API}/messages`)).json()) as {
       messages?: { ID: string; Created: string; To: { Address: string }[] }[]
     }
-    const msg = (list.messages ?? []).find(
+    // The mailbox is shared by all workers, so other mail to the same address can arrive after `since`.
+    const candidates = (list.messages ?? []).filter(
       (m) => Date.parse(m.Created) >= since && m.To.some((to) => to.Address === email)
     )
-    if (msg) {
+    for (const msg of candidates) {
       const detail = (await (await page.request.get(`${MAILPIT_API}/message/${msg.ID}`)).json()) as {
         HTML?: string
         Text?: string
       }
-      const match = (detail.Text ?? detail.HTML ?? '').match(/\/parent-invitation\/([^"'\s<>]+)/)
+      const match = `${detail.Text ?? ''}\n${detail.HTML ?? ''}`.match(/\/parent-invitation\/([^"'\s<>]+)/)
       if (match) return match[1]
     }
     await page.waitForTimeout(500)

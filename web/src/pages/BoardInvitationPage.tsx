@@ -39,6 +39,14 @@ export default function BoardInvitationPage() {
     }
     getApiV1BoardInvitationsPreview({ query: { token } })
       .then((res) => {
+        // 503: the login service is down. The link is fine, so don't call it invalid.
+        if (res.response?.status === 503) {
+          setError({
+            title: 'Prøv igen om lidt',
+            message: 'Vi kan ikke hente invitationen lige nu. Vent et øjeblik, og genindlæs siden.',
+          })
+          return
+        }
         if (res.error) throw new Error('Ugyldigt eller udløbet link')
         setPreview((res.data as InvitationPreview) ?? null)
       })

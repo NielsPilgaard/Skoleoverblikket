@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net;
+using Refit;
 using Skoleoverblikket.Api.Auth;
 
 namespace Skoleoverblikket.Api.IntegrationTests.Infrastructure;
@@ -92,9 +93,22 @@ public sealed class FakeKeycloak : IKeycloakAdminApi, IKeycloakTokenApi
 	public Task<UserRepresentation> GetUserAsync(string userId, CancellationToken cancellationToken) =>
 		Task.FromResult(new UserRepresentation(userId, null, TenantAttributes(userId)));
 
-	public Task<IReadOnlyList<CredentialSummary>> GetCredentialsAsync(string userId, CancellationToken cancellationToken) =>
-		Task.FromResult<IReadOnlyList<CredentialSummary>>(
-			_passwordById.ContainsKey(userId) ? [new CredentialSummary("password")] : []);
+	/// <summary>When true, reading a login's credentials fails as if Keycloak were down.</summary>
+	public bool Unavailable { get; set; }
+
+	public async Task<IReadOnlyList<CredentialSummary>> GetCredentialsAsync(string userId, CancellationToken cancellationToken)
+	{
+		if (Unavailable)
+		{
+			throw await ApiException.Create(
+				new HttpRequestMessage(HttpMethod.Get, $"http://keycloak.test/admin/realms/test/users/{userId}/credentials"),
+				HttpMethod.Get,
+				new HttpResponseMessage(HttpStatusCode.ServiceUnavailable),
+				new RefitSettings());
+		}
+
+		return _passwordById.ContainsKey(userId) ? [new CredentialSummary("password")] : [];
+	}
 
 	public Task<HttpResponseMessage> ResetPasswordAsync(string userId, CredentialRepresentation credential, CancellationToken cancellationToken)
 	{

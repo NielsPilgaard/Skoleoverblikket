@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -135,6 +137,21 @@ public sealed class InvitationPasswordTests(ApiFactory factory)
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
 		await Assert.That(_keycloak.PasswordOf(_keycloak.SubjectFor(email))).IsNull();
+	}
+
+	[Test]
+	public async Task KeycloakDown_PreviewIs503_NotAnInvalidLink()
+	{
+		var email = UniqueEmail("keycloak-nede");
+		await InviteTeacherAsync(email);
+		var token = factory.Emails.LastInvitationToken(email, "invitation");
+
+		_keycloak.Unavailable = true;
+		var response = await _anonymous.GetAsync($"/api/v1/staff-invitations/preview?token={token}");
+		var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(JsonOpts);
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.ServiceUnavailable);
+		await Assert.That(problem!.Status).IsEqualTo(StatusCodes.Status503ServiceUnavailable);
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────────────
