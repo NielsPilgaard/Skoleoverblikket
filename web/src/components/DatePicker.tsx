@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useId } from 'react'
 import { DayPicker } from 'react-day-picker'
 import { da } from 'react-day-picker/locale'
 
@@ -10,6 +10,7 @@ interface DatePickerProps {
   fromYear?: number
   toYear?: number
   align?: 'left' | 'right'
+  labelId?: string // id of the visible label; the button is announced as "<label> <date>"
 }
 
 function isoToDate(iso: string): Date {
@@ -36,9 +37,11 @@ export function DatePicker({
   fromYear = currentYear - 5,
   toYear = currentYear + 5,
   align = 'left',
+  labelId,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const valueId = useId()
 
   const selected = value ? isoToDate(value) : undefined
   const disabled = min ? { before: isoToDate(min) } : undefined
@@ -63,6 +66,8 @@ export function DatePicker({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-labelledby={labelId ? `${labelId} ${valueId}` : undefined}
+        aria-expanded={open}
         className="w-full flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:ring-brand-500 hover:border-gray-400 bg-white transition-colors"
       >
         <svg
@@ -72,6 +77,7 @@ export function DatePicker({
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
+          aria-hidden="true"
           className="text-gray-400 flex-shrink-0"
         >
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -79,7 +85,7 @@ export function DatePicker({
           <line x1="8" y1="2" x2="8" y2="6" />
           <line x1="3" y1="10" x2="21" y2="10" />
         </svg>
-        <span className={value ? 'text-gray-900' : 'text-gray-400'}>
+        <span id={valueId} className={value ? 'text-gray-900' : 'text-gray-400'}>
           {value ? formatDDMMYYYY(value) : placeholder}
         </span>
       </button>
