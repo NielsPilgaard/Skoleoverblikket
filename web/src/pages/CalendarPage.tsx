@@ -212,8 +212,14 @@ function EntryModal({ initial, defaultDate, onClose, onSaved }: EntryModalProps)
     <Modal isOpen onClose={onClose} title={initial ? 'Rediger begivenhed' : 'Tilføj begivenhed'}>
       <div className="px-6 py-5 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+          <label
+            htmlFor="calendar-entry-type"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Type
+          </label>
           <select
+            id="calendar-entry-type"
             value={type}
             onChange={(e) => setType(e.target.value as EntryType)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
@@ -226,8 +232,14 @@ function EntryModal({ initial, defaultDate, onClose, onSaved }: EntryModalProps)
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Titel *</label>
+          <label
+            htmlFor="calendar-entry-title"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Titel *
+          </label>
           <input
+            id="calendar-entry-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="fx Efterårsferie"
@@ -235,8 +247,14 @@ function EntryModal({ initial, defaultDate, onClose, onSaved }: EntryModalProps)
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Startdato</label>
+          <span
+            id="calendar-entry-start-label"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Startdato
+          </span>
           <DatePicker
+            labelId="calendar-entry-start-label"
             value={startDate}
             onChange={(v) => {
               setStartDate(v)
@@ -245,13 +263,29 @@ function EntryModal({ initial, defaultDate, onClose, onSaved }: EntryModalProps)
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Slutdato</label>
-          <DatePicker value={endDate} onChange={setEndDate} min={startDate} />
+          <span
+            id="calendar-entry-end-label"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Slutdato
+          </span>
+          <DatePicker
+            labelId="calendar-entry-end-label"
+            value={endDate}
+            onChange={setEndDate}
+            min={startDate}
+          />
           {dateError && <p className="mt-1 text-sm text-red-600">{dateError}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Gentagelse</label>
+          <label
+            htmlFor="calendar-entry-recurrence"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Gentagelse
+          </label>
           <select
+            id="calendar-entry-recurrence"
             value={recurrenceRule}
             onChange={(e) => setRecurrenceRule(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
@@ -264,8 +298,18 @@ function EntryModal({ initial, defaultDate, onClose, onSaved }: EntryModalProps)
         </div>
         {recurrenceRule && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Gentag indtil</label>
-            <DatePicker value={recurrenceEnd} onChange={setRecurrenceEnd} min={endDate} />
+            <span
+              id="calendar-entry-recurrence-end-label"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Gentag indtil
+            </span>
+            <DatePicker
+              labelId="calendar-entry-recurrence-end-label"
+              value={recurrenceEnd}
+              onChange={setRecurrenceEnd}
+              min={endDate}
+            />
           </div>
         )}
         {isError && <p className="text-sm text-red-600">Der opstod en fejl. Prøv igen.</p>}
