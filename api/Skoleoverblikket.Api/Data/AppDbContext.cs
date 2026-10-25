@@ -57,6 +57,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ITenant
 	public DbSet<ClassChatAttachment> ClassChatAttachments => Set<ClassChatAttachment>();
 	public DbSet<DataProcessingAgreementAcceptance> DataProcessingAgreementAcceptances => Set<DataProcessingAgreementAcceptance>();
 	public DbSet<SchoolDeletionRecord> SchoolDeletionRecords => Set<SchoolDeletionRecord>();
+	public DbSet<ExternalLink> ExternalLinks => Set<ExternalLink>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{

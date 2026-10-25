@@ -6,6 +6,7 @@ import {
 } from '../api/generated/@tanstack/react-query.gen'
 import type { StaffRole, OnboardingStatusDto } from '../api/client'
 import type { StatsControllerDashboardStats } from '../api/generated/types.gen'
+import LinksCard from '../components/LinksCard'
 import { usePageTitle } from '../hooks/usePageTitle'
 
 function OnboardingCard({ status }: { status: OnboardingStatusDto }) {
@@ -409,6 +410,9 @@ export default function DashboardPage() {
 
       {/* Quick actions — always shown, not data-dependent */}
       <QuickActionsGrid />
+
+      {/* The school's links — hidden until the admin adds one on /links */}
+      <LinksCard allTo="/links" />
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">

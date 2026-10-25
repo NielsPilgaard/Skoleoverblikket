@@ -32,6 +32,7 @@ Included:
 - Stats and reporting (hours per course, hours per teacher/aide)
 - Printable weekly schemas (per class, per teacher, per room)
 - Admin dashboard
+- Links: the school's external links for parents, staff and board
 - Staff invitation and onboarding
 - Email notifications
 - A storage quota (school-level, size TBD per current Stripe config)

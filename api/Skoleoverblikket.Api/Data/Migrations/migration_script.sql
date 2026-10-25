@@ -2582,3 +2582,63 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025130813_AddExternalLinks') THEN
+    CREATE TABLE "ExternalLinks" (
+        "Id" uuid NOT NULL,
+        "TenantId" uuid NOT NULL,
+        "Title" character varying(100) NOT NULL,
+        "Url" character varying(2000) NOT NULL,
+        "Description" character varying(300),
+        "VisibleToParents" boolean NOT NULL,
+        "VisibleToStaff" boolean NOT NULL,
+        "VisibleToBoard" boolean NOT NULL,
+        "RestrictToClasses" boolean NOT NULL,
+        "SortOrder" integer NOT NULL,
+        "CreatedAt" timestamp with time zone NOT NULL,
+        "UpdatedAt" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_ExternalLinks" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025130813_AddExternalLinks') THEN
+    CREATE TABLE "ExternalLinkClasses" (
+        "ExternalLinkId" uuid NOT NULL,
+        "ClassId" uuid NOT NULL,
+        "TenantId" uuid NOT NULL,
+        CONSTRAINT "PK_ExternalLinkClasses" PRIMARY KEY ("ExternalLinkId", "ClassId"),
+        CONSTRAINT "FK_ExternalLinkClasses_Classes_ClassId" FOREIGN KEY ("ClassId") REFERENCES "Classes" ("Id") ON DELETE CASCADE,
+        CONSTRAINT "FK_ExternalLinkClasses_ExternalLinks_ExternalLinkId" FOREIGN KEY ("ExternalLinkId") REFERENCES "ExternalLinks" ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025130813_AddExternalLinks') THEN
+    CREATE INDEX "IX_ExternalLinkClasses_ClassId" ON "ExternalLinkClasses" ("ClassId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025130813_AddExternalLinks') THEN
+    CREATE INDEX "IX_ExternalLinks_TenantId_SortOrder" ON "ExternalLinks" ("TenantId", "SortOrder");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025130813_AddExternalLinks') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261025130813_AddExternalLinks', '10.0.7');
+    END IF;
+END $EF$;
+COMMIT;
+

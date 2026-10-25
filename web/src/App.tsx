@@ -88,6 +88,7 @@ const BoardStaffPage = lazy(() => import('./pages/BoardStaffPage'))
 const ComplianceCoveragePage = lazy(() => import('./pages/ComplianceCoveragePage'))
 const BoardInvitationPage = lazy(() => import('./pages/BoardInvitationPage'))
 const ImportPage = lazy(() => import('./pages/ImportPage'))
+const LinksPage = lazy(() => import('./pages/LinksPage'))
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -307,6 +308,7 @@ export default function App() {
                     }
                   />
                   <Route path="kalender" element={<CalendarPage />} />
+                  <Route path="links" element={<LinksPage />} />
                   <Route path="klasser/:classId/ugeplan" element={<WeekPlanPage />} />
                   <Route
                     path="indstillinger"
@@ -438,6 +440,14 @@ export default function App() {
                     }
                   />
                   <Route
+                    path="foraeldrevisning/links"
+                    element={
+                      <ParentRoute>
+                        <LinksPage />
+                      </ParentRoute>
+                    }
+                  />
+                  <Route
                     path="foraeldrevisning/ferieindmelding"
                     element={
                       <ParentRoute>
@@ -466,6 +476,14 @@ export default function App() {
                     element={
                       <BoardRoute>
                         <BoardSchemasPage />
+                      </BoardRoute>
+                    }
+                  />
+                  <Route
+                    path="bestyrelse/links"
+                    element={
+                      <BoardRoute>
+                        <LinksPage />
                       </BoardRoute>
                     }
                   />
