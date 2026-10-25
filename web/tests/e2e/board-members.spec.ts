@@ -21,7 +21,7 @@ test('admin invites, updates and removes a board member from Stamdata', async ({
 
   const row = page.getByTestId('board-member-row').filter({ hasText: email })
   await expect(row).toBeVisible({ timeout: 15_000 })
-  // Inviting pre-creates the Keycloak account (temporary password in the email),
+  // Inviting pre-creates the Keycloak account (the invitee chooses its password later),
   // so a fresh invite already shows as having an account.
   await expect(row).toContainText('Konto oprettet')
 
@@ -75,8 +75,10 @@ test('board invitation link works without logging in first', async ({ page, brow
   await visitor.goto(link!)
   await expect(visitor.getByTestId('board-invitation-preview')).toBeVisible({ timeout: 15_000 })
   expect(new URL(visitor.url()).port).toBe('5173')
+  // A new board member chooses their password here and lands logged in on the board pages.
+  await visitor.getByTestId('board-invitation-password').fill('NewPass456!')
   await visitor.getByTestId('board-invitation-accept').click()
-  await expect(visitor.getByTestId('board-invitation-accepted')).toBeVisible({ timeout: 15_000 })
+  await visitor.waitForURL(/\/bestyrelse\/oversigt/, { timeout: 15_000 })
   await visitorContext.close()
 
   page.once('dialog', (dialog) => void dialog.accept())

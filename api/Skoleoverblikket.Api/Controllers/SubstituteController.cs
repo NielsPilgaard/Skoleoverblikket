@@ -6,7 +6,7 @@ using Skoleoverblikket.Api.Services;
 namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Roles = Roles.Staff)]
 public sealed class SubstituteController(
 	SubstituteService substitutes,
 	IAuthorizationService authorization) : ControllerBase
@@ -23,11 +23,6 @@ public sealed class SubstituteController(
 		[FromQuery] Guid timeSlotId,
 		CancellationToken cancellationToken)
 	{
-		if (User.IsInRole(Roles.Parent) || User.IsInRole(Roles.Board))
-		{
-			return Forbid();
-		}
-
 		if (!IsoWeekValidation.IsValid(isoYear, isoWeek))
 		{
 			return Problem("Ugyldigt årstal eller ugenummer", statusCode: 400);
@@ -77,11 +72,6 @@ public sealed class SubstituteController(
 	public async Task<ActionResult<IReadOnlyList<MySubstitutionDto>>> GetMine(
 		[FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken cancellationToken)
 	{
-		if (User.IsInRole(Roles.Parent) || User.IsInRole(Roles.Board))
-		{
-			return Forbid();
-		}
-
 		var start = from ?? SchoolDayCalendar.Today();
 		var end = to ?? start.AddDays(14);
 		if (end < start || end.DayNumber - start.DayNumber > 120)

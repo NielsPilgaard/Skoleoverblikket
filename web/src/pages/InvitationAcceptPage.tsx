@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
-import keycloak from '../auth/keycloak'
+import { setActingAs, storeActingAs } from '../auth/actingAs'
+import keycloak, { logout, seedPostSignupToken } from '../auth/keycloak'
+import { useAuth } from '../auth/useAuth'
 import CookieBanner from '../components/CookieBanner'
 import {
   postApiV1StaffInvitationsAccept,
@@ -16,15 +18,16 @@ interface InvitationPreview {
   email: string
   schoolName: string
   expiresAt: string
+  needsPassword: boolean
   type: InvitationType
 }
 
-// The preview endpoints return anonymous objects, so the generated client has no types for them.
 interface StaffInvitationPreviewResponse {
   staffName: string
   email: string
   schoolName: string
   expiresAt: string
+  needsPassword: boolean
 }
 
 interface ParentInvitationPreviewResponse {
@@ -32,7 +35,10 @@ interface ParentInvitationPreviewResponse {
   email: string
   schoolName: string
   expiresAt: string
+  needsPassword: boolean
 }
+
+const MIN_PASSWORD_LENGTH = 8
 
 type PageState =
   | 'loading'
@@ -45,6 +51,7 @@ type PageState =
 
 export default function InvitationAcceptPage() {
   const { token } = useParams<{ token: string }>()
+  const { isAdmin } = useAuth()
   const [searchParams] = useSearchParams()
   const [state, setState] = useState<PageState>('loading')
   const [preview, setPreview] = useState<InvitationPreview | null>(null)
@@ -56,6 +63,10 @@ export default function InvitationAcceptPage() {
   const [shareContactInfo, setShareContactInfo] = useState(false)
   const [submittingContact, setSubmittingContact] = useState(false)
   const [contactError, setContactError] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
 
   // 'accept=1' is appended to redirectUri so we know the user just came back
   // from a fresh Keycloak login and explicitly authenticated for this invitation.
@@ -78,12 +89,22 @@ export default function InvitationAcceptPage() {
         { signal: controller.signal }
       )
 
+      // 503: the login service is down. The link is fine, so don't call it invalid.
+      const showUnavailable = () => {
+        setErrorMsg('Vi kan ikke hente invitationen lige nu. Vent et øjeblik, og genindlæs siden.')
+        setState('error')
+      }
+
       let normalized: InvitationPreview
       if (staffRes.status === 404) {
         const parentRes = await fetch(
           `/api/v1/parent-invitations/preview?token=${encodeURIComponent(inviteToken)}`,
           { signal: controller.signal }
         )
+        if (parentRes.status === 503) {
+          showUnavailable()
+          return
+        }
         if (!parentRes.ok) {
           setState('invalid')
           return
@@ -94,9 +115,14 @@ export default function InvitationAcceptPage() {
           email: data.email,
           schoolName: data.schoolName,
           expiresAt: data.expiresAt,
+          needsPassword: data.needsPassword,
           type: 'parent',
         }
       } else {
+        if (staffRes.status === 503) {
+          showUnavailable()
+          return
+        }
         if (!staffRes.ok) {
           setState('invalid')
           return
@@ -107,6 +133,7 @@ export default function InvitationAcceptPage() {
           email: data.email,
           schoolName: data.schoolName,
           expiresAt: data.expiresAt,
+          needsPassword: data.needsPassword,
           type: 'staff',
         }
       }
@@ -116,7 +143,7 @@ export default function InvitationAcceptPage() {
         setState('accepting')
         await acceptInvitation(inviteToken, keycloak.token, normalized.type)
       } else if (keycloak.authenticated) {
-        keycloak.logout({ redirectUri: window.location.href })
+        logout({ redirectUri: window.location.href })
       } else {
         setState('ready')
       }
@@ -143,6 +170,10 @@ export default function InvitationAcceptPage() {
           throwOnError: true,
         })
       }
+      // A login can hold several roles and defaults to staff. Act as the role just accepted, so the
+      // contact step and the landing page are not refused.
+      storeActingAs(type)
+      setActingAs(type)
       setState(type === 'parent' ? 'contact-info' : 'success')
     } catch (err: unknown) {
       const detail = (err as { detail?: string })?.detail
@@ -153,14 +184,49 @@ export default function InvitationAcceptPage() {
     }
   }
 
+  function acceptUrl() {
+    const basePath = preview?.type === 'parent' ? 'parent-invitation' : 'invitation'
+    return `${window.location.origin}/${basePath}/${token}?accept=1`
+  }
+
   function handleLogin() {
     if (!token) return
-    const basePath = preview?.type === 'parent' ? 'parent-invitation' : 'invitation'
-    keycloak.login({
-      loginHint: preview?.email,
-      redirectUri: `${window.location.origin}/${basePath}/${token}?accept=1`,
-      prompt: 'login',
-    })
+    keycloak.login({ loginHint: preview?.email, redirectUri: acceptUrl(), prompt: 'login' })
+  }
+
+  /** A new invitee chooses a password; the API logs them in, so the page reloads straight into accepting. */
+  async function submitPassword() {
+    if (!token || !preview) return
+    setSavingPassword(true)
+    setPasswordError('')
+    try {
+      // Plain fetch, like the preview: the SDK's auth interceptor would send the anonymous user to Keycloak.
+      const api = preview.type === 'parent' ? 'parent-invitations' : 'staff-invitations'
+      const res = await fetch(`/api/v1/${api}/password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password }),
+      })
+      if (res.status === 409) {
+        setPreview({ ...preview, needsPassword: false })
+        return
+      }
+      if (!res.ok) {
+        setPasswordError(
+          res.status === 400
+            ? `Adgangskoden skal være mindst ${MIN_PASSWORD_LENGTH} tegn.`
+            : 'Der opstod en fejl. Prøv igen.'
+        )
+        return
+      }
+      const login: { accessToken: string; refreshToken?: string | null } = await res.json()
+      seedPostSignupToken(login.accessToken, login.refreshToken ?? '')
+      window.location.assign(acceptUrl())
+    } catch {
+      setPasswordError('Der opstod en fejl. Prøv igen.')
+    } finally {
+      setSavingPassword(false)
+    }
   }
 
   async function submitContactInfo() {
@@ -243,16 +309,7 @@ export default function InvitationAcceptPage() {
   }
 
   if (state === 'success') {
-    const parsed = keycloak.tokenParsed as Record<string, unknown> | undefined
-    const realmAccess = parsed?.realm_access
-    const rawRoles =
-      realmAccess !== null && typeof realmAccess === 'object' && !Array.isArray(realmAccess)
-        ? (realmAccess as Record<string, unknown>).roles
-        : undefined
-    const roles = Array.isArray(rawRoles)
-      ? rawRoles.filter((r): r is string => typeof r === 'string')
-      : []
-    const destination = roles.includes('admin') ? '/dashboard' : '/mig/skema'
+    const destination = isAdmin ? '/dashboard' : '/mig/skema'
 
     return (
       <div className="min-h-screen bg-brand-50 flex items-center justify-center p-4">
@@ -438,6 +495,7 @@ export default function InvitationAcceptPage() {
             {contactError && <p className="text-sm text-red-600">{contactError}</p>}
             <button
               type="submit"
+              data-testid="invitation-contact-submit"
               disabled={submittingContact}
               className="w-full py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50"
             >
@@ -492,17 +550,78 @@ export default function InvitationAcceptPage() {
               </div>
             </div>
 
-            <p className="text-sm text-gray-500">
-              Klik på knappen herunder for at logge ind med din midlertidige adgangskode fra
-              e-mailen. Du bliver bedt om at vælge en ny adgangskode ved første login.
-            </p>
-
-            <button
-              onClick={handleLogin}
-              className="w-full py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
-            >
-              Opret konto og acceptér
-            </button>
+            {preview?.needsPassword ? (
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  submitPassword()
+                }}
+              >
+                {/* Lets the browser's password manager save the new password under the right email. */}
+                <input
+                  type="email"
+                  name="username"
+                  autoComplete="username"
+                  value={preview.email}
+                  readOnly
+                  hidden
+                />
+                <div>
+                  <label
+                    htmlFor="new-password"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Vælg din adgangskode
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="new-password"
+                      name="new-password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      data-testid="invitation-password"
+                      className="w-full px-3 py-2 pr-16 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute inset-y-0 right-0 px-3 text-sm text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword ? 'Skjul' : 'Vis'}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Mindst {MIN_PASSWORD_LENGTH} tegn. Du bruger den, når du logger ind.
+                  </p>
+                </div>
+                {passwordError && <p className="text-sm text-red-600">{passwordError}</p>}
+                <button
+                  type="submit"
+                  data-testid="invitation-password-submit"
+                  disabled={savingPassword || password.length < MIN_PASSWORD_LENGTH}
+                  className="w-full py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingPassword ? 'Opretter konto…' : 'Opret konto og acceptér'}
+                </button>
+              </form>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500">
+                  Du har allerede en konto. Log ind med din adgangskode for at acceptere
+                  invitationen.
+                </p>
+                <button
+                  onClick={handleLogin}
+                  data-testid="invitation-login"
+                  className="w-full py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
+                >
+                  Log ind og acceptér
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -91,49 +91,16 @@ test.describe.serial('Staff invitation flow', () => {
     await freshPage.waitForURL((url) => url.hostname === 'localhost' && url.port === '5173', { timeout: 30_000 })
     await expect(freshPage.getByRole('heading', { name: /inviteret/i })).toBeVisible({ timeout: 15_000 })
 
-    // --- Step 6: click login button, get redirected to Keycloak ---
-    await freshPage.getByRole('button', { name: /opret konto|acceptér/i }).click()
-    await freshPage.waitForURL(/localhost:8080/, { timeout: 15_000 })
+    // --- Step 6: choose a password on the invitation page ---
+    // No password is emailed; the invitee picks their own and is logged in right away.
+    await freshPage.getByTestId('invitation-password').fill('NewPass456!')
+    await freshPage.getByTestId('invitation-password-submit').click()
 
-    // --- Step 7: log in with temporary password from email ---
-    // The invitation email contains a temporary password; extract it from Mailpit
-    const mailRes2 = await request.get(`${MAILPIT_API}/messages`)
-    const mailBody2 = await mailRes2.json() as { messages?: { ID: string; To: { Address: string }[] }[] }
-    const msg2 = (mailBody2.messages ?? []).find((m) =>
-      m.To.some((to) => to.Address === staffEmail)
-    )
-    expect(msg2, 'Could not re-fetch invitation email').toBeDefined()
-    const detail2 = await request.get(`${MAILPIT_API}/message/${msg2!.ID}`)
-    const detailBody2 = await detail2.json() as { HTML?: string; Text?: string }
-    const emailText = detailBody2.Text ?? detailBody2.HTML ?? ''
-
-    // Temporary password appears after "midlertidige adgangskode" in the plain-text email
-    const passMatch = emailText.match(/midlertidige adgangskode[^:]*:\s*([^\s\n<]+)/i)
-    expect(passMatch, 'No temporary password found in invitation email').toBeDefined()
-    const tempPassword = passMatch![1].replace(/<[^>]+>/g, '').trim()
-
-    await freshPage.locator('#username').fill(staffEmail)
-    await freshPage.locator('#password').fill(tempPassword)
-    await freshPage.getByRole('button', { name: /log ind|sign in/i }).click()
-
-    // Keycloak forces UPDATE_PASSWORD — fill new password
-    await freshPage.waitForURL(/localhost:8080.*password|update-password/i, { timeout: 10_000 }).catch(() => {})
-    if (freshPage.url().includes('localhost:8080')) {
-      const newPassword = 'NewPass456!'
-      const newPassField = freshPage.locator('#password-new, input[name="password-new"]')
-      const confirmField = freshPage.locator('#password-confirm, input[name="password-confirm"]')
-      if (await newPassField.isVisible({ timeout: 5_000 }).catch(() => false)) {
-        await newPassField.fill(newPassword)
-        await confirmField.fill(newPassword)
-        await freshPage.getByRole('button', { name: /gem|submit|opdater|update/i }).click()
-      }
-    }
-
-    // --- Step 8: back on invitation page with ?accept=1 — invitation auto-accepted ---
+    // --- Step 7: the page reloads with ?accept=1 and accepts the invitation ---
     await freshPage.waitForURL(/\/invitation\//, { timeout: 20_000 })
     await expect(freshPage.getByText(/invitation accepteret/i)).toBeVisible({ timeout: 10_000 })
 
-    // --- Step 9: click "Gå til mit skema" — must land on /mig/skema, NOT /dashboard ---
+    // --- Step 8: click "Gå til mit skema" — must land on /mig/skema, NOT /dashboard ---
     const apiErrors: { url: string; status: number }[] = []
     freshPage.on('response', (res) => {
       if (res.url().includes('/api/v1/') && res.status() === 403) {

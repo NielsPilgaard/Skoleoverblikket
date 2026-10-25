@@ -17,9 +17,7 @@ namespace Skoleoverblikket.Api.Controllers;
 [RequiresModule(SubscriptionModule.BoardModule)]
 public sealed class BoardMembersController(
 	AppDbContext db,
-	ITenantContext tenant,
-	BoardMemberInvitationService invitationService,
-	KeycloakAdminService keycloakAdmin) : ControllerBase
+	BoardMemberInvitationService invitationService) : ControllerBase
 {
 	public record BoardMemberDto(
 		Guid Id,
@@ -87,74 +85,25 @@ public sealed class BoardMembersController(
 	[Authorize(Roles = Roles.Admin)]
 	public async Task<ActionResult<BoardMemberDto>> Invite(
 		[FromBody] InviteBoardMemberRequest req,
-		CancellationToken cancellationToken)
-	{
-		var normalizedEmail = req.Email.Trim().ToLowerInvariant();
-
-		var existing = await db.BoardMembers
-			.FirstOrDefaultAsync(m => m.Email == normalizedEmail, cancellationToken);
-
-		BoardMember member;
-		if (existing is not null)
-		{
-			member = existing;
-		}
-		else
-		{
-			member = new BoardMember
-			{
-				Id = Guid.NewGuid(),
-				TenantId = tenant.TenantId,
-				Name = req.Name.Trim(),
-				Email = normalizedEmail,
-			};
-			db.BoardMembers.Add(member);
-			try
-			{
-				await db.SaveChangesAsync(cancellationToken);
-			}
-			catch (DbUpdateException)
-			{
-				// Race condition: another request created the same member
-				member = await db.BoardMembers
-					.FirstAsync(m => m.Email == normalizedEmail, cancellationToken);
-			}
-		}
-
-		await invitationService.CreateAndSendAsync(member, cancellationToken);
-
-		return CreatedAtAction(nameof(GetById), new { id = member.Id }, ToDto(member));
-	}
+		CancellationToken cancellationToken) =>
+		await invitationService.InviteAsync(req.Name, req.Email, cancellationToken) is { } member
+			? CreatedAtAction(nameof(GetById), new { id = member.Id }, ToDto(member))
+			: Problem(
+			title: "E-mailadressen bruges på en anden skole",
+			detail: "Denne e-mail bruges allerede på en anden skole. Brug en anden e-mailadresse.",
+			statusCode: StatusCodes.Status409Conflict);
 
 	[HttpDelete("{id:guid}")]
 	[Authorize(Roles = Roles.Admin)]
-	public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken)
-	{
-		var member = await db.BoardMembers.FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
-		if (member is null)
+	public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken) =>
+		await invitationService.DeleteAsync(id, cancellationToken) switch
 		{
-			return NotFound();
-		}
-
-		if (!string.IsNullOrEmpty(member.KeycloakSubject))
-		{
-			try
-			{
-				await keycloakAdmin.DeleteStaffUserAsync(member.KeycloakSubject, cancellationToken);
-			}
-			catch (KeycloakException ex)
-			{
-				return Problem(
-					detail: ex.Message,
-					title: "Keycloak-brugeren kunne ikke slettes. Prøv igen.",
-					statusCode: StatusCodes.Status502BadGateway);
-			}
-		}
-
-		db.BoardMembers.Remove(member);
-		await db.SaveChangesAsync(cancellationToken);
-		return NoContent();
-	}
+			BoardMemberInvitationService.DeleteResult.Deleted => NoContent(),
+			BoardMemberInvitationService.DeleteResult.LoginDeleteFailed => Problem(
+				title: "Keycloak-brugeren kunne ikke slettes. Prøv igen.",
+				statusCode: StatusCodes.Status502BadGateway),
+			_ => NotFound(),
+		};
 
 	[HttpPatch("{id:guid}/teacher-data-access")]
 	[Authorize(Roles = Roles.Admin)]

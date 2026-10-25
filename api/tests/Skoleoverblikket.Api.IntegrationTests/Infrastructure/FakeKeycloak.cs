@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net;
+using Refit;
 using Skoleoverblikket.Api.Auth;
 
 namespace Skoleoverblikket.Api.IntegrationTests.Infrastructure;
@@ -12,12 +13,32 @@ namespace Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 public sealed class FakeKeycloak : IKeycloakAdminApi, IKeycloakTokenApi
 {
 	private readonly ConcurrentDictionary<string, string> _usersByEmail = new(StringComparer.OrdinalIgnoreCase);
+	private readonly ConcurrentDictionary<string, string?> _tenantById = new();
+	private readonly ConcurrentDictionary<string, string> _passwordById = new();
 
-	/// <summary>Registers an existing login, so creating another user with this email returns 409.</summary>
-	public void AddExistingUser(string email) => _usersByEmail.TryAdd(email, Guid.NewGuid().ToString());
+	/// <summary>Logins the API deleted.</summary>
+	public ConcurrentBag<string> DeletedUserIds { get; } = [];
+
+	/// <summary>Logins holding the Keycloak 'admin' realm role, for the Phase A backfill.</summary>
+	public ConcurrentBag<string> AdminRoleMembers { get; } = [];
+
+	/// <summary>
+	/// Registers an existing login with a password, so creating another user with this email returns 409.
+	/// Returns its subject. <paramref name="tenantId"/> is the school the login belongs to.
+	/// </summary>
+	public string AddExistingUser(string email, Guid? tenantId = null)
+	{
+		var id = _usersByEmail.GetOrAdd(email, _ => Guid.NewGuid().ToString());
+		_tenantById[id] = tenantId?.ToString();
+		_passwordById[id] = "existing-password";
+		return id;
+	}
 
 	/// <summary>The Keycloak user id (JWT <c>sub</c>) created for <paramref name="email"/>.</summary>
 	public string SubjectFor(string email) => _usersByEmail[email];
+
+	/// <summary>The password the login has, or null when nobody has set one.</summary>
+	public string? PasswordOf(string subject) => _passwordById.GetValueOrDefault(subject);
 
 	public Task<HttpResponseMessage> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken)
 	{
@@ -25,6 +46,12 @@ public sealed class FakeKeycloak : IKeycloakAdminApi, IKeycloakTokenApi
 		if (!_usersByEmail.TryAdd(request.Email, id))
 		{
 			return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Conflict));
+		}
+
+		_tenantById[id] = request.Attributes.GetValueOrDefault("tenant_id")?.FirstOrDefault();
+		if (request.Credentials.FirstOrDefault(c => c.Type == "password") is { } credential)
+		{
+			_passwordById[id] = credential.Value;
 		}
 
 		var response = new HttpResponseMessage(HttpStatusCode.Created);
@@ -35,8 +62,10 @@ public sealed class FakeKeycloak : IKeycloakAdminApi, IKeycloakTokenApi
 	public Task<RoleRepresentation> GetRoleAsync(string roleName, CancellationToken cancellationToken) =>
 		Task.FromResult(new RoleRepresentation(roleName + "-id", roleName));
 
-	public Task AssignRoleMappingsAsync(string userId, IReadOnlyList<RoleRepresentation> roles, CancellationToken cancellationToken) =>
-		Task.CompletedTask;
+	public Task<IReadOnlyList<UserRepresentation>> GetRoleUsersAsync(string roleName, int first, int max, CancellationToken cancellationToken) =>
+		Task.FromResult<IReadOnlyList<UserRepresentation>>(roleName == Roles.Admin
+			? AdminRoleMembers.Skip(first).Take(max).Select(id => new UserRepresentation(id, null)).ToList()
+			: []);
 
 	public Task RemoveRoleMappingsAsync(string userId, IReadOnlyList<RoleRepresentation> roles, CancellationToken cancellationToken) =>
 		Task.CompletedTask;
@@ -46,10 +75,46 @@ public sealed class FakeKeycloak : IKeycloakAdminApi, IKeycloakTokenApi
 
 	public Task<IReadOnlyList<UserRepresentation>> GetUsersByEmailAsync(string email, bool exact, CancellationToken cancellationToken) =>
 		Task.FromResult<IReadOnlyList<UserRepresentation>>(
-			_usersByEmail.TryGetValue(email, out var id) ? [new UserRepresentation(id, email)] : []);
+			_usersByEmail.TryGetValue(email, out var id)
+				? [new UserRepresentation(id, email, TenantAttributes(id))]
+				: []);
 
-	public Task<HttpResponseMessage> DeleteUserAsync(string userId, CancellationToken cancellationToken) =>
-		Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
+	private Dictionary<string, IReadOnlyList<string>> TenantAttributes(string id) =>
+		_tenantById.TryGetValue(id, out var tenant) && tenant is not null
+			? new() { ["tenant_id"] = [tenant] }
+			: [];
+
+	public Task<HttpResponseMessage> DeleteUserAsync(string userId, CancellationToken cancellationToken)
+	{
+		DeletedUserIds.Add(userId);
+		return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
+	}
+
+	public Task<UserRepresentation> GetUserAsync(string userId, CancellationToken cancellationToken) =>
+		Task.FromResult(new UserRepresentation(userId, null, TenantAttributes(userId)));
+
+	/// <summary>When true, reading a login's credentials fails as if Keycloak were down.</summary>
+	public bool Unavailable { get; set; }
+
+	public async Task<IReadOnlyList<CredentialSummary>> GetCredentialsAsync(string userId, CancellationToken cancellationToken)
+	{
+		if (Unavailable)
+		{
+			throw await ApiException.Create(
+				new HttpRequestMessage(HttpMethod.Get, $"http://keycloak.test/admin/realms/test/users/{userId}/credentials"),
+				HttpMethod.Get,
+				new HttpResponseMessage(HttpStatusCode.ServiceUnavailable),
+				new RefitSettings());
+		}
+
+		return _passwordById.ContainsKey(userId) ? [new CredentialSummary("password")] : [];
+	}
+
+	public Task<HttpResponseMessage> ResetPasswordAsync(string userId, CredentialRepresentation credential, CancellationToken cancellationToken)
+	{
+		_passwordById[userId] = credential.Value;
+		return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
+	}
 
 	public Task<TokenResponse> GetTokenAsync(TokenRequest request, CancellationToken cancellationToken) =>
 		Task.FromResult(new TokenResponse("service-token", null, 300, "Bearer"));

@@ -78,32 +78,17 @@ async function parentSession(
 
   const mail = await findMail(request, email)
   const link = mail.match(/http[^"'\s<>]+\/parent-invitation\/[^"'\s<>]+/)?.[0].replace(/&amp;/g, '&')
-  const tempPassword = mail
-    .match(/midlertidige adgangskode[^:]*:\s*([^\s\n<]+)/i)?.[1]
-    .replace(/<[^>]+>/g, '')
-    .trim()
   expect(link, 'No parent invitation link').toBeDefined()
-  expect(tempPassword, 'No temporary password').toBeDefined()
 
+  // The parent chooses their own password on the invitation page and is logged in right away.
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   const page = await context.newPage()
   await page.goto(link!)
   await page.waitForURL((url) => url.port === '5173', { timeout: 30_000 })
-  await page.getByRole('button', { name: /opret konto|acceptér/i }).click()
-  await page.waitForURL(/localhost:8080/, { timeout: 15_000 })
-  await page.locator('#username').fill(email)
-  await page.locator('#password').fill(tempPassword!)
-  await page.getByRole('button', { name: /log ind|sign in/i }).click()
+  await page.getByTestId('invitation-password').fill('NewPass456!')
+  await page.getByTestId('invitation-password-submit').click()
 
-  await page.waitForURL(/localhost:8080.*password|update-password/i, { timeout: 10_000 }).catch(() => {})
-  const newPass = page.locator('#password-new, input[name="password-new"]')
-  if (await newPass.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await newPass.fill('NewPass456!')
-    await page.locator('#password-confirm, input[name="password-confirm"]').fill('NewPass456!')
-    await page.getByRole('button', { name: /gem|submit|opdater|update/i }).click()
-  }
-
-  await page.waitForURL(/\/parent-invitation\//, { timeout: 20_000 })
+  await page.waitForURL(/\/parent-invitation\/.*accept=1/, { timeout: 20_000 })
   await page.getByRole('button', { name: /spring over/i }).click()
   await page.waitForURL(/\/foraeldrevisning\//, { timeout: 20_000 })
   return page

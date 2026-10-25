@@ -11,7 +11,7 @@ namespace Skoleoverblikket.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/staff-absences")]
-[Authorize]
+[Authorize(Roles = Roles.Staff)]
 public sealed class StaffAbsenceController(StaffAbsenceService staffAbsences) : ControllerBase
 {
 	private const string InvalidDatesMessage =
@@ -22,11 +22,6 @@ public sealed class StaffAbsenceController(StaffAbsenceService staffAbsences) : 
 	[HttpPost]
 	public async Task<IActionResult> Report([FromBody] ReportStaffAbsenceRequest req, CancellationToken cancellationToken)
 	{
-		if (IsParentOrBoard())
-		{
-			return Forbid();
-		}
-
 		var (result, id) = await staffAbsences.ReportAsync(
 			User.GetKeycloakSubject(), User.IsInRole(Roles.Admin), req, cancellationToken);
 
@@ -44,11 +39,6 @@ public sealed class StaffAbsenceController(StaffAbsenceService staffAbsences) : 
 	[HttpGet("mine")]
 	public async Task<ActionResult<IReadOnlyList<StaffAbsenceDto>>> GetMine(CancellationToken cancellationToken)
 	{
-		if (IsParentOrBoard())
-		{
-			return Forbid();
-		}
-
 		return await staffAbsences.GetMineAsync(User.GetKeycloakSubject(), cancellationToken);
 	}
 
@@ -97,11 +87,6 @@ public sealed class StaffAbsenceController(StaffAbsenceService staffAbsences) : 
 	public async Task<IActionResult> Update(
 		Guid id, [FromBody] UpdateStaffAbsenceRequest req, CancellationToken cancellationToken)
 	{
-		if (IsParentOrBoard())
-		{
-			return Forbid();
-		}
-
 		return await staffAbsences.UpdateAsync(id, User.GetKeycloakSubject(), User.IsInRole(Roles.Admin), req, cancellationToken) switch
 		{
 			StaffAbsenceUpdateResult.Updated => NoContent(),
@@ -115,11 +100,6 @@ public sealed class StaffAbsenceController(StaffAbsenceService staffAbsences) : 
 	[HttpDelete("{id:guid}")]
 	public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
 	{
-		if (IsParentOrBoard())
-		{
-			return Forbid();
-		}
-
 		return await staffAbsences.DeleteAsync(id, User.GetKeycloakSubject(), User.IsInRole(Roles.Admin), cancellationToken) switch
 		{
 			StaffAbsenceDeleteResult.Deleted => NoContent(),
@@ -128,5 +108,4 @@ public sealed class StaffAbsenceController(StaffAbsenceService staffAbsences) : 
 		};
 	}
 
-	private bool IsParentOrBoard() => User.IsInRole(Roles.Parent) || User.IsInRole(Roles.Board);
 }

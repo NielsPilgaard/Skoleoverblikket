@@ -13,7 +13,7 @@ namespace Skoleoverblikket.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/attendance")]
-[Authorize]
+[Authorize(Roles = Roles.Staff)]
 [RequiresModule(SubscriptionModule.ParentModule)]
 public sealed class AttendanceController(AbsenceService absence, IAuthorizationService authorization) : ControllerBase
 {
@@ -68,11 +68,6 @@ public sealed class AttendanceController(AbsenceService absence, IAuthorizationS
 	[HttpGet("mine/pending")]
 	public async Task<ActionResult<IReadOnlyList<PendingAttendanceDto>>> GetMyPending(CancellationToken cancellationToken)
 	{
-		if (User.IsInRole(Roles.Parent) || User.IsInRole(Roles.Board))
-		{
-			return Forbid();
-		}
-
 		return await absence.GetMyPendingAsync(User.GetKeycloakSubject(), DateTimeOffset.UtcNow, cancellationToken);
 	}
 }

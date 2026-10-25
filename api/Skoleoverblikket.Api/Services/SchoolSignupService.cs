@@ -102,6 +102,7 @@ public sealed class SchoolSignupService(
 			Email = req.AdminEmail,
 			Role = StaffRole.Teacher,
 			KeycloakSubject = keycloakSubject,
+			IsAdmin = true,
 		});
 
 		db.Courses.AddRange(CourseSeeder.BuildStandardCourses(school.Id));

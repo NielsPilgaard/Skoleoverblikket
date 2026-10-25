@@ -185,9 +185,8 @@ public sealed class StatsController(
 	[HttpGet("my-dashboard")]
 	public async Task<ActionResult<MyDashboardStats>> GetMyDashboard(CancellationToken cancellationToken)
 	{
-		if (User.IsInRole(Roles.Admin)
-			|| User.IsInRole(Roles.Parent)
-			|| User.IsInRole(Roles.Board)
+		if (!User.IsInRole(Roles.Staff)
+			|| User.IsInRole(Roles.Admin)
 			|| User.IsInRole(Roles.SuperAdmin))
 		{
 			return Forbid();

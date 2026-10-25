@@ -1,4 +1,5 @@
 import keycloak from '../auth/keycloak'
+import { actingAsHeaders } from '../auth/actingAs'
 import { API_BASE, ApiError } from './client'
 
 export interface UploadOptions {
@@ -39,6 +40,7 @@ async function presignConfirmUpload(
     headers: {
       'Content-Type': 'application/json',
       ...(keycloak.token ? { Authorization: `Bearer ${keycloak.token}` } : {}),
+      ...actingAsHeaders(),
     },
     body: JSON.stringify(presignBody),
   })
@@ -86,6 +88,7 @@ async function presignConfirmUpload(
     headers: {
       'Content-Type': 'application/json',
       ...(keycloak.token ? { Authorization: `Bearer ${keycloak.token}` } : {}),
+      ...actingAsHeaders(),
     },
     body: JSON.stringify({ confirmToken }),
   })

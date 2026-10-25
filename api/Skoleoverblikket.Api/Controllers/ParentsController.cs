@@ -16,9 +16,7 @@ namespace Skoleoverblikket.Api.Controllers;
 [RequiresModule(SubscriptionModule.ParentModule)]
 public sealed class ParentsController(
 	AppDbContext db,
-	ITenantContext tenant,
 	ParentInvitationService invitationService,
-	KeycloakAdminService keycloak,
 	ILogger<ParentsController> logger) : ControllerBase
 {
 	public record ParentSummaryDto(Guid Id, string Name, string? Phone, string? Address, string? PostalCode, string? City, IReadOnlyList<StudentRefDto> Students, bool HasAccount, DateTimeOffset CreatedAt, bool AdresseBeskyttet);
@@ -69,35 +67,10 @@ public sealed class ParentsController(
 	[HttpPost("invite")]
 	public async Task<ActionResult<ParentDto>> Invite([FromBody] InviteParentRequest req, CancellationToken cancellationToken)
 	{
-		// Validate all student IDs belong to this tenant
-		var students = await db.Students
-			.Where(s => req.StudentIds.Contains(s.Id))
-			.ToListAsync(cancellationToken);
-
-		if (students.Count != req.StudentIds.Count)
-		{
-			return ValidationProblem("One or more student IDs were not found.");
-		}
-
-		var parent = new Parent
-		{
-			Id = Guid.NewGuid(),
-			TenantId = tenant.TenantId,
-			Name = req.Name,
-			Email = req.Email,
-		};
-
-		foreach (var student in students)
-		{
-			parent.Students.Add(student);
-		}
-
-		db.Parents.Add(parent);
-		await db.SaveChangesAsync(cancellationToken);
-
+		(ParentInvitationService.InviteResult Result, Guid? ParentId) invite;
 		try
 		{
-			await invitationService.CreateAndSendAsync(parent, cancellationToken);
+			invite = await invitationService.InviteAsync(req.Name, req.Email, req.StudentIds, cancellationToken);
 		}
 		catch (InvalidOperationException ex)
 		{
@@ -105,43 +78,32 @@ public sealed class ParentsController(
 		}
 		catch (Exception ex)
 		{
-			logger.LogError(ex, "Failed to send parent invitation email to parent {ParentId}", parent.Id);
+			logger.LogError(ex, "Failed to invite parent {Email}", req.Email);
 			return Problem(title: "Kunne ikke sende invitation", detail: "Der opstod en fejl. Prøv igen.", statusCode: 502);
+		}
+
+		switch (invite.Result)
+		{
+			case ParentInvitationService.InviteResult.StudentsNotFound:
+				return ValidationProblem("One or more student IDs were not found.");
+			case ParentInvitationService.InviteResult.EmailInOtherSchool:
+				return Problem(
+					title: "E-mailadressen bruges på en anden skole",
+					detail: "Denne e-mail bruges allerede på en anden skole. Brug en anden e-mailadresse.",
+					statusCode: StatusCodes.Status409Conflict);
 		}
 
 		var withStudents = await db.Parents
 			.AsNoTracking()
 			.Include(p => p.Students).ThenInclude(s => s.Class)
-			.FirstAsync(p => p.Id == parent.Id, cancellationToken);
+			.FirstAsync(p => p.Id == invite.ParentId, cancellationToken);
 
-		return CreatedAtAction(nameof(GetById), new { id = parent.Id }, ToDto(withStudents, coParent: null));
+		return CreatedAtAction(nameof(GetById), new { id = withStudents.Id }, ToDto(withStudents, coParent: null));
 	}
 
 	[HttpDelete("{id:guid}")]
-	public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken)
-	{
-		var parent = await db.Parents.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
-		if (parent is null)
-		{
-			return NotFound();
-		}
-
-		if (!string.IsNullOrWhiteSpace(parent.KeycloakSubject))
-		{
-			try
-			{
-				await keycloak.DeleteStaffUserAsync(parent.KeycloakSubject, cancellationToken);
-			}
-			catch (KeycloakException ex)
-			{
-				logger.LogError(ex, "Failed to delete Keycloak account for parent {ParentId}", id);
-			}
-		}
-
-		db.Parents.Remove(parent);
-		await db.SaveChangesAsync(cancellationToken);
-		return NoContent();
-	}
+	public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken) =>
+		await invitationService.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound();
 
 	[HttpPost("{id:guid}/students/{studentId:guid}")]
 	public async Task<ActionResult> LinkStudent(Guid id, Guid studentId, CancellationToken cancellationToken)

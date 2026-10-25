@@ -8,7 +8,7 @@ namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/contact-directory")]
-[Authorize]
+[Authorize(Roles = $"{Roles.Staff},{Roles.Parent}")]
 public sealed class ContactDirectoryController(AppDbContext db) : ControllerBase
 {
 	public record ContactDirectoryParentDto(

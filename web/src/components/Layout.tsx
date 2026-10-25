@@ -8,7 +8,6 @@ import NotificationBell from './NotificationBell'
 import { useQuery } from '@tanstack/react-query'
 import { getApiV1BillingSubscriptionOptions } from '../api/generated/@tanstack/react-query.gen'
 import { useAuth } from '../auth/useAuth'
-import { useSubscription } from '../hooks/useSubscription'
 
 function SubscriptionBanner() {
   const { isAdmin } = useAuth()
@@ -29,20 +28,18 @@ function SubscriptionBanner() {
   )
 }
 
+const moduleNames = { parent: 'Forældremodulet', board: 'Bestyrelsesmodulet' } as const
+
 /**
  * Board and parent users only exist while their module is active, and the API rejects them
- * without it (ModuleAccessFilter). Returns the module to name when every such role is off.
+ * without it (ModuleAccessFilter). Returns the module to name when the person acts as such a
+ * role and it's off. That only happens when every role they hold is off: AuthProvider otherwise
+ * picks a role whose module is on.
  */
 function useInactiveModule(): string | null {
-  const { isAdmin, isParent, isBoard, isSuperAdmin } = useAuth()
-  const { hasParentModule, hasBoardModule, isSuccess } = useSubscription()
-  if (isAdmin || isSuperAdmin || !isSuccess) return null
-  const off = [
-    isBoard && !hasBoardModule && 'Bestyrelsesmodulet',
-    isParent && !hasParentModule && 'Forældremodulet',
-  ].filter((m): m is string => typeof m === 'string')
-  const held = Number(isBoard) + Number(isParent)
-  return held > 0 && off.length === held ? off[0] : null
+  const { actingAs, schoolRoles, isSuperAdmin } = useAuth()
+  if (isSuperAdmin || actingAs === null || actingAs === 'staff') return null
+  return schoolRoles.some((r) => r.role === actingAs && !r.active) ? moduleNames[actingAs] : null
 }
 
 function ModuleInactiveScreen({ moduleName }: { moduleName: string }) {

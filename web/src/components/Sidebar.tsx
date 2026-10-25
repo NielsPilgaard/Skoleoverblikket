@@ -9,6 +9,7 @@ import { useAuth } from '../auth/useAuth'
 import { useSubscription } from '../hooks/useSubscription'
 import Logo from './Logo'
 import NotificationBell from './NotificationBell'
+import RoleSwitcher from './RoleSwitcher'
 
 interface NavItem {
   to: string
@@ -1236,6 +1237,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               Min profil
             </NavLink>
           )}
+          <RoleSwitcher />
           {userName && (
             <div className="flex items-center gap-2 px-3 py-2">
               <div className="flex items-center justify-center h-6 w-6 rounded-full bg-brand-600 shrink-0">
