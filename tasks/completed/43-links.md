@@ -30,7 +30,7 @@ Schools send parents to a handful of external tools: Aula, fravær forms, buskor
 | Fields | Title (required, ≤100), URL (required, ≤2000), description (optional, ≤300, e.g. "Meld fravær før kl. 8"). Generic external-link icon, no icon picker, no favicon fetching. |
 | Ordering | `SortOrder` int, ↑/↓ buttons. No drag and drop. |
 | URL rules | Absolute `http`/`https` only. Input without scheme (`aula.dk`) gets `https://` prepended. Everything else (`javascript:`, `mailto:`, `tel:`) rejected with 400. Rendered with `target="_blank" rel="noopener noreferrer"`. |
-| Placement | Sidebar item "Links" for every role + "Links" card on `DashboardPage`, `StaffDashboardPage`, `BoardDashboardPage`. Parents have no dashboard yet — see [50-parent-dashboard](50-parent-dashboard.md). |
+| Placement | Sidebar item "Links" for every role + "Links" card on `DashboardPage`, `StaffDashboardPage`, `BoardDashboardPage`. Parents have no dashboard yet — see [50-parent-dashboard](../50-parent-dashboard.md). |
 | Admin UI | Admin view of the same Links page (edit controls + audience/class chips), not a Skoleindstillinger section. |
 | Billing | Basis for all, no `moduleGated`. |
 | Label | "Links". Routes `/links` (staff/admin), `/foraeldrevisning/links` (parent), board equivalent under the existing board route prefix. |
@@ -51,7 +51,7 @@ Schools send parents to a handful of external tools: Aula, fravær forms, buskor
    - `POST /`, `PUT /{id}`, `DELETE /{id}` — admin.
    - `PUT /order` — admin, body = ordered id list (frontend computes ↑/↓ swap).
    - Validation failures → `ValidationProblemDetails` 400.
-4. Check [docs/AUTHORIZATION.md](../docs/AUTHORIZATION.md) for how "staff" is identified (no `staff` role constant — staff = non-parent, non-board tenant user?) and add the endpoint to its summary table.
+4. Check [docs/AUTHORIZATION.md](../../docs/AUTHORIZATION.md) for how "staff" is identified (no `staff` role constant — staff = non-parent, non-board tenant user?) and add the endpoint to its summary table.
 
 ### Web
 
@@ -77,7 +77,7 @@ Schools send parents to a handful of external tools: Aula, fravær forms, buskor
 ### Docs
 
 12. AGENTS.md "Built features" list: one line for `ExternalLinksController`.
-13. [docs/PRICING.md](../docs/PRICING.md) Basis "Included" list: add Links.
+13. [docs/PRICING.md](../../docs/PRICING.md) Basis "Included" list: add Links.
 
 ## Edge cases
 
@@ -87,7 +87,7 @@ Schools send parents to a handful of external tools: Aula, fravær forms, buskor
 
 ## Out of scope
 
-- Parent dashboard — [50-parent-dashboard](50-parent-dashboard.md).
+- Parent dashboard — [50-parent-dashboard](../50-parent-dashboard.md).
 - Click tracking, favicons, icon picker, link categories/folders.
 - Class teachers managing their own class links.
 - Per-student targeting, scheduling links to appear/disappear.
