@@ -29,7 +29,7 @@ public sealed class SuperAdminFreeAccessController(SubscriptionService subscript
 				statusCode: StatusCodes.Status400BadRequest),
 			FreeAccessResult.PaidSubscriptionActive => Problem(
 				title: "Skolen betaler allerede",
-				detail: "Skolen har et aktivt Stripe-abonnement. Gratis adgang kan kun gives uden et betalt abonnement.",
+				detail: "Skolen har et Stripe-abonnement, der ikke er opsagt. Gratis adgang kan kun gives uden et betalt abonnement.",
 				statusCode: StatusCodes.Status409Conflict),
 			var other => throw new InvalidOperationException($"Unhandled result {other}"),
 		};

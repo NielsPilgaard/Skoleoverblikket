@@ -176,6 +176,47 @@ public sealed class FreeAccessTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task GrantFreeAccess_PastDueStripeSubscription_Returns409()
+	{
+		await UpdateSubscriptionAsync(s => s
+			.SetProperty(x => x.Status, Models.SubscriptionStatus.PastDue)
+			.SetProperty(x => x.StripeSubscriptionId, "sub_past_due"));
+
+		var response = await GrantAsync(null);
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+	}
+
+	[Test]
+	public async Task FreeAccess_IgnoresModulesLeftFromCanceledStripeSubscription()
+	{
+		await using (var scope = factory.Services.CreateAsyncScope())
+		{
+			var subscriptions = scope.ServiceProvider.GetRequiredService<SubscriptionService>();
+			await subscriptions.GrantModuleOverrideAsync(_tenantId, Models.SubscriptionModule.ParentModule);
+			await subscriptions.GrantModuleOverrideAsync(_tenantId, Models.SubscriptionModule.BoardModule);
+
+			// No endpoint adds a Stripe-bought module without calling Stripe, so the parent module is
+			// turned into one directly, then the Stripe subscription is canceled.
+			var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+			await db.SubscriptionModuleItems
+				.Where(m => m.Subscription.SchoolId == _tenantId && m.Module == Models.SubscriptionModule.ParentModule)
+				.ExecuteUpdateAsync(s => s
+					.SetProperty(x => x.IsAdminOverride, false)
+					.SetProperty(x => x.StripeSubscriptionItemId, "si_stale"));
+		}
+
+		await UpdateSubscriptionAsync(s => s
+			.SetProperty(x => x.Status, Models.SubscriptionStatus.Canceled)
+			.SetProperty(x => x.StripeSubscriptionId, "sub_canceled"));
+
+		await Assert.That((await GrantAsync(null)).StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+		var modules = (await GetBillingAsync()).ActiveModules;
+		await Assert.That(modules).IsEquivalentTo(["BoardModule"]);
+	}
+
+	[Test]
 	public async Task GrantFreeAccess_UnknownSchool_Returns404()
 	{
 		var response = await _superAdminClient.PutAsJsonAsync(
