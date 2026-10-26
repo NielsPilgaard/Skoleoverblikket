@@ -38,6 +38,16 @@ function formatDate(iso: string): string {
   })
 }
 
+/** Date-only value (YYYY-MM-DD): format in UTC so every viewer sees the same calendar day. */
+function formatDay(day: string): string {
+  return new Date(day).toLocaleDateString('da-DK', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
 function SkeletonStatusCard() {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
@@ -509,7 +519,7 @@ function StatusCard({
             <h2 className="text-base font-semibold text-brand-900">Gratis adgang</h2>
             <p className="mt-1 text-sm text-brand-700">
               {data.freeAccessLastDay
-                ? `I kan bruge Skoleoverblikket gratis til og med den ${formatDate(data.freeAccessLastDay)}.`
+                ? `I kan bruge Skoleoverblikket gratis til og med den ${formatDay(data.freeAccessLastDay)}.`
                 : 'I kan bruge Skoleoverblikket gratis.'}
             </p>
             {data.freeAccessLastDay && (

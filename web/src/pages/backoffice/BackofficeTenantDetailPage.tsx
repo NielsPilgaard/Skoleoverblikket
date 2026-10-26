@@ -46,6 +46,16 @@ function formatDate(iso: string) {
   })
 }
 
+/** Date-only value (YYYY-MM-DD): format in UTC so every viewer sees the same calendar day. */
+function formatDay(day: string) {
+  return new Date(day).toLocaleDateString('da-DK', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
@@ -147,7 +157,7 @@ export default function BackofficeTenantDetailPage() {
         </dl>
       </div>
 
-      <FreeAccessCard tenant={tenant} onChanged={invalidate} />
+      <FreeAccessCard key={tenant.id} tenant={tenant} onChanged={invalidate} />
 
       {/* Modules */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
@@ -234,7 +244,9 @@ function FreeAccessCard({ tenant, onChanged }: { tenant: TenantDetailDto; onChan
   const path = { schoolId: tenant.id }
   const granted = tenant.freeAccessGrantedAt != null
   const expired = granted && tenant.freeAccessLastDay != null && tenant.freeAccessLastDay < today
-  const isPaying = tenant.subscriptionStatus === 'Active'
+  const isPaying =
+    tenant.subscriptionStatus === 'Active' ||
+    (tenant.stripeSubscriptionId != null && tenant.subscriptionStatus !== 'Canceled')
   const isPending = grant.isPending || revoke.isPending
   const error = grant.error ?? revoke.error
 
@@ -243,8 +255,8 @@ function FreeAccessCard({ tenant, onChanged }: { tenant: TenantDetailDto; onChan
     : tenant.freeAccessLastDay == null
       ? 'Gratis adgang uden slutdato'
       : expired
-        ? `Gratis adgang udløb ${formatDate(tenant.freeAccessLastDay)}`
-        : `Gratis adgang til og med ${formatDate(tenant.freeAccessLastDay)}`
+        ? `Gratis adgang udløb ${formatDay(tenant.freeAccessLastDay)}`
+        : `Gratis adgang til og med ${formatDay(tenant.freeAccessLastDay)}`
 
   function submit(e: React.FormEvent) {
     e.preventDefault()

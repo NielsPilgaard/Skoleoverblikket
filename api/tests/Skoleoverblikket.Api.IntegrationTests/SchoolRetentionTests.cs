@@ -217,6 +217,22 @@ public sealed class SchoolRetentionTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task CancelDuringDatedFreeAccess_StartsClock_WhenFreeAccessEnds()
+	{
+		var (schoolId, _) = await SeedSchoolAsync();
+		await CancelAsync(schoolId);
+		var lastDay = SchoolDayCalendar.Today().AddDays(10);
+		await GrantFreeAccessAsync(schoolId, lastDay);
+
+		// The school subscribes during the free access, then cancels again.
+		await SubscriptionEventAsync(schoolId, "customer.subscription.updated", "active");
+		await CancelAsync(schoolId);
+
+		var freeAccessEnd = new DateTimeOffset(lastDay.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+		await Assert.That((await SubscriptionAsync(schoolId)).CanceledAt).IsEqualTo(freeAccessEnd);
+	}
+
+	[Test]
 	public async Task FreeAccessWithoutEndDate_KeepsCanceledSchool_EvenAfterLateCancelEvent()
 	{
 		var (schoolId, adminEmail) = await SeedSchoolAsync();

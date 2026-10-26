@@ -55,7 +55,7 @@ More modules may be added over time; check `ModulePriceIds` in Stripe config for
 - No credit card required to start the trial.
 - Trial converts to paid via Stripe Checkout at the end of the 30 days.
 - Schools that don't convert become read-only (`SubscriptionAccessFilter` blocks writes).
-- **Free access**: from the backoffice a superadmin can give a school free Basis access through a chosen last day, or with no end date (`SuperAdminFreeAccessController`). It works like a paid Basis plan: writes are allowed, modules are not included (grant them separately as admin overrides). It can't be given while the school pays through Stripe. A school that subscribes during dated free access is first charged when it ends. For a canceled school, the 90-day data retention clock restarts when the free access ends.
+- **Free access**: from the backoffice a superadmin can give a school free Basis access through a chosen last day, or with no end date (`SuperAdminFreeAccessController`). It works like a paid Basis plan: writes are allowed, modules are not included (grant them separately as admin overrides). It can't be given while the school has a Stripe subscription that isn't canceled. A school that subscribes during dated free access is first charged when it ends, if that is at least two days away (deferral capped at 730 days); with less than two days left, checkout charges right away. For a canceled school, the 90-day data retention clock restarts when the free access ends.
 
 ## Payment
 
