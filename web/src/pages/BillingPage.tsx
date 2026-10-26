@@ -485,6 +485,44 @@ function StatusCard({
     )
   }
 
+  if (data.hasFreeAccess) {
+    return (
+      <div
+        data-testid="free-access-status-card"
+        className="bg-brand-50 border border-brand-200 rounded-xl p-6"
+      >
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              className="text-brand-600"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-semibold text-brand-900">Gratis adgang</h2>
+            <p className="mt-1 text-sm text-brand-700">
+              {data.freeAccessLastDay
+                ? `I kan bruge Skoleoverblikket gratis til og med den ${formatDate(data.freeAccessLastDay)}.`
+                : 'I kan bruge Skoleoverblikket gratis.'}
+            </p>
+            {data.freeAccessLastDay && (
+              <p className="mt-0.5 text-sm text-brand-600">
+                Abonner inden da, hvis I vil fortsætte bagefter.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (data.status === 'PastDue') {
     return (
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">

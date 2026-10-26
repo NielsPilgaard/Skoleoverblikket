@@ -68,7 +68,11 @@ public sealed class SchoolDeletionService(
 	{
 		var schoolId = tenant.TenantId;
 		var sub = await db.Subscriptions.FirstOrDefaultAsync(s => s.SchoolId == schoolId, cancellationToken);
-		if (sub?.CanceledAt is not { } canceledAt || canceledAt > now - (RetentionPeriod - WarningNotice))
+		// Free access also covers a canceled school: a late Stripe "canceled" event can set CanceledAt
+		// after a superadmin granted it.
+		if (sub?.CanceledAt is not { } canceledAt
+			|| canceledAt > now - (RetentionPeriod - WarningNotice)
+			|| SubscriptionService.HasFreeAccess(sub, now))
 		{
 			return Outcome.NotDue;
 		}
@@ -135,7 +139,8 @@ public sealed class SchoolDeletionService(
 			.AsNoTracking()
 			.FirstOrDefaultAsync(cancellationToken);
 		if (locked is not { CanceledAt: { } canceledAt, DeletionWarningSentAt: { } warnedAt }
-			|| !IsDeletionDue(canceledAt, warnedAt, now))
+			|| !IsDeletionDue(canceledAt, warnedAt, now)
+			|| SubscriptionService.HasFreeAccess(locked, now))
 		{
 			logger.LogInformation("School {SchoolId} is no longer due for deletion; skipped", schoolId);
 			return Outcome.NotDue;

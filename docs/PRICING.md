@@ -55,7 +55,8 @@ More modules may be added over time; check `ModulePriceIds` in Stripe config for
 - **30-day free trial** with full Basis access.
 - No credit card required to start the trial.
 - Trial converts to paid via Stripe Checkout at the end of the 30 days.
-- Schools that don't convert lose access (read-only grace period TBD).
+- Schools that don't convert become read-only (`SubscriptionAccessFilter` blocks writes).
+- **Free access**: from the backoffice a superadmin can give a school free Basis access through a chosen last day, or with no end date (`SuperAdminFreeAccessController`). It works like a paid Basis plan: writes are allowed, modules are not included (grant them separately as admin overrides). It can't be given while the school pays through Stripe. A school that subscribes during dated free access is first charged when it ends. For a canceled school, the 90-day data retention clock restarts when the free access ends.
 
 ## Payment
 
@@ -67,6 +68,6 @@ More modules may be added over time; check `ModulePriceIds` in Stripe config for
 ## Notes
 
 - Pricing is in DKK, targeting the Danish market only.
-- No free tier — the 30-day trial replaces it.
+- No free tier — the 30-day trial replaces it. Free access (above) is a per-school decision by the operator, not a plan.
 - Scandinavian expansion may require pricing adjustments (SEK, NOK) in the future.
 - This doc previously described a hypothetical future "Skole+" flat second tier. That model was superseded by the module-add-on approach actually implemented (`SubscriptionModulesController`) — this doc now reflects that.
