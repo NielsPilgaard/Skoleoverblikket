@@ -9,10 +9,29 @@ description: >-
   Adds a branch ruleset on main, a public readiness endpoint, elmah.io deployment
   tracking and Pingpuffin monitoring. No GitHub App — GITHUB_TOKEN plus a
   workflow_dispatch of CI on the revert branch. Phase 1 of the feedback system; ships before any AI code.
-status: 'Proposed'
+status: 'In progress'
 ---
 
 # Auto-rollback and deploy safety net
+
+## Status (2026-10-26)
+
+**Code is built** (§1, 1b, 2, 4, 5, 6, 7). Choices made while building it:
+
+- **Smoke tenant billing**: no billing code skips internal schools. Give the smoke school free access with no end date (backoffice). `IsInternal` only hides it from the backoffice list (unless "Vis interne skoler" is ticked) and from the welcome email. `StatsController` has no cross-tenant totals, so there was nothing to exclude there.
+- **Smoke flow**: login → staff dashboard → `/mig/skema` → click a lektion → that klasse's ugeplan → log out. Mit skema is the read-only way into a class schema for staff. The config is a separate [playwright.smoke.config.ts](../web/playwright.smoke.config.ts), outside `tests/e2e`, not a project in the e2e config, so it skips the e2e global setup and Aspire.
+- **Revert commit**: `git revert <range>` fails on the PR merge commits on `main`, so the rollback branch is one commit that restores last good's tree (`git read-tree -u --reset`).
+- **Migration review on the revert PR**: like CI, [migration-gate.yml](../.github/workflows/migration-gate.yml) got a `workflow_dispatch` that the rollback job triggers. CI's `e2e` job also runs on dispatch, or the required E2E check would never show up on the revert PR.
+- **Rollback only on a watch verdict**: the rollback job runs only when `watch.mjs` reported a reason. npm, Playwright install or GitHub API hiccups fail the run without rolling back.
+- **After [54](54-move-vps.md)**: Postgres loses its public port, so the rollback job's `__EFMigrationsHistory` read fails and every failed deploy becomes "alert only". Give the job another way to read it during 54 (e.g. the `migrate` service or an SSH tunnel).
+
+**Left for Niels** (secrets and variables: [DEPLOYMENT.md](../docs/DEPLOYMENT.md#github-actions-secrets-and-variables-for-cd)):
+
+1. Repo settings: the Actions secrets and variables, and "Allow GitHub Actions to create and approve pull requests".
+2. After this ships: sign up "Smoketest Friskole" in prod, run `UPDATE "Schools" SET "IsInternal" = true WHERE "Name" = 'Smoketest Friskole';` within a day (before the welcome email), give it free access with no end date, add fake classes, a schema and a ugeplan, and invite one staff user whose schema has lektioner. Store the login as `SMOKE_USER` / `SMOKE_PASSWORD`.
+3. §3 ruleset: `main`'s `default` ruleset only blocks deletion and force-push. Add "require a pull request" and the required checks from §3.
+4. §8 Pingpuffin monitors.
+5. The rollback drill from Testing, once.
 
 ## TL;DR
 
