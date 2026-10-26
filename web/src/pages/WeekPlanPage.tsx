@@ -807,6 +807,7 @@ export default function WeekPlanPage() {
 
         {!isLoading && weekPlanData && (
           <div
+            data-testid="weekplan-grid"
             className={`grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] min-w-0 ${weekPlanData.isHolidayWeek ? 'pointer-events-none opacity-60' : ''}`}
           >
             {/* Header row */}

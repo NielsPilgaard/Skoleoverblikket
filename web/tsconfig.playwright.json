@@ -11,5 +11,5 @@
     "isolatedModules": true,
     "esModuleInterop": true
   },
-  "include": ["playwright.config.ts", "tests/**/*.ts"]
+  "include": ["playwright.config.ts", "playwright.smoke.config.ts", "tests/**/*.ts"]
 }

@@ -1325,6 +1325,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           )}
           <button
             onClick={logout}
+            data-testid="logout-button"
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm font-medium text-brand-200 hover:bg-brand-800 hover:text-white transition-colors"
           >
             <svg

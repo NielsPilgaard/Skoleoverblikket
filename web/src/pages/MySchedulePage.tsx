@@ -98,7 +98,10 @@ export default function MySchedulePage() {
       )}
 
       {!isLoading && slots.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        <div
+          className="bg-white rounded-xl border border-gray-200 overflow-x-auto"
+          data-testid="my-schedule-grid"
+        >
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
@@ -161,6 +164,7 @@ export default function MySchedulePage() {
                             <button
                               key={i}
                               type="button"
+                              data-testid="my-schedule-slot"
                               className="w-full text-left rounded-lg px-2 py-1.5 mb-1 last:mb-0 cursor-pointer hover:brightness-95 transition-[filter]"
                               style={slotStyle}
                               onClick={() =>
