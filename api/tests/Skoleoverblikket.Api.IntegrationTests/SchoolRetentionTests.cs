@@ -1,10 +1,12 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Skoleoverblikket.Api.Controllers;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using Skoleoverblikket.Api.Models;
@@ -18,7 +20,8 @@ namespace Skoleoverblikket.Api.IntegrationTests;
 /// The subscription is canceled through signed Stripe webhooks, then <see cref="SchoolRetentionJob"/>
 /// runs with a future "now". Covers: warning email 7 days ahead, nothing deleted before 90 days or
 /// before the warning is 7 days old, every row and file of the school deleted afterwards, other
-/// schools untouched, resubscribing stops the clock, failed login-account deletion keeps the data, and
+/// schools untouched, resubscribing stops the clock, superadmin free access restarts or stops it,
+/// failed login-account deletion keeps the data, and
 /// a deleted school leaves one <see cref="SchoolDeletionRecord"/> until it is out of every backup.
 /// </summary>
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
@@ -179,6 +182,53 @@ public sealed class SchoolRetentionTests(ApiFactory factory)
 		await Assert.That((await SubscriptionAsync(schoolId)).CanceledAt).IsNull();
 
 		await RunAsync(DateTimeOffset.UtcNow + 400 * Day);
+		await Assert.That(await RowCountAsync(schoolId)).IsGreaterThan(0);
+		await Assert.That(Warnings(adminEmail).Count).IsEqualTo(0);
+	}
+
+	private async Task GrantFreeAccessAsync(Guid schoolId, DateOnly? lastDay)
+	{
+		using var client = factory.CreateClient();
+		client.DefaultRequestHeaders.Add("X-Test-TenantId", Guid.NewGuid().ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "superadmin");
+		var response = await client.PutAsJsonAsync(
+			$"/api/v1/admin/tenants/{schoolId}/free-access",
+			new SuperAdminFreeAccessController.GrantFreeAccessRequest(lastDay));
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+	}
+
+	[Test]
+	public async Task FreeAccess_RestartsClock_WhenItEnds()
+	{
+		var (schoolId, adminEmail) = await SeedSchoolAsync();
+		await CancelAsync(schoolId);
+		var lastDay = SchoolDayCalendar.Today().AddDays(10);
+		await GrantFreeAccessAsync(schoolId, lastDay);
+		var rows = await RowCountAsync(schoolId);
+
+		// 90 days after cancellation, but only ~79 after the free access ended: nothing happens yet.
+		await RunAsync(DateTimeOffset.UtcNow + 90 * Day);
+		await Assert.That(Warnings(adminEmail).Count).IsEqualTo(0);
+		await Assert.That(await RowCountAsync(schoolId)).IsEqualTo(rows);
+
+		// 84 days after the free access ended: the warning goes out.
+		await RunAsync(DateTimeOffset.UtcNow + 95 * Day);
+		await Assert.That(Warnings(adminEmail).Count).IsEqualTo(1);
+	}
+
+	[Test]
+	public async Task FreeAccessWithoutEndDate_KeepsCanceledSchool_EvenAfterLateCancelEvent()
+	{
+		var (schoolId, adminEmail) = await SeedSchoolAsync();
+		await CancelAsync(schoolId);
+		await GrantFreeAccessAsync(schoolId, null);
+		await Assert.That((await SubscriptionAsync(schoolId)).CanceledAt).IsNull();
+
+		// Stripe resends the cancellation after the grant, which starts the clock again.
+		await CancelAsync(schoolId);
+		await RunAsync(DateTimeOffset.UtcNow + 400 * Day);
+		await RunAsync(DateTimeOffset.UtcNow + 410 * Day);
+
 		await Assert.That(await RowCountAsync(schoolId)).IsGreaterThan(0);
 		await Assert.That(Warnings(adminEmail).Count).IsEqualTo(0);
 	}

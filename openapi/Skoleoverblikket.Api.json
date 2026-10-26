@@ -9260,6 +9260,79 @@
         ]
       }
     },
+    "/api/v1/admin/tenants/{schoolId}/free-access": {
+      "put": {
+        "tags": [
+          "SuperAdminFreeAccess"
+        ],
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuperAdminFreeAccessController_GrantFreeAccessRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuperAdminFreeAccessController_GrantFreeAccessRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuperAdminFreeAccessController_GrantFreeAccessRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "SuperAdminFreeAccess"
+        ],
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/admin/sub-processor-notice": {
       "post": {
         "tags": [
@@ -11115,6 +11188,7 @@
       "BillingController_SubscriptionDto": {
         "required": [
           "hasAccess",
+          "hasFreeAccess",
           "interval",
           "isActive",
           "isTrialing",
@@ -11157,6 +11231,14 @@
             "items": {
               "type": "string"
             }
+          },
+          "hasFreeAccess": {
+            "type": "boolean"
+          },
+          "freeAccessLastDay": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -16241,6 +16323,17 @@
         ],
         "type": "string"
       },
+      "SuperAdminFreeAccessController_GrantFreeAccessRequest": {
+        "type": "object",
+        "properties": {
+          "lastDay": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "TenantCreatedDto": {
         "required": [
           "accessToken",
@@ -16329,6 +16422,16 @@
             "items": {
               "$ref": "#/components/schemas/ModuleItemDto"
             }
+          },
+          "freeAccessGrantedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "freeAccessLastDay": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -16374,6 +16477,16 @@
           "activeModuleCount": {
             "type": "integer",
             "format": "int32"
+          },
+          "freeAccessGrantedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "freeAccessLastDay": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -17293,6 +17406,9 @@
     },
     {
       "name": "SuperAdminEmailPreview"
+    },
+    {
+      "name": "SuperAdminFreeAccess"
     },
     {
       "name": "SuperAdminSubProcessorNotice"
