@@ -25,10 +25,13 @@ const EMPTY_TEXT = 'Skolen har ikke tilføjet nogen links endnu.'
 
 function useInvalidateLinks() {
   const qc = useQueryClient()
-  return () => {
-    qc.invalidateQueries({ queryKey: getApiV1ExternalLinksAllQueryKey() })
-    qc.invalidateQueries({ queryKey: getApiV1ExternalLinksQueryKey() })
-  }
+  // Returns the refetch so a mutation stays pending until the list is fresh. Otherwise the reorder
+  // arrows re-enable on the old order and a quick second click can undo the first move.
+  return () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: getApiV1ExternalLinksAllQueryKey() }),
+      qc.invalidateQueries({ queryKey: getApiV1ExternalLinksQueryKey() }),
+    ])
 }
 
 function LinkModal({ initial, onClose }: { initial?: ExternalLinkAdminDto; onClose: () => void }) {
