@@ -26,7 +26,9 @@ public sealed class BillingController(
 		bool IsActive,
 		bool HasAccess,
 		int TrialDaysLeft,
-		IReadOnlyList<string> ActiveModules);
+		IReadOnlyList<string> ActiveModules,
+		bool HasFreeAccess,
+		DateOnly? FreeAccessLastDay);
 
 	public record CheckoutResponse(string Url);
 
@@ -186,9 +188,8 @@ public sealed class BillingController(
 	private static SubscriptionDto ToDto(Subscription sub, IReadOnlyList<string> activeModules)
 	{
 		var now = DateTimeOffset.UtcNow;
-		var isTrialing = sub.Status == SubscriptionStatus.Trialing && sub.TrialEnd > now;
-		var isActive = sub.Status == SubscriptionStatus.Active;
-		var hasAccess = isActive || isTrialing;
+		var isTrialing = SubscriptionService.IsTrialing(sub, now);
+		var hasFreeAccess = SubscriptionService.HasFreeAccess(sub, now);
 		var trialDaysLeft = isTrialing ? Math.Max(0, (int)Math.Ceiling((sub.TrialEnd - now).TotalDays)) : 0;
 
 		return new SubscriptionDto(
@@ -197,9 +198,11 @@ public sealed class BillingController(
 			sub.TrialEnd,
 			sub.CurrentPeriodEnd,
 			isTrialing,
-			isActive,
-			hasAccess,
+			sub.Status == SubscriptionStatus.Active,
+			SubscriptionService.HasAccess(sub, now),
 			trialDaysLeft,
-			activeModules);
+			activeModules,
+			hasFreeAccess,
+			hasFreeAccess ? sub.FreeAccessLastDay : null);
 	}
 }

@@ -190,6 +190,8 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 | `GET /api/v1/staff/available`, `GET /api/v1/substitutions/mine` | `[Authorize(Roles = "staff")]` | |
 | `ContactThreadsController`, `ContactDirectoryController`, `MessagesController`, `ClassChatController` | `[Authorize(Roles = "staff,parent")]` | Board members don't use these |
 | `PUT /api/v1/week-plans/{id}/slots/{slotId}/substitute` | `EditClass` on the week plan's class | |
+| `GET /api/v1/external-links` | `[Authorize]` | Links for the acting role: staff and board by audience, parents also by their children's classes (`ExternalLinkService`). No role → empty list |
+| `GET /api/v1/external-links/all`, `POST/PUT/DELETE`, `PUT order` | `[Authorize(Roles = "admin")]` | Basis, not module-gated |
 | `GET /api/v1/exports/school.zip`, `POST school.zip/link` | `[Authorize(Roles = "admin")]` | |
 | `GET {staff,parent,board}-invitations/preview`, `POST …/password` | `[AllowAnonymous]` | The invitation token is the credential. `password` only sets a login's first password (409 otherwise) |
 | `GET /api/v1/exports/school.zip/download?token=…` | `ExportLink` scheme, admin | The only endpoint not authenticated by a Keycloak JWT. The token comes from `POST school.zip/link`, carries the admin's tenant and subject (data protection, signed and encrypted), lasts one minute and works once (`ExportLinkAuthHandler`) |

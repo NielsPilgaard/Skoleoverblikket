@@ -34,6 +34,8 @@ pwsh scripts/backup-console.ps1 <user>@<vps>
 
 It reads the access link from the agent over SSH, opens the tunnel and opens the link in your browser. Keep the window open; Ctrl+C closes the tunnel. Set `BACKUP_CONSOLE_SERVER=<user>@<vps>` once and run it with no arguments. If 9090 is taken (a local `aspire run`), add `-LocalPort 9091`.
 
+Or from the Aspire dashboard: with `BACKUP_CONSOLE_SERVER` set (env var or AppHost user secret), `aspire run` adds `prod-backup-console`. Start it to open the tunnel on 9091, then use its commands: "Open console", "pgBackRest info", "Agent logs" and "Expire old backups" (asks first). See [ProdBackupConsole.cs](../infrastructure/aspire/Skoleoverblikket.AppHost/ProdBackupConsole.cs).
+
 Without the script:
 
 ```bash

@@ -5,6 +5,7 @@ import {
   getApiV1StaffMeOptions,
 } from '../api/generated/@tanstack/react-query.gen'
 import type { StatsControllerTodayLektion } from '../api/generated/types.gen'
+import LinksCard from '../components/LinksCard'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { formatLongDate, todayIso } from '../lib/absence'
 
@@ -269,6 +270,8 @@ export default function StaffDashboardPage() {
           </ul>
         </div>
       )}
+
+      <LinksCard allTo="/links" />
     </div>
   )
 }

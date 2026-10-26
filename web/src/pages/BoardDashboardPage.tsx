@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { getApiV1StatsDashboardOptions } from '../api/generated/@tanstack/react-query.gen'
+import LinksCard from '../components/LinksCard'
 import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function BoardDashboardPage() {
@@ -32,6 +33,8 @@ export default function BoardDashboardPage() {
           <StatCard label="Lokaler" value={data.roomCount ?? 0} />
         </div>
       ) : null}
+
+      <LinksCard allTo="/bestyrelse/links" />
     </div>
   )
 }

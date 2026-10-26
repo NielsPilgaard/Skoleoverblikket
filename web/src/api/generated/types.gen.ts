@@ -143,6 +143,8 @@ export type BillingControllerSubscriptionDto = {
     hasAccess: boolean;
     trialDaysLeft: number;
     activeModules?: Array<string>;
+    hasFreeAccess: boolean;
+    freeAccessLastDay?: string | null;
 };
 
 export type BillingControllerSwitchIntervalRequest = {
@@ -563,6 +565,30 @@ export type DemoRequestControllerDemoRequestDto = {
     email: string;
     telefon?: string | null;
     besked?: string | null;
+};
+
+export type ExternalLinkAdminDto = {
+    id: string;
+    title: string;
+    url: string;
+    description?: string | null;
+    visibleToParents: boolean;
+    visibleToStaff: boolean;
+    visibleToBoard: boolean;
+    restrictToClasses: boolean;
+    classes?: Array<ExternalLinkClassDto>;
+};
+
+export type ExternalLinkClassDto = {
+    id: string;
+    name: string;
+};
+
+export type ExternalLinkDto = {
+    id: string;
+    title: string;
+    url: string;
+    description?: string | null;
 };
 
 export type FilesControllerConfirmRequest = {
@@ -1026,6 +1052,10 @@ export type QuarterStatsDto = {
 
 export type RecipientType = 'Parent' | 'Staff' | 'Board';
 
+export type ReorderExternalLinksRequest = {
+    orderedIds?: Array<string>;
+};
+
 export type ReportAbsenceRequest = {
     studentId: string;
     date: string;
@@ -1474,6 +1504,10 @@ export type SubstituteAssignmentDto = {
 
 export type SubstituteSeat = 'Teacher' | 'Aide';
 
+export type SuperAdminFreeAccessControllerGrantFreeAccessRequest = {
+    lastDay?: string | null;
+};
+
 export type TenantCreatedDto = {
     id: string;
     name: string;
@@ -1495,6 +1529,8 @@ export type TenantDetailDto = {
     trialEnd: string;
     currentPeriodEnd?: string | null;
     modules?: Array<ModuleItemDto>;
+    freeAccessGrantedAt?: string | null;
+    freeAccessLastDay?: string | null;
 };
 
 export type TenantListItemDto = {
@@ -1506,6 +1542,8 @@ export type TenantListItemDto = {
     trialEnd: string;
     currentPeriodEnd?: string | null;
     activeModuleCount: number;
+    freeAccessGrantedAt?: string | null;
+    freeAccessLastDay?: string | null;
 };
 
 export type TimeSlotsControllerBreakDto = {
@@ -1560,6 +1598,16 @@ export type UpdateStaffAbsenceRequest = {
     startTime?: string | null;
     endTime?: string | null;
     reason?: string | null;
+};
+
+export type UpsertExternalLinkRequest = {
+    title: string;
+    url: string;
+    description?: string | null;
+    visibleToParents: boolean;
+    visibleToStaff: boolean;
+    visibleToBoard: boolean;
+    classIds?: Array<string> | null;
 };
 
 export type VacationRegistrationControllerCreateWindowRequest = {
@@ -3099,6 +3147,98 @@ export type PostApiV1DemoRequestData = {
 };
 
 export type PostApiV1DemoRequestResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1ExternalLinksData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/external-links';
+};
+
+export type GetApiV1ExternalLinksResponses = {
+    /**
+     * OK
+     */
+    200: Array<ExternalLinkDto>;
+};
+
+export type GetApiV1ExternalLinksResponse = GetApiV1ExternalLinksResponses[keyof GetApiV1ExternalLinksResponses];
+
+export type PostApiV1ExternalLinksData = {
+    body?: UpsertExternalLinkRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/external-links';
+};
+
+export type PostApiV1ExternalLinksResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1ExternalLinksAllData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/external-links/all';
+};
+
+export type GetApiV1ExternalLinksAllResponses = {
+    /**
+     * OK
+     */
+    200: Array<ExternalLinkAdminDto>;
+};
+
+export type GetApiV1ExternalLinksAllResponse = GetApiV1ExternalLinksAllResponses[keyof GetApiV1ExternalLinksAllResponses];
+
+export type DeleteApiV1ExternalLinksByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/external-links/{id}';
+};
+
+export type DeleteApiV1ExternalLinksByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type PutApiV1ExternalLinksByIdData = {
+    body?: UpsertExternalLinkRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/external-links/{id}';
+};
+
+export type PutApiV1ExternalLinksByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type PutApiV1ExternalLinksOrderData = {
+    body?: ReorderExternalLinksRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/external-links/order';
+};
+
+export type PutApiV1ExternalLinksOrderResponses = {
     /**
      * OK
      */
@@ -5187,6 +5327,42 @@ export type GetApiV1AdminEmailPreviewSubProcessorNoticeResponses = {
      */
     200: unknown;
 };
+
+export type DeleteApiV1AdminTenantsBySchoolIdFreeAccessData = {
+    body?: never;
+    path: {
+        schoolId: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/tenants/{schoolId}/free-access';
+};
+
+export type DeleteApiV1AdminTenantsBySchoolIdFreeAccessResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type DeleteApiV1AdminTenantsBySchoolIdFreeAccessResponse = DeleteApiV1AdminTenantsBySchoolIdFreeAccessResponses[keyof DeleteApiV1AdminTenantsBySchoolIdFreeAccessResponses];
+
+export type PutApiV1AdminTenantsBySchoolIdFreeAccessData = {
+    body?: SuperAdminFreeAccessControllerGrantFreeAccessRequest;
+    path: {
+        schoolId: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/tenants/{schoolId}/free-access';
+};
+
+export type PutApiV1AdminTenantsBySchoolIdFreeAccessResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type PutApiV1AdminTenantsBySchoolIdFreeAccessResponse = PutApiV1AdminTenantsBySchoolIdFreeAccessResponses[keyof PutApiV1AdminTenantsBySchoolIdFreeAccessResponses];
 
 export type PostApiV1AdminSubProcessorNoticeData = {
     body?: SubProcessorNoticeRequest;

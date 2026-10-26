@@ -749,6 +749,75 @@ namespace Skoleoverblikket.Api.Data.Migrations
                     b.ToTable("DataProcessingAgreementAcceptances");
                 });
 
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.ExternalLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<bool>("RestrictToClasses")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("VisibleToBoard")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("VisibleToParents")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("VisibleToStaff")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "SortOrder");
+
+                    b.ToTable("ExternalLinks");
+                });
+
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.ExternalLinkClass", b =>
+                {
+                    b.Property<Guid>("ExternalLinkId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ExternalLinkId", "ClassId");
+
+                    b.HasIndex("ClassId");
+
+                    b.ToTable("ExternalLinkClasses", (string)null);
+                });
+
             modelBuilder.Entity("Skoleoverblikket.Api.Models.GroupMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1601,6 +1670,12 @@ namespace Skoleoverblikket.Api.Data.Migrations
                     b.Property<DateTimeOffset?>("DeletionWarningSentAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("FreeAccessGrantedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("FreeAccessLastDay")
+                        .HasColumnType("date");
+
                     b.Property<int>("Interval")
                         .HasColumnType("integer");
 
@@ -2152,6 +2227,23 @@ namespace Skoleoverblikket.Api.Data.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.ExternalLinkClass", b =>
+                {
+                    b.HasOne("Skoleoverblikket.Api.Models.Class", "Class")
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Skoleoverblikket.Api.Models.ExternalLink", null)
+                        .WithMany("Classes")
+                        .HasForeignKey("ExternalLinkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Class");
+                });
+
             modelBuilder.Entity("Skoleoverblikket.Api.Models.Message", b =>
                 {
                     b.HasOne("Skoleoverblikket.Api.Models.Message", null)
@@ -2491,6 +2583,11 @@ namespace Skoleoverblikket.Api.Data.Migrations
             modelBuilder.Entity("Skoleoverblikket.Api.Models.ContactThread", b =>
                 {
                     b.Navigation("Messages");
+                });
+
+            modelBuilder.Entity("Skoleoverblikket.Api.Models.ExternalLink", b =>
+                {
+                    b.Navigation("Classes");
                 });
 
             modelBuilder.Entity("Skoleoverblikket.Api.Models.Schema", b =>

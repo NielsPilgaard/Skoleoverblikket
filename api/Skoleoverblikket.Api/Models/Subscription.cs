@@ -52,6 +52,18 @@ public sealed class Subscription : IEntityTypeConfiguration<Subscription>
 	/// <summary>When admins were emailed that the school's data is about to be deleted. Cleared with <see cref="CanceledAt"/>.</summary>
 	public DateTimeOffset? DeletionWarningSentAt { get; set; }
 
+	/// <summary>
+	/// When a superadmin gave the school free base access (no Stripe). Null when the school has none.
+	/// Modules are not included; those are granted separately as admin overrides.
+	/// </summary>
+	public DateTimeOffset? FreeAccessGrantedAt { get; set; }
+
+	/// <summary>
+	/// Last Danish date the free access covers, inclusive. Null with <see cref="FreeAccessGrantedAt"/>
+	/// set means no end date.
+	/// </summary>
+	public DateOnly? FreeAccessLastDay { get; set; }
+
 	public DateTimeOffset CreatedAt { get; init; }
 	public DateTimeOffset UpdatedAt { get; set; }
 

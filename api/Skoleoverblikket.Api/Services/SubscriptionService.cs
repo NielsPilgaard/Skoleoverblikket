@@ -16,6 +16,14 @@ namespace Skoleoverblikket.Api.Services;
 /// </summary>
 public sealed class SubscriptionConfigurationException(string message) : Exception(message);
 
+public enum FreeAccessResult
+{
+	Granted,
+	SchoolNotFound,
+	LastDayInPast,
+	PaidSubscriptionActive,
+}
+
 public sealed class SubscriptionService(
 	AppDbContext db,
 	IOptions<StripeOptions> stripeOptions,
@@ -27,6 +35,90 @@ public sealed class SubscriptionService(
 	Stripe.SubscriptionService stripeSubscriptionService)
 {
 	private const int TrialDays = 30;
+
+	/// <summary>
+	/// True when the school may make changes: a paid subscription, a running trial, or free access
+	/// from a superadmin. <see cref="Tenancy.SubscriptionAccessFilter"/> enforces this on every write.
+	/// </summary>
+	public static bool HasAccess(LocalSubscription sub, DateTimeOffset now) =>
+		sub.Status == SubscriptionStatus.Active || IsTrialing(sub, now) || HasFreeAccess(sub, now);
+
+	public static bool IsTrialing(LocalSubscription sub, DateTimeOffset now) =>
+		sub.Status == SubscriptionStatus.Trialing && sub.TrialEnd > now;
+
+	public static bool HasFreeAccess(LocalSubscription sub, DateTimeOffset now) =>
+		sub.FreeAccessGrantedAt is not null
+		&& (sub.FreeAccessLastDay is not { } lastDay || SchoolDayCalendar.DanishDate(now) <= lastDay);
+
+	// Midnight UTC after the last day: close enough for Stripe's first charge and a 90-day clock.
+	private static DateTimeOffset FreeAccessEnd(DateOnly lastDay) =>
+		new(lastDay.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+
+	/// <summary>
+	/// Gives the school free base access through <paramref name="lastDay"/> (null: no end date),
+	/// replacing any earlier grant. Modules are not included. Refused while the school has a Stripe
+	/// subscription that isn't canceled (paying, past due or in a Stripe trial), so free access never
+	/// runs alongside a paid subscription.
+	/// </summary>
+	public async Task<FreeAccessResult> GrantFreeAccessAsync(Guid schoolId, DateOnly? lastDay, CancellationToken cancellationToken = default)
+	{
+		var now = DateTimeOffset.UtcNow;
+		if (lastDay < SchoolDayCalendar.DanishDate(now))
+		{
+			return FreeAccessResult.LastDayInPast;
+		}
+
+		// Superadmin acts across tenants, so the school is looked up outside the tenant filter.
+		if (!await db.Schools.IgnoreQueryFilters().AnyAsync(s => s.Id == schoolId, cancellationToken))
+		{
+			return FreeAccessResult.SchoolNotFound;
+		}
+
+		var sub = await GetOrCreateAsync(schoolId, cancellationToken);
+		if (sub.Status == SubscriptionStatus.Active
+			|| (sub.StripeSubscriptionId is not null && sub.Status != SubscriptionStatus.Canceled))
+		{
+			return FreeAccessResult.PaidSubscriptionActive;
+		}
+
+		sub.FreeAccessGrantedAt = now;
+		sub.FreeAccessLastDay = lastDay;
+
+		// A canceled school's data retention clock (SchoolDeletionService) restarts when the free
+		// access ends.
+		if (sub.Status == SubscriptionStatus.Canceled)
+		{
+			sub.CanceledAt = lastDay is { } day ? FreeAccessEnd(day) : null;
+			sub.DeletionWarningSentAt = null;
+		}
+
+		sub.UpdatedAt = now;
+		await db.SaveChangesAsync(cancellationToken);
+		return FreeAccessResult.Granted;
+	}
+
+	/// <summary>Ends the school's free access now. False when the school has no subscription.</summary>
+	public async Task<bool> RevokeFreeAccessAsync(Guid schoolId, CancellationToken cancellationToken = default)
+	{
+		var sub = await db.Subscriptions.FirstOrDefaultAsync(s => s.SchoolId == schoolId, cancellationToken);
+		if (sub is null)
+		{
+			return false;
+		}
+
+		var now = DateTimeOffset.UtcNow;
+		if (sub.Status == SubscriptionStatus.Canceled && HasFreeAccess(sub, now))
+		{
+			sub.CanceledAt = now;
+			sub.DeletionWarningSentAt = null;
+		}
+
+		sub.FreeAccessGrantedAt = null;
+		sub.FreeAccessLastDay = null;
+		sub.UpdatedAt = now;
+		await db.SaveChangesAsync(cancellationToken);
+		return true;
+	}
 
 	/// <summary>
 	/// Returns the subscription for the given school, creating a Trialing record if none exists.
@@ -130,10 +222,10 @@ public sealed class SubscriptionService(
 				["interval"] = interval.ToString(),
 			},
 			PaymentMethodCollection = "always",
-			SubscriptionData = sub.Status == SubscriptionStatus.Trialing && sub.TrialEnd > DateTimeOffset.UtcNow
+			SubscriptionData = FirstChargeAt(sub, DateTimeOffset.UtcNow) is { } firstCharge
 				? new SessionSubscriptionDataOptions
 				{
-					TrialEnd = sub.TrialEnd.UtcDateTime,
+					TrialEnd = firstCharge.UtcDateTime,
 					Metadata = new Dictionary<string, string> { ["school_id"] = schoolId.ToString() },
 				}
 				: null,
@@ -142,6 +234,28 @@ public sealed class SubscriptionService(
 		var session = await sessionService.CreateAsync(options, cancellationToken: cancellationToken);
 
 		return session.Url ?? throw new InvalidOperationException("Stripe session URL is null");
+	}
+
+	// A school that subscribes during its trial or dated free access isn't charged until the later
+	// of the two ends. Stripe needs a trial_end at least 2 days and at most 730 days out; an end
+	// sooner is charged right away, later is capped. No-end-date free access alone is charged right
+	// away, since the school has chosen to pay.
+	private static DateTimeOffset? FirstChargeAt(LocalSubscription sub, DateTimeOffset now)
+	{
+		DateTimeOffset? end = IsTrialing(sub, now) ? sub.TrialEnd : null;
+		if (HasFreeAccess(sub, now) && sub.FreeAccessLastDay is { } lastDay
+			&& (end is null || FreeAccessEnd(lastDay) > end))
+		{
+			end = FreeAccessEnd(lastDay);
+		}
+
+		if (end is not { } firstCharge || firstCharge < now.AddDays(2))
+		{
+			return null;
+		}
+
+		var latest = now.AddDays(730);
+		return firstCharge < latest ? firstCharge : latest;
 	}
 
 	/// <summary>
@@ -284,13 +398,17 @@ public sealed class SubscriptionService(
 			return Enum.GetNames<SubscriptionModule>();
 		}
 
-		var isTrialing = sub.Status == SubscriptionStatus.Trialing && sub.TrialEnd > DateTimeOffset.UtcNow;
-		if (isTrialing)
+		var now = DateTimeOffset.UtcNow;
+		if (IsTrialing(sub, now))
 		{
 			return Enum.GetNames<SubscriptionModule>();
 		}
 
+		// Free access covers the base plan only, so modules come from admin overrides. Stripe items
+		// left over from a canceled subscription don't count.
+		var freeAccessOnly = sub.Status != SubscriptionStatus.Active && HasFreeAccess(sub, now);
 		return sub.ActiveModules
+			.Where(m => !freeAccessOnly || m.IsAdminOverride)
 			.Select(m => m.Module.ToString())
 			.ToList();
 	}
@@ -644,12 +762,16 @@ public sealed class SubscriptionService(
 
 	// CanceledAt starts the data retention clock (SchoolDeletionService). Only a return to a paying
 	// or trial state stops it: a late past_due/unpaid event for the old Stripe subscription must not
-	// make a canceled school keep its data forever.
+	// make a canceled school keep its data forever. Canceling during dated free access starts the
+	// clock when that access ends, as when free access is given to a canceled school.
 	private static void SetStatus(LocalSubscription sub, SubscriptionStatus status)
 	{
 		if (status == SubscriptionStatus.Canceled)
 		{
-			sub.CanceledAt ??= DateTimeOffset.UtcNow;
+			var now = DateTimeOffset.UtcNow;
+			sub.CanceledAt ??= HasFreeAccess(sub, now) && sub.FreeAccessLastDay is { } lastDay
+				? FreeAccessEnd(lastDay)
+				: now;
 		}
 		else if (status is SubscriptionStatus.Active or SubscriptionStatus.Trialing)
 		{

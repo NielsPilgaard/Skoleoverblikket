@@ -12,11 +12,11 @@ status: 'Proposed'
 
 ## TL;DR
 
-New parent landing page replacing the skema redirect. Tiles/quick links to Skema, Ugeplan, Kalender, Beskeder and the school's Links card from [43-links](43-links.md). Phone-first. Needs grilling before build.
+New parent landing page replacing the skema redirect. Tiles/quick links to Skema, Ugeplan, Kalender, Beskeder and the school's Links card from [43-links](completed/43-links.md). Phone-first. Needs grilling before build.
 
 ## Context
 
-Admin, staff and board each have a dashboard; parents land directly on the schema view (`App.tsx` routes parents to `/foraeldrevisning/skema`). Surfaced while planning [43-links](43-links.md), where parent-facing links needed a home beyond the sidebar.
+Admin, staff and board each have a dashboard; parents land directly on the schema view (`App.tsx` routes parents to `/foraeldrevisning/skema`). Surfaced while planning [43-links](completed/43-links.md), where parent-facing links needed a home beyond the sidebar.
 
 ## Open questions
 
@@ -27,4 +27,4 @@ Admin, staff and board each have a dashboard; parents land directly on the schem
 
 ## Depends on
 
-- [43-links](43-links.md) — `LinksCard` component reused here.
+- [43-links](completed/43-links.md) — `LinksCard` component reused here.

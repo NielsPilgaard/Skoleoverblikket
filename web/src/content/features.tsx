@@ -162,6 +162,18 @@ export const features = [
     ),
   },
   {
+    key: 'links',
+    title: 'Links samlet ét sted',
+    description:
+      'Aula, fraværsblanket, buskort og klassens Facebook-gruppe på én side. Forældre ser kun de links, der gælder deres barns klasse, så kontoret slipper for at svare på de samme spørgsmål.',
+    icon: icon(
+      <>
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      </>
+    ),
+  },
+  {
     key: 'sfo',
     title: 'SFO ugeplan',
     description:
@@ -241,15 +253,18 @@ export const sidebarRouteFeatures = {
   '/bestyrelsesmedlemmer': 'board',
   '/import': 'import',
   '/filer': 'files',
+  '/links': 'links',
   '/eksporter': 'reports',
   '/bestyrelse/oversigt': 'board',
   '/bestyrelse/filer': 'board',
   '/bestyrelse/staa-maal-med': 'board',
+  '/bestyrelse/links': 'links',
   '/foraeldrevisning/skema': 'parentModule',
   '/foraeldrevisning/kalender': 'calendar',
   '/foraeldrevisning/ugeplan': 'weekPlan',
   '/foraeldrevisning/kontakt': 'parentModule',
   '/foraeldrevisning/ferieindmelding': 'vacation',
+  '/foraeldrevisning/links': 'links',
   '/foraeldrevisning/fravaer': 'absence',
   '/foraeldrevisning/kontaktbog': 'parentModule',
   '/klassechat': 'parentModule',

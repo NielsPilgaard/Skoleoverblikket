@@ -31,6 +31,7 @@ public static class ServicesExtensions
 		services.AddScoped<SchoolExportService>();
 		services.AddScoped<DataProcessingAgreementService>();
 		services.AddScoped<SchoolSignupService>();
+		services.AddScoped<ExternalLinkService>();
 		services.AddScoped<INotificationService, NotificationService>();
 		services.AddSingleton<NotificationEmailQueue>();
 		services.AddHostedService(sp => sp.GetRequiredService<NotificationEmailQueue>());
