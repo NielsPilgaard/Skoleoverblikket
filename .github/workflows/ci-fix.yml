@@ -39,7 +39,11 @@ jobs:
           BRANCH: ${{ github.event.workflow_run.head_branch }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          tip=$(gh api "repos/$GITHUB_REPOSITORY/branches/$BRANCH" --jq .commit.sha)
+          if ! tip=$(gh api "repos/$GITHUB_REPOSITORY/branches/$BRANCH" --jq .commit.sha); then
+            echo "Branch is gone (merged or deleted), skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ "$tip" != "$HEAD_SHA" ]; then
             echo "Branch moved on since this run, skipping."
             echo "skip=true" >> "$GITHUB_OUTPUT"

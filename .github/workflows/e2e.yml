@@ -92,7 +92,7 @@ jobs:
           load: true
           tags: ${{ env.API_IMAGE }}
           cache-from: type=gha,scope=e2e-api
-          cache-to: type=gha,scope=e2e-api,mode=max
+          cache-to: type=gha,scope=e2e-api,mode=max,ignore-error=true
 
       - name: Build Keycloak image
         if: inputs.image_tag == ''
@@ -104,7 +104,7 @@ jobs:
           load: true
           tags: ${{ env.KEYCLOAK_IMAGE }}
           cache-from: type=gha,scope=e2e-keycloak
-          cache-to: type=gha,scope=e2e-keycloak,mode=max
+          cache-to: type=gha,scope=e2e-keycloak,mode=max,ignore-error=true
 
       # The published web image has the production Keycloak URL baked in, so the e2e web
       # image is always built here with http://localhost:8080.
@@ -119,7 +119,7 @@ jobs:
           build-args: |
             VITE_KEYCLOAK_URL=http://localhost:8080
           cache-from: type=gha,scope=e2e-web
-          cache-to: type=gha,scope=e2e-web,mode=max
+          cache-to: type=gha,scope=e2e-web,mode=max,ignore-error=true
 
       - name: Start staging stack
         timeout-minutes: 5
