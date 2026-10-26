@@ -6,6 +6,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 env:
   CI: true
 
@@ -15,6 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
@@ -55,6 +60,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js 24
         uses: actions/setup-node@v5
@@ -82,6 +89,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
@@ -100,6 +109,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Install ryni
         run: |
@@ -148,6 +159,8 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Apply migrations
         env:
@@ -164,6 +177,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -191,6 +206,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -219,6 +236,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
@@ -243,6 +262,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
@@ -267,6 +288,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
