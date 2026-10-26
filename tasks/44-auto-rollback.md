@@ -3,12 +3,12 @@ title: 'Auto-rollback and deploy safety net'
 purpose: 'Make every production deploy self-verifying and self-reverting, so a bad deploy (ours or an AI fix) never leaves schools on a broken site.'
 description: >-
   After each CD deploy, watch production for 15 minutes (external health checks,
-  read-only Playwright smoke test on an internal smoke tenant, elmah.io error
-  spike). On failure, redeploy the last known good image tag, freeze CD and open
-  a revert PR — unless a migration ran since last-good, in which case alert only.
-  Adds a branch ruleset on main, a public readiness endpoint, elmah.io deployment
-  tracking and Pingpuffin monitoring. No GitHub App — GITHUB_TOKEN plus a
-  workflow_dispatch of CI on the revert branch. Phase 1 of the feedback system; ships before any AI code.
+  read-only Playwright smoke test on a fake-data smoke school, elmah.io error
+  spike). On failure, redeploy the image tag that was running before — unless
+  migrations changed in between, in which case the run just goes red. No freeze,
+  no revert PR. Adds a branch ruleset on main, a public readiness endpoint,
+  elmah.io deployment tracking and Pingpuffin monitoring. Phase 1 of the feedback
+  system; ships before any AI code.
 status: 'In progress'
 ---
 
@@ -16,26 +16,27 @@ status: 'In progress'
 
 ## Status (2026-10-26)
 
-**Code is built** (§1, 1b, 2, 4, 5, 6, 7). Choices made while building it:
+**Code is built** (§1, 1b, 4, 5, 6). Choices made while building it:
 
-- **Smoke tenant billing**: no billing code skips internal schools. Give the smoke school free access with no end date (backoffice). `IsInternal` only hides it from the backoffice list (unless "Vis interne skoler" is ticked) and from the welcome email. `StatsController` has no cross-tenant totals, so there was nothing to exclude there.
+- **Simplified rollback (2026-10-26, Niels)**: the first build had a `production-verified` record, a `deploy-freeze` issue, a revert PR with dispatched CI and migration gate, a prod `__EFMigrationsHistory` check and SMTP alerts. All dropped. `deploy.mjs` reads the tag running before it deploys; a failed watch redeploys that tag. Unfixed code on `main` gets redeployed by the next merge, fails its watch and is rolled back again, so no freeze is needed.
+- **Smoke school billing**: give it free access with no end date (backoffice) instead of billing code that skips it.
 - **Smoke flow**: login → staff dashboard → `/mig/skema` → click a lektion → that klasse's ugeplan → log out. Mit skema is the read-only way into a class schema for staff. The config is a separate [playwright.smoke.config.ts](../web/playwright.smoke.config.ts), outside `tests/e2e`, not a project in the e2e config, so it skips the e2e global setup and Aspire.
-- **Revert commit**: `git revert <range>` fails on the PR merge commits on `main`, so the rollback branch is one commit that restores last good's tree (`git read-tree -u --reset`).
-- **Migration review on the revert PR**: like CI, [migration-gate.yml](../.github/workflows/migration-gate.yml) got a `workflow_dispatch` that the rollback job triggers. CI's `e2e` job also runs on dispatch, or the required E2E check would never show up on the revert PR.
-- **Rollback only on a watch verdict**: the rollback job runs only when `watch.mjs` reported a reason. npm, Playwright install or GitHub API hiccups fail the run without rolling back.
-- **After [54](54-move-vps.md)**: Postgres loses its public port, so the rollback job's `__EFMigrationsHistory` read fails and every failed deploy becomes "alert only". Give the job another way to read it during 54 (e.g. the `migrate` service or an SSH tunnel).
+- **Rollback only on a watch verdict**: the rollback step runs only when `watch.mjs` reported a reason. npm or Playwright install failures turn the run red without rolling back.
+- **Alert = the red run.** GitHub emails the owner about failed runs. Check during the drill that this email arrives for a CD run started by Staging; if not, the Pingpuffin monitors are the backstop.
+- **Task 47**: its D5 ("no dispatch while deploys are frozen") referred to the dropped freeze issue. Replace it with "no dispatch while the latest CD run failed" when 47 is built.
 
 **Left for Niels** (secrets and variables: [DEPLOYMENT.md](../docs/DEPLOYMENT.md#github-actions-secrets-and-variables-for-cd)):
 
-1. Repo settings: the Actions secrets and variables, and "Allow GitHub Actions to create and approve pull requests".
-2. After this ships: sign up "Smoketest Friskole" in prod, run `UPDATE "Schools" SET "IsInternal" = true WHERE "Name" = 'Smoketest Friskole';` within a day (before the welcome email), give it free access with no end date, add fake classes, a schema and a ugeplan, and invite one staff user whose schema has lektioner. Store the login as `SMOKE_USER` / `SMOKE_PASSWORD`.
-3. §3 ruleset: `main`'s `default` ruleset only blocks deletion and force-push. Add "require a pull request" and the required checks from §3.
-4. §8 Pingpuffin monitors.
-5. The rollback drill from Testing, once.
+1. Repo settings: the Actions secrets and variables, including `SMOKE_USER` / `SMOKE_PASSWORD`.
+2. After this ships: switch the Pingpuffin monitor to `/api/health` (§8).
+3. After this merges and `CI result` has run on `main`: add `CI result` and `Migration review` as required checks on the `default` ruleset (§3).
+4. The rollback drill from Testing, once.
+
+Done 2026-10-26: Pingpuffin (§8), smoke school in prod, `default` ruleset requires a pull request.
 
 ## TL;DR
 
-New `watch` job at the end of `cd.yml`: 15 minutes of checks against prod. Pass → record the tag as **last known good** (GitHub Deployment on a separate `production-verified` environment). Fail → if no migration changed between last-good and this sha and prod has no applied migration missing at last-good: redeploy last-good with `deploy.mjs`, open a `deploy-freeze` issue (CD skips while it's open) and a revert PR that closes it. If a migration changed: no rollback, alert only. Applies to **all** deploys, not just AI ones. Also: `main` ruleset, `/api/health` readiness endpoint (Xabaril health-check packages), elmah.io deployment per deploy (version = sha), smoke tenant (`IsInternal`), Pingpuffin for 24/7 uptime. Everything runs in public-repo Actions — €0.
+After `deploy.mjs` deploys, the same CD job watches prod for 15 minutes. `deploy.mjs` first records the tag that was running. Watch fails → if no migration changed between that tag and this sha, redeploy it; either way the run goes red. Applies to **all** deploys, not just AI ones. Also: `main` ruleset, `/api/health` readiness endpoint (Xabaril health-check packages), elmah.io deployment per deploy (version = sha), smoke school, Pingpuffin for 24/7 uptime. Everything runs in public-repo Actions — €0.
 
 ## Context
 
@@ -52,12 +53,12 @@ Because migrations run before deploy and are forward-only, rolling back the imag
 
 ## Decisions (confirmed)
 
-- **D1 — Scope**: auto-rollback on **all** deploys whose range since last-good has no migration change. Exercising the path on our own deploys keeps it trustworthy.
-- **D2 — Migration deploys**: no auto-rollback. Alert (email) only; a human decides.
-- **D3 — Smoke tenant**: a dedicated, isolated internal tenant in prod ("Smoketest Friskole"), not reused from sales demos.
-- **D4 — Freeze, don't push**: automation never pushes to `main`. Rollback = redeploy + freeze issue + revert PR.
+- **D1 — Scope**: auto-rollback on **all** deploys whose range since the previous tag has no migration change. Exercising the path on our own deploys keeps it trustworthy.
+- **D2 — Migration deploys**: no auto-rollback. The run goes red; a human decides.
+- **D3 — Smoke tenant**: a dedicated school in prod ("Smoketest Friskole") with fake data only, not reused from sales demos. No `IsInternal` flag (dropped 2026-10-26): it showing in the backoffice list and getting the welcome email is fine.
+- **D4 — Redeploy only**: automation never touches `main`. Rollback = redeploy the previous tag. No freeze issue or revert PR (dropped 2026-10-26: a solo owner fixes forward, and a repeat of the bug is rolled back again).
 - **D5 — 24/7 monitoring**: Pingpuffin (Danish), alert only. Off-deploy outages are usually VPS/DB/Keycloak; rolling back code doesn't fix those.
-- **D6 — Alerts by email** via Scaleway SMTP (EU), because rollback is urgent and GitHub notification emails are unreliable for `workflow_run`.
+- **D6 — Alerts**: GitHub's failed-run email (SMTP alerts dropped 2026-10-26). Verify it arrives during the drill.
 
 ## Scope
 
@@ -72,70 +73,54 @@ Because migrations run before deploy and are forward-only, rolling back the imag
 ### 1b. elmah.io deployment tracking
 
 - After `deploy.mjs` succeeds, the `deploy` job creates an elmah.io deployment: `POST https://api.elmah.io/v3/deployments` with `version: <sha>`, `description: <commit subject>`, `userName: <github.actor>`, `logId: ELMAHIO_LOG_ID`. API key with only *Deployments – Write*, secret `ELMAHIO_DEPLOYMENT_API_KEY` (separate from the app's logging key). Plain `curl` step — no extra action.
-- The rollback job creates a deployment for the last-good version too, so errors after a rollback are attributed to the version actually running.
+- The rollback step creates a deployment for the previous version too, so errors after a rollback are attributed to the version actually running.
 - The app also sets `msg.Version = App__Version` in `OnMessage` for both the ASP.NET Core and logging providers, so attribution is exact even during the container switchover (elmah.io only fills `Version` from the latest deployment when the message has none).
 - Gives deployment markers and per-version error counts in the elmah.io UI for free, and lets the watch job count errors **by version** instead of by time window (§5.4).
 
 ### 2. Workflow tokens (no GitHub App)
 
-Everything in this task uses `GITHUB_TOKEN`. The GitHub App moved to [task 47](feedback/47-feedback-ai-fix-prs.md), where the API needs a non-expiring credential and AI PRs need a bot author.
-
-- `cd.yml` permissions: `contents: write` (revert branch), `pull-requests: write`, `issues: write` (freeze issue), `deployments: write` (`production-verified`), `actions: write` (dispatch CI).
-- Repo setting **"Allow GitHub Actions to create and approve pull requests"** on, so `GITHUB_TOKEN` can open the revert PR.
-- PRs opened with `GITHUB_TOKEN` don't trigger `pull_request` workflows, but `workflow_dispatch` is exempt. So after opening the revert PR, the rollback job runs `gh workflow run ci.yml --ref rollback/<sha>`. The dispatched run's check runs land on the PR's head commit and satisfy the required checks by name.
-- `ci.yml` gets an `on: workflow_dispatch` trigger. Nothing else changes: `migrate` and `publish-*` already require `github.event_name == 'push'`, and Staging's `workflow_run` is filtered to `branches: [main]`, so a dispatched CI on `rollback/*` can never migrate, publish or deploy.
-- **Verify once** (part of the rollback test in Testing): the dispatched checks show as passed on the revert PR and the ruleset allows merge. If they don't count, fall back to a fine-grained PAT secret for this one step.
+Everything in this task uses `GITHUB_TOKEN` with `contents: read`, `packages: read`. The GitHub App moved to [task 47](feedback/47-feedback-ai-fix-prs.md), where the API needs a non-expiring credential and AI PRs need a bot author.
 
 ### 3. Branch ruleset on `main`
 
 Set up for phone fixes via Claude cloud sessions (see "Cloud sessions" in AGENTS.md). This task only adds `ai-fix-guard` once task 47 lands.
 
-- Require a pull request (0 approvals; solo owner can't approve own PRs) and status checks: `API — build & test`, `Web — build & lint`, `Docs — ryni`, `E2E / E2E tests against staging stack`, `Migration review`.
-- No bypass, not even for the admin: the merge button in the GitHub mobile app must not be able to skip CI. `github-actions` and the Claude app can't bypass either, which is why CI has no auto-format job.
-- Configured as a repository ruleset via `gh api -X POST repos/NielsPilgaard/Skoleoverblikket/rulesets`, once the `E2E` and `Migration review` checks exist on `main` (a required check that never runs blocks every PR).
+- Require a pull request (0 approvals; solo owner can't approve own PRs). Done; the owner is the one bypass actor.
+- Required checks: only `CI result` and `Migration review`. `CI result` is the last job of [ci.yml](../.github/workflows/ci.yml) and fails if any other job failed or was cancelled, so jobs can be renamed or added without touching the ruleset. `Migration review` stays separate: it reruns on label changes, which CI must not. GitHub's "require workflows to pass" rule would avoid check names entirely, but it is only for organization rulesets.
+- Add the checks once `CI result` has run on `main` (a required check that never runs blocks every PR).
 
 ### 4. Smoke tenant
 
-- `Tenant.IsInternal` bool (default false) — **migration written by a human** (`/add-migration`).
-- Internal tenants are excluded from: `StatsController` totals, SuperAdmin tenant lists (unless "vis interne" filter), Stripe trial expiry / billing gates, marketing/onboarding emails.
-- Seed once by hand in prod: fake classes, schema, ugeplan, one staff user `smoke@…` whose password lives in secrets `SMOKE_USER` / `SMOKE_PASSWORD`. Fake data only.
+- Set up by hand in prod (done 2026-10-26): fake classes, schema, ugeplan, one staff user whose login lives in secrets `SMOKE_USER` / `SMOKE_PASSWORD`. Fake data only. Free access with no end date.
 - Playwright project `smoke` (`web/tests/smoke/*.spec.ts`, outside the regular `tests/e2e` testDir), base URL `https://skoleoverblikket.dk`, **read-only**: login → dashboard → class schema → ugeplan → logout. `data-testid` selectors only.
 - **Trace, video and screenshot off** for the smoke project. The repo is public and traces would contain the smoke user's JWT.
 
-### 5. Watch job (`cd.yml`)
+### 5. Watch (`cd.yml`)
 
-Runs after `deploy`, `timeout-minutes: 20`.
+Steps after the deploy in the same `deploy` job (`timeout-minutes: 60`).
 
-**Concurrency**: one workflow-level group in `cd.yml`, `concurrency: { group: production-deploy, cancel-in-progress: false }`, so `deploy`, `watch` and `rollback` of one run hold the group together and a new deploy cannot start while a watch or rollback is active. Every CD entry point (`workflow_run` from Staging, `workflow_dispatch` incl. manual rollback with `image_tag`) runs through `cd.yml` and therefore joins this group; no other workflow may deploy prod. Note: GitHub keeps at most one *pending* run per group, so a newer queued deploy replaces an older queued one — acceptable, since the newer sha includes the older.
+**Concurrency**: one workflow-level group in `cd.yml`, `concurrency: { group: production-deploy, cancel-in-progress: false }`, so a new deploy cannot start while a watch or rollback is active, and "the tag running before" is always a finished run's tag. Every CD entry point (`workflow_run` from Staging, `workflow_dispatch` incl. manual rollback with `image_tag`) runs through `cd.yml` and therefore joins this group; no other workflow may deploy prod. Note: GitHub keeps at most one *pending* run per group, so a newer queued deploy replaces an older queued one — acceptable, since the newer sha includes the older.
 
-1. Fetch last-good tag from a **separate record**: latest GitHub Deployment with status `success` on environment `production-verified` (written only by step 6, never by the `deploy` job), excluding the sha being watched. Do not read the `production` environment: the `deploy` job's `environment: production` makes GitHub mark the current candidate `success` before it is verified.
+1. `deploy.mjs` reads the running tag from the Dokploy compose env (`API_IMAGE`) before saving the new one, and outputs it as `previous_tag`.
 2. For 15 minutes, every 30 s: `GET /` (200 + HTML references a hashed bundle), `GET /api/health` (200 + `X-App-Version` == deployed sha after the first 2 minutes), Keycloak discovery `GET https://auth.skoleoverblikket.dk/realms/Skoleoverblikket/.well-known/openid-configuration`.
 3. At ~2 min and ~10 min: run the `smoke` Playwright project (one automatic retry).
-4. At end: elmah.io messages API — count Error/Fatal messages with `version:<sha>` in the watch window vs messages with `version:<last-good>` in the 15 minutes before deploy. Fail if `count > max(ELMAH_MIN_ERRORS, ELMAH_SPIKE_FACTOR × baseline)` (repo variables, start at 10 and 5). Read key: secret `ELMAHIO_READ_API_KEY` (*Messages – Read* only).
+4. At end: elmah.io messages API — count Error/Fatal messages with `version:<sha>` in the watch window vs messages with `version:<previous sha>` in the 15 minutes before deploy. Fail if `count > max(ELMAH_MIN_ERRORS, ELMAH_SPIKE_FACTOR × baseline)` (repo variables, start at 10 and 5). Read key: secret `ELMAHIO_READ_API_KEY` (*Messages – Read* only).
 5. **Fail conditions**: 3 consecutive failures of any health probe, smoke failing after retry, or error spike.
-6. **Pass**: create a Deployment on environment `production-verified` for this sha with status `success` → it becomes last-good. Then (task 47) post `Feedback:` trailers to the API.
+6. **Pass**: the run is green. Then (task 47) post `Feedback:` trailers to the API.
 
 Implement as a Node script `infrastructure/scripts/watch.mjs` (same style as `deploy.mjs`), with Playwright invoked from the workflow.
 
-### 6. Rollback job
+### 6. Rollback step
 
-Runs when `watch` fails:
+Last step of the job, runs when the watch reported a failure:
 
-1. **Migration check against production, not just the sha range.** CI applies migrations to prod on every push to `main`, so prod can hold migrations from commits newer than `<sha>` (e.g. a later push whose CD run is still queued). Read `MigrationId`s from prod `__EFMigrationsHistory` (same `DATABASE_URL` CI uses for `psql`) and compare with the migration files present at `<last-good-sha>` (`git ls-tree --name-only <last-good-sha> -- api/Skoleoverblikket.Api/Data/Migrations/`). Any applied migration missing at last-good, **or** `git diff --quiet <last-good-sha>..<sha> -- api/Skoleoverblikket.Api/Data/Migrations/` reporting a change → **alert only** (email: "Deploy <sha> fejlede — migration i spil, ingen automatisk rollback"). Stop. If the prod query fails, treat it as "migration found" (alert only).
-2. Otherwise: run `deploy.mjs` with `IMAGE_TAG=<last-good tag>`, then a shortened watch (health probes only, 3 minutes). If that also fails → open the `deploy-freeze` issue (step 3, title `🚨 Deploy frosset: rollback af <sha> til <last-good> fejlede`) so the freeze gate blocks further CD runs, keep the "rollback fejlede" alert email, and stop (no revert PR).
-3. Open issue `🚨 Deploy frosset: <sha> rullet tilbage til <last-good>` with label `deploy-freeze` (failing checks summarised, links to the run).
-4. Create branch `rollback/<sha>` with `git revert --no-edit <last-good-sha>..<sha>` and open a PR labelled `rollback-revert` whose body has `Closes #<freeze issue>` (`GITHUB_TOKEN`), then `gh workflow run ci.yml --ref rollback/<sha>` so the required checks run (§2).
-5. Email the owner with links.
-
-### 7. Freeze gate
-
-- First step of `cd.yml` `deploy` job: if any open issue has label `deploy-freeze` → skip (log why), unless `workflow_dispatch` with input `force: true`.
-- Merging the revert PR closes the freeze issue → next push deploys normally. A forward fix means closing the issue by hand.
-- Task 47's dispatch also checks the freeze.
+1. No previous tag, or `git diff --quiet <previous sha> <sha> -- api/Skoleoverblikket.Api/Data/Migrations/` reports a change (or fails) → no rollback, error annotation. CI already migrated prod, so old code would run against the new schema.
+2. Otherwise: `deploy.mjs` with `IMAGE_TAG=<previous tag>`, an elmah.io deployment for it, then a 3-minute watch (health probes only).
+3. The run stays red either way.
 
 ### 8. Pingpuffin
 
-Manual setup (no code): monitors for `https://skoleoverblikket.dk/`, `/api/health`, Keycloak discovery URL; alert by email. Record the monitor list here when done.
+Done 2026-10-26: one monitor, alert by email. Today on `https://skoleoverblikket.dk/`; switch it to `https://skoleoverblikket.dk/api/health` once this ships. That URL goes through the web container's nginx to the API, so one monitor covers web, API, Postgres and Keycloak.
 
 ## Open questions
 
@@ -151,5 +136,4 @@ Manual setup (no code): monitors for `https://skoleoverblikket.dk/`, `/api/healt
 ## Testing
 
 - API integration test: `/api/health` returns 200 with DB up, 503 with an unreachable Keycloak authority (configure a bogus authority in the factory).
-- API integration test: internal tenants excluded from stats and SuperAdmin tenant list.
-- Rollback path: deliberately deploy a tag whose web bundle throws on load (a throwaway branch built to a test tag) via `workflow_dispatch` — verify redeploy, freeze issue, revert PR, dispatched CI checks counting as required checks on the revert PR (§2), elmah.io deployment for last-good, email. Do this once before task 47 goes live, and document the result here.
+- Rollback path: deliberately deploy a tag whose web bundle throws on load (a throwaway branch built to a test tag) via `workflow_dispatch` — verify the redeploy, the elmah.io deployment for the previous tag, and that GitHub's failed-run email arrives. Do this once before task 47 goes live, and document the result here.

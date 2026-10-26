@@ -121,21 +121,16 @@ That is every agent variable the compose passes through. The agent's other setti
 
 ## GitHub Actions secrets and variables for CD
 
-CD ([cd.yml](../.github/workflows/cd.yml)) watches prod for 15 minutes after each deploy and rolls back on failure ([task 44](../tasks/44-auto-rollback.md)). Repository settings → Secrets and variables → Actions. Everything except `DOKPLOY_*` and `DATABASE_URL` is optional: without it, that check or alert is skipped with a warning.
+CD ([cd.yml](../.github/workflows/cd.yml)) watches prod for 15 minutes after each deploy and redeploys the previous tag on failure ([task 44](../tasks/44-auto-rollback.md)). A failed watch leaves the run red, so the alert is GitHub's failed-workflow email. Repository settings → Secrets and variables → Actions. Everything except `DOKPLOY_*` is optional: without it, that check is skipped with a warning.
 
 | Name | Kind | Used for |
 | --- | --- | --- |
 | `DOKPLOY_API_KEY`, `DOKPLOY_URL`, `DOKPLOY_COMPOSE_ID` | secret (`production` environment) | Deploy and rollback redeploy. |
-| `DATABASE_URL` | secret (`production` environment) | CI migrations. The rollback job reads `__EFMigrationsHistory` to see whether prod is ahead of the last good version. If it can't connect, it doesn't roll back. |
-| `SMOKE_USER`, `SMOKE_PASSWORD` | secret | Staff login of the internal "Smoketest Friskole" for the read-only smoke test. |
+| `SMOKE_USER`, `SMOKE_PASSWORD` | secret | Staff login of "Smoketest Friskole" (fake data only) for the read-only smoke test. |
 | `ELMAHIO_LOG_ID` | variable | elmah.io log the API writes to. |
 | `ELMAHIO_DEPLOYMENT_API_KEY` | secret | elmah.io key with only *Deployments – Write*: one deployment per deploy and rollback. |
 | `ELMAHIO_READ_API_KEY` | secret | elmah.io key with only *Messages – Read*: the error spike check. |
 | `ELMAH_MIN_ERRORS`, `ELMAH_SPIKE_FACTOR` | variable | Spike threshold: fail when errors for the new version exceed `max(min, factor × baseline)`. Default 10 and 5. |
-| `SMTP_USERNAME`, `SMTP_PASSWORD` | secret | Scaleway TEM credentials for rollback alert emails (can be the API's). |
-| `ALERT_EMAIL` | variable | Who gets the rollback alert emails. |
-
-Also on: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests", so the rollback job can open its revert PR.
 
 ---
 
