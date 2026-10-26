@@ -70,6 +70,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 	public record NotesDto(string? Notes);
 
 	[HttpGet]
+	[Authorize(Roles = $"{Roles.Staff},{Roles.Parent}")]
 	public async Task<ActionResult<WeekPlanDto>> GetWeekPlan(
 		Guid classId,
 		[FromQuery] int? isoYear,
@@ -85,6 +86,13 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 		if (!IsoWeekValidation.IsValid(isoYear.Value, isoWeek.Value))
 		{
 			return Problem("Ugyldigt årstal eller ugenummer", statusCode: 400);
+		}
+
+		// Staff read every class; a parent only the classes their children are in.
+		var readResult = await authz.AuthorizeAsync(User, classId, Policies.ParentClassAccess);
+		if (!readResult.Succeeded)
+		{
+			return Forbid();
 		}
 
 		var klass = await db.Classes.AsNoTracking().FirstOrDefaultAsync(c => c.Id == classId, cancellationToken);

@@ -8,7 +8,8 @@ using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 namespace Skoleoverblikket.Api.IntegrationTests;
 
 /// <summary>
-/// Verifies WeekPlan edit access rules:
+/// Verifies WeekPlan read access (staff: every class, parent: own children's classes, board: none)
+/// and edit access rules:
 ///   1. Admin → always allowed.
 ///   2. No ClassPermissions for the class → open (all authenticated staff).
 ///   3. ClassPermissions exist and teacher has one → allowed.
@@ -42,23 +43,77 @@ public sealed class WeekPlanPermissionsTests(ApiFactory factory)
 	}
 
 	/// <summary>
-	/// Any authenticated user can read the WeekPlan regardless of class permissions.
+	/// Staff read every class's WeekPlan, even a restricted class they have no permission row for.
 	/// </summary>
 	[Test]
-	public async Task AnyAuthenticatedUser_CanGetWeekPlan()
+	public async Task Staff_CanGetWeekPlan_OfRestrictedClass()
 	{
+		const string teacherSubject = "week-plan-reader-teacher";
+		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, keycloakSubject: teacherSubject);
 		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId);
+		var permittedOther = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId);
+		await _adminClient.PostAsJsonAsync(
+			$"/api/v1/classes/{klass.Id}/permissions",
+			new { staffId = permittedOther.Id });
 
-		using var client = _factory.CreateClient();
-		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
-		client.DefaultRequestHeaders.Add("X-Test-Subject", "random-teacher");
+		using var client = CreateClient(_tenantId, "user", teacherSubject);
 
-		var response = await client.GetAsync(
-			$"/api/v1/classes/{klass.Id}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}");
+		var response = await client.GetAsync(WeekPlanUrl(klass.Id));
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 	}
+
+	/// <summary>
+	/// A parent reads the WeekPlan of their child's class, and gets 403 for any other class.
+	/// </summary>
+	[Test]
+	public async Task Parent_CanGetWeekPlan_OnlyOfOwnChildsClass()
+	{
+		var kit = new AbsenceTestKit(_factory);
+		await kit.InitAsync();
+		var (mine, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, kit.TenantId, "3.a");
+		var (theirs, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, kit.TenantId, "3.b");
+		var student = await kit.CreateStudentAsync(mine.Id);
+		using var parent = await kit.ParentOfAsync(student.Id, "week-plan-parent");
+
+		var own = await parent.GetAsync(WeekPlanUrl(mine.Id));
+		var other = await parent.GetAsync(WeekPlanUrl(theirs.Id));
+
+		await Assert.That(own.StatusCode).IsEqualTo(HttpStatusCode.OK);
+		await Assert.That(other.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+	}
+
+	/// <summary>
+	/// Board members have no week plan view, and a login with no school role reads nothing.
+	/// </summary>
+	[Test]
+	public async Task BoardMemberAndNoRole_CannotGetWeekPlan()
+	{
+		const string boardSubject = "week-plan-board";
+		await TestDataBuilder.CreateBoardMemberAsync(_factory.Services, _tenantId, boardSubject);
+		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, _tenantId);
+
+		using var board = CreateClient(_tenantId, "board", boardSubject);
+		using var noRole = CreateClient(_tenantId, "user", "week-plan-no-school-role");
+
+		var boardResponse = await board.GetAsync(WeekPlanUrl(klass.Id));
+		var noRoleResponse = await noRole.GetAsync(WeekPlanUrl(klass.Id));
+
+		await Assert.That(boardResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+		await Assert.That(noRoleResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+	}
+
+	private HttpClient CreateClient(Guid tenantId, string roles, string subject)
+	{
+		var client = _factory.CreateClient();
+		client.DefaultRequestHeaders.Add("X-Test-TenantId", tenantId.ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", roles);
+		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
+		return client;
+	}
+
+	private static string WeekPlanUrl(Guid classId) =>
+		$"/api/v1/classes/{classId}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}";
 
 	/// <summary>
 	/// When no ClassPermissions exist for a class, any authenticated teacher can edit the WeekPlan.

@@ -113,8 +113,8 @@ This policy (`Policies.EditClass`) is enforced on all mutating schema endpoints 
 Non-admin staff can always:
 
 - **Read** all classes and their schemas (`GET /api/v1/classes`, `GET /api/v1/classes/{id}`)
-- **Read** week plans (`GET /api/v1/classes/{classId}/ugeplan`)
-- **Write** week plan slots (`PUT /api/v1/classes/{classId}/ugeplan/slots`) and attach/remove files — these endpoints only require `[Authorize]`, not the `EditClass` policy
+- **Read** week plans (`GET /api/v1/classes/{classId}/week-plan`)
+- **Write** week plan slots (`PUT /api/v1/classes/{classId}/week-plan/slots`), notes (`PUT …/week-plan/notes`) and attach/remove files, per the `EditWeekPlan` policy below
 - **Cannot** create, update, or delete classes or staff
 
 For **schema editing**, non-admin staff follow the class-scoped `EditClass` policy:
@@ -123,15 +123,18 @@ For **schema editing**, non-admin staff follow the class-scoped `EditClass` poli
 
 When ClassPermission rows exist for any class, the class list is filtered for non-admin staff: classes that have permissions rows but none matching this staff member are hidden from `GET /api/v1/classes`. Classes with no permission rows remain visible.
 
-### Staff assigned to a timeslot/module without a ClassPermission
+### Week plan writes (`EditWeekPlan`)
 
-A staff member can appear in a schema slot (as the assigned teacher) without having a `ClassPermission` row for that class. In that case:
+`WeekPlanController` writes use the `EditWeekPlan` policy (`EditWeekPlanAuthorizationHandler`). It follows the `EditClass` steps 1–5 above, plus one more: in a restricted class, the teacher or aide on the schema slot being written may still edit that slot.
 
-- They **can** read the week plan for that class — the week plan endpoint only requires authentication, not a class permission
+A staff member can appear in a schema slot (as the assigned teacher or aide) without having a `ClassPermission` row for that class. In that case:
+
+- They **can** read the week plan for that class — any staff member can read any class's week plan, without a class permission
 - They **cannot** edit the underlying schema (no `EditClass` access) — they would need an explicit `ClassPermission` row for that class
-- They **can** write week plan annotations (beskrivelse, lektier, file attachments) on their own slots, because `WeekPlanController` does not enforce the `EditClass` policy
+- They **can** write week plan annotations (beskrivelse, lektier, file attachments) on their own slots
+- They **cannot** edit other teachers' slots or the week's notes (`PUT notes` names no slot)
 
-In practice: a teacher assigned to a class can annotate lessons week-by-week, but cannot restructure the schema itself.
+In practice: a teacher assigned to a class can annotate their own lessons week-by-week, but cannot restructure the schema itself.
 
 ---
 
@@ -172,9 +175,9 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 | `PATCH /api/v1/staff/{id}/admin-permission` | `[Authorize(Roles = "admin")]` | Sets `Staff.IsAdmin`. Cannot remove self or last admin |
 | `GET/POST/DELETE /api/v1/classes/{id}/permissions` | `[Authorize(Roles = "admin")]` | |
 | Schema mutations (`SchemasController` writes) | `EditClass` policy | Enforces ClassPermission logic |
-| `GET /api/v1/classes/{id}/ugeplan` | `[Authorize]` | Any authenticated user |
-| `PUT /api/v1/classes/{id}/ugeplan/slots` | `[Authorize]` | Any authenticated user — no EditClass check |
-| `POST/DELETE /api/v1/classes/{id}/ugeplan/slots/{slotId}/files` | `[Authorize]` | Any authenticated user |
+| `GET /api/v1/classes/{id}/week-plan` | `[Authorize(Roles = "staff,parent")]` + `ParentClassAccess` | Staff: any class. Parents: only their children's classes. Board: 403 |
+| `PUT /api/v1/classes/{id}/week-plan/slots`, `PUT …/notes` | `EditWeekPlan` policy | `EditClass` rules plus the slot's own teacher or aide |
+| `POST/DELETE /api/v1/classes/{id}/week-plan/slots/{slotId}/files` | `EditWeekPlan` policy | |
 | `POST /api/v1/absence`, `GET mine`, `DELETE {id}` | `[Authorize(Roles = "parent")]` | Own children only, checked in `AbsenceService` |
 | `GET /api/v1/absence`, `GET stats` | `[Authorize(Roles = "staff")]` | Filtered to classes the caller passes `EditClass` for (admins: all) |
 | `PUT /api/v1/absence/{id}/category`, `POST follow-ups` | `EditClass` on the student's class | |
@@ -218,9 +221,3 @@ Marked with `[RequiresModule]`:
 The frontend mirrors this. A board member or parent whose module is off, and who holds no other role with its module on, sees "Modulet er ikke aktivt" (`Layout.tsx`) instead of failing pages. Someone with another role is switched to it, and "Vis som" shows the off role disabled. Admins keep Elever, Forældre, Bestyrelse and Stå mål med in the sidebar, with a notice and only read and delete actions. Stå mål med then shows only saved versions.
 
 Not gated: vacation registration windows and the contact directory, which are Basis. A new controller for a paid feature needs the attribute, or the module stops being something a school pays for.
-
----
-
-## Known gaps
-
-`WeekPlanController` write endpoints (`PUT slots`, `POST/DELETE files`) enforce `[Authorize]` only — any authenticated tenant user can annotate any class's week plan, regardless of ClassPermissions. This is intentional for the teacher annotation flow but means ClassPermissions do not fully restrict week-plan writes.
