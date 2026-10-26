@@ -1,11 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Skoleoverblikket.Api.Auth;
 using Skoleoverblikket.Api.Controllers;
-using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
-using Skoleoverblikket.Api.Models;
 using Skoleoverblikket.Api.Services;
 
 namespace Skoleoverblikket.Api.IntegrationTests;
@@ -13,24 +14,38 @@ namespace Skoleoverblikket.Api.IntegrationTests;
 /// <summary>
 /// Links (/api/v1/external-links): admin CRUD and reorder, who sees which link (parents by their
 /// children's classes, staff and board by audience), URL rules and tenant isolation.
+/// Keycloak is replaced by <see cref="FakeKeycloak"/> so parents are invited through the API.
 /// </summary>
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
 public sealed class ExternalLinksTests(ApiFactory factory)
 {
+	private readonly FakeKeycloak _keycloak = new();
 	private readonly Guid _tenantId = Guid.NewGuid();
+	private WebApplicationFactory<Program> _app = null!;
 	private HttpClient _admin = null!;
 
 	[Before(Test)]
 	public async Task SetUp()
 	{
-		await TestDataBuilder.CreateSchoolAsync(factory.Services, _tenantId);
+		_app = factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+		{
+			services.RemoveAll<IKeycloakAdminApi>();
+			services.RemoveAll<IKeycloakTokenApi>();
+			services.AddSingleton<IKeycloakAdminApi>(_keycloak);
+			services.AddSingleton<IKeycloakTokenApi>(_keycloak);
+		}));
+		await TestDataBuilder.CreateSchoolAsync(_app.Services, _tenantId);
 		var adminSubject = $"links-admin-{Guid.NewGuid():N}";
-		await TestDataBuilder.CreateStaffAsync(factory.Services, _tenantId, "Hanne Kontor", isAdmin: true, keycloakSubject: adminSubject);
+		await TestDataBuilder.CreateStaffAsync(_app.Services, _tenantId, "Hanne Kontor", isAdmin: true, keycloakSubject: adminSubject);
 		_admin = Client(_tenantId, adminSubject, "admin");
 	}
 
 	[After(Test)]
-	public void TearDown() => _admin.Dispose();
+	public async Task TearDown()
+	{
+		_admin.Dispose();
+		await _app.DisposeAsync();
+	}
 
 	[Test]
 	public async Task Admin_CreatesUpdatesReordersAndDeletesLinks()
@@ -91,7 +106,7 @@ public sealed class ExternalLinksTests(ApiFactory factory)
 	{
 		var klass = await CreateClassAsync("4.c");
 		var staffSubject = $"links-staff-{Guid.NewGuid():N}";
-		await TestDataBuilder.CreateStaffAsync(factory.Services, _tenantId, keycloakSubject: staffSubject);
+		await TestDataBuilder.CreateStaffAsync(_app.Services, _tenantId, keycloakSubject: staffSubject);
 
 		var classLink = await CreateLinkAsync(Link("4.c forældreintra", "https://4c.dk", parents: true, staff: true) with { ClassIds = [klass] });
 		var staffLink = await CreateLinkAsync(Link("Personaleportal", "https://intra.skole.dk", staff: true));
@@ -108,7 +123,7 @@ public sealed class ExternalLinksTests(ApiFactory factory)
 	public async Task Board_SeesBoardLinksOnly()
 	{
 		var boardSubject = $"links-board-{Guid.NewGuid():N}";
-		await TestDataBuilder.CreateBoardMemberAsync(factory.Services, _tenantId, boardSubject);
+		await TestDataBuilder.CreateBoardMemberAsync(_app.Services, _tenantId, boardSubject);
 
 		var boardLink = await CreateLinkAsync(Link("Bestyrelsesmappe", "https://drev.skole.dk", board: true));
 		await CreateLinkAsync(Link("Aula", "https://aula.dk", parents: true, staff: true));
@@ -124,7 +139,7 @@ public sealed class ExternalLinksTests(ApiFactory factory)
 	{
 		var linkId = await CreateLinkAsync(Link("Aula", "https://aula.dk", staff: true));
 		var staffSubject = $"links-staff-{Guid.NewGuid():N}";
-		await TestDataBuilder.CreateStaffAsync(factory.Services, _tenantId, keycloakSubject: staffSubject);
+		await TestDataBuilder.CreateStaffAsync(_app.Services, _tenantId, keycloakSubject: staffSubject);
 		using var staff = Client(_tenantId, staffSubject, "user");
 
 		await Assert.That((await staff.GetAsync("/api/v1/external-links/all")).StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
@@ -203,9 +218,9 @@ public sealed class ExternalLinksTests(ApiFactory factory)
 		var linkId = await CreateLinkAsync(Link("Aula", "https://aula.dk", parents: true, staff: true, board: true));
 
 		var otherTenant = Guid.NewGuid();
-		await TestDataBuilder.CreateSchoolAsync(factory.Services, otherTenant, "Anden Skole");
+		await TestDataBuilder.CreateSchoolAsync(_app.Services, otherTenant, "Anden Skole");
 		var otherSubject = $"links-other-{Guid.NewGuid():N}";
-		await TestDataBuilder.CreateStaffAsync(factory.Services, otherTenant, isAdmin: true, keycloakSubject: otherSubject);
+		await TestDataBuilder.CreateStaffAsync(_app.Services, otherTenant, isAdmin: true, keycloakSubject: otherSubject);
 		using var otherAdmin = Client(otherTenant, otherSubject, "admin");
 
 		await Assert.That(await GetVisibleAsync(otherAdmin)).IsEmpty();
@@ -220,7 +235,7 @@ public sealed class ExternalLinksTests(ApiFactory factory)
 
 	private HttpClient Client(Guid tenantId, string subject, string realmRoles)
 	{
-		var client = factory.CreateClient();
+		var client = _app.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", tenantId.ToString());
 		client.DefaultRequestHeaders.Add("X-Test-Roles", realmRoles);
 		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
@@ -261,21 +276,15 @@ public sealed class ExternalLinksTests(ApiFactory factory)
 	/// <summary>A parent login with one child in <paramref name="classId"/>. Returns the Keycloak subject.</summary>
 	private async Task<string> CreateParentAsync(Guid classId)
 	{
-		var subject = $"links-parent-{Guid.NewGuid():N}";
-		using var scope = factory.Services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-		var student = new Student { Id = Guid.NewGuid(), TenantId = _tenantId, Name = "Elev Testsen", ClassId = classId };
-		var parent = new Parent
-		{
-			Id = Guid.NewGuid(),
-			TenantId = _tenantId,
-			Name = "Forælder Testsen",
-			Email = $"{subject}@test.dk",
-			KeycloakSubject = subject,
-			Students = [student],
-		};
-		db.Parents.Add(parent);
-		await db.SaveChangesAsync();
-		return subject;
+		var studentResponse = await _admin.PostAsJsonAsync("/api/v1/students",
+			new StudentsController.UpsertStudentRequest("Elev Testsen", classId, false));
+		await Assert.That(studentResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
+		var student = await studentResponse.Content.ReadFromJsonAsync<StudentsController.StudentDto>();
+
+		var email = $"links-parent-{Guid.NewGuid():N}@test.dk";
+		var invite = await _admin.PostAsJsonAsync("/api/v1/parents/invite",
+			new ParentsController.InviteParentRequest("Forælder Testsen", email, [student!.Id]));
+		await Assert.That(invite.StatusCode).IsEqualTo(HttpStatusCode.Created);
+		return _keycloak.SubjectFor(email);
 	}
 }
