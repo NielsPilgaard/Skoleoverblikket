@@ -160,6 +160,9 @@ if (isRun)
        .WithEnvironment("BackupStatus__AccessKey", "minioadmin")
        .WithEnvironment("BackupStatus__SecretKey", "minioadmin");
 
+    // Prod backup console over SSH, when BACKUP_CONSOLE_SERVER is set.
+    ProdBackupConsole.Add(builder);
+
     // Stripe CLI — forwards real Stripe test-mode webhook events to the local API automatically.
     // Uses the committed test-mode secret key (appsettings.Development.json Stripe:SecretKey) via
     // STRIPE_API_KEY, so no interactive `stripe login` is needed. The webhook signing secret is

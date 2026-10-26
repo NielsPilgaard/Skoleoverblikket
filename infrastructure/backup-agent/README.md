@@ -79,6 +79,7 @@ flowchart LR
 **Elsewhere:**
 - [AppHost Program.cs](../aspire/Skoleoverblikket.AppHost/Program.cs) runs Postgres and the agent under `aspire run`, with Silo standing in for S3.
 - [scripts/backup-console.ps1](../../scripts/backup-console.ps1) opens the tunnel, reads the access link and opens the browser.
+- [ProdBackupConsole.cs](../aspire/Skoleoverblikket.AppHost/ProdBackupConsole.cs) does the same from the Aspire dashboard when `BACKUP_CONSOLE_SERVER` is set, plus `pgbackrest info`, agent logs and expire as commands.
 - [ProdCompose.cs](../aspire/Skoleoverblikket.AppHost/ProdCompose.cs) is their prod side. `aspire publish` generates [docker-compose.prod.yml](../docker/docker-compose.prod.yml) from it ([scripts/generate-prod-compose.ps1](../../scripts/generate-prod-compose.ps1)); CI fails when the committed file is stale.
 - The API's read-only status card (`SuperAdminBackupStatusController`) reads `status.json`. It's optional.
 
