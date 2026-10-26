@@ -6,10 +6,9 @@ run-name: "CD: ${{ inputs.image_tag }}"
 # got images built.
 # workflow_dispatch is for manual deploys and rollbacks.
 #
-# Task 44: after deploying, `watch` checks prod for 15 minutes. Passing records the version as
-# last known good on the `production-verified` environment. Failing runs `rollback`, which
-# redeploys last good (unless a migration is involved), freezes CD with a `deploy-freeze` issue
-# and opens a revert PR.
+# Task 44: after deploying, CD watches prod for 15 minutes. If the watch fails, it redeploys the
+# tag that was running before (unless a migration changed in between) and the run goes red, which
+# emails the owner.
 on:
   workflow_call:
     inputs:
@@ -23,13 +22,8 @@ on:
         description: "Image tag to deploy (e.g. sha-abc1234)"
         required: true
         type: string
-      force:
-        description: "Deploy even while a deploy-freeze issue is open"
-        type: boolean
-        default: false
 
-# One deploy, watch or rollback at a time. Every prod deploy goes through this workflow, and a
-# newer queued run replaces an older queued one, which is fine: the newer sha includes the older.
+# One deploy at a time, so "the tag running before" is never another run's half-watched deploy.
 concurrency:
   group: production-deploy
   cancel-in-progress: false
@@ -42,45 +36,25 @@ jobs:
     name: Deploy to production
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       contents: read
       packages: read
-      issues: read
-    outputs:
-      deployed: ${{ steps.deploy.outcome == 'success' }}
-      deployed_at: ${{ steps.deployed_at.outputs.time }}
+    env:
+      HAS_SMOKE_USER: ${{ secrets.SMOKE_USER != '' }}
     steps:
-      - name: Check for deploy freeze
-        id: freeze
-        env:
-          GH_TOKEN: ${{ github.token }}
-          FORCE: ${{ inputs.force == true }}
-        run: |
-          issues=$(gh issue list --repo "$GITHUB_REPOSITORY" --label deploy-freeze --state open --json number,title,url \
-            --jq '.[] | "#\(.number) \(.title) \(.url)"')
-          if [ -z "$issues" ]; then
-            echo "frozen=false" >> "$GITHUB_OUTPUT"
-          elif [ "$FORCE" = "true" ]; then
-            echo "::warning title=Deploy freeze overridden::$issues"
-            echo "frozen=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning title=Deploy skipped: CD is frozen::$issues"
-            printf '## ⏸️ Deploy of `%s` skipped: CD is frozen\n\n%s\n\nClose the issue (or merge its revert PR), or run CD with `force: true`.\n' "$IMAGE_TAG" "$issues" >> "$GITHUB_STEP_SUMMARY"
-            echo "frozen=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: actions/checkout@v4
-        if: steps.freeze.outputs.frozen == 'false'
+        with:
+          fetch-depth: 0 # the rollback step diffs migrations between the two shas
 
       - name: Setup Node.js 24
-        if: steps.freeze.outputs.frozen == 'false'
         uses: actions/setup-node@v4
         with:
           node-version: "24"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
 
       - name: Log in to GHCR
-        if: steps.freeze.outputs.frozen == 'false'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -89,7 +63,6 @@ jobs:
 
       # Fail here, with a readable error, instead of deep inside Dokploy's docker pull.
       - name: Check images exist
-        if: steps.freeze.outputs.frozen == 'false'
         run: |
           missing=0
           for name in api web keycloak; do
@@ -105,20 +78,15 @@ jobs:
 
       - name: Deploy to production
         id: deploy
-        if: steps.freeze.outputs.frozen == 'false'
         env:
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
           DOKPLOY_COMPOSE_ID: ${{ secrets.DOKPLOY_COMPOSE_ID }}
-        run: node infrastructure/scripts/deploy.mjs
-
-      - name: Record deploy time
-        id: deployed_at
-        if: steps.deploy.outcome == 'success'
-        run: echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+        run: |
+          node infrastructure/scripts/deploy.mjs
+          echo "deployed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Record elmah.io deployment
-        if: steps.deploy.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           DEPLOYED_BY: ${{ github.actor }}
@@ -128,53 +96,6 @@ jobs:
           export VERSION="${IMAGE_TAG#sha-}"
           export DESCRIPTION=$(gh api "repos/$GITHUB_REPOSITORY/commits/$VERSION" --jq '.commit.message | split("\n")[0]' || true)
           node infrastructure/scripts/elmah-deployment.mjs
-
-  watch:
-    name: Watch production
-    needs: [deploy]
-    if: needs.deploy.outputs.deployed == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    permissions:
-      contents: read
-      deployments: write
-    env:
-      HAS_SMOKE_USER: ${{ secrets.SMOKE_USER != '' }}
-    outputs:
-      reason: ${{ steps.watch.outputs.reason }}
-      last_good_sha: ${{ steps.last_good.outputs.sha }}
-      last_good_tag: ${{ steps.last_good.outputs.tag }}
-    steps:
-      - uses: actions/checkout@v4
-
-      # Last good is read from production-verified, which only this job writes. The production
-      # environment can't be used: GitHub marks this deploy a success there before it's verified.
-      - name: Find last good version
-        id: last_good
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          current="${IMAGE_TAG#sha-}"
-          # Read first: breaking out of a piped loop could SIGPIPE gh and fail the step (pipefail).
-          rows=$(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=production-verified&per_page=50" \
-            --jq '.[] | [.id, .sha, (.payload.image_tag // "")] | @tsv')
-          while IFS=$'\t' read -r id sha tag; do
-            [ -z "$id" ] || [ "$sha" = "$current" ] && continue
-            state=$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses?per_page=1" --jq '.[0].state // ""')
-            if [ "$state" = "success" ]; then
-              echo "Last good: $tag ($sha)"
-              echo "sha=$sha" >> "$GITHUB_OUTPUT"
-              echo "tag=$tag" >> "$GITHUB_OUTPUT"
-              break
-            fi
-          done <<< "$rows"
-
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: web/package-lock.json
 
       - name: Install Playwright
         if: env.HAS_SMOKE_USER == 'true'
@@ -186,9 +107,8 @@ jobs:
       - name: Watch for 15 minutes
         id: watch
         env:
-          EXPECTED_VERSION: ${{ inputs.image_tag }}
-          LAST_GOOD_VERSION: ${{ steps.last_good.outputs.sha }}
-          DEPLOYED_AT: ${{ needs.deploy.outputs.deployed_at }}
+          PREVIOUS_TAG: ${{ steps.deploy.outputs.previous_tag }}
+          DEPLOYED_AT: ${{ steps.deploy.outputs.deployed_at }}
           SMOKE_USER: ${{ secrets.SMOKE_USER }}
           SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
           ELMAHIO_READ_API_KEY: ${{ secrets.ELMAHIO_READ_API_KEY }}
@@ -196,61 +116,37 @@ jobs:
           ELMAH_MIN_ERRORS: ${{ vars.ELMAH_MIN_ERRORS }}
           ELMAH_SPIKE_FACTOR: ${{ vars.ELMAH_SPIKE_FACTOR }}
         run: |
-          export EXPECTED_VERSION="${EXPECTED_VERSION#sha-}"
+          export EXPECTED_VERSION="${IMAGE_TAG#sha-}"
+          export PREVIOUS_VERSION="${PREVIOUS_TAG#sha-}"
           node infrastructure/scripts/watch.mjs
 
-      # A GitHub API hiccup here must not roll back a deploy that passed.
-      - name: Record as last good
-        continue-on-error: true
+      # Only when the watch itself found a problem: npm or Playwright install failing says
+      # nothing about the deploy. The run stays red either way, so the owner gets GitHub's email.
+      - name: Roll back to the previous tag
+        if: failure() && steps.watch.outputs.reason != ''
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          id=$(jq -n --arg ref "${IMAGE_TAG#sha-}" --arg tag "$IMAGE_TAG" \
-            '{ref: $ref, environment: "production-verified", auto_merge: false, required_contexts: [], payload: {image_tag: $tag}, description: "Passed the CD watch"}' |
-            gh api "repos/$GITHUB_REPOSITORY/deployments" --input - --jq .id)
-          gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses" -f state=success -f environment_url=https://skoleoverblikket.dk > /dev/null
-          echo "## ✅ \`$IMAGE_TAG\` is now last known good" >> "$GITHUB_STEP_SUMMARY"
-
-  rollback:
-    name: Roll back
-    needs: [deploy, watch]
-    # Only when watch.mjs found a problem: setup steps failing (npm, GitHub API) says nothing
-    # about the deploy.
-    if: failure() && needs.watch.outputs.reason != ''
-    runs-on: ubuntu-latest
-    environment: production
-    timeout-minutes: 45
-    permissions:
-      contents: write
-      packages: read
-      issues: write
-      pull-requests: write
-      actions: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-
-      - name: Roll back
-        env:
-          GH_TOKEN: ${{ github.token }}
-          LAST_GOOD_SHA: ${{ needs.watch.outputs.last_good_sha }}
-          LAST_GOOD_TAG: ${{ needs.watch.outputs.last_good_tag }}
-          WATCH_REASON: ${{ needs.watch.outputs.reason }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PREVIOUS_TAG: ${{ steps.deploy.outputs.previous_tag }}
+          REASON: ${{ steps.watch.outputs.reason }}
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
           DOKPLOY_COMPOSE_ID: ${{ secrets.DOKPLOY_COMPOSE_ID }}
           ELMAHIO_DEPLOYMENT_API_KEY: ${{ secrets.ELMAHIO_DEPLOYMENT_API_KEY }}
           ELMAHIO_LOG_ID: ${{ vars.ELMAHIO_LOG_ID }}
-          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          ALERT_EMAIL: ${{ vars.ALERT_EMAIL }}
         run: |
-          export SHA="${IMAGE_TAG#sha-}"
-          node infrastructure/scripts/rollback.mjs
+          if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "$IMAGE_TAG" ]; then
+            echo "::error title=No rollback::No previous tag to roll back to. $IMAGE_TAG stays live."
+            exit 1
+          fi
+          # CI migrates prod before publishing, so the schema is already the new one. Old code
+          # against it may be worse than the bug: leave that call to a human.
+          if ! git diff --quiet "${PREVIOUS_TAG#sha-}" "${IMAGE_TAG#sha-}" -- api/Skoleoverblikket.Api/Data/Migrations/; then
+            echo "::error title=No rollback::Migrations changed between $PREVIOUS_TAG and $IMAGE_TAG (or the diff failed). $IMAGE_TAG stays live: $REASON"
+            exit 1
+          fi
+
+          IMAGE_TAG="$PREVIOUS_TAG" node infrastructure/scripts/deploy.mjs
+          VERSION="${PREVIOUS_TAG#sha-}" DESCRIPTION="Rollback from $IMAGE_TAG" node infrastructure/scripts/elmah-deployment.mjs
+          EXPECTED_VERSION="${PREVIOUS_TAG#sha-}" WATCH_SECONDS=180 SMOKE_AT_SECONDS= ELMAHIO_READ_API_KEY= \
+            node infrastructure/scripts/watch.mjs
+          echo "## ↩️ Rolled back to \`$PREVIOUS_TAG\`: $REASON" >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=Rolled back::$IMAGE_TAG failed the watch ($REASON). Production runs $PREVIOUS_TAG again."

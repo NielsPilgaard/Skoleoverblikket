@@ -10,17 +10,9 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, labeled, unlabeled]
-  # CD's rollback dispatches this for its revert PR, which GITHUB_TOKEN opened, so no
-  # pull_request event fires. The check run lands on the branch head and counts for the PR.
-  workflow_dispatch:
-    inputs:
-      pr:
-        description: "Pull request number"
-        required: true
-        type: string
 
 concurrency:
-  group: migration-gate-${{ github.event.pull_request.number || inputs.pr }}
+  group: migration-gate-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
@@ -34,12 +26,9 @@ jobs:
       - name: Check migrations against label
         env:
           GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number || inputs.pr }}
+          PR: ${{ github.event.pull_request.number }}
           REVIEWED: ${{ contains(github.event.pull_request.labels.*.name, 'migration-reviewed') }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            REVIEWED=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json labels --jq '[.labels[].name] | index("migration-reviewed") != null')
-          fi
           # Separate steps: a failed API call must fail the gate, while grep finding nothing is fine.
           all_files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')
           files=$(printf '%s\n' "$all_files" | grep '^api/Skoleoverblikket.Api/Data/Migrations/' || true)

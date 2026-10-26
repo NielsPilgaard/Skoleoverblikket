@@ -2,7 +2,7 @@
 // Watches production after a deploy (task 44). Every 30 s it probes the site, /api/health and
 // Keycloak's discovery document. At set times it runs the read-only Playwright smoke test, and at
 // the end it compares elmah.io errors for the new version with the version before it.
-// Exits 1 on the first sign the deploy is bad; CD's rollback job takes it from there.
+// Exits 1 on the first sign the deploy is bad; CD then redeploys the previous tag.
 //
 // Required env vars:
 //   EXPECTED_VERSION       — commit sha the API must report in X-App-Version
@@ -14,7 +14,7 @@
 //   SMOKE_AT_SECONDS       — comma-separated offsets for the smoke test, default "120,600"; empty: none
 //   SMOKE_USER, SMOKE_PASSWORD — smoke test login; without them the smoke test is skipped
 //   ELMAHIO_READ_API_KEY, ELMAHIO_LOG_ID — error spike check; skipped without them
-//   LAST_GOOD_VERSION      — sha of the version before this one, the error baseline
+//   PREVIOUS_VERSION       — sha of the version before this one, the error baseline
 //   DEPLOYED_AT            — ISO time the deploy finished; default the start of this script
 //   ELMAH_MIN_ERRORS       — default 10
 //   ELMAH_SPIKE_FACTOR     — default 5
@@ -171,8 +171,8 @@ async function checkErrorSpike() {
     let count, baseline = 0;
     try {
         count = await countErrors(EXPECTED_VERSION, deployedAt, new Date());
-        if (env.LAST_GOOD_VERSION) {
-            baseline = await countErrors(env.LAST_GOOD_VERSION, new Date(deployedAt - ELMAH_BASELINE_MS), deployedAt);
+        if (env.PREVIOUS_VERSION) {
+            baseline = await countErrors(env.PREVIOUS_VERSION, new Date(deployedAt - ELMAH_BASELINE_MS), deployedAt);
         }
     } catch (err) {
         // elmah.io being down says nothing about our deploy.

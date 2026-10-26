@@ -186,6 +186,11 @@ function reportFailure(deployment, logLines) {
 const compose = await get("compose.one", { composeId: DOKPLOY_COMPOSE_ID });
 const [previous] = await listDeployments();
 
+// The tag running now is what CD rolls back to if this deploy fails its watch.
+const previousTag = /^API_IMAGE=.*:([^\s:]+)/m.exec(compose.env ?? "")?.[1] ?? "";
+console.log(`Previous tag: ${previousTag || "(none)"}`);
+if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `previous_tag=${previousTag}\n`);
+
 await saveEnvironment(compose);
 await redeploy();
 const started = await waitForNewDeployment(previous?.deploymentId);
