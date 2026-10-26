@@ -41,6 +41,7 @@ status: 'Active'
 | 13 | [47 Feedback AI fix PRs](feedback/47-feedback-ai-fix-prs.md) | M | Agent | 44, 46 | Last link in the feedback chain. Auto-merge ships disabled. |
 | 14 | [21 AI schema suggestions](21-ai-suggestions-for-schema.md) | M | Agent | Shared LLM client (25 or 46) | Nice to have. Hanne builds a schema once a year, and 25 covers the switching case. |
 | 15 | [59 Microsoft and Google login](59-microsoft-google-login.md) | M | Niels + agent | Ask schools which accounts staff use | Free replacement for UNI•Login (07, parked over STIL fees). One password fewer for staff. Niels checks with schools first. |
+| 16 | [62 Move billing from Stripe to Alunta](62-stripe-to-alunta.md) | L | Niels + agent | Niels decides D1–D4, ADR superseding stripe-checkout-billing | Feasible and EU-hosted (investigated 2026-10-26). Adds invoice, EAN, Betalingsservice and MobilePay payment. Move up if a school asks to pay by invoice or EAN. |
 
 ## Folkeskole track (blocked on STIL / Aula)
 
@@ -63,7 +64,6 @@ Secondary market. Runs in parallel with the list above because the calendar time
 | File | Note |
 |---|---|
 | [33-app.md](33-app.md) | Empty. |
-| [51-stripe-to-alunta.md](51-stripe-to-alunta.md) | Empty, and number 51 is also used by full data export. Moving billing off Stripe contradicts "Billing via Stripe Checkout" in [AGENTS.md](../AGENTS.md), so it needs an ADR first. |
 
 ## Not tasks
 

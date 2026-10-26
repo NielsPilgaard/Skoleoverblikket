@@ -82,8 +82,8 @@ public sealed class StaffAbsenceTests(ApiFactory factory)
 
 		var id = await ReportAsync(absentClient, null, _monday);
 
-		var mine = await absentClient.GetFromJsonAsync<List<StaffAbsenceDto>>("/api/v1/staff-absences/mine", JsonOpts);
-		await Assert.That(mine!.Single().AffectedLessonCount).IsEqualTo(2);
+		var mine = (await absentClient.GetFromJsonAsync<List<StaffAbsenceDto>>("/api/v1/staff-absences/mine", JsonOpts))!;
+		await Assert.That(mine.Single().AffectedLessonCount).IsEqualTo(2);
 		await Assert.That(mine.Single().CoveredLessonCount).IsEqualTo(0);
 		await Assert.That(mine.Single().CanDelete).IsTrue();
 
@@ -238,8 +238,8 @@ public sealed class StaffAbsenceTests(ApiFactory factory)
 		var (classId, slots) = await TeachesOnMondayAsync(absent, "2.a", _first);
 
 		var id = await ReportAsync(_admin, absent.Id, _monday);
-		var mine = await absentClient.GetFromJsonAsync<List<StaffAbsenceDto>>("/api/v1/staff-absences/mine", JsonOpts);
-		await Assert.That(mine!.Single().ReportedByName).IsEqualTo("Hanne Kontor");
+		var mine = (await absentClient.GetFromJsonAsync<List<StaffAbsenceDto>>("/api/v1/staff-absences/mine", JsonOpts))!;
+		await Assert.That(mine.Single().ReportedByName).IsEqualTo("Hanne Kontor");
 
 		await AssignAsync(id, slots[0].Id, vikar.Id);
 		var delete = await _admin.DeleteAsync($"/api/v1/staff-absences/{id}");

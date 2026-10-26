@@ -140,9 +140,12 @@ public sealed class SchoolRetentionTests(ApiFactory factory)
 			var table = entityType.GetTableName();
 			var column = entityType.FindProperty(nameof(ITenantScoped.TenantId))!
 				.GetColumnName(StoreObjectIdentifier.Table(table!, entityType.GetSchema()));
+			// Table and column names come from the EF model, not user input; identifiers can't be parameters.
+#pragma warning disable EF1002
 			total += await db.Database
 				.SqlQueryRaw<int>($"SELECT count(*)::int AS \"Value\" FROM \"{table}\" WHERE \"{column}\" = {{0}}", schoolId)
 				.SingleAsync();
+#pragma warning restore EF1002
 		}
 
 		return total;

@@ -43,12 +43,12 @@ jobs:
     env:
       HAS_SMOKE_USER: ${{ secrets.SMOKE_USER != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # the rollback step diffs migrations between the two shas
 
       - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "24"
           cache: "npm"
