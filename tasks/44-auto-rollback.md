@@ -91,8 +91,8 @@ Set up for phone fixes via Claude cloud sessions (see "Cloud sessions" in AGENTS
 
 ### 4. Smoke tenant
 
-- Set up by hand in prod (done 2026-10-26): fake classes, schema, ugeplan, one staff user whose login lives in secrets `SMOKE_USER` / `SMOKE_PASSWORD`. Fake data only. Free access with no end date.
-- Playwright project `smoke` (`web/tests/smoke/*.spec.ts`, outside the regular `tests/e2e` testDir), base URL `https://skoleoverblikket.dk`, **read-only**: login → dashboard → class schema → ugeplan → logout. `data-testid` selectors only.
+- Set up by hand in prod (done 2026-10-26): fake classes, schema and ugeplan. The school admin's login lives in secrets `SMOKE_USER` / `SMOKE_PASSWORD`. Fake data only. Free access with no end date.
+- Playwright project `smoke` (`web/tests/smoke/*.spec.ts`, outside the regular `tests/e2e` testDir), base URL `https://skoleoverblikket.dk`, **read-only**: login → admin dashboard → own schema → ugeplan → logout. `data-testid` selectors only.
 - **Trace, video and screenshot off** for the smoke project. The repo is public and traces would contain the smoke user's JWT.
 
 ### 5. Watch (`cd.yml`)
