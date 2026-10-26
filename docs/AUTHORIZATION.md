@@ -129,7 +129,7 @@ When ClassPermission rows exist for any class, the class list is filtered for no
 
 A staff member can appear in a schema slot (as the assigned teacher or aide) without having a `ClassPermission` row for that class. In that case:
 
-- They **can** read the week plan for that class — the week plan endpoint only requires authentication, not a class permission
+- They **can** read the week plan for that class — any staff member can read any class's week plan, without a class permission
 - They **cannot** edit the underlying schema (no `EditClass` access) — they would need an explicit `ClassPermission` row for that class
 - They **can** write week plan annotations (beskrivelse, lektier, file attachments) on their own slots
 - They **cannot** edit other teachers' slots or the week's notes (`PUT notes` names no slot)
@@ -175,7 +175,7 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 | `PATCH /api/v1/staff/{id}/admin-permission` | `[Authorize(Roles = "admin")]` | Sets `Staff.IsAdmin`. Cannot remove self or last admin |
 | `GET/POST/DELETE /api/v1/classes/{id}/permissions` | `[Authorize(Roles = "admin")]` | |
 | Schema mutations (`SchemasController` writes) | `EditClass` policy | Enforces ClassPermission logic |
-| `GET /api/v1/classes/{id}/week-plan` | `[Authorize]` | Any authenticated user |
+| `GET /api/v1/classes/{id}/week-plan` | `[Authorize(Roles = "staff,parent")]` + `ParentClassAccess` | Staff: any class. Parents: only their children's classes. Board: 403 |
 | `PUT /api/v1/classes/{id}/week-plan/slots`, `PUT …/notes` | `EditWeekPlan` policy | `EditClass` rules plus the slot's own teacher or aide |
 | `POST/DELETE /api/v1/classes/{id}/week-plan/slots/{slotId}/files` | `EditWeekPlan` policy | |
 | `POST /api/v1/absence`, `GET mine`, `DELETE {id}` | `[Authorize(Roles = "parent")]` | Own children only, checked in `AbsenceService` |
@@ -219,9 +219,3 @@ Marked with `[RequiresModule]`:
 The frontend mirrors this. A board member or parent whose module is off, and who holds no other role with its module on, sees "Modulet er ikke aktivt" (`Layout.tsx`) instead of failing pages. Someone with another role is switched to it, and "Vis som" shows the off role disabled. Admins keep Elever, Forældre, Bestyrelse and Stå mål med in the sidebar, with a notice and only read and delete actions. Stå mål med then shows only saved versions.
 
 Not gated: vacation registration windows and the contact directory, which are Basis. A new controller for a paid feature needs the attribute, or the module stops being something a school pays for.
-
----
-
-## Known gaps
-
-`GET /api/v1/classes/{id}/week-plan` requires only authentication, so any role in the tenant (staff, parent, board) can read any class's week plan, regardless of ClassPermissions.
