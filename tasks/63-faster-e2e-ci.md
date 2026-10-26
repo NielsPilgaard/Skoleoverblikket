@@ -38,6 +38,13 @@ gh api repos/{owner}/{repo}/actions/runs/<run-id>/jobs --jq '.jobs[] | select(.n
 
 ## Phase 1: workflow and compose (S, Agent)
 
+**Built 2026-10-26.** Left: measure the first PR and Staging runs with the command above. Differences from the plan below:
+
+- `docker compose up -d` without `--wait` still blocks on every `depends_on` healthcheck, so the stack starts with `up -d --wait` in a background subshell, and a "Wait for staging stack" step after `npm ci` waits for its exit code.
+- `start_interval: 1s` is on every healthcheck, not just `keycloak` and `api`, with `start_period` raised to 120s (Keycloak) and 60s (API) so the fast polling lasts the whole boot.
+- The API needs nothing from Keycloak at startup except `AdminRoleBackfillJob`, which retries after 5 minutes (removed in task 61 Phase B). So `api → keycloak` is now `service_started`.
+- The smoke config ([playwright.smoke.config.ts](../web/playwright.smoke.config.ts)) uses Chrome in CI too, and cd.yml no longer installs a browser.
+
 ### Fix 1: use the runner's Chrome, drop apt
 
 GitHub's Ubuntu runner image ships Google Chrome with its system libraries. In [playwright.config.ts](../web/playwright.config.ts), set `channel: 'chrome'` on the chromium project when `process.env.CI` is set. Locally it keeps using Playwright's bundled Chromium.

@@ -16,6 +16,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 10s
+      start_interval: 1s
 
   keycloak-db:
     image: postgres:17
@@ -28,6 +30,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 10s
+      start_interval: 1s
 
   keycloak:
     image: ${KEYCLOAK_IMAGE:-ghcr.io/nielspilgaard/skoleoverblikket-keycloak:latest}
@@ -59,7 +63,10 @@ services:
       interval: 10s
       timeout: 10s
       retries: 18
-      start_period: 30s
+      # Poll every second while booting (~45s with the realm import), so nothing waits up to
+      # 10s on a Keycloak that is already up.
+      start_period: 120s
+      start_interval: 1s
 
   api:
     image: ${API_IMAGE:-ghcr.io/nielspilgaard/skoleoverblikket-api:latest}
@@ -97,8 +104,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      # The API boots alongside Keycloak: JWT metadata is fetched on the first authenticated
+      # request, and AdminRoleBackfillJob retries later if Keycloak isn't up yet. `up --wait`
+      # still waits for Keycloak to be healthy before the tests run.
       keycloak:
-        condition: service_healthy
+        condition: service_started
       silo:
         condition: service_healthy
     healthcheck:
@@ -112,7 +122,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 18
-      start_period: 30s
+      start_period: 60s
+      start_interval: 1s
 
   silo:
     image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
@@ -128,6 +139,7 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+      start_interval: 1s
 
   mailpit:
     image: axllent/mailpit:latest

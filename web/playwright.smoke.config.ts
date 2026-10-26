@@ -20,7 +20,8 @@ export default defineConfig({
   projects: [
     {
       name: 'smoke',
-      use: { ...devices['Desktop Chrome'] },
+      // CI uses the Chrome preinstalled on GitHub's runners, so the CD job skips the browser install.
+      use: { ...devices['Desktop Chrome'], channel: process.env.CI ? 'chrome' : undefined },
     },
   ],
 })
