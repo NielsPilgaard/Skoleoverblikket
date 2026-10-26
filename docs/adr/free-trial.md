@@ -41,7 +41,7 @@ New schools get a 30-day free trial with full Basis access. No credit card requi
 
 ### Negative
 
-- **NEG-001**: Schools that need longer than 30 days to evaluate (e.g. spanning a school holiday) must contact support for an extension — no self-serve trial-extension mechanism exists.
+- **NEG-001**: Schools that need longer than 30 days to evaluate (e.g. spanning a school holiday) must contact support — no self-serve trial-extension mechanism exists. Since 2026-10-25 support can give free Basis access from the backoffice (see [PRICING.md](../PRICING.md#trial)); it is a per-school operator decision, not a free tier.
 
 ## Alternatives Considered
 

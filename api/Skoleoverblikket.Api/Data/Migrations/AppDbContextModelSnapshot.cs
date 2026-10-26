@@ -1670,6 +1670,12 @@ namespace Skoleoverblikket.Api.Data.Migrations
                     b.Property<DateTimeOffset?>("DeletionWarningSentAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("FreeAccessGrantedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("FreeAccessLastDay")
+                        .HasColumnType("date");
+
                     b.Property<int>("Interval")
                         .HasColumnType("integer");
 

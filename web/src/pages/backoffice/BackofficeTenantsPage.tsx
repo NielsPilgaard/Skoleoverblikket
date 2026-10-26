@@ -1,19 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { api } from '../../api/client'
+import { getApiV1AdminTenantsOptions } from '../../api/generated/@tanstack/react-query.gen'
 import type { SubscriptionStatus } from '../../api/client'
 import BackofficeBackupStatusCard from './BackofficeBackupStatusCard'
 
-type TenantListItem = {
-  id: string
-  name: string
-  contactEmail: string | null
-  createdAt: string
-  subscriptionStatus: SubscriptionStatus
-  trialEnd: string
-  currentPeriodEnd: string | null
-  activeModuleCount: number
-}
+// en-CA formats as YYYY-MM-DD, like the API's dates.
+const danishDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Copenhagen' })
 
 const statusLabel: Record<SubscriptionStatus, string> = {
   Trialing: 'Prøveperiode',
@@ -40,14 +32,8 @@ function formatDate(iso: string) {
 }
 
 export default function BackofficeTenantsPage() {
-  const {
-    data: tenants,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ['admin', 'tenants'],
-    queryFn: () => api.get<TenantListItem[]>('/admin/tenants'),
-  })
+  const { data: tenants, isLoading, isError } = useQuery(getApiV1AdminTenantsOptions())
+  const today = danishDate.format(new Date())
 
   // The backup card has its own endpoint, so it shows even when the school list fails.
   if (isLoading) {
@@ -101,6 +87,12 @@ export default function BackofficeTenantsPage() {
                   >
                     {statusLabel[t.subscriptionStatus]}
                   </span>
+                  {t.freeAccessGrantedAt != null &&
+                    (t.freeAccessLastDay == null || t.freeAccessLastDay >= today) && (
+                      <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                        Gratis
+                      </span>
+                    )}
                 </td>
                 <td className="px-4 py-3 text-gray-500">{formatDate(t.trialEnd)}</td>
                 <td className="px-4 py-3 text-gray-500">{t.activeModuleCount}</td>

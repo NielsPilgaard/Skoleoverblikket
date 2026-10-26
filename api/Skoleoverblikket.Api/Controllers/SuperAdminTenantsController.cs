@@ -29,7 +29,9 @@ public sealed class SuperAdminTenantsController(AppDbContext db) : ControllerBas
 					sub.Status,
 					sub.TrialEnd,
 					sub.CurrentPeriodEnd,
-					sub.ActiveModules.Count))
+					sub.ActiveModules.Count,
+					sub.FreeAccessGrantedAt,
+					sub.FreeAccessLastDay))
 			.ToListAsync(cancellationToken);
 
 		return Ok(tenants);
@@ -57,7 +59,9 @@ public sealed class SuperAdminTenantsController(AppDbContext db) : ControllerBas
 					sub.CurrentPeriodEnd,
 					sub.ActiveModules
 						.Select(m => new ModuleItemDto(m.Module, m.IsAdminOverride, m.StripeSubscriptionItemId))
-						.ToList()))
+						.ToList(),
+					sub.FreeAccessGrantedAt,
+					sub.FreeAccessLastDay))
 			.FirstOrDefaultAsync(cancellationToken);
 
 		if (school is null)
@@ -77,7 +81,9 @@ public record TenantListItemDto(
 	SubscriptionStatus SubscriptionStatus,
 	DateTimeOffset TrialEnd,
 	DateTimeOffset? CurrentPeriodEnd,
-	int ActiveModuleCount);
+	int ActiveModuleCount,
+	DateTimeOffset? FreeAccessGrantedAt,
+	DateOnly? FreeAccessLastDay);
 
 public record TenantDetailDto(
 	Guid Id,
@@ -90,7 +96,9 @@ public record TenantDetailDto(
 	string? StripeSubscriptionId,
 	DateTimeOffset TrialEnd,
 	DateTimeOffset? CurrentPeriodEnd,
-	IReadOnlyList<ModuleItemDto> Modules);
+	IReadOnlyList<ModuleItemDto> Modules,
+	DateTimeOffset? FreeAccessGrantedAt,
+	DateOnly? FreeAccessLastDay);
 
 public record ModuleItemDto(
 	SubscriptionModule Module,

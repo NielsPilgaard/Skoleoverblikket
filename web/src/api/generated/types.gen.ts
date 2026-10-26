@@ -143,6 +143,8 @@ export type BillingControllerSubscriptionDto = {
     hasAccess: boolean;
     trialDaysLeft: number;
     activeModules?: Array<string>;
+    hasFreeAccess: boolean;
+    freeAccessLastDay?: string | null;
 };
 
 export type BillingControllerSwitchIntervalRequest = {
@@ -1502,6 +1504,10 @@ export type SubstituteAssignmentDto = {
 
 export type SubstituteSeat = 'Teacher' | 'Aide';
 
+export type SuperAdminFreeAccessControllerGrantFreeAccessRequest = {
+    lastDay?: string | null;
+};
+
 export type TenantCreatedDto = {
     id: string;
     name: string;
@@ -1523,6 +1529,8 @@ export type TenantDetailDto = {
     trialEnd: string;
     currentPeriodEnd?: string | null;
     modules?: Array<ModuleItemDto>;
+    freeAccessGrantedAt?: string | null;
+    freeAccessLastDay?: string | null;
 };
 
 export type TenantListItemDto = {
@@ -1534,6 +1542,8 @@ export type TenantListItemDto = {
     trialEnd: string;
     currentPeriodEnd?: string | null;
     activeModuleCount: number;
+    freeAccessGrantedAt?: string | null;
+    freeAccessLastDay?: string | null;
 };
 
 export type TimeSlotsControllerBreakDto = {
@@ -5317,6 +5327,42 @@ export type GetApiV1AdminEmailPreviewSubProcessorNoticeResponses = {
      */
     200: unknown;
 };
+
+export type DeleteApiV1AdminTenantsBySchoolIdFreeAccessData = {
+    body?: never;
+    path: {
+        schoolId: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/tenants/{schoolId}/free-access';
+};
+
+export type DeleteApiV1AdminTenantsBySchoolIdFreeAccessResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type DeleteApiV1AdminTenantsBySchoolIdFreeAccessResponse = DeleteApiV1AdminTenantsBySchoolIdFreeAccessResponses[keyof DeleteApiV1AdminTenantsBySchoolIdFreeAccessResponses];
+
+export type PutApiV1AdminTenantsBySchoolIdFreeAccessData = {
+    body?: SuperAdminFreeAccessControllerGrantFreeAccessRequest;
+    path: {
+        schoolId: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/tenants/{schoolId}/free-access';
+};
+
+export type PutApiV1AdminTenantsBySchoolIdFreeAccessResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type PutApiV1AdminTenantsBySchoolIdFreeAccessResponse = PutApiV1AdminTenantsBySchoolIdFreeAccessResponses[keyof PutApiV1AdminTenantsBySchoolIdFreeAccessResponses];
 
 export type PostApiV1AdminSubProcessorNoticeData = {
     body?: SubProcessorNoticeRequest;
