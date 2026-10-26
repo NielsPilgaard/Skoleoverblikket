@@ -37,6 +37,7 @@ builder.Services.AddS3DataProtection();
 builder.Services.AddStripe();
 builder.Services.AddDomainServices();
 builder.Services.AddApiRateLimiting();
+builder.Services.AddReadinessChecks();
 
 builder.AddElmahIoErrorLogging();
 
@@ -54,6 +55,7 @@ app.UseElmahIoErrorLogging();
 
 app.MapControllers();
 app.MapDefaultEndpoints();
+app.MapReadinessEndpoint();
 
 await app.MigrateAndSeedAsync();
 await app.WarmUpAsync();

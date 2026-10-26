@@ -21,6 +21,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.Uris" Version="9.0.0" />
     <PackageReference Include="AWSSDK.S3" Version="4.0.22.1" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="Elmah.Io.AspNetCore" Version="5.3.88" />

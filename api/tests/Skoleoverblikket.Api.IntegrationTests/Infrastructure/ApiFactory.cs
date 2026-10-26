@@ -80,6 +80,8 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 			var siloUrl = _silo.GetConnectionString();
 			config.AddInMemoryCollection(new Dictionary<string, string?>
 			{
+				// Read directly by the /api/health database check; the DbContext is replaced below.
+				["ConnectionStrings:skoleoverblikket-db"] = _postgres.GetConnectionString(),
 				["ObjectStorage:ServiceUrl"] = siloUrl,
 				["ObjectStorage:AccessKey"] = _silo.GetAccessKey(),
 				["ObjectStorage:SecretKey"] = _silo.GetSecretKey(),
