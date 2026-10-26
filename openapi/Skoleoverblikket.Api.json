@@ -9620,6 +9620,15 @@
         "tags": [
           "SuperAdminTenants"
         ],
+        "parameters": [
+          {
+            "name": "includeInternal",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -16703,6 +16712,7 @@
         "required": [
           "createdAt",
           "id",
+          "isInternal",
           "name",
           "subscriptionStatus",
           "trialEnd"
@@ -16763,6 +16773,9 @@
             "type": "string",
             "format": "date",
             "nullable": true
+          },
+          "isInternal": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -16772,6 +16785,7 @@
           "activeModuleCount",
           "createdAt",
           "id",
+          "isInternal",
           "name",
           "subscriptionStatus",
           "trialEnd"
@@ -16818,6 +16832,9 @@
             "type": "string",
             "format": "date",
             "nullable": true
+          },
+          "isInternal": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

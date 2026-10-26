@@ -1,10 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Skoleoverblikket.Api.Auth;
+using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using Skoleoverblikket.Api.Services;
 
@@ -116,6 +118,28 @@ public sealed class SchoolSignupWelcomeEmailTests(ApiFactory factory)
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
 		await RunJobAsync(TimeSpan.FromHours(25));
+		await Assert.That(Welcomes(email).Count).IsEqualTo(0);
+	}
+
+	[Test]
+	public async Task InternalSchool_GetsNoWelcomeEmail()
+	{
+		var email = $"smoke-{Guid.NewGuid():N}@skole.dk";
+		await using var signupFactory = SignupFactory();
+		var response = await signupFactory.CreateClient().PostAsJsonAsync("/api/v1/tenants", Signup(email));
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+		var created = await response.Content.ReadFromJsonAsync<TenantCreatedDto>();
+
+		// Marked internal by hand in prod, so there is no endpoint for it.
+		await using (var scope = factory.Services.CreateAsyncScope())
+		{
+			var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+			await db.Schools.IgnoreQueryFilters().Where(s => s.Id == created!.Id)
+				.ExecuteUpdateAsync(s => s.SetProperty(x => x.IsInternal, true));
+		}
+
+		await RunJobAsync(TimeSpan.FromHours(25));
+
 		await Assert.That(Welcomes(email).Count).IsEqualTo(0);
 	}
 }

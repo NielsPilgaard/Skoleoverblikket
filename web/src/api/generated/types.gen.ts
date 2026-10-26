@@ -1531,6 +1531,7 @@ export type TenantDetailDto = {
     modules?: Array<ModuleItemDto>;
     freeAccessGrantedAt?: string | null;
     freeAccessLastDay?: string | null;
+    isInternal: boolean;
 };
 
 export type TenantListItemDto = {
@@ -1544,6 +1545,7 @@ export type TenantListItemDto = {
     activeModuleCount: number;
     freeAccessGrantedAt?: string | null;
     freeAccessLastDay?: string | null;
+    isInternal: boolean;
 };
 
 export type TimeSlotsControllerBreakDto = {
@@ -5383,7 +5385,9 @@ export type PostApiV1AdminSubProcessorNoticeResponse = PostApiV1AdminSubProcesso
 export type GetApiV1AdminTenantsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        includeInternal?: boolean;
+    };
     url: '/api/v1/admin/tenants';
 };
 
