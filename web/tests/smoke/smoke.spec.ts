@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-// Runs against production as the staff user of "Smoketest Friskole" (an internal school with fake
+// Runs against production as the staff user of "Smoketest Friskole" (a school with only fake
 // data). Read-only: it never clicks anything that saves.
 const user = process.env.SMOKE_USER
 const password = process.env.SMOKE_PASSWORD

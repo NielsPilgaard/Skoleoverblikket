@@ -1,5 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { getApiV1AdminTenantsOptions } from '../../api/generated/@tanstack/react-query.gen'
 import type { SubscriptionStatus } from '../../api/client'
@@ -33,17 +32,7 @@ function formatDate(iso: string) {
 }
 
 export default function BackofficeTenantsPage() {
-  // Internal schools (the CD smoke test's) aren't customers, so they're hidden unless asked for.
-  const [includeInternal, setIncludeInternal] = useState(false)
-  const {
-    data: tenants,
-    isLoading,
-    isError,
-  } = useQuery({
-    ...getApiV1AdminTenantsOptions({ query: { includeInternal } }),
-    // Keep the table on screen while the toggle refetches.
-    placeholderData: keepPreviousData,
-  })
+  const { data: tenants, isLoading, isError } = useQuery(getApiV1AdminTenantsOptions())
   const today = danishDate.format(new Date())
 
   // The backup card has its own endpoint, so it shows even when the school list fails.
@@ -68,20 +57,9 @@ export default function BackofficeTenantsPage() {
   return (
     <div>
       <BackofficeBackupStatusCard />
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Skoler</h1>
-          <p className="text-sm text-gray-500 mt-1">{tenants.length} skoler i alt</p>
-        </div>
-        <label className="flex items-center gap-2 text-sm text-gray-700">
-          <input
-            type="checkbox"
-            checked={includeInternal}
-            onChange={(e) => setIncludeInternal(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300"
-          />
-          Vis interne skoler
-        </label>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-gray-900">Skoler</h1>
+        <p className="text-sm text-gray-500 mt-1">{tenants.length} skoler i alt</p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -100,14 +78,7 @@ export default function BackofficeTenantsPage() {
           <tbody className="divide-y divide-gray-100">
             {tenants.map((t) => (
               <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 font-medium text-gray-900">
-                  {t.name}
-                  {t.isInternal && (
-                    <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                      Intern
-                    </span>
-                  )}
-                </td>
+                <td className="px-4 py-3 font-medium text-gray-900">{t.name}</td>
                 <td className="px-4 py-3 text-gray-500">{t.contactEmail ?? '—'}</td>
                 <td className="px-4 py-3 text-gray-500">{formatDate(t.createdAt)}</td>
                 <td className="px-4 py-3">

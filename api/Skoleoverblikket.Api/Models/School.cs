@@ -33,12 +33,5 @@ public sealed class School : ITenantScoped, IEntityTypeConfiguration<School>
 	/// </summary>
 	public DateTimeOffset? WelcomeEmailDueAt { get; set; }
 
-	/// <summary>
-	/// Our own school, not a customer: the CD smoke test's "Smoketest Friskole" (task 44). Set by hand
-	/// in the database. Hidden from the backoffice school list by default and never sent onboarding
-	/// email. It is kept out of billing by free access with no end date.
-	/// </summary>
-	public bool IsInternal { get; set; }
-
 	public void Configure(EntityTypeBuilder<School> builder) => builder.Property(s => s.CreatedAt).HasDefaultValueSql("now()");
 }

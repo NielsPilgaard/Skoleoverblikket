@@ -1231,9 +1231,6 @@ namespace Skoleoverblikket.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("now()");
 
-                    b.Property<bool>("IsInternal")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("LogoUrl")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");

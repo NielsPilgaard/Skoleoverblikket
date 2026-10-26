@@ -147,7 +147,7 @@ public sealed class SchoolSignupService(
 	public async Task<IReadOnlyList<Guid>> ListWelcomeEmailsDueAsync(DateTimeOffset now, CancellationToken cancellationToken) =>
 		// School's query filter cannot be translated (its TenantId is not mapped), so it is skipped here.
 		await db.Schools.IgnoreQueryFilters()
-			.Where(s => s.WelcomeEmailDueAt != null && s.WelcomeEmailDueAt <= now.ToUniversalTime() && !s.IsInternal)
+			.Where(s => s.WelcomeEmailDueAt != null && s.WelcomeEmailDueAt <= now.ToUniversalTime())
 			.Select(s => s.Id)
 			.ToListAsync(cancellationToken);
 
