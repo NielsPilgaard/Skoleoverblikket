@@ -122,6 +122,24 @@ jobs:
       packages: read
     uses: ./.github/workflows/e2e.yml
 
+  # The one check the main ruleset requires (with Migration review), so jobs above can be renamed
+  # or added without touching the ruleset. New PR jobs go in `needs`. Skipped is fine: e2e skips
+  # on push.
+  ci-result:
+    name: CI result
+    if: always()
+    needs: [api, web, prod-compose, docs, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check jobs
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          case " $RESULTS " in
+            *" failure "*|*" cancelled "*) exit 1 ;;
+          esac
+
   migrate:
     name: Apply database migrations
     runs-on: ubuntu-latest
