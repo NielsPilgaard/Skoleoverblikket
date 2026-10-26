@@ -281,7 +281,7 @@ function AdminLinks() {
   const [editing, setEditing] = useState<ExternalLinkAdminDto | 'new' | null>(null)
   const { data: links, isLoading, isError, refetch } = useQuery(getApiV1ExternalLinksAllOptions())
 
-  const remove = useMutation({ ...deleteApiV1ExternalLinksByIdMutation(), onSuccess: invalidate })
+  const remove = useMutation({ ...deleteApiV1ExternalLinksByIdMutation(), onSettled: invalidate })
   const reorder = useMutation({
     ...putApiV1ExternalLinksOrderMutation(),
     onSettled: invalidate,
@@ -324,6 +324,11 @@ function AdminLinks() {
             Prøv igen
           </button>
         </div>
+      )}
+      {remove.isError && (
+        <p className="text-sm text-red-600">
+          {problemDetail(remove.error) ?? 'Linket kunne ikke slettes. Prøv igen.'}
+        </p>
       )}
       {reorder.isError && (
         <p className="text-sm text-red-600">
