@@ -101,6 +101,28 @@ public sealed class BoardMemberTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task OtherSchoolAdmin_CannotSeeOrChangeMember()
+	{
+		var member = await SeedBoardMemberAsync(canAccessTeacherData: false);
+		var otherTenantId = Guid.NewGuid();
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, otherTenantId);
+		using var otherAdmin = _factory.CreateClient();
+		otherAdmin.DefaultRequestHeaders.Add("X-Test-TenantId", otherTenantId.ToString());
+
+		var list = await otherAdmin.GetFromJsonAsync<List<BoardMembersController.BoardMemberDto>>("/api/v1/board-members", JsonOpts);
+		var get = await otherAdmin.GetAsync($"/api/v1/board-members/{member.Id}");
+		var patch = await otherAdmin.PatchAsJsonAsync(
+			$"/api/v1/board-members/{member.Id}/teacher-data-access",
+			new BoardMembersController.ToggleTeacherDataRequest(true));
+
+		await Assert.That(list!.Any(m => m.Id == member.Id)).IsFalse();
+		await Assert.That(get.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+		await Assert.That(patch.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+		var unchanged = await _adminClient.GetFromJsonAsync<BoardMembersController.BoardMemberDto>($"/api/v1/board-members/{member.Id}", JsonOpts);
+		await Assert.That(unchanged!.CanAccessTeacherData).IsFalse();
+	}
+
+	[Test]
 	public async Task GetAll_NonAdmin_Returns403()
 	{
 		using var userClient = _factory.CreateClient();
