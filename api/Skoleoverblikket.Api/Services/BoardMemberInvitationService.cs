@@ -7,9 +7,15 @@ using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Email;
 using Skoleoverblikket.Api.Models;
 using Skoleoverblikket.Api.Tenancy;
+using static Skoleoverblikket.Api.Controllers.BoardMembersController;
 
 namespace Skoleoverblikket.Api.Services;
 
+/// <summary>
+/// The one writer of <see cref="BoardMember"/> rows, apart from the board member CSV import.
+/// The response records stay nested in <see cref="Controllers.BoardMembersController"/> so their OpenAPI schema names,
+/// and with them the generated web client, are unchanged.
+/// </summary>
 public sealed class BoardMemberInvitationService(
 	AppDbContext db,
 	ITenantContext tenant,
@@ -31,6 +37,44 @@ public sealed class BoardMemberInvitationService(
 	private static readonly TimeSpan InvitationValidity = TimeSpan.FromDays(14);
 
 	public sealed record InvitationPreview(string BoardMemberName, string Email, string SchoolName, DateTimeOffset ExpiresAt, bool NeedsPassword);
+
+	public Task<List<BoardMemberDto>> GetAllAsync(CancellationToken cancellationToken) =>
+		db.BoardMembers
+			.AsNoTracking()
+			.OrderBy(m => m.Name)
+			.Select(m => new BoardMemberDto(m.Id, m.Name, m.Email, m.CanAccessTeacherData, m.KeycloakSubject != null, m.CreatedAt))
+			.ToListAsync(cancellationToken);
+
+	public Task<BoardMemberDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+		db.BoardMembers
+			.AsNoTracking()
+			.Where(m => m.Id == id)
+			.Select(m => new BoardMemberDto(m.Id, m.Name, m.Email, m.CanAccessTeacherData, m.KeycloakSubject != null, m.CreatedAt))
+			.FirstOrDefaultAsync(cancellationToken);
+
+	/// <summary>The board member signed in with <paramref name="keycloakSubject"/>. Null when there is none.</summary>
+	public Task<BoardMemberDto?> GetBySubjectAsync(string keycloakSubject, CancellationToken cancellationToken) =>
+		db.BoardMembers
+			.AsNoTracking()
+			// A login belongs to one school (KeycloakUserInOtherSchoolException), so the subject alone identifies the member.
+			.IgnoreQueryFilters()
+			.Where(m => m.KeycloakSubject == keycloakSubject)
+			.Select(m => new BoardMemberDto(m.Id, m.Name, m.Email, m.CanAccessTeacherData, m.KeycloakSubject != null, m.CreatedAt))
+			.FirstOrDefaultAsync(cancellationToken);
+
+	/// <summary>Lets the member see teacher data, or takes that away. Null when the member doesn't exist.</summary>
+	public async Task<BoardMemberDto?> SetTeacherDataAccessAsync(Guid id, bool canAccessTeacherData, CancellationToken cancellationToken)
+	{
+		var member = await db.BoardMembers.FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
+		if (member is null)
+		{
+			return null;
+		}
+
+		member.CanAccessTeacherData = canAccessTeacherData;
+		await db.SaveChangesAsync(cancellationToken);
+		return new BoardMemberDto(member.Id, member.Name, member.Email, member.CanAccessTeacherData, member.KeycloakSubject is not null, member.CreatedAt);
+	}
 
 	/// <summary>
 	/// Invites a board member, reusing the row when the email is already on the board, and emails the

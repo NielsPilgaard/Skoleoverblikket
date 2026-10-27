@@ -2,9 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Skoleoverblikket.Api.Auth;
-using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Models;
 using Skoleoverblikket.Api.Services;
 using Skoleoverblikket.Api.Tenancy;
@@ -15,9 +13,7 @@ namespace Skoleoverblikket.Api.Controllers;
 [Route("api/v1/board-members")]
 [Authorize]
 [RequiresModule(SubscriptionModule.BoardModule)]
-public sealed class BoardMembersController(
-	AppDbContext db,
-	BoardMemberInvitationService invitationService) : ControllerBase
+public sealed class BoardMembersController(BoardMemberInvitationService boardMembers) : ControllerBase
 {
 	public record BoardMemberDto(
 		Guid Id,
@@ -35,28 +31,13 @@ public sealed class BoardMembersController(
 
 	[HttpGet]
 	[Authorize(Roles = Roles.Admin)]
-	public async Task<ActionResult<List<BoardMemberDto>>> GetAll(CancellationToken cancellationToken)
-	{
-		var members = await db.BoardMembers
-			.AsNoTracking()
-			.OrderBy(m => m.Name)
-			.ToListAsync(cancellationToken);
-
-		return Ok(members.Select(ToDto).ToList());
-	}
+	public async Task<ActionResult<List<BoardMemberDto>>> GetAll(CancellationToken cancellationToken) =>
+		Ok(await boardMembers.GetAllAsync(cancellationToken));
 
 	[HttpGet("{id:guid}")]
 	[Authorize(Roles = Roles.Admin)]
-	public async Task<ActionResult<BoardMemberDto>> GetById(Guid id, CancellationToken cancellationToken)
-	{
-		var member = await db.BoardMembers.FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
-		if (member is null)
-		{
-			return NotFound();
-		}
-
-		return Ok(ToDto(member));
-	}
+	public async Task<ActionResult<BoardMemberDto>> GetById(Guid id, CancellationToken cancellationToken) =>
+		await boardMembers.GetByIdAsync(id, cancellationToken) is { } member ? Ok(member) : NotFound();
 
 	[HttpGet("me")]
 	[Authorize(Roles = Roles.Board)]
@@ -68,17 +49,7 @@ public sealed class BoardMembersController(
 			return Unauthorized();
 		}
 
-		var member = await db.BoardMembers
-			.AsNoTracking()
-			.IgnoreQueryFilters()
-			.FirstOrDefaultAsync(m => m.KeycloakSubject == sub, cancellationToken);
-
-		if (member is null)
-		{
-			return NotFound();
-		}
-
-		return Ok(ToDto(member));
+		return await boardMembers.GetBySubjectAsync(sub, cancellationToken) is { } member ? Ok(member) : NotFound();
 	}
 
 	[HttpPost("invite")]
@@ -86,7 +57,7 @@ public sealed class BoardMembersController(
 	public async Task<ActionResult<BoardMemberDto>> Invite(
 		[FromBody] InviteBoardMemberRequest req,
 		CancellationToken cancellationToken) =>
-		await invitationService.InviteAsync(req.Name, req.Email, cancellationToken) is { } member
+		await boardMembers.InviteAsync(req.Name, req.Email, cancellationToken) is { } member
 			? CreatedAtAction(nameof(GetById), new { id = member.Id }, ToDto(member))
 			: Problem(
 			title: "E-mailadressen bruges på en anden skole",
@@ -96,7 +67,7 @@ public sealed class BoardMembersController(
 	[HttpDelete("{id:guid}")]
 	[Authorize(Roles = Roles.Admin)]
 	public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken) =>
-		await invitationService.DeleteAsync(id, cancellationToken) switch
+		await boardMembers.DeleteAsync(id, cancellationToken) switch
 		{
 			BoardMemberInvitationService.DeleteResult.Deleted => NoContent(),
 			BoardMemberInvitationService.DeleteResult.LoginDeleteFailed => Problem(
@@ -110,18 +81,10 @@ public sealed class BoardMembersController(
 	public async Task<ActionResult<BoardMemberDto>> ToggleTeacherDataAccess(
 		Guid id,
 		[FromBody] ToggleTeacherDataRequest req,
-		CancellationToken cancellationToken)
-	{
-		var member = await db.BoardMembers.FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
-		if (member is null)
-		{
-			return NotFound();
-		}
-
-		member.CanAccessTeacherData = req.CanAccessTeacherData;
-		await db.SaveChangesAsync(cancellationToken);
-		return Ok(ToDto(member));
-	}
+		CancellationToken cancellationToken) =>
+		await boardMembers.SetTeacherDataAccessAsync(id, req.CanAccessTeacherData, cancellationToken) is { } member
+			? Ok(member)
+			: NotFound();
 
 	private static BoardMemberDto ToDto(BoardMember m) =>
 		new(m.Id, m.Name, m.Email, m.CanAccessTeacherData, m.KeycloakSubject is not null, m.CreatedAt);
