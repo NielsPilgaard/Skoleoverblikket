@@ -15,11 +15,13 @@ status: 'Needs decision'
 
 # Move billing from Stripe to Alunta
 
-## Status (2026-10-26)
+## Status (2026-10-27)
 
 **Investigation done, no code.** Testing runs against a separate Alunta test account (account menu → "Opret testkonto", API token under Indstillinger → API, webhook receiver set up there). Test-account webhooks carry `test_mode: true`. There is no local emulator like the Stripe CLI, so a local receiver needs a public HTTPS address. The webhook log shows deliveries and can retry failed ones.
 
-Next step: Niels decides D1–D4, then an agent writes the ADR and builds Phase 1 against the test account.
+Alunta (Oliver Lindebod, CEO) answered the open questions on 2026-10-27: the four webhook events exist, D2 (a) is their recommended model with one consolidated invoice, and the contract party is Langsom ApS. See [Answers from Alunta](#answers-from-alunta).
+
+Next step: Niels decides D1, D3 and D4 and picks the renewal setting (Phase 0), then an agent writes the ADR and builds Phase 1 against the test account.
 
 ## TL;DR
 
@@ -46,7 +48,7 @@ Sources: [DPA](https://app.alunta.com/databehandleraftale), [FAQ](https://alunta
 
 What Alunta processes is **our** customer data: the school as a paying customer (name, CVR, address, billing contact email). No student or parent data goes there. The billing contact is `School.ContactEmail`, which signup fills with the first admin's email ([SchoolSignupService.cs](../api/Skoleoverblikket.Api/Services/SchoolSignupService.cs)), so it is usually a named staff member's work email. Stripe receives the same field today. We process it as the customer's billing contact, not as school staff data, so like Stripe today ([dataProcessing.ts](../web/src/content/dataProcessing.ts) comment), it belongs in the privacy policy (which must name the billing contact's email as data sent to Alunta), not in the school DPA's sub-processor list. That makes the US sub-processors a smaller issue than they would be for school data.
 
-**Check before signing**: the website footer names *Langsom.com ApS (CVR 33643284), Copenhagen*, while the DPA names *Boligforeningsweb ApS (trading as Alunta ApS), Aalborg*. Confirm which entity is the contract party and processor. The terms are a Google Doc linked from [alunta.com/da/betingelser](https://alunta.com/da/betingelser/). Read them for termination, data export and price-change notice.
+**Contract party**: Langsom ApS, CVR 33643284, with secondary names (binavne) Alunta ApS and Boligforeningsweb ApS. The website footer (*Langsom.com ApS*) and the DPA (*Boligforeningsweb ApS*) name the same company under different names (confirmed by Alunta 2026-10-27). The privacy policy names it as "Langsom ApS (Alunta), CVR 33643284". **Check before signing**: the terms are a Google Doc linked from [alunta.com/da/betingelser](https://alunta.com/da/betingelser/). Read them for termination, data export and price-change notice.
 
 ## Fit with what we have
 
@@ -58,13 +60,13 @@ Current Stripe surface: [SubscriptionService.cs](../api/Skoleoverblikket.Api/Ser
 | Billing portal session | `POST /portal-link/{customerUuid}`: signed auto-login URL, 15 min default | Portal handles cards, invoices, plan change, cancel (cancel can be turned off) |
 | Base price + module prices as items on one subscription | No add-on items on a flat plan. See D2 | Main design question |
 | Interval switch (immediate, prorated) | `PUT /subscriptions/{uuid}/interval`: takes effect **next period** | Behaviour change. UI text must say "fra næste periode" |
-| Add/remove module (immediate, prorated) | Separate subscription per module, started or cancelled immediately; or a license-based plan with `PUT …/quantity` (immediate, prorated) | D2 |
+| Add/remove module (immediate, prorated) | Separate subscription per module on the same customer (D2). A new module gets a prorated stub period, then renews with the customer's other subscriptions. Several at once: `POST /customers/{uuid}/subscription-bundles` | Needs fixed renewal, or flexible renewal with "Forsøg at gruppere abonnementer" (Phase 0) |
 | Trial | App-side today ([free-trial](../docs/adr/free-trial.md)), no card. Keep it app-side; create checkout with `trial_enabled: false` | |
 | Deferred first charge during dated free access (cap 730 days) | Checkout `trial_value` in days, **max 365** | Lower the cap to 365, or use `POST /subscriptions` with `start_date` |
 | `PastDue` / `Unpaid` from invoice events | Statuses are only `pending`, `active`, `under_cancellation`, `cancelled`. Use `subscription.payment_failed` / `invoice.payment_failed` → `PastDue`, `subscription.payment_succeeded` / `invoice.paid` → `Active` | Alunta sends reminders (rykkere) itself |
 | Cancel → `CanceledAt` (90-day retention clock) | `subscription.ended` (`reason`: cancellation, payment_failure, …) → `Canceled` | `subscription.cancelled` only means "under cancellation", so don't start the clock there |
 | Webhook signature (`Stripe-Signature`) | `Signature` header = hex HMAC-SHA256 of the raw body with the webhook secret | Constant-time compare (`CryptographicOperations.FixedTimeEquals`) |
-| Idempotency | At-least-once delivery. Dedupe on `data.event_id` (on `invoice.paid`, `subscription.payment_succeeded`, `.started`, `.ended`, `checkout.completed`), otherwise the `X-Alunta-Webhook-Id` header | Respond 2xx within **3 s**; 8 attempts over ~44 h; replay via `POST /webhooks/replay/{uuid}` |
+| Idempotency | At-least-once delivery. Dedupe on the stable `data.event_id` (Alunta confirmed it for `subscription.payment_succeeded` and `.ended`; docs also list `invoice.paid`, `.started`, `checkout.completed`). `subscription.payment_failed` has none: dedupe on `webhook_uuid`, so each payment retry attempt is its own event | Respond 2xx within **3 s**; 8 attempts over ~44 h; replay via `POST /webhooks/replay/{uuid}` |
 | Test vs live | Separate test account, payloads have `test_mode` | Reject a payload whose `test_mode` doesn't match config, so a test account can never change prod data |
 
 Rate limits (120 reads + 600 writes per minute, max 12 concurrent requests per user) are far above what a few hundred schools need. Handle `429` with `Retry-After` anyway.
@@ -92,7 +94,7 @@ Rate limits (120 reads + 600 writes per minute, max 12 concurrent requests per u
 ## Decisions for Niels
 
 - **D1 — Card gateway.** (a) Keep Stripe as gateway inside Alunta. Existing cards move without re-entry (`POST /customers/{uuid}/payment-methods` with the `pm_…` id) only if Alunta is connected to **our current** Stripe account, since `pm_…` ids are only valid in the account that created them. If Alunta needs its own Stripe account, schools re-enter cards as in (b), or we ask Stripe for a payment-method migration between accounts. Stripe stays in the payment path either way. (b) OnPay or QuickPay. Fully Danish, needs an acquirer agreement, and every card-paying school re-enters its card once in the Alunta portal. (c) No cards: invoice, EAN, Betalingsservice and MobilePay only. Simplest and fully EU, but loses instant card checkout. *Recommendation: (b) if the acquirer paperwork is quick, else (a) first and (b) later. The gateway is a setting in Alunta, not code.*
-- **D2 — Modules.** (a) One Alunta subscription per module on the same customer. Start and stop are immediate, and it maps 1:1 to `SubscriptionModuleItem`. Check with Alunta whether a school then gets one consolidated invoice or several. (b) One plan per combination (Basis, Basis + Forældre, …) and switch plans, but plan changes only take effect at renewal, so adding a module would wait up to a year. *Recommendation: (a). Confirm invoice consolidation and that module subscriptions can follow the base subscription's renewal date.*
+- **D2 — Modules. Settled: (a).** One Alunta subscription per module on the same customer, mapping 1:1 to `SubscriptionModuleItem`. Alunta recommends this model. All periods due for the same customer in the same currency go on one invoice automatically, and a new module gets a prorated stub period, then follows the other subscriptions' renewal date (with the renewal setting from Phase 0). Rejected: (b) one plan per combination, since plan changes only take effect at renewal and adding a module would wait up to a year.
 - **D3 — When does a school count as paid?** Card: at `checkout.completed`, as now. Invoice/EAN: also at `checkout.completed` (the school has committed and the invoice is sent), then `PastDue` only when Alunta reports a failed or overdue payment. *Recommendation: grant access on checkout. Locking a school out while its invoice is in a bookkeeper's inbox would block Hanne.*
 - **D4 — Existing Stripe subscriptions.** Count the live ones first. With only a handful, use a one-off migration script: create the Alunta customer, attach the card (D1a, only with our current Stripe account connected to Alunta, see D1) or ask the school to add a payment method (D1b), then `POST /subscriptions` with `start_date` = the Stripe renewal date and `apply_plan_trial: false`, `apply_plan_intro_offer: false`. After that, cancel the Stripe subscription at period end. Alunta offers free migration help. *Recommendation: script it, but run it by hand per school with Niels watching.*
 
@@ -101,18 +103,19 @@ Rate limits (120 reads + 600 writes per minute, max 12 concurrent requests per u
 ### Phase 0 — Decide (Niels)
 
 1. Create the Alunta test account, API token and webhook secret.
-2. Answer the open questions below.
-3. Decide D1–D4. Write an ADR (`docs/adr/alunta-billing.md`) that supersedes [stripe-checkout-billing](../docs/adr/stripe-checkout-billing.md), and update [adr/INDEX.md](../docs/adr/INDEX.md) and the AGENTS.md billing line in the same PR.
+2. Pick the renewal setting in the Alunta account: fixed renewal, or flexible renewal with "Forsøg at gruppere abonnementer" turned on. Either gives base and module subscriptions one renewal date. Then, in the test account, start a base subscription plus a module and check with `GET /customers/{uuid}/upcoming-invoices` that they become one invoice.
+3. Decide D1, D3 and D4 (D2 is settled). Write an ADR (`docs/adr/alunta-billing.md`) that supersedes [stripe-checkout-billing](../docs/adr/stripe-checkout-billing.md), and update [adr/INDEX.md](../docs/adr/INDEX.md) and the AGENTS.md billing line in the same PR.
 
 ### Phase 1 — Build against the test account (agent)
 
 - `AluntaOptions` + validator (`ApiToken`, `WebhookSecret`, `TestMode`, plan and renewal-interval UUIDs per module and interval), replacing `StripeOptions`.
-- `IAluntaClient` + typed `HttpClient` implementation: only the calls we use (checkout session, portal link, interval, cancel, resume, create/cancel module subscription). The interface is allowed because tests replace an external system, as with `IEmailSender`. Use the `Idempotency-Key` header on subscription creation.
+- `IAluntaClient` + typed `HttpClient` implementation: only the calls we use (checkout session, portal link, interval, cancel, resume, create/cancel module subscription, subscription bundle for several modules at once). The interface is allowed because tests replace an external system, as with `IEmailSender`. Use the `Idempotency-Key` header on subscription creation.
 - `AluntaWebhookController` (anonymous, `api/v1/webhooks/alunta`): reads the raw body, checks `Signature`, rejects a `test_mode` mismatch, hands the parsed event to `SubscriptionService.HandleAluntaEventAsync` and returns 200 fast.
-  - **Dedupe**: a `ProcessedWebhookEvent` table (`Provider`, `EventId`, `ProcessedAt`, unique on `Provider` + `EventId`). `HandleAluntaEventAsync` claims the event by inserting that row in the same transaction as the subscription change; a unique-key violation means already processed, so it returns without applying. Not a last-event-id column: deliveries can arrive out of order and replays resend old events, which a single id can't recognise.
+  - **Dedupe**: a `ProcessedWebhookEvent` table (`Provider`, `EventId`, `ProcessedAt`, unique on `Provider` + `EventId`). `EventId` is `data.event_id` where the event has one, else `webhook_uuid` (`subscription.payment_failed`). `HandleAluntaEventAsync` claims the event by inserting that row in the same transaction as the subscription change; a unique-key violation means already processed, so it returns without applying. Not a last-event-id column: deliveries can arrive out of order and replays resend old events, which a single id can't recognise.
+  - **Payment ordering**: dedupe doesn't stop a delayed `payment_failed` (on retry since ~44 h) from overriding a newer `payment_succeeded` and flipping a paid school to `PastDue`. Store the time of the last applied payment event on `Subscription` and skip older ones. Check which timestamp the payload carries.
   - **School resolution**: never from echoed `metadata` or `external_customer_id` alone. When creating a checkout session, store its Alunta session UUID on the school's `Subscription` (`AluntaCheckoutSessionId`). `checkout.completed` finds the `Subscription` by that UUID and stores `AluntaCustomerId` / `AluntaSubscriptionId`. Every later event finds it by those ids (indexed, like the Stripe ids). An event matching no stored id is logged and acknowledged, not applied. `Subscription` and `SubscriptionModuleItem` have no tenant query filter, so this needs no `ITenantContext`. If a handler later touches tenant-scoped data (e.g. notifying admins), set the tenant from the resolved `SchoolId` first.
 - `SubscriptionService`: add `IAluntaClient` next to the Stripe calls, keeping public method names, so `BillingController` barely changes. Event mapping is in the table above. **Provider routing**: a subscription is Alunta-backed when `AluntaSubscriptionId` is set, Stripe-backed when `StripeSubscriptionId` is set (the two are never both set: D4 clears the Stripe id when it moves a school). Portal, interval, cancel/resume and module changes go to that provider. New checkouts go to Alunta once Phase 2 is live (config switch), to Stripe before that. The Stripe branch is removed in Phase 3.
-- Migration (`/add-migration`): `AluntaCheckoutSessionId`, `AluntaCustomerId`, `AluntaSubscriptionId` on `Subscription`, `AluntaSubscriptionId` on `SubscriptionModuleItem`, and the `ProcessedWebhookEvent` table. Keep the Stripe columns until Phase 3.
+- Migration (`/add-migration`): `AluntaCheckoutSessionId`, `AluntaCustomerId`, `AluntaSubscriptionId` and the last payment event time on `Subscription`, `AluntaSubscriptionId` on `SubscriptionModuleItem`, and the `ProcessedWebhookEvent` table. Keep the Stripe columns until Phase 3.
 - [BillingPage.tsx](../web/src/pages/BillingPage.tsx): payment-method wording (kort, faktura, EAN, MobilePay, Betalingsservice), and interval change "fra næste periode". Run `/codegen` after the API change.
 - Privacy policy ([PrivacyPolicyPage.tsx](../web/src/pages/PrivacyPolicyPage.tsx)): replace the Stripe paragraph with Alunta + the chosen gateway. Also update the comment in [dataProcessing.ts](../web/src/content/dataProcessing.ts), the landing page and backoffice mentions, and `SchoolExportService` / `SchoolDeletionService` (delete the Alunta customer, or keep it for bookkeeping law: invoices must be kept 5 years).
 - Local dev tunnel in the AppHost, below. Build it first: every other Phase 1 item is tested through it.
@@ -149,14 +152,19 @@ Per [TESTING.md](../docs/TESTING.md): integration tests through HTTP endpoints, 
 - Same event twice → applied once. An older, already processed event replayed after a newer one → ignored.
 - Event whose ids match no stored subscription → 200, nothing changes.
 - Stripe-backed subscription: portal, interval and cancel still call Stripe, not Alunta.
-- `subscription.payment_failed` → `PastDue`. `subscription.payment_succeeded` → `Active`.
+- `subscription.payment_failed` → `PastDue`. `subscription.payment_succeeded` → `Active`. A `payment_failed` older than the last applied `payment_succeeded` → ignored. Two `payment_failed` retry attempts with different `webhook_uuid` → both processed.
 - `subscription.ended` → `Canceled`, `CanceledAt` set. Cancel then resume → no `CanceledAt`.
 - Module subscription started/ended → module on/off (`ModuleAccessFilter`).
 - Interval switch calls Alunta and shows the effective date.
 
 Playwright: the billing page renders and the "Betal" button redirects (stub the redirect target). No e2e against Alunta itself. Before go-live: one manual run through the test account for card, invoice and EAN.
 
-## Open questions
+## Answers from Alunta
 
-1. Several subscriptions on one customer (Basis + modules): one consolidated invoice per period, and can they share a renewal date?
-2. Which legal entity is the contract party and processor: Langsom.com ApS or Boligforeningsweb ApS?
+Email from Oliver Lindebod (CEO), 2026-10-27:
+
+1. **Webhooks**: `checkout.completed`, `subscription.payment_succeeded`, `subscription.payment_failed` and `subscription.ended` all exist. `subscription.created` and `subscription.started` also exist if we want the start itself. Dedupe keys are in the Idempotency row above.
+2. **Modules**: one subscription per module on the same customer is the right model, with one consolidated invoice and a shared renewal date. Details in D2 and Phase 0 step 2.
+3. **Contract party**: Langsom ApS, CVR 33643284 (binavne Alunta ApS, Boligforeningsweb ApS).
+
+Still open: the terms (termination, data export, price-change notice), and whether `webhook_uuid` stays the same when Alunta redelivers the same webhook (it must, or a redelivered `payment_failed` is applied twice; harmless for status, but check before relying on it).
