@@ -1,10 +1,10 @@
-import { chromium, request } from '@playwright/test'
+import { chromium, type FullConfig, request } from '@playwright/test'
 import { mkdirSync } from 'fs'
 
 const KEYCLOAK_BASE = process.env.KEYCLOAK_URL ?? 'http://localhost:8080'
 const ADMIN_EMAIL = 'admin@debugskolen.dk'
 
-export default async function globalSetup() {
+export default async function globalSetup(config: FullConfig) {
   // Clear Keycloak brute-force lockout for the shared admin account before each test session.
   // Previous runs may have locked the account via wrong-password tests running concurrently.
   try {
@@ -53,7 +53,8 @@ export default async function globalSetup() {
   }
 
   mkdirSync('tests/e2e/.auth', { recursive: true })
-  const browser = await chromium.launch()
+  // Same browser channel as the tests: CI has no Playwright Chromium, only the runner's Chrome.
+  const browser = await chromium.launch({ channel: config.projects[0].use.channel })
   const page = await browser.newPage()
   await page.goto('http://localhost:5173/login')
   await page.waitForURL(/localhost:8080.*\/auth/, { timeout: 30_000 })
