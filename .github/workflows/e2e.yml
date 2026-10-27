@@ -98,8 +98,10 @@ jobs:
       # live until the job ends.
       - name: Start staging stack in the background
         run: |
-          (docker compose up -d --wait > "$RUNNER_TEMP/compose-up.log" 2>&1
-           echo $? > "$RUNNER_TEMP/compose-up.tmp"
+          # The step shell runs with -e, so capture the status in an `if` or a failed
+          # `up` would kill the subshell before it writes the exit file.
+          (if docker compose up -d --wait > "$RUNNER_TEMP/compose-up.log" 2>&1; then status=0; else status=$?; fi
+           echo "$status" > "$RUNNER_TEMP/compose-up.tmp"
            mv "$RUNNER_TEMP/compose-up.tmp" "$RUNNER_TEMP/compose-up.exit") &
 
       - name: Setup Node.js 24

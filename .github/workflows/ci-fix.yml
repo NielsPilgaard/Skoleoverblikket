@@ -39,10 +39,14 @@ jobs:
           BRANCH: ${{ github.event.workflow_run.head_branch }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          if ! tip=$(gh api "repos/$GITHUB_REPOSITORY/branches/$BRANCH" --jq .commit.sha); then
-            echo "Branch is gone (merged or deleted), skipping."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
+          if ! tip=$(gh api "repos/$GITHUB_REPOSITORY/branches/$BRANCH" --jq .commit.sha 2> "$RUNNER_TEMP/branch.err"); then
+            if grep -q "HTTP 404" "$RUNNER_TEMP/branch.err"; then
+              echo "Branch is gone (merged or deleted), skipping."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            cat "$RUNNER_TEMP/branch.err" >&2
+            exit 1
           fi
           if [ "$tip" != "$HEAD_SHA" ]; then
             echo "Branch moved on since this run, skipping."
