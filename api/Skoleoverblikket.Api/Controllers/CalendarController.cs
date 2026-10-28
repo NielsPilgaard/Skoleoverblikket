@@ -259,7 +259,6 @@ public sealed class CalendarController(AppDbContext db, ITenantContext tenant) :
 		}
 
 		var duration = entry.EndDate.DayNumber - entry.StartDate.DayNumber;
-		var current = entry.StartDate;
 
 		var excluded = entry.ExcludedDates?
 			.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -268,11 +267,13 @@ public sealed class CalendarController(AppDbContext db, ITenantContext tenant) :
 			.Select(d => d!.Value)
 			.ToHashSet() ?? [];
 
-		for (var safety = 0; safety < 500; safety++)
+		// Each occurrence is computed from the start date, not the previous occurrence, so a monthly
+		// event on the 31st clamps to Feb 28 once and returns to the 31st in March instead of drifting.
+		for (var n = 1; n <= 500; n++)
 		{
-			current = freq == "WEEKLY"
-				? current.AddDays(7 * interval)
-				: current.AddMonths(interval);
+			var current = freq == "WEEKLY"
+				? entry.StartDate.AddDays(7 * interval * n)
+				: entry.StartDate.AddMonths(interval * n);
 
 			if (current > expansionEnd)
 			{
