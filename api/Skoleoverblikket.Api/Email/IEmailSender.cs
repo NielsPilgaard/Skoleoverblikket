@@ -12,4 +12,4 @@ public sealed record EmailMessage(
 	string? PlainTextBody = null,
 	IReadOnlyList<string>? Bcc = null,
 	string? FromName = null,
-	string? ReplyTo = null);
+	string? FromAddress = null);
