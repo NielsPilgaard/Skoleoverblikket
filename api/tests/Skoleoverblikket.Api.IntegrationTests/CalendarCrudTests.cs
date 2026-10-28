@@ -195,6 +195,30 @@ public sealed class CalendarCrudTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task GetAll_MonthlyEntryOnThe31st_KeepsDayAfterShortMonth()
+	{
+		var request = new CalendarController.CreateCalendarEntryRequest(
+			"Personalemøde", CalendarEntryType.Begivenhed,
+			new DateOnly(2026, 1, 31), new DateOnly(2026, 1, 31),
+			"FREQ=MONTHLY", new DateOnly(2026, 5, 31));
+		var createResponse = await _client.PostAsJsonAsync("/api/v1/calendar", request);
+		createResponse.EnsureSuccessStatusCode();
+
+		var response = await _client.GetAsync("/api/v1/calendar");
+		var entries = await response.Content.ReadFromJsonAsync<List<CalendarController.CalendarEntryDto>>(JsonOpts);
+
+		var dates = entries!.Select(e => e.StartDate).ToList();
+		await Assert.That(dates).IsEquivalentTo(new List<DateOnly>
+		{
+			new(2026, 1, 31),
+			new(2026, 2, 28),
+			new(2026, 3, 31),
+			new(2026, 4, 30),
+			new(2026, 5, 31),
+		});
+	}
+
+	[Test]
 	public async Task TenantIsolation_EntryNotVisibleToOtherTenant()
 	{
 		// Create entry for default tenant
