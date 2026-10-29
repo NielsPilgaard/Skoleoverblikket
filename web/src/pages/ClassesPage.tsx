@@ -980,7 +980,7 @@ export default function ClassesPage() {
           ))}
 
         {!isLoading && classes?.length === 0 && (
-          <div className="px-5 py-10 text-center text-gray-400 text-sm">
+          <div className="px-5 py-10 text-center text-gray-400 text-sm" data-testid="classes-empty">
             Ingen klasser oprettet endnu
           </div>
         )}
@@ -993,7 +993,6 @@ export default function ClassesPage() {
             >
               <button
                 onClick={() => toggleExpand(cls.id!)}
-                data-testid={`class-expand-${cls.id}`}
                 className="flex items-center gap-3 min-w-0 text-left group"
               >
                 <svg
