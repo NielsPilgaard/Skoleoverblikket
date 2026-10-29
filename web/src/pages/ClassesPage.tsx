@@ -993,6 +993,7 @@ export default function ClassesPage() {
             >
               <button
                 onClick={() => toggleExpand(cls.id!)}
+                data-testid={`class-expand-${cls.id}`}
                 className="flex items-center gap-3 min-w-0 text-left group"
               >
                 <svg

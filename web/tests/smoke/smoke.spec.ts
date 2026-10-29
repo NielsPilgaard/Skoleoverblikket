@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test'
 const user = process.env.SMOKE_USER
 const password = process.env.SMOKE_PASSWORD
 
-test('admin logs in, sees their schema and a ugeplan, and logs out', async ({ page }) => {
+test("admin logs in, opens a klasse's ugeplan, and logs out", async ({ page }) => {
   if (!user || !password) throw new Error('SMOKE_USER and SMOKE_PASSWORD must be set')
 
   await page.goto('/login')
@@ -17,11 +17,10 @@ test('admin logs in, sees their schema and a ugeplan, and logs out', async ({ pa
 
   await expect(page.getByTestId('admin-dashboard')).toBeVisible({ timeout: 30_000 })
 
-  await page.goto('/mig/skema')
-  await expect(page.getByTestId('my-schedule-grid')).toBeVisible({ timeout: 20_000 })
-
-  // A lektion opens its klasse's ugeplan.
-  await page.getByTestId('my-schedule-slot').first().click()
+  // Through Klasser rather than Mit skema: Mit skema is empty unless the admin teaches a lektion.
+  await page.goto('/klasser')
+  await page.locator('[data-testid^="class-expand-"]').first().click({ timeout: 20_000 })
+  await page.locator('[data-testid^="class-ugeplan-"]').first().click({ timeout: 20_000 })
   await expect(page.getByTestId('weekplan-grid')).toBeVisible({ timeout: 20_000 })
 
   await page.getByTestId('logout-button').click()
