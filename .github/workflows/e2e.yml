@@ -33,39 +33,10 @@ jobs:
       KEYCLOAK_IMAGE: ${{ inputs.image_tag && format('ghcr.io/nielspilgaard/skoleoverblikket-keycloak:{0}', inputs.image_tag) || 'skoleoverblikket-keycloak-e2e:latest' }}
       WEB_IMAGE: skoleoverblikket-web-e2e:latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref }}
           persist-credentials: false
-
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: web/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: web
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ hashFiles('web/package-lock.json') }}
-          restore-keys: playwright-chromium-
-
-      - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-        working-directory: web
-
-      - name: Install Playwright system deps
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
-        working-directory: web
 
       - uses: docker/setup-buildx-action@v3
 
@@ -92,7 +63,7 @@ jobs:
           load: true
           tags: ${{ env.API_IMAGE }}
           cache-from: type=gha,scope=e2e-api
-          cache-to: type=gha,scope=e2e-api,mode=max
+          cache-to: type=gha,scope=e2e-api,mode=max,ignore-error=true
 
       - name: Build Keycloak image
         if: inputs.image_tag == ''
@@ -104,7 +75,7 @@ jobs:
           load: true
           tags: ${{ env.KEYCLOAK_IMAGE }}
           cache-from: type=gha,scope=e2e-keycloak
-          cache-to: type=gha,scope=e2e-keycloak,mode=max
+          cache-to: type=gha,scope=e2e-keycloak,mode=max,ignore-error=true
 
       # The published web image has the production Keycloak URL baked in, so the e2e web
       # image is always built here with http://localhost:8080.
@@ -119,11 +90,39 @@ jobs:
           build-args: |
             VITE_KEYCLOAK_URL=http://localhost:8080
           cache-from: type=gha,scope=e2e-web
-          cache-to: type=gha,scope=e2e-web,mode=max
+          cache-to: type=gha,scope=e2e-web,mode=max,ignore-error=true
 
-      - name: Start staging stack
+      # Keycloak takes ~45s to boot, so start the stack in the background and install Node
+      # dependencies meanwhile. A plain `up -d` would block too: it waits for each
+      # depends_on healthcheck before starting the next service. Background processes
+      # live until the job ends.
+      - name: Start staging stack in the background
+        run: |
+          # The step shell runs with -e, so capture the status in an `if` or a failed
+          # `up` would kill the subshell before it writes the exit file.
+          (if docker compose up -d --wait > "$RUNNER_TEMP/compose-up.log" 2>&1; then status=0; else status=$?; fi
+           echo "$status" > "$RUNNER_TEMP/compose-up.tmp"
+           mv "$RUNNER_TEMP/compose-up.tmp" "$RUNNER_TEMP/compose-up.exit") &
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      # Playwright uses the runner's preinstalled Chrome in CI (playwright.config.ts), so no
+      # browser install.
+      - name: Install dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Wait for staging stack
         timeout-minutes: 5
-        run: docker compose up -d --wait
+        run: |
+          while [ ! -f "$RUNNER_TEMP/compose-up.exit" ]; do sleep 1; done
+          cat "$RUNNER_TEMP/compose-up.log"
+          exit "$(cat "$RUNNER_TEMP/compose-up.exit")"
 
       - name: Run Playwright e2e tests
         env:
@@ -149,7 +148,7 @@ jobs:
 
       - name: Upload stack logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: stack-logs
           path: stack-logs/
@@ -157,7 +156,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-report
           path: |

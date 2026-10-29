@@ -395,7 +395,7 @@ export default function DashboardPage() {
   const unassignedCount = data?.unassignedClasses?.length ?? 0
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-8">
+    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-8" data-testid="admin-dashboard">
       {/* Header */}
       <div>
         <h1 className="font-display text-2xl font-semibold text-gray-900">Oversigt</h1>

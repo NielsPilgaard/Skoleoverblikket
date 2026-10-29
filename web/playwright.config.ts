@@ -21,7 +21,9 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      // CI uses the Chrome preinstalled on GitHub's runners: installing Playwright's Chromium
+      // needs apt for its system libraries, which sometimes hangs for 10+ minutes.
+      use: { ...devices['Desktop Chrome'], channel: process.env.CI ? 'chrome' : undefined },
     },
   ],
   // Start the full Aspire stack before tests if not already running.

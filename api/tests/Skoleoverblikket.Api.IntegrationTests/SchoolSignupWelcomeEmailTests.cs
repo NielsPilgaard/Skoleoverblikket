@@ -67,7 +67,7 @@ public sealed class SchoolSignupWelcomeEmailTests(ApiFactory factory)
 		var sent = Welcomes(email);
 		await Assert.That(sent.Count).IsEqualTo(1);
 		var welcome = sent[0];
-		await Assert.That(welcome.ReplyTo).IsEqualTo("niels@skoleoverblikket.dk");
+		await Assert.That(welcome.FromAddress).IsEqualTo("niels@skoleoverblikket.dk");
 		await Assert.That(welcome.FromName).IsEqualTo("Niels Pilgaard");
 		await Assert.That(welcome.Subject).Contains("Hanne");
 		await Assert.That(welcome.PlainTextBody!).Contains("Hej Hanne,");

@@ -126,7 +126,7 @@ CD ([cd.yml](../.github/workflows/cd.yml)) watches prod for 15 minutes after eac
 | Name | Kind | Used for |
 | --- | --- | --- |
 | `DOKPLOY_API_KEY`, `DOKPLOY_URL`, `DOKPLOY_COMPOSE_ID` | secret (`production` environment) | Deploy and rollback redeploy. |
-| `SMOKE_USER`, `SMOKE_PASSWORD` | secret | Staff login of "Smoketest Friskole" (fake data only) for the read-only smoke test. |
+| `SMOKE_USER`, `SMOKE_PASSWORD` | secret | Admin login of "Smoketest Friskole" (fake data only) for the read-only smoke test. |
 | `ELMAHIO_LOG_ID` | variable | elmah.io log the API writes to. |
 | `ELMAHIO_DEPLOYMENT_API_KEY` | secret | elmah.io key with only *Deployments – Write*: one deployment per deploy and rollback. |
 | `ELMAHIO_READ_API_KEY` | secret | elmah.io key with only *Messages – Read*: the error spike check. |

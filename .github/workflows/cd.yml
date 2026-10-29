@@ -43,12 +43,13 @@ jobs:
     env:
       HAS_SMOKE_USER: ${{ secrets.SMOKE_USER != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # the rollback step diffs migrations between the two shas
+          persist-credentials: false
 
       - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "24"
           cache: "npm"
@@ -97,12 +98,11 @@ jobs:
           export DESCRIPTION=$(gh api "repos/$GITHUB_REPOSITORY/commits/$VERSION" --jq '.commit.message | split("\n")[0]' || true)
           node infrastructure/scripts/elmah-deployment.mjs
 
+      # The smoke config uses the runner's preinstalled Chrome in CI, so no browser install.
       - name: Install Playwright
         if: env.HAS_SMOKE_USER == 'true'
         working-directory: web
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
+        run: npm ci
 
       - name: Watch for 15 minutes
         id: watch

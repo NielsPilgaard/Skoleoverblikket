@@ -72,7 +72,7 @@ public sealed class BackupStatusTests(ApiFactory factory)
 		await Assert.That(status.Health).IsEqualTo(BackupHealth.Degraded);
 		await Assert.That(status.GeneratedAt).IsEqualTo(generatedAt);
 		await Assert.That(status.RetentionOk).IsTrue();
-		await Assert.That(status.LastDrillOk).IsEqualTo(true);
+		await Assert.That(status.LastDrillOk).IsTrue();
 		await Assert.That(status.Issues.Count).IsEqualTo(1);
 		await Assert.That(status.SshTunnelCommand).IsEqualTo("ssh -L 9090:127.0.0.1:9090 ubuntu@vps");
 

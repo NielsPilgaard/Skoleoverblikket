@@ -5,13 +5,13 @@ namespace Skoleoverblikket.Api.Email;
 /// <summary>
 /// The personal welcome email Niels sends every new school a day after signup. It should read like an
 /// email typed in a mail client: no <see cref="EmailTemplate"/>, logo, button or images.
-/// Sender and reply-to are constants, not config: there is one founder and it is not tenant-specific.
+/// The sender is a constant, not config: there is one founder and it is not tenant-specific.
 /// </summary>
 internal static class WelcomeEmail
 {
 	internal const string FromName = "Niels Pilgaard";
 
-	internal const string ReplyTo = "niels@skoleoverblikket.dk";
+	internal const string FromAddress = "niels@skoleoverblikket.dk";
 
 	internal static EmailMessage Build(string to, string firstName, string schoolName)
 	{
@@ -37,6 +37,6 @@ internal static class WelcomeEmail
 			HtmlBody: html,
 			PlainTextBody: text,
 			FromName: FromName,
-			ReplyTo: ReplyTo);
+			FromAddress: FromAddress);
 	}
 }
