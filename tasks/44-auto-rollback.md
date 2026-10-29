@@ -20,7 +20,7 @@ status: 'In progress'
 
 - **Simplified rollback (2026-10-26, Niels)**: the first build had a `production-verified` record, a `deploy-freeze` issue, a revert PR with dispatched CI and migration gate, a prod `__EFMigrationsHistory` check and SMTP alerts. All dropped. `deploy.mjs` reads the tag running before it deploys; a failed watch redeploys that tag. Unfixed code on `main` gets redeployed by the next merge, fails its watch and is rolled back again, so no freeze is needed.
 - **Smoke school billing**: give it free access with no end date (backoffice) instead of billing code that skips it.
-- **Smoke flow**: login → staff dashboard → `/mig/skema` → click a lektion → that klasse's ugeplan → log out. Mit skema is the read-only way into a class schema for staff. The config is a separate [playwright.smoke.config.ts](../web/playwright.smoke.config.ts), outside `tests/e2e`, not a project in the e2e config, so it skips the e2e global setup and Aspire.
+- **Smoke flow**: login → admin dashboard → `/klasser` → open klasser until one shows a schema → its ugeplan → log out. Not `/mig/skema`: that is empty unless the smoke admin teaches a lektion. The config is a separate [playwright.smoke.config.ts](../web/playwright.smoke.config.ts), outside `tests/e2e`, not a project in the e2e config, so it skips the e2e global setup and Aspire.
 - **Rollback only on a watch verdict**: the rollback step runs only when `watch.mjs` reported a reason. npm or Playwright install failures turn the run red without rolling back.
 - **Alert = the red run.** GitHub emails the owner about failed runs. Check during the drill that this email arrives for a CD run started by Staging; if not, the Pingpuffin monitors are the backstop.
 - **Task 47**: its D5 ("no dispatch while deploys are frozen") referred to the dropped freeze issue. Replace it with "no dispatch while the latest CD run failed" when 47 is built.
@@ -91,8 +91,8 @@ Set up for phone fixes via Claude cloud sessions (see "Cloud sessions" in AGENTS
 
 ### 4. Smoke tenant
 
-- Set up by hand in prod (done 2026-10-26): fake classes, schema and ugeplan. The school admin's login lives in secrets `SMOKE_USER` / `SMOKE_PASSWORD`. Fake data only. Free access with no end date.
-- Playwright project `smoke` (`web/tests/smoke/*.spec.ts`, outside the regular `tests/e2e` testDir), base URL `https://skoleoverblikket.dk`, **read-only**: login → admin dashboard → own schema → ugeplan → logout. `data-testid` selectors only.
+- Set up by hand in prod (done 2026-10-26): fake klasser and at least one schema, which the smoke test needs. The school admin's login lives in secrets `SMOKE_USER` / `SMOKE_PASSWORD`. Fake data only. Free access with no end date.
+- Playwright project `smoke` (`web/tests/smoke/*.spec.ts`, outside the regular `tests/e2e` testDir), base URL `https://skoleoverblikket.dk`, **read-only**: login → admin dashboard → a klasse's ugeplan → logout. `data-testid` selectors only.
 - **Trace, video and screenshot off** for the smoke project. The repo is public and traces would contain the smoke user's JWT.
 
 ### 5. Watch (`cd.yml`)

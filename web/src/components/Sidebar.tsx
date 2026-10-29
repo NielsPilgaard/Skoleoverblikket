@@ -825,7 +825,8 @@ const navItemDefinitions = [
     to: '/links',
     label: 'Links',
     hideWhenNoLinks: true,
-    order: 30,
+    group: 'Filer & Eksport',
+    order: 42,
     icon: (
       <svg
         width="18"
