@@ -201,6 +201,7 @@ function EditSlotModal({
     slot.originalCourseId ? slot.courseId : ''
   )
   const [filesOpen, setFilesOpen] = useState(false)
+  const [fileSaveFailed, setFileSaveFailed] = useState(false)
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -301,7 +302,16 @@ function EditSlotModal({
   }
 
   async function handleFileToggle(fileId: string, checked: boolean) {
-    const slotId = await ensureSlotSaved()
+    setFileSaveFailed(false)
+    addFileMutation.reset()
+    removeFileMutation.reset()
+    let slotId: string
+    try {
+      slotId = await ensureSlotSaved()
+    } catch {
+      setFileSaveFailed(true)
+      return
+    }
     const existingLink = slot.files.find((f) => f.schoolFileId === fileId)
     if (checked && !existingLink) {
       addFileMutation.mutate({ path: { classId, slotId }, body: { schoolFileId: fileId } })
@@ -312,6 +322,7 @@ function EditSlotModal({
 
   const selectedFileIds = slot.files.map((f) => f.schoolFileId)
   const isFileMutationPending = addFileMutation.isPending || removeFileMutation.isPending
+  const fileError = fileSaveFailed || addFileMutation.isError || removeFileMutation.isError
 
   return (
     <Modal
@@ -391,6 +402,11 @@ function EditSlotModal({
                 onToggle={handleFileToggle}
                 disabled={isFileMutationPending}
               />
+              {fileError && (
+                <p className="text-sm text-red-600" role="alert">
+                  Filen kunne ikke gemmes på lektionen. Prøv igen.
+                </p>
+              )}
             </div>
           )}
         </div>
