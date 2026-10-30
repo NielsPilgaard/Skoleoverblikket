@@ -78,7 +78,11 @@ export default function ClassChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { data: threads = [], isLoading: threadsLoading } = useQuery({
+  const {
+    data: threads = [],
+    isLoading: threadsLoading,
+    isLoadingError: threadsLoadError,
+  } = useQuery({
     ...getApiV1ClassChatsOptions(),
     select: (d) => d ?? [],
     // No websocket infrastructure — the thread list refreshes on an interval instead.
@@ -90,7 +94,11 @@ export default function ClassChatPage() {
     query: { pageSize: 100 },
   })
 
-  const { data: messagesData, isLoading: messagesLoading } = useQuery({
+  const {
+    data: messagesData,
+    isLoading: messagesLoading,
+    isLoadingError: messagesLoadError,
+  } = useQuery({
     ...messagesOptions,
     enabled: !!selectedClassId,
     refetchInterval: 30_000,
@@ -242,6 +250,7 @@ export default function ClassChatPage() {
     setMessageBody('')
     setPending([])
     setUploadError(null)
+    deleteMutation.reset()
   }
 
   function handleDelete(messageId: string) {
@@ -278,7 +287,15 @@ export default function ClassChatPage() {
           </div>
         )}
 
-        {!threadsLoading && threads.length === 0 && (
+        {threadsLoadError && (
+          <div className="flex-1 flex items-center justify-center px-4">
+            <p className="text-sm text-red-600 text-center">
+              Klassechatten kunne ikke hentes. Prøv at genindlæse siden.
+            </p>
+          </div>
+        )}
+
+        {!threadsLoading && !threadsLoadError && threads.length === 0 && (
           <div className="flex-1 flex items-center justify-center px-4">
             <p className="text-sm text-gray-500 text-center">
               Du har ikke adgang til nogen klassechat endnu
@@ -352,7 +369,19 @@ export default function ClassChatPage() {
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
               {messagesLoading && <p className="text-sm text-gray-500 text-center">Indlæser…</p>}
 
-              {!messagesLoading && messages.length === 0 && (
+              {messagesLoadError && (
+                <p className="text-sm text-red-600 text-center">
+                  Beskederne kunne ikke hentes. Prøv at genindlæse siden.
+                </p>
+              )}
+
+              {deleteMutation.isError && (
+                <p className="text-sm text-red-600 text-center">
+                  Beskeden kunne ikke slettes. Prøv igen.
+                </p>
+              )}
+
+              {!messagesLoading && !messagesLoadError && messages.length === 0 && (
                 <p className="text-sm text-gray-500 text-center">
                   Ingen beskeder endnu. Skriv den første herunder.
                 </p>
@@ -388,8 +417,9 @@ export default function ClassChatPage() {
                       {message.canDelete && (
                         <button
                           onClick={() => handleDelete(message.id)}
+                          disabled={deleteMutation.isPending}
                           data-testid="klassechat-delete-message"
-                          className="ml-auto text-xs text-gray-400 hover:text-red-600 transition-colors"
+                          className="ml-auto text-xs text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
                         >
                           Slet
                         </button>
