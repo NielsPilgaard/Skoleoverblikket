@@ -38,6 +38,9 @@
   "eventsExpiration": 7776000,
   "adminEventsEnabled": true,
   "adminEventsDetailsEnabled": true,
+  "attributes": {
+    "adminEventsExpiration": "7776000"
+  },
 
   "accessTokenLifespan": 300,
   "ssoSessionIdleTimeout": 2592000,
