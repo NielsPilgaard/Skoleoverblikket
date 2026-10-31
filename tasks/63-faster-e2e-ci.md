@@ -16,7 +16,8 @@ status: 'Ready'
 
 - E2E ([e2e.yml](../.github/workflows/e2e.yml)) is the critical path on PRs: 260–350s vs. 120–180s for the API job. Staging runs the same job before every deploy.
 - Biggest problem: `npx playwright install-deps chromium` (apt) took **635s and 668s** in 2 of 6 PR runs. Fix 1 removes it.
-- Phase 1 (fixes 1–3) is workflow and compose changes only, about half a day. Phase 2 (fix 5) is small. Phase 3 (fix 4) touches the web app and the prod deploy.
+- Phase 1 (fixes 1–3) is workflow and compose changes only, about half a day. Phase 2 (fix 5) is small. Phase 3 (fix 4) touches the web app, not the prod deploy.
+- All three phases are built. Left: measure one PR run and one Staging run against the targets below, then close the task.
 - Done when: a PR run of E2E takes ≤ ~180s after Phase 1 and ≤ ~150s after Phase 3, and no run spends more than a minute on browser setup.
 
 ## Baseline (6 PR runs, 2026-10-26)
@@ -38,12 +39,14 @@ gh api repos/{owner}/{repo}/actions/runs/<run-id>/jobs --jq '.jobs[] | select(.n
 
 ## Phase 1: workflow and compose (S, Agent)
 
-**Built 2026-10-26.** Left: measure the first PR and Staging runs with the command above. Differences from the plan below:
+**Built 2026-10-26, measured 2026-10-30** (5 PR and 3 Staging runs): the browser steps are gone and "Wait for staging stack" takes 17–22s instead of 42–51s. But the Playwright step went from 27–37s to 48–75s with the same 55 tests, every test ~1.6× slower. Full Chrome in new-headless mode is heavier than Playwright's headless shell. Fix (2026-10-30): CI uses the headless shell again, installed with `npx playwright install --only-shell chromium` and no `--with-deps`, because the runner's Chrome already brought the system libraries. Left: confirm on the next PR that the Playwright step is back near 35s. Job totals before that fix: PR 192–318s, Staging 150–181s.
+
+Differences from the plan below:
 
 - `docker compose up -d` without `--wait` still blocks on every `depends_on` healthcheck, so the stack starts with `up -d --wait` in a background subshell, and a "Wait for staging stack" step after `npm ci` waits for its exit code.
 - `start_interval: 1s` is on every healthcheck, not just `keycloak` and `api`, with `start_period` raised to 120s (Keycloak) and 60s (API) so the fast polling lasts the whole boot.
 - The API needs nothing from Keycloak at startup except `AdminRoleBackfillJob`, which retries after 5 minutes (removed in task 61 Phase B). So `api → keycloak` is now `service_started`.
-- The smoke config ([playwright.smoke.config.ts](../web/playwright.smoke.config.ts)) uses Chrome in CI too, and cd.yml no longer installs a browser.
+- The smoke config ([playwright.smoke.config.ts](../web/playwright.smoke.config.ts)) uses the runner's Chrome in CI, and cd.yml no longer installs a browser. It stays on Chrome after the headless-shell fix: it runs one test per deploy.
 
 ### Fix 1: use the runner's Chrome, drop apt
 
@@ -76,11 +79,15 @@ Saves ~10–20s.
 
 ## Phase 2: parallel image builds (S, Agent)
 
+**Built 2026-10-30.** One `docker/bake-action` step with [docker-bake.e2e.hcl](../infrastructure/docker/docker-bake.e2e.hcl) builds all three targets on PRs and only `web` on Staging. `source: .` makes bake build the checked-out ref instead of its default Git context. Left: measure "Build images" on the next PR against the ~100s of the three old steps (the API build alone varied 10–168s with cache hits and misses).
+
 On PRs, the API, Keycloak and web images build one after another (~100s). Replace the three `docker/build-push-action` steps with one `docker/bake-action` and a small `docker-bake.hcl` (or a bake target in the workflow) that builds all three with `load: true` and the same `type=gha` cache scopes (keep `ignore-error=true` on `cache-to`). Saves ~20–30s.
 
 On Staging only the web image builds, so this phase helps PRs only.
 
-## Phase 3: stop rebuilding the web image (M, Niels + agent)
+## Phase 3: stop rebuilding the web image (M, Agent)
+
+**Built 2026-10-31 with option A**, without the prod change. The image keeps the prod URL baked in as `VITE_KEYCLOAK_URL`, and `KEYCLOAK_URL` at container start overrides it via [runtime-config.sh](../web/runtime-config.sh) → `/env.js` (served `no-cache`). Prod leaves `KEYCLOAK_URL` unset, so the rollout needs nothing from Niels. Staging pulls the published web image, and PR e2e builds it once in the bake without a build arg. The staging compose file sets `KEYCLOAK_URL=http://localhost:8080`. Proven locally: an image built with the prod URL reports `authServerUrl` `http://localhost:8080` with the variable set and the prod URL without it. Invalid values (no `http(s)://`, quotes, backslashes) stop the container before nginx starts. Left: measure the next Staging run, where the ~60s web build should be gone.
 
 The published web image has the prod Keycloak URL baked in at build time (`VITE_KEYCLOAK_URL` in [web/Dockerfile](../web/Dockerfile)), so e2e rebuilds it every run (~60s). Pick one:
 
