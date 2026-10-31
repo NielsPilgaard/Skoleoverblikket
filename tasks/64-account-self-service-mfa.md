@@ -10,7 +10,7 @@ description: >-
   reset a lost phone; the superadmin login must use two-factor. Prod realm
   config has to be applied by hand or by a config tool, because --import-realm
   skips the existing realm.
-status: 'Draft'
+status: 'Ready'
 ---
 
 # Account self-service: password change, two-factor and sessions
@@ -38,7 +38,7 @@ A new page **Min konto** (`/min-konto`, linked from the sidebar footer next to t
 
 ## Decisions
 
-Recommendations are marked. Niels confirms the ones marked **(Niels)** before Phase 1 starts.
+D3 and D5 agreed by Niels 2026-10-31. The rest are recommendations an agent may follow.
 
 ### D1. Own page in the app, not the Keycloak Account Console
 
@@ -56,9 +56,9 @@ Recommendations are marked. Niels confirms the ones marked **(Niels)** before Ph
 - Recovery codes: without them every lost phone becomes a support case. Keycloak's `CONFIGURE_RECOVERY_AUTHN_CODES` action shows 12 one-time codes with a print/download button. Check during Phase 1 whether it is still a preview feature in 26.2 (`--features=recovery-codes` in the Dockerfile) or already default.
 - Passkeys: Face ID / fingerprint is the nicest second factor for Thomas and Mikkel (personas: "biometric if possible"). Phase 2 because the login flow and the stock templates need more work, and phone/browser behaviour needs testing on real devices.
 
-### D3. Opt-in per user, with two exceptions **(Niels)**
+### D3. Opt-in per user, with two exceptions
 
-**Recommended:**
+**Decided (2026-10-31):**
 
 - Everyone: opt-in. Forcing two-factor on parents and substitutes would generate support, not security.
 - Superadmin: required, from Phase 1. A conditional sub-flow in the browser flow (`Condition - user role` = `superadmin` → OTP required, `CONFIGURE_TOTP` if missing).
@@ -72,11 +72,13 @@ Recommendations are marked. Niels confirms the ones marked **(Niels)** before Ph
 - Only if the login belongs to this school alone (same rule as `SchoolLoginService` uses for deleting logins). A login shared with another school is reset by the superadmin from the back office, otherwise an admin at school A could weaken a user's login at school B.
 - An admin can't reset their own two-factor that way (they use recovery codes or another admin).
 
-### D5. Getting realm changes into prod **(Niels)**
+### D5. Getting realm changes into prod
+
+**Decided (2026-10-31): A, manual checklist.**
 
 The realm JSON drives dev, e2e and Staging. Prod needs one of:
 
-- **A. Manual checklist (recommended for now).** Each phase lists the exact console changes, Niels applies them in prod, ticks them off here. Five to ten settings, done once. Same approach as earlier realm changes.
+- **A. Manual checklist (chosen).** Each phase lists the exact console changes, Niels applies them in prod, ticks them off here. Five to ten settings, done once. Same approach as earlier realm changes.
 - **B. keycloak-config-cli** as a one-shot container in the prod compose on every deploy. Real config-as-code, and tasks [57](57-migration-cli.md) and [59](59-microsoft-google-login.md) also need realm changes. Needs a separate prod realm file without dev users, mailpit SMTP and dev secrets, and a wrong file can lock everyone out. Worth its own task when the third realm change lands.
 - Not C (API startup job that writes realm settings): needs `manage-realm` on the API's service account, which widens what a leaked API secret can do.
 
