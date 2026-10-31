@@ -82,6 +82,25 @@ What Dokploy's Environment tab sets for `docker-compose.prod.yml`. Compose maps 
 | `KEYCLOAK_ADMIN_PASSWORD` | Keycloak `KC_BOOTSTRAP_ADMIN_PASSWORD` | Password of Keycloak's `admin` user. Strong and random. |
 | `API_IMAGE`, `WEB_IMAGE`, `KEYCLOAK_IMAGE` | image | Optional, default `ghcr.io/nielspilgaard/skoleoverblikket-<name>:latest`. `deploy.mjs` sets all three to the release tag on every deploy. |
 
+### Keycloak admin console (SSH tunnel only)
+
+`auth.skoleoverblikket.dk` serves only the Skoleoverblikket realm. Traefik blocks the admin console (`/admin`) and the `master` realm (`/realms/master`, Keycloak's own admin login), except `/admin/realms/Skoleoverblikket/`, which the API calls with its service account. It also refuses paths with `.` or `..` segments (encoded or not) or `;`: Keycloak resolves those, so `/admin/realms/Skoleoverblikket/%2e%2e/%2e%2e/master/console/` would otherwise reach the console. The rule uses `PathRegexp`, which needs Traefik v3. Keycloak publishes port 18080 on the server's 127.0.0.1 for a tunnel instead:
+
+```bash
+ssh -L 18080:127.0.0.1:18080 <user>@<vps>
+# then open http://localhost:18080/admin/ and log in as admin (KEYCLOAK_ADMIN_PASSWORD)
+```
+
+The local port must be 18080: Keycloak builds the console's URLs from `KC_HOSTNAME_ADMIN`.
+
+Once per Keycloak database (a new server, or a fresh Keycloak database), point the master realm's Frontend URL at the tunnel. Without it, the master login form posts to the public hostname, which Traefik blocks. Run on the server:
+
+```bash
+kc=$(docker ps --filter name=keycloak --format '{{.Names}}' | head -1)
+docker exec -it "$kc" /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user admin
+docker exec "$kc" /opt/keycloak/bin/kcadm.sh update realms/master -s 'attributes.frontendUrl=http://localhost:18080'
+```
+
 ---
 
 ## Self-hosted Postgres and the backup agent
