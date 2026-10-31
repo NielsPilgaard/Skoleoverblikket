@@ -79,7 +79,7 @@ Saves ~10–20s.
 
 ## Phase 2: parallel image builds (S, Agent)
 
-**Built 2026-10-30.** One `docker/bake-action` step with [docker-bake.e2e.hcl](../infrastructure/docker/docker-bake.e2e.hcl) builds all three targets on PRs and only `web` on Staging. `source: .` makes bake build the checked-out ref instead of its default Git context. Left: measure "Build images" on the next PR against the ~100s of the three old steps (the API build alone varied 10–168s with cache hits and misses).
+**Built 2026-10-30.** One `docker/bake-action` step with [docker-bake.e2e.hcl](../infrastructure/docker/docker-bake.e2e.hcl) builds all three targets on PRs. Staging skips it and pulls the three published images. `source: .` makes bake build the checked-out ref instead of its default Git context. Left: measure "Build images" on the next PR against the ~100s of the three old steps (the API build alone varied 10–168s with cache hits and misses).
 
 On PRs, the API, Keycloak and web images build one after another (~100s). Replace the three `docker/build-push-action` steps with one `docker/bake-action` and a small `docker-bake.hcl` (or a bake target in the workflow) that builds all three with `load: true` and the same `type=gha` cache scopes (keep `ignore-error=true` on `cache-to`). Saves ~20–30s.
 

@@ -12,7 +12,14 @@ case "$KEYCLOAK_URL" in
   *) echo "KEYCLOAK_URL must start with http:// or https://" >&2; exit 1 ;;
 esac
 case "$KEYCLOAK_URL" in
-  *[\"\\]*) echo "KEYCLOAK_URL must not contain quotes or backslashes" >&2; exit 1 ;;
+  */realms | */realms/*) echo "KEYCLOAK_URL must be the Keycloak base URL, without /realms/<realm>" >&2; exit 1 ;;
+esac
+# A line break inside the JS string literal would make env.js unparseable.
+lf='
+'
+cr=$(printf '\r')
+case "$KEYCLOAK_URL" in
+  *[\"\\]* | *"$lf"* | *"$cr"*) echo "KEYCLOAK_URL must not contain quotes, backslashes or line breaks" >&2; exit 1 ;;
 esac
 
 printf 'window.__ENV = { keycloakUrl: "%s" }\n' "$KEYCLOAK_URL" > /usr/share/nginx/html/env.js

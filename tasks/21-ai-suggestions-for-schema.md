@@ -9,7 +9,7 @@ Generate a suggested weekly schema for a class using an LLM. User reviews the su
 User must see a clear disclaimer **before** the first request is sent and **inline** on the suggestion result. Non-negotiable — AI is involved and mistakes will happen.
 
 **Before sending** (modal or inline warning on button click):
-> Forslaget genereres af en AI-model hos [Scaleway](https://www.scaleway.com) i Frankrig (EU). Skoledata (klassenavn, fag, lærere og lektionstider) sendes til en server i EU og gemmes ikke. AI kan lave fejl — gennemgå altid forslaget før du anvender det.
+> Forslaget genereres af en AI-model hos [Scaleway](https://www.scaleway.com) i Frankrig (EU). Skoledata (klassenavn, fag, lærere og lektionstider) sendes til en server i EU. Scaleway gemmer dem ikke, medmindre der opstår en fejl hos dem – så kan de gemmes i op til to uger. AI kan lave fejl — gennemgå altid forslaget før du anvender det.
 
 **On the suggestion result** (persistent banner above ghost slots):
 > Dette er et AI-genereret forslag. Kontrollér det grundigt — AI kan placere forkerte lærere, forkerte fag eller overtræde UVM-timetallet.
@@ -171,7 +171,7 @@ builder.Services.AddChatClient(sp =>
         new OpenAIClientOptions { Endpoint = new Uri(opts.BaseUrl) });
 
     return openAIClient
-        .GetChatClient(opts.Model)
+        .GetChatClient(opts.Models.GetValueOrDefault("SchemaSuggest", opts.Model))
         .AsIChatClient();
 });
 ```
@@ -196,6 +196,7 @@ public sealed class LlmOptions
     public required string BaseUrl { get; init; }
     public required string ApiKey { get; init; }
     public required string Model { get; init; }
+    public Dictionary<string, string> Models { get; init; } = [];
 }
 ```
 

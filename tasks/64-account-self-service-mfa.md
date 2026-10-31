@@ -68,7 +68,7 @@ D3 and D5 agreed by Niels 2026-10-31. The rest are recommendations an agent may 
 
 **Recommended:** recovery codes first. If those are lost too:
 
-- A school admin can click "Nulstil tofaktor" on the staff member, board member or parent row. The API deletes the login's `otp` and `webauthn` credentials through the admin API, logs out all its sessions and emails the user ("Tofaktor er slået fra på din konto af <admin> på <skole>").
+- A school admin can click "Nulstil tofaktor" on the staff member, board member or parent row. The API deletes the login's `otp`, `webauthn` and `recovery-authn-codes` credentials through the admin API, logs out all its sessions and emails the user ("Tofaktor er slået fra på din konto af <admin> på <skole>").
 - Only if the login belongs to this school alone (same rule as `SchoolLoginService` uses for deleting logins). A login shared with another school is reset by the superadmin from the back office, otherwise an admin at school A could weaken a user's login at school B.
 - An admin can't reset their own two-factor that way (they use recovery codes or another admin).
 
@@ -106,6 +106,7 @@ New `AccountService` (`Services/`) and `AccountController` at `/api/v1/account`,
 
 - [ ] `GET /api/v1/account/security` → `{ email, hasPassword, otp: { configured, createdAt }, recoveryCodes: { configured, remaining? }, passkeys: [] , externalLogin: string? }` for `User.GetKeycloakSubject()`. Reads `GET /users/{id}/credentials` and `GET /users/{id}/federated-identity` through `KeycloakAdminService`. Returns credential ids so the web app can pass them to `delete_credential:<id>`.
 - [ ] `POST /api/v1/account/logout-everywhere` → admin API `POST /users/{id}/logout`. 204.
+- [ ] `POST /api/v1/account/security/cleanup-recovery-codes` → 204, for `User.GetKeycloakSubject()`, called by `/min-konto` after "Slå tofaktor fra" returns. When no `otp` or `webauthn` credential is left, delete `recovery-authn-codes` through the admin API, so the login flow no longer offers a recovery code. No-op otherwise.
 - [ ] Extend `IKeycloakAdminApi` (credentials with id/createdDate/userLabel, delete credential, logout user, federated identities) and `FakeKeycloak` to match.
 
 Admin reset (D4), in the owning services (`StaffService` or equivalent, plus parent and board):
@@ -118,7 +119,7 @@ Admin reset (D4), in the owning services (`StaffService` or equivalent, plus par
 
 - [ ] `web/src/pages/AccountPage.tsx` at `/min-konto`, all roles. Sections, each a card with one sentence and one button:
   - **Adgangskode**: "Skift adgangskode" → `keycloak.login({ action: 'UPDATE_PASSWORD', redirectUri: <origin>/min-konto?done=password })`.
-  - **Tofaktor-login**: off → "Slå tofaktor til" (→ `CONFIGURE_TOTP`, then `CONFIGURE_RECOVERY_AUTHN_CODES` if none). On → "Til siden <date>", "Lav nye gendannelseskoder", "Slå tofaktor fra" (→ `delete_credential:<id>`).
+  - **Tofaktor-login**: off → "Slå tofaktor til" (→ `CONFIGURE_TOTP`, then `CONFIGURE_RECOVERY_AUTHN_CODES` if none). On → "Til siden <date>", "Lav nye gendannelseskoder", "Slå tofaktor fra" (→ `delete_credential:<id>`, then the API cleanup below so no recovery codes are left).
   - **Enheder**: "Log ud på alle enheder" with a confirm dialog, then log out this tab too.
   - Login via Microsoft/Google (59): replace the first two sections with "Du logger ind med din Microsoft-konto".
   - Toast from `?done=` on return; Keycloak returns `kc_action_status=success|cancelled|error` on the redirect, show the matching Danish message.
