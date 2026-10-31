@@ -38,12 +38,13 @@ status: 'Active'
 | 10 | [25 Schema import via AI](25-schema-import.md) | M | Niels + agent | 30-day sub-processor notice (Scaleway AI) | Re-typing the old schema is the biggest switching barrier for a new school. Builds the shared Scaleway LLM client that 46 and 21 reuse (unless 46 lands first). |
 | 11 | [45 Feedback button](feedback/45-feedback-capture.md) | L | Agent | 44 | Two-click bug reports with context. More valuable once there are more schools than Niels can talk to directly. |
 | 12 | [41 Uncovered lesson tracking](41-uncovered-lesson-tracking.md) | S | Agent | — (task 38 shipped) | Small read-only count next to the Stå mål med coverage view. Pairs naturally with 20 Fase 3. |
-| 13 | [50 Parent dashboard](50-parent-dashboard.md) | M | Agent | Grill first (43 done) | Stub with open questions. Reuses the Links card from 43. |
-| 14 | [46 Feedback AI triage](feedback/46-feedback-ai-triage.md) | M | Niels + agent | 45, model eval | Only pays off once 45 produces real report volume. |
-| 15 | [47 Feedback AI fix PRs](feedback/47-feedback-ai-fix-prs.md) | M | Agent | 44, 46 | Last link in the feedback chain. Auto-merge ships disabled. |
-| 16 | [21 AI schema suggestions](21-ai-suggestions-for-schema.md) | M | Agent | Shared LLM client (25 or 46) | Nice to have. Hanne builds a schema once a year, and 25 covers the switching case. |
-| 17 | [59 Microsoft and Google login](59-microsoft-google-login.md) | M | Niels + agent | Ask schools which accounts staff use | Free replacement for UNI•Login (07, parked over STIL fees). One password fewer for staff. Niels checks with schools first. |
-| 18 | [62 Move billing from Stripe to Alunta](62-stripe-to-alunta.md) | L | Niels + agent | Niels decides D1, D3, D4 (D2 settled), ADR superseding stripe-checkout-billing | Feasible and EU-hosted (investigated 2026-10-26, Alunta answers 2026-10-27). Adds invoice, EAN, Betalingsservice and MobilePay payment. Move up if a school asks to pay by invoice or EAN. |
+| 13 | [65 UI variants, round 2](65-ui-variants-round-2.md) | M | Agent | — | Design mockups only, no app code. 10 variants each of modal, delete confirmation, toast, states, buttons, form field, badges, tabs, week navigator and page header, same format as round 1. Niels picks; the picks from both rounds then become shared components, ending per-page style drift. |
+| 14 | [50 Parent dashboard](50-parent-dashboard.md) | M | Agent | Grill first (43 done) | Stub with open questions. Reuses the Links card from 43. |
+| 15 | [46 Feedback AI triage](feedback/46-feedback-ai-triage.md) | M | Niels + agent | 45, model eval | Only pays off once 45 produces real report volume. |
+| 16 | [47 Feedback AI fix PRs](feedback/47-feedback-ai-fix-prs.md) | M | Agent | 44, 46 | Last link in the feedback chain. Auto-merge ships disabled. |
+| 17 | [21 AI schema suggestions](21-ai-suggestions-for-schema.md) | M | Agent | Shared LLM client (25 or 46) | Nice to have. Hanne builds a schema once a year, and 25 covers the switching case. |
+| 18 | [59 Microsoft and Google login](59-microsoft-google-login.md) | M | Niels + agent | Ask schools which accounts staff use | Free replacement for UNI•Login (07, parked over STIL fees). One password fewer for staff. Niels checks with schools first. |
+| 19 | [62 Move billing from Stripe to Alunta](62-stripe-to-alunta.md) | L | Niels + agent | Niels decides D1, D3, D4 (D2 settled), ADR superseding stripe-checkout-billing | Feasible and EU-hosted (investigated 2026-10-26, Alunta answers 2026-10-27). Adds invoice, EAN, Betalingsservice and MobilePay payment. Move up if a school asks to pay by invoice or EAN. |
 
 ## Folkeskole track (blocked on STIL / Aula)
 
