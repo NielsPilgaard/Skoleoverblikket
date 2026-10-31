@@ -191,7 +191,9 @@ internal static class ProdCompose
         };
         service.Networks.Add(DokployNetwork);
         service.DependsOn["api"] = new ServiceDependency { Condition = "service_healthy" };
-        Traefik(service, "web", "Host(`skoleoverblikket.dk`)", 80, priority: 2);
+        // Not /api: while the API has no router, /api goes to the maintenance fallback, which marks the
+        // response with X-Maintenance so open tabs wait. Through web, nginx would answer a plain 502.
+        Traefik(service, "web", "Host(`skoleoverblikket.dk`) && !PathPrefix(`/api`)", 80, priority: 2);
     }
 
     /// <summary>

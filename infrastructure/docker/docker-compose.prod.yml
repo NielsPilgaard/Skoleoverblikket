@@ -260,7 +260,7 @@ services:
       start_period: "10s"
     labels:
       traefik.enable: "true"
-      traefik.http.routers.web.rule: "Host(`skoleoverblikket.dk`)"
+      traefik.http.routers.web.rule: "Host(`skoleoverblikket.dk`) && !PathPrefix(`/api`)"
       traefik.http.routers.web.priority: "2"
       traefik.http.routers.web.entrypoints: "websecure"
       traefik.http.routers.web.tls.certresolver: "letsencrypt"

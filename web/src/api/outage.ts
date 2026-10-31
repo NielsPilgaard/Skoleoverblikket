@@ -15,33 +15,87 @@ function setWaiting(delta: number) {
   for (const listener of listeners) listener()
 }
 
-/** Calls attempt until it returns a value, waiting with growing gaps while it returns undefined. */
-export async function retryWhileDown<T>(attempt: () => Promise<T | undefined>): Promise<T> {
+/** Waits ms, or rejects with the abort reason as soon as signal aborts. */
+function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason)
+    const onAbort = () => {
+      clearTimeout(timer)
+      reject(signal?.reason)
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
+}
+
+/**
+ * Calls attempt until it returns a value, waiting with growing gaps while it returns undefined.
+ * An abort of signal ends the wait at once, so OutageNotice doesn't linger for a request nobody wants.
+ */
+export async function retryWhileDown<T>(
+  attempt: (retry: number) => Promise<T | undefined>,
+  signal?: AbortSignal
+): Promise<T> {
   let counted = false
   try {
     for (let i = 0; ; i++) {
-      const result = await attempt()
+      const result = await attempt(i)
       if (result !== undefined) return result
       if (!counted) {
         counted = true
         setWaiting(1)
       }
-      await new Promise((resolve) =>
-        setTimeout(resolve, DELAYS_MS[Math.min(i, DELAYS_MS.length - 1)])
-      )
+      await wait(DELAYS_MS[Math.min(i, DELAYS_MS.length - 1)], signal)
     }
   } finally {
     if (counted) setWaiting(-1)
   }
 }
 
+let freshToken: (() => Promise<string | undefined>) | undefined
+
+/**
+ * Where apiFetch gets a valid access token when it resends a request after a wait. A deploy can take
+ * longer than the token's lifetime, and the API would answer 401 to the token built before the wait.
+ */
+export function setRetryTokenSource(source: () => Promise<string | undefined>) {
+  freshToken = source
+}
+
+/** The request to send on attempt retry: a copy (a Request body can only be read once), re-authorized after a wait. */
+async function prepare(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  retry: number
+): Promise<[RequestInfo | URL, RequestInit | undefined]> {
+  const request = input instanceof Request ? input.clone() : input
+  if (retry === 0 || !freshToken) return [request, init]
+
+  const bearer = (headers: Headers) => headers.get('Authorization')?.startsWith('Bearer ')
+  const initHeaders = init?.headers ? new Headers(init.headers) : undefined
+  const inRequest = request instanceof Request && bearer(request.headers)
+  if (!inRequest && !(initHeaders && bearer(initHeaders))) return [request, init]
+
+  const token = await freshToken()
+  if (!token) return [request, init]
+  if (initHeaders && bearer(initHeaders)) {
+    initHeaders.set('Authorization', `Bearer ${token}`)
+    init = { ...init, headers: initHeaders }
+  }
+  if (inRequest) request.headers.set('Authorization', `Bearer ${token}`)
+  return [request, init]
+}
+
 /** fetch for the API that resends whatever the maintenance container answered, until the API is back. */
 export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  return retryWhileDown(async () => {
-    // A Request body can only be read once, so each attempt sends a copy.
-    const res = await fetch(input instanceof Request ? input.clone() : input, init)
+  const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined)
+  return retryWhileDown(async (retry) => {
+    const res = await fetch(...(await prepare(input, init, retry)))
     return res.headers.has(MAINTENANCE_HEADER) ? undefined : res
-  })
+  }, signal ?? undefined)
 }
 
 const subscribe = (listener: () => void) => {
