@@ -124,7 +124,7 @@ jobs:
 
   # Secrets in any commit, not just the tip: deleting a secret in a later commit doesn't unpublish it.
   # Values that are safe to publish are listed in .gitleaks.toml. Takes ~10s.
-  secrets:
+  secret-scan:
     name: Secrets — gitleaks
     runs-on: ubuntu-latest
     steps:
@@ -203,7 +203,7 @@ jobs:
   ci-result:
     name: CI result
     if: always()
-    needs: [api, web, prod-compose, docs, secrets, vulnerabilities, e2e]
+    needs: [api, web, prod-compose, docs, secret-scan, vulnerabilities, e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Check jobs
