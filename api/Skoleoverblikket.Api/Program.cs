@@ -43,6 +43,7 @@ builder.AddElmahIoErrorLogging();
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
 app.UseSwaggerInDevelopment();
 app.UseHttpLogging();
 app.UseExceptionHandler();
