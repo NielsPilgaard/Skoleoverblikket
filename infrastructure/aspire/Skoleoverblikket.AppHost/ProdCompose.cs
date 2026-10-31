@@ -88,6 +88,12 @@ internal static class ProdCompose
         }
     }
 
+    /// <summary>
+    /// No bootstrap admin: master realm admins are personal users with OTP, and kc.sh bootstrap-admin
+    /// is the break-glass (docs/DEPLOYMENT.md). The master realm and its console answer 403 on the public
+    /// host and are reached through an SSH tunnel to 127.0.0.1:8180. /admin/realms/* stays public,
+    /// because the API calls the admin REST API there with its app-realm service account.
+    /// </summary>
     public static void Keycloak(Service service)
     {
         Reset(service, Var("KEYCLOAK_IMAGE", "ghcr.io/nielspilgaard/skoleoverblikket-keycloak:latest"));
@@ -95,19 +101,28 @@ internal static class ProdCompose
         service.Command = ["start", "--import-realm"];
         service.Healthcheck = HttpHealthcheck("/realms/master", retries: 18, startPeriod: "60s");
         service.Deploy = StartFirst("30s");
+        service.Ports.Add("127.0.0.1:8180:8080");
         service.Environment["KC_DB"] = "postgres";
         service.Environment["KC_DB_URL"] = Var("KEYCLOAK_DB_URL");
         service.Environment["KC_DB_USERNAME"] = Var("KEYCLOAK_DB_USERNAME");
         service.Environment["KC_DB_PASSWORD"] = Var("KEYCLOAK_DB_PASSWORD");
-        service.Environment["KC_BOOTSTRAP_ADMIN_USERNAME"] = "admin";
-        service.Environment["KC_BOOTSTRAP_ADMIN_PASSWORD"] = Var("KEYCLOAK_ADMIN_PASSWORD");
         service.Environment["KC_HOSTNAME"] = "https://auth.skoleoverblikket.dk";
+        service.Environment["KC_HOSTNAME_ADMIN"] = "http://localhost:8180";
         service.Environment["KC_PROXY_HEADERS"] = "xforwarded";
         service.Environment["KC_HTTP_ENABLED"] = "true";
         service.Environment["KC_HOSTNAME_STRICT"] = "false";
         service.Environment["KC_HOSTNAME_BACKCHANNEL_DYNAMIC"] = "true";
         service.Networks.Add(DokployNetwork);
         Traefik(service, "keycloak", "Host(`auth.skoleoverblikket.dk`)", 8080);
+        // An allowlist only Traefik's own loopback matches, so every public request gets a 403.
+        const string master = "traefik.http.routers.keycloak-master";
+        service.Labels[$"{master}.rule"] = "Host(`auth.skoleoverblikket.dk`) && (PathPrefix(`/realms/master`) || PathPrefix(`/admin/master`))";
+        service.Labels[$"{master}.priority"] = "100";
+        service.Labels[$"{master}.entrypoints"] = "websecure";
+        service.Labels[$"{master}.tls.certresolver"] = "letsencrypt";
+        service.Labels[$"{master}.middlewares"] = "keycloak-master-deny";
+        service.Labels[$"{master}.service"] = "keycloak";
+        service.Labels["traefik.http.middlewares.keycloak-master-deny.ipallowlist.sourcerange"] = "127.0.0.1/32";
     }
 
     public static void Api(Service service)

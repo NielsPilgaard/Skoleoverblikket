@@ -70,13 +70,14 @@ services:
       KC_DB_URL: "${KEYCLOAK_DB_URL}"
       KC_DB_USERNAME: "${KEYCLOAK_DB_USERNAME}"
       KC_DB_PASSWORD: "${KEYCLOAK_DB_PASSWORD}"
-      KC_BOOTSTRAP_ADMIN_USERNAME: "admin"
-      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD}"
       KC_HOSTNAME: "https://auth.skoleoverblikket.dk"
+      KC_HOSTNAME_ADMIN: "http://localhost:8180"
       KC_PROXY_HEADERS: "xforwarded"
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    ports:
+      - "127.0.0.1:8180:8080"
     networks:
       - "dokploy-network"
     restart: "unless-stopped"
@@ -102,6 +103,13 @@ services:
       traefik.http.routers.keycloak.entrypoints: "websecure"
       traefik.http.routers.keycloak.tls.certresolver: "letsencrypt"
       traefik.http.services.keycloak.loadbalancer.server.port: "8080"
+      traefik.http.routers.keycloak-master.rule: "Host(`auth.skoleoverblikket.dk`) && (PathPrefix(`/realms/master`) || PathPrefix(`/admin/master`))"
+      traefik.http.routers.keycloak-master.priority: "100"
+      traefik.http.routers.keycloak-master.entrypoints: "websecure"
+      traefik.http.routers.keycloak-master.tls.certresolver: "letsencrypt"
+      traefik.http.routers.keycloak-master.middlewares: "keycloak-master-deny"
+      traefik.http.routers.keycloak-master.service: "keycloak"
+      traefik.http.middlewares.keycloak-master-deny.ipallowlist.sourcerange: "127.0.0.1/32"
   backup-agent:
     image: "ghcr.io/nielspilgaard/skoleoverblikket-backup-agent:sha-af85693a0235c8490b1ad2736ab30a89c04bf858"
     environment:

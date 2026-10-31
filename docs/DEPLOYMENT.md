@@ -79,8 +79,25 @@ What Dokploy's Environment tab sets for `docker-compose.prod.yml`. Compose maps 
 | `Stripe_ModulePriceIds_ParentModule_Monthly`, `_Yearly`, `Stripe_ModulePriceIds_BoardModule_Monthly`, `_Yearly` | API `Stripe__ModulePriceIds__<Module>__<Interval>` | Price IDs of the paid modules. |
 | `KEYCLOAK_DB_URL` | Keycloak `KC_DB_URL` | JDBC URL of Keycloak's database, e.g. `jdbc:postgresql://<host>:5432/keycloak`. |
 | `KEYCLOAK_DB_USERNAME`, `KEYCLOAK_DB_PASSWORD` | Keycloak `KC_DB_USERNAME`, `KC_DB_PASSWORD` | Keycloak's database login. |
-| `KEYCLOAK_ADMIN_PASSWORD` | Keycloak `KC_BOOTSTRAP_ADMIN_PASSWORD` | Password of Keycloak's `admin` user. Strong and random. |
 | `API_IMAGE`, `WEB_IMAGE`, `KEYCLOAK_IMAGE` | image | Optional, default `ghcr.io/nielspilgaard/skoleoverblikket-<name>:latest`. `deploy.mjs` sets all three to the release tag on every deploy. |
+
+There is no Keycloak admin password variable: prod has no bootstrap admin (see below).
+
+### Keycloak admin console
+
+The master realm (`/realms/master`, `/admin/master`) answers 403 on `auth.skoleoverblikket.dk`. The admin REST API (`/admin/realms/*`) stays public, because the API calls it with the `skoleoverblikket-admin` service account, whose token comes from the app realm. Keycloak listens on the VPS's `127.0.0.1:8180`, and `KC_HOSTNAME_ADMIN` points the console there:
+
+```bash
+ssh -L 8180:127.0.0.1:8180 ubuntu@<vps>
+# then open http://localhost:8180/admin/master/console/
+```
+
+Master realm admins are personal users with OTP required, never a shared `admin`. Locked out (no admin left, or lost OTP): create a temporary admin from inside the container, log in through the tunnel, fix your user, then delete the temporary one.
+
+```bash
+docker exec -it $(docker ps -qf label=com.docker.compose.service=keycloak) \
+  /opt/keycloak/bin/kc.sh bootstrap-admin user
+```
 
 ---
 
