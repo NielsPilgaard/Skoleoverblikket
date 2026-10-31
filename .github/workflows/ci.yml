@@ -143,7 +143,7 @@ jobs:
           tar -xzf "gitleaks_${VERSION}_linux_x64.tar.gz" gitleaks
 
       - name: Scan git history
-        run: ./gitleaks git . --no-banner --redact
+        run: ./gitleaks git . --no-banner --redact --verbose
 
   # Known high or critical vulnerabilities in what ships: the API, the backup agent and the web app.
   # The AppHost and tests never run in production; Dependabot alerts still cover them.

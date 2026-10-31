@@ -50,20 +50,37 @@ if (-not $ClientSecret) {
     $ClientSecret = Read-Host "Secret for $ClientId" -MaskInput
 }
 
+# A stale report from an earlier run must not pass for this one if this run fails.
+Remove-Item -LiteralPath $OutFile -ErrorAction SilentlyContinue
+
 $base = $KeycloakBase.TrimEnd('/')
-$token = (Invoke-RestMethod -Method Post -Uri "$base/realms/$Realm/protocol/openid-connect/token" -Body @{
-        grant_type    = "client_credentials"
-        client_id     = $ClientId
-        client_secret = $ClientSecret
-    }).access_token
-$headers = @{ Authorization = "Bearer $token" }
+$token = $null
+$tokenExpires = [DateTime]::MinValue
+
+# Access tokens live 5 minutes and a large realm takes longer to scan, so renew one 30 s before expiry.
+function Get-Headers {
+    if ([DateTime]::UtcNow -ge $script:tokenExpires) {
+        $response = Invoke-RestMethod -Method Post -Uri "$base/realms/$Realm/protocol/openid-connect/token" -Body @{
+            grant_type    = "client_credentials"
+            client_id     = $ClientId
+            client_secret = $ClientSecret
+        }
+        $script:token = $response.access_token
+        $script:tokenExpires = [DateTime]::UtcNow.AddSeconds([int]$response.expires_in - 30)
+    }
+    @{ Authorization = "Bearer $script:token" }
+}
+
+function Get-Admin([string]$path) {
+    Invoke-RestMethod -Headers (Get-Headers) -Uri "$base/admin/realms/$Realm/$path"
+}
 
 function Get-Paged([string]$path) {
     $pageSize = 100
     $all = [System.Collections.Generic.List[object]]::new()
     for ($first = 0; ; $first += $pageSize) {
         $sep = if ($path.Contains('?')) { '&' } else { '?' }
-        $page = @(Invoke-RestMethod -Headers $headers -Uri "$base/admin/realms/$Realm/$path${sep}first=$first&max=$pageSize")
+        $page = @(Get-Admin "$path${sep}first=$first&max=$pageSize")
         $all.AddRange($page)
         if ($page.Count -lt $pageSize) { return $all }
     }
@@ -79,8 +96,8 @@ function Sql([object]$value) {
     return "'" + ([string]$value -replace "'", "''") + "'"
 }
 
-$users = Get-Paged "users?briefRepresentation=false" |
-    Where-Object { -not $_.username.StartsWith("service-account-") }
+$users = @(Get-Paged "users?briefRepresentation=false" |
+        Where-Object { -not $_.username.StartsWith("service-account-") })
 
 # Effective roles, not direct mappings: admin or superadmin can also come through a group or a
 # composite role. The user endpoint should already include group roles; the union with each group's
@@ -88,21 +105,30 @@ $users = Get-Paged "users?briefRepresentation=false" |
 $audited = "admin", "superadmin"
 $groupRoles = @{}
 $realmRoles = @{}
+$deleted = [System.Collections.Generic.HashSet[string]]::new()
 foreach ($u in $users) {
-    $names = [System.Collections.Generic.HashSet[string]]::new()
-    foreach ($role in @(Invoke-RestMethod -Headers $headers -Uri "$base/admin/realms/$Realm/users/$($u.id)/role-mappings/realm/composite")) {
-        [void]$names.Add($role.name)
+    try {
+        $mapped = @(Get-Admin "users/$($u.id)/role-mappings/realm/composite")
+        $groups = @(Get-Paged "users/$($u.id)/groups")
+    } catch [Microsoft.PowerShell.Commands.HttpResponseException] {
+        # 404: the user was deleted after the listing.
+        if ([int]$_.Exception.Response.StatusCode -ne 404) { throw }
+        [void]$deleted.Add($u.id)
+        continue
     }
-    foreach ($group in Get-Paged "users/$($u.id)/groups") {
+    $names = [System.Collections.Generic.HashSet[string]]::new()
+    foreach ($role in $mapped) { [void]$names.Add($role.name) }
+    foreach ($group in $groups) {
         if (-not $groupRoles.ContainsKey($group.id)) {
-            $groupRoles[$group.id] = @(Invoke-RestMethod -Headers $headers -Uri "$base/admin/realms/$Realm/groups/$($group.id)/role-mappings/realm/composite" |
-                    ForEach-Object { $_.name })
+            $groupRoles[$group.id] = @(@(Get-Admin "groups/$($group.id)/role-mappings/realm/composite") | ForEach-Object { $_.name })
         }
         foreach ($name in $groupRoles[$group.id]) { [void]$names.Add($name) }
     }
     $held = @($audited | Where-Object { $names.Contains($_) })
     if ($held.Count -gt 0) { $realmRoles[$u.id] = $held }
 }
+# Users deleted during the run are left out, as if the listing had come a moment later.
+$users = @($users | Where-Object { -not $deleted.Contains($_.id) })
 
 $values = foreach ($u in $users) {
     $attributes = Get-Prop $u 'attributes'

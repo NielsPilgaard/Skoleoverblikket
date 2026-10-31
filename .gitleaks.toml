@@ -30,3 +30,9 @@ description = "Throwaway credentials in the e2e stack"
 regexes = [
 	'''^(staging-password|staging-admin-password|keycloak-password|skoleoverblikket-admin-secret|stub-secret|stub-signing-key|minioadmin|test)$''',
 ]
+
+[[allowlists]]
+# Not secrets: Keycloak URL tails in docker-compose.staging.yml, which the generic rule reads as values of
+# "key..." settings (Keycloak__Authority: http://keycloak:8080/..., KC_DB_URL: ...keycloak-db:5432/keycloak).
+description = "Keycloak URLs mistaken for keys"
+regexes = ['''^(8080/realms/(Skoleoverblikket|Skoleplanen)|5432/keycloak)$''']
