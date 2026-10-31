@@ -52,8 +52,8 @@ export const SUB_PROCESSORS: SubProcessor[] = [
     name: 'Scaleway SAS',
     address: "8 rue de la Ville l'Evêque, 75008 Paris, Frankrig",
     purpose:
-      'Afsendelse af e-mails (invitationer, notifikationer, beskeder) og AI-funktioner (forslag i ugeplanen, skemaimport, fejlrapporter og tale-til-tekst)',
-    data: 'Ved e-mails: modtagerens navn og e-mailadresse samt e-mailens indhold. Ved AI: den tekst, fil eller lydoptagelse funktionen bruger, så vidt muligt uden navne på elever og medarbejdere. Scaleway gemmer ikke indholdet efter svaret',
+      'Afsendelse af e-mails (invitationer, notifikationer, beskeder), AI-funktioner (forslag i ugeplanen, skemaimport, fejlrapporter og tale-til-tekst) og en ekstra kopi af sikkerhedskopierne',
+    data: 'Ved e-mails: modtagerens navn og e-mailadresse samt e-mailens indhold. Ved AI: den tekst, fil eller lydoptagelse funktionen bruger, så vidt muligt uden navne på elever og medarbejdere. Scaleway gemmer ikke indholdet efter svaret. Ved sikkerhedskopier: alle data i Skoleoverblikket, krypteret før de sendes, så Scaleway ikke kan læse dem',
     location: 'EU (Frankrig)',
   },
   {

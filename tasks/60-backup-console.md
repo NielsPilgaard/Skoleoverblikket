@@ -27,7 +27,7 @@ Left, all Niels (accounts and servers):
 - OVH: the pgBackRest repo bucket, the `skoleoverblikket-ops` bucket with an agent key (RW) and an API key (read-only, test it with `rclone touch`), the 400-day lifecycle on `history/`.
 - elmah.io (or a ping-URL service, `Heartbeats_Provider=Ping`): create the four heartbeats and a heartbeats-only key.
 - Ship with 54: follow [Switching to the backup agent, step by step](54-move-vps.md#switching-to-the-backup-agent-step-by-step).
-- The full restore through the wizard on a real server (staging here is the CI runner, so there's no persistent staging box; do it on the new VPS during the 54 rehearsal). Log the measured time in the console.
+- The full restore through the wizard on a real server (staging here is the CI runner, so there's no persistent staging box; do it on the prod VPS during the 54 rehearsal, into the spare volume). Log the measured time in the console.
 
 Where the build differs from the spec above:
 
@@ -154,5 +154,5 @@ Restore to the spare volume (Phase C), then run the task-51 export filtered on o
 
 ## Open questions
 
-- **Agent memory**: drill restore + temporary Postgres + .NET in one container. Size the limit from the first drill (54 picks the VPS size).
+- **Agent memory**: drill restore + temporary Postgres + .NET in one container. Size the limit from the first drill (54 sets `BACKUP_AGENT_MEMORY` from the RAM left on the current VPS).
 - **Staging**: same agent with archiving off and no ops bucket, or a staging ops bucket? Leaning: a staging bucket, so the wizard can be tested end to end on staging.

@@ -17,7 +17,7 @@ status: 'Ready'
 
 - Build one HTML showcase page with **10 variants for each of the 10 components below** (100 variants), in the same format as round 1, and publish it as a private artifact.
 - Mark one recommended variant per component and say why, tied to the personas ([PERSONAS.md](../docs/PERSONAS.md)).
-- No app code in this task. The chosen variants become shared components under `web/src/components/ui/` in a follow-up task, together with the round 1 picks.
+- No app code in this task. The chosen variants become shared components under `web/src/components/ui/` in their own build task, like the round 1 picks did in [task 67](67-shared-ui-components-round-1.md).
 - Done when: the page is published, every component has 10 working variants with "Bedst til" and pros/cons, and the reply lists the recommended pick per component.
 
 ## Why
@@ -56,7 +56,7 @@ For each one, explore genuinely different approaches, not ten color tweaks. Idea
 | 6 | **Form field** | Label, help text, error text, required/optional marking, character count, inline validation timing, grouped fields, read-only vs. disabled. Ties to Hanne's "forms with too many fields" fear. |
 | 7 | **Status badges** | Aktiv, Inviteret, Vikar, Ændret, Syg, Ferie, Udløbet: pill vs. dot+text vs. icon+text, sizes, how many colors, a legend, how they read for color-blind users. |
 | 8 | **Tabs / segmented control** | Underline tabs, pill segments, scrollable tabs on phone, tabs with counts, tabs that collapse into a select on phone, tabs vs. a sidebar sub-menu. |
-| 9 | **Week navigator** | Round 1 V10 is the baseline. Variants for schema, ugeplan, fravær and SFO: dates under the week number, "I dag"/"Denne uge" jump, week picker on tap, day/week switch, swipe between weeks, showing holidays. |
+| 9 | **Week navigator** | Round 1 V10 is the baseline (task 67 builds it as `WeekStepper`). Variants for schema, ugeplan, fravær and SFO: dates under the week number, "I dag"/"Denne uge" jump, week picker on tap, day/week switch, swipe between weeks, showing holidays. |
 | 10 | **Page header** | Title, primary action, back link, breadcrumb, the week navigator slot, and how it collapses on phone (sticky, actions into a bottom bar, overflow menu). Must hold Hanne's "one obvious button, not a menu" rule. |
 
 ## Steps

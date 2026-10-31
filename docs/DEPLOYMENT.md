@@ -115,7 +115,7 @@ It reads the names from `docker-compose.prod.yml` and only creates the ones that
 
 | Variable (Dokploy env) | Description |
 | --- | --- |
-| `COMPOSE_PROFILES` | `selfhosted-db` starts `postgres` and `backup-agent`. Set only on the new VPS, and delete it once the profile is removed from `ProdCompose.cs` ([task 54 steps](../tasks/54-move-vps.md#switching-to-the-backup-agent-step-by-step)). |
+| `COMPOSE_PROFILES` | `selfhosted-db` starts `postgres` and `backup-agent`. Set before the cutover (the app keeps using the Dokploy DBs until `DATABASE_URL` and `KEYCLOAK_DB_URL` move to host `postgres`), and delete it once the profile is removed from `ProdCompose.cs` ([task 54 steps](../tasks/54-move-vps.md#switching-to-the-backup-agent-step-by-step)). |
 | (no image variables) | The Postgres and agent image tags are pinned in `ProdCompose.cs` (`PostgresTag`, `BackupAgentTag`), not in Dokploy, so a normal deploy never restarts the database and an upgrade is a PR. |
 | `POSTGRES_PASSWORD` | Superuser password. Only used by the init script and by hand. |
 | `APP_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD` | Passwords of the `skoleoverblikket` and `keycloak` roles, created on first start. `DATABASE_URL` and `KEYCLOAK_DB_PASSWORD` for Keycloak use the same values, host `postgres`. |

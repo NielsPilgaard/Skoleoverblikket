@@ -126,7 +126,7 @@ Immediately for `bug:complex` and `bug:unclear` (summary + link). `how-to` draft
 
 - **Model eval before go-live**: run ~20 hand-written reports through GLM 5.3 Flash (if listed), `glm-5.3` and `deepseek-v4.1-flash`. Compare category accuracy, valid JSON on the first try, Danish quality of `summaryDa`/`replyDraftDa`, and cost per report. Does the screenshot improve accuracy enough to justify a vision model? Pick the cheapest model that is good enough and set `Llm__Models__FeedbackTriage`.
 - Scaleway rate limits on Serverless ([rate limits](https://www.scaleway.com/en/docs/generative-apis/reference-content/rate-limits/)) are per organization. The one-at-a-time job stays well under them; the budget cap protects against loops either way.
-- Send the 30-day sub-processor notice (Scaleway's purpose grows to AI processing) before go-live ([task 48](../../tasks/completed/48-databehandleraftale.md)).
+- Scaleway's AI purpose is already on the sub-processor list (added 2026-10-31, [task 48](../../tasks/completed/48-databehandleraftale.md)); no notice needed before go-live.
 
 ## Out of scope
 
