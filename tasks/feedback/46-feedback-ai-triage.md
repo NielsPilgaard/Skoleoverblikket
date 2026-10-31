@@ -1,9 +1,9 @@
 ---
-title: 'Feedback AI triage — Alexandra Instituttet in the API'
+title: 'Feedback AI triage — Scaleway Generative APIs in the API'
 purpose: 'Categorise and analyse every feedback report automatically with an EU-hosted LLM, so the owner only spends time on reports that need a human and trivial bugs get a fix spec.'
 description: >-
-  After a report is stored, the API makes one structured call to Alexandra
-  Instituttet (Danish-hosted, OpenAI-compatible) with the masked/redacted report
+  After a report is stored, the API makes one structured call to Scaleway
+  Generative APIs (Paris, OpenAI-compatible) with the masked/redacted report
   plus the relevant source files fetched from the public repo at the deployed
   sha. Output: category, analysis, optional Danish reply draft, duplicate
   candidate, and for trivial bugs a PII-free fix spec. Results appear in the
@@ -16,19 +16,33 @@ status: 'Proposed'
 
 ## TL;DR
 
-A background job in the API sends each new report (redacted text, DOM outline, action log, context — **never** the raw copy) plus the route's source files to Alexandra Instituttet in **one** structured-output call. It gets back a category (`bug:trivial`, `bug:complex`, `bug:unclear`, `feature-request`, `how-to`, `school-matter`, `spam`), an analysis for the owner, an optional reply draft for the reporter, a duplicate candidate, and — for `bug:trivial` only — a **fix spec** that task 47 dispatches to GitHub. No agent, no code execution, no repo checkout. Data boundary: [ai-data-boundary](../../docs/adr/ai-data-boundary.md).
+A background job in the API sends each new report (redacted text, DOM outline, action log, context — **never** the raw copy) plus the route's source files to Scaleway Generative APIs in **one** structured-output call. It gets back a category (`bug:trivial`, `bug:complex`, `bug:unclear`, `feature-request`, `how-to`, `school-matter`, `spam`), an analysis for the owner, an optional reply draft for the reporter, a duplicate candidate, and — for `bug:trivial` only — a **fix spec** that task 47 dispatches to GitHub. No agent, no code execution, no repo checkout. Data boundary: [ai-data-boundary](../../docs/adr/ai-data-boundary.md).
 
 ## Context
 
-Builds on [task 45](45-feedback-capture.md). Alexandra Instituttet was already chosen as the LLM provider for [task 21](../21-ai-suggestions-for-schema.md) (Danish-hosted, OpenAI-compatible). No LLM client exists in the API yet — this task builds the shared one.
+Builds on [task 45](45-feedback-capture.md). Scaleway Generative APIs is the LLM provider for every AI feature ([ai-data-boundary](../../docs/adr/ai-data-boundary.md); switched from Alexandra Instituttet 2026-10-31 on price). No LLM client exists in the API yet. Whichever of this task and [task 25](../25-schema-import.md) lands first builds the shared one.
 
-**Provider facts (checked 2026-10-01):** Alexandra's platform currently lists **GLM-5.3-Flash** (MIT-licensed open weights, 1M context). Not the full GLM-5.3, which is text-only. Alexandra's FAQ says the current model accepts image input, and GLM-5.3-Flash is natively multimodal. Infrastructure is in Denmark (hardware leased from ScanNet / team.blue Denmark, ISO 27001). Prompts and outputs aren't stored beyond inference, and a DPA is available. Per-token pricing isn't published ("Pricing unavailable"), so contact Mie Hvas / Rasmus Larsen.
+**Provider facts (checked 2026-10-31):**
 
-Triage sends the **masked screenshot** together with the masked **DOM outline**, action log and text. Confirm with one test call that image input works through their OpenAI-compatible API. If it doesn't, triage runs on outline + log + text only, and the design is unaffected.
+- Endpoint `https://api.scaleway.ai/v1`, OpenAI-compatible, `Authorization: Bearer <IAM secret key>`. Region Paris (fr-par).
+- Zero data retention by default: prompts and outputs aren't stored or used for training. Exception: a request that triggers a server error may be stored for up to two weeks to debug it ([data privacy](https://www.scaleway.com/en/docs/generative-apis/reference-content/data-privacy/)).
+- Scaleway is already a sub-processor (email) with a DPA, so no new DPA to sign.
+- Candidate models on Serverless ([supported models](https://www.scaleway.com/en/docs/generative-apis/reference-content/supported-models/)), all with structured output:
+
+| Model | Input | Max output | Note |
+|---|---|---|---|
+| `glm-5.3` | Text | 16k | Strongest open model they host. No images |
+| GLM 5.3 Flash | ? | ? | Not in Scaleway's model docs on 2026-10-31. Check the console; use it where it is listed |
+| `deepseek-v4.1-flash` | Text + image | 32k | Cheap, and the only candidate that takes the screenshot |
+
+- All three list English and Chinese only. Danish output (`summaryDa`, `replyDraftDa`) must be tested.
+- Prices: [pricing page](https://www.scaleway.com/en/pricing/model-as-a-service/). Prefer the Flash models wherever the eval shows they're good enough.
+
+Triage sends the **masked screenshot** together with the masked **DOM outline**, action log and text when the chosen model takes images. With a text-only model, triage runs on outline + log + text only, and the design is unaffected.
 
 ## Decisions (confirmed)
 
-- **D1 — Provider**: Alexandra Instituttet for triage (personal data stays in the EU). Claude is only used in task 47, on PII-free specs.
+- **D1 — Provider**: Scaleway Generative APIs for triage (personal data stays in the EU). The model is config, chosen by the eval below. Claude is only used in task 47, on PII-free specs.
 - **D2 — Single-shot, not agentic**: the API builds the context itself; one call per report (+1 retry on invalid JSON).
 - **D3 — Actions per category**:
 
@@ -50,9 +64,10 @@ Triage sends the **masked screenshot** together with the masked **DOM outline**,
 
 ### 1. Shared LLM client
 
-- `ILlmClient` over the `OpenAI` NuGet with custom base URL. Config: `Llm__BaseUrl`, `Llm__ApiKey`, `Llm__Model`, `Llm__MonthlyBudgetEur`, `Llm__PricePerMInputTokens`, `Llm__PricePerMOutputTokens`. Add to [DEPLOYMENT.md](../../docs/DEPLOYMENT.md) as optional (feature disabled when unset).
-- `LlmUsage` table: per call `Feature` (`feedback-triage`, later `schema-suggest`), tokens in/out, estimated cost, timestamp. Budget check sums the current month.
-- Task 21 must reuse this client — update its "Alexandra API client" section to point here when this lands.
+- `ILlmClient` over the `OpenAI` NuGet with custom base URL. Config: `Llm__BaseUrl` (`https://api.scaleway.ai/v1`), `Llm__ApiKey`, `Llm__Model` (default), `Llm__Models__<Feature>` (optional per-feature override, e.g. `Llm__Models__FeedbackTriage=deepseek-v4.1-flash`), `Llm__MonthlyBudgetEur`, `Llm__Prices__<model>__InputPerM` / `__OutputPerM` (EUR, from Scaleway's pricing page). Add to [DEPLOYMENT.md](../../docs/DEPLOYMENT.md) as optional (feature disabled when unset).
+- No provider-specific code: switching model or provider is a config change.
+- `LlmUsage` table: per call `Feature` (`feedback-triage`, later `schema-suggest`, `schema-import`), `Model`, tokens in/out, estimated cost, timestamp. Budget check sums the current month.
+- Tasks 21 and 25 reuse this client — update their "LLM client" sections to point here when this lands.
 
 ### 2. Context builder
 
@@ -109,9 +124,9 @@ Immediately for `bug:complex` and `bug:unclear` (summary + link). `how-to` draft
 
 ## Open questions
 
-- Alexandra's pricing and rate limits. The price list isn't public, so ask them, then set `Llm__PricePer…`. The budget cap protects against loops either way.
-- Does GLM-5.3-Flash on Alexandra reliably produce structured JSON output (`response_format: json_schema`) and accept images? Test with ~20 hand-written reports before going live.
-- Sign Alexandra's DPA before go-live (needed for task 48).
+- **Model eval before go-live**: run ~20 hand-written reports through GLM 5.3 Flash (if listed), `glm-5.3` and `deepseek-v4.1-flash`. Compare category accuracy, valid JSON on the first try, Danish quality of `summaryDa`/`replyDraftDa`, and cost per report. Does the screenshot improve accuracy enough to justify a vision model? Pick the cheapest model that is good enough and set `Llm__Models__FeedbackTriage`.
+- Scaleway rate limits on Serverless ([rate limits](https://www.scaleway.com/en/docs/generative-apis/reference-content/rate-limits/)) are per organization. The one-at-a-time job stays well under them; the budget cap protects against loops either way.
+- Send the 30-day sub-processor notice (Scaleway's purpose grows to AI processing) before go-live ([task 48](../../tasks/completed/48-databehandleraftale.md)).
 
 ## Out of scope
 

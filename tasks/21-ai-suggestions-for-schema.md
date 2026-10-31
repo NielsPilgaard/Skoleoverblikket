@@ -2,14 +2,14 @@
 
 Generate a suggested weekly schema for a class using an LLM. User reviews the suggestion, tweaks it, then accepts. No auto-apply.
 
-**LLM provider**: [Alexandra Institut AI Platform](https://platform.alexandra.dk/) — hosted in Denmark, operated by Alexandra Instituttet. OpenAI-compatible REST API, consumed via `OpenAI` NuGet with custom base URL. No custom SDK.
+**LLM provider**: [Scaleway Generative APIs](https://www.scaleway.com/en/generative-apis/) — hosted in Paris, zero data retention by default ([ai-data-boundary](../docs/adr/ai-data-boundary.md)). OpenAI-compatible REST API, consumed via the shared LLM client from [task 46](feedback/46-feedback-ai-triage.md) / [25](25-schema-import.md). No custom SDK. Model: GLM 5.3 Flash where Scaleway lists it, otherwise `glm-5.3`; `deepseek-v4.1-flash` is the alternative. Pick after testing (open question 1).
 
 ### Disclosure requirements
 
 User must see a clear disclaimer **before** the first request is sent and **inline** on the suggestion result. Non-negotiable — AI is involved and mistakes will happen.
 
 **Before sending** (modal or inline warning on button click):
-> Forslaget genereres af en AI-model drevet af [Alexandra Instituttet](https://alexandra.dk). Skoledata (klassenavn, fag, lærere og lektionstider) sendes til en server hostet i Danmark. AI kan lave fejl — gennemgå altid forslaget før du anvender det.
+> Forslaget genereres af en AI-model hos [Scaleway](https://www.scaleway.com) i Frankrig (EU). Skoledata (klassenavn, fag, lærere og lektionstider) sendes til en server i EU. Scaleway gemmer dem ikke, medmindre der opstår en fejl hos dem – så kan de gemmes i op til to uger. AI kan lave fejl — gennemgå altid forslaget før du anvender det.
 
 **On the suggestion result** (persistent banner above ghost slots):
 > Dette er et AI-genereret forslag. Kontrollér det grundigt — AI kan placere forkerte lærere, forkerte fag eller overtræde UVM-timetallet.
@@ -25,7 +25,7 @@ User must see a clear disclaimer **before** the first request is sent and **inli
 
 1. User opens schema builder for a class
 2. Clicks "Forslag fra AI" button
-3. API fetches tenant data, builds prompt, calls Alexandra platform
+3. API fetches tenant data, builds prompt, calls the LLM
 4. Response renders as ghost overlay on schema grid — suggested slots shown in muted style
 5. User accepts/rejects individual slots or clicks "Anvend alle"
 6. Accepted slots upsert via existing `PUT .../slots` endpoint
@@ -75,7 +75,7 @@ Steps:
    - Active schemas for other classes (to detect existing teacher commitments at same times)
 2. Load UVM timetal for class grade via `UvmTimetableService`
 3. Build structured prompt (see below)
-4. Call Alexandra platform API
+4. Call the LLM
 5. Deserialize + **validate all IDs** — reject any ID not present in loaded context AND not owned by the current tenant. Since all context is loaded per-tenant via `ITenantContext`, both presence and tenant ownership are verified together — an ID absent from the loaded context set is implicitly cross-tenant or fabricated.
 6. Run conflict detection on returned slots. If conflicts exist, retry with conflicts appended to prompt:
    ```
@@ -132,12 +132,12 @@ internal sealed record SchemaSuggestionResult(List<SlotSuggestion> Slots);
 
 No hand-written JSON schema. `GetResponseAsync<SchemaSuggestionResult>` derives schema from the records via `System.Text.Json` reflection and sets `ResponseFormat` automatically.
 
-> **Note**: `useJsonSchemaResponseFormat` defaults to `true`. If Alexandra platform rejects strict schema, pass `useJsonSchemaResponseFormat: false` to fall back to `json_object` mode — ID validation server-side catches malformed output either way.
+> **Note**: `useJsonSchemaResponseFormat` defaults to `true`. Scaleway supports structured output for all candidate models. If a model still rejects the strict schema, pass `useJsonSchemaResponseFormat: false` to fall back to `json_object` mode — ID validation server-side catches malformed output either way.
 
-### Alexandra API client
+### LLM client
 
 NuGets:
-- `OpenAI` — connects to Alexandra platform via custom base URL
+- `OpenAI` — connects to Scaleway (`https://api.scaleway.ai/v1`) via custom base URL
 - `Microsoft.Extensions.AI` — `IChatClient` abstraction + `GetResponseAsync<T>` structured output
 - `Microsoft.Extensions.AI.OpenAI` — `.AsIChatClient()` adapter
 
@@ -151,7 +151,7 @@ Register `IChatClient` with per-tenant rate-limit pipeline:
 // Register partitioned rate limiter as singleton
 builder.Services.AddSingleton<IPartitionedRateLimiter<Guid>>(sp =>
 {
-    var opts = sp.GetRequiredService<IOptions<AlexandraAiOptions>>().Value;
+    var opts = sp.GetRequiredService<IOptions<LlmOptions>>().Value;
     return PartitionedRateLimiter.Create<Guid, Guid>(tenantId =>
         RateLimitPartition.GetSlidingWindowLimiter(tenantId, _ => new SlidingWindowRateLimiterOptions
         {
@@ -165,13 +165,13 @@ builder.Services.AddSingleton<IPartitionedRateLimiter<Guid>>(sp =>
 
 builder.Services.AddChatClient(sp =>
 {
-    var opts = sp.GetRequiredService<IOptions<AlexandraAiOptions>>().Value;
+    var opts = sp.GetRequiredService<IOptions<LlmOptions>>().Value;
     var openAIClient = new OpenAIClient(
         new ApiKeyCredential(opts.ApiKey),
         new OpenAIClientOptions { Endpoint = new Uri(opts.BaseUrl) });
 
     return openAIClient
-        .GetChatClient(opts.Model)
+        .GetChatClient(opts.Models.GetValueOrDefault("SchemaSuggest", opts.Model))
         .AsIChatClient();
 });
 ```
@@ -190,12 +190,13 @@ var result = await _chatClient.GetResponseAsync<SchemaSuggestionResult>(messages
 Options class:
 
 ```csharp
-public sealed class AlexandraAiOptions
+public sealed class LlmOptions
 {
-    public const string SectionName = "AlexandraAi";
+    public const string SectionName = "Llm";
     public required string BaseUrl { get; init; }
     public required string ApiKey { get; init; }
     public required string Model { get; init; }
+    public Dictionary<string, string> Models { get; init; } = [];
 }
 ```
 
@@ -203,33 +204,30 @@ Registration:
 
 ```csharp
 builder.Services
-    .AddOptions<AlexandraAiOptions>()
-    .BindConfiguration(AlexandraAiOptions.SectionName) // "AlexandraAi"
+    .AddOptions<LlmOptions>()
+    .BindConfiguration(LlmOptions.SectionName) // "Llm"
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
 builder.Services.AddSingleton(sp =>
 {
-    var opts = sp.GetRequiredService<IOptions<AlexandraAiOptions>>().Value;
+    var opts = sp.GetRequiredService<IOptions<LlmOptions>>().Value;
     return new OpenAIClient(
         new ApiKeyCredential(opts.ApiKey),
         new OpenAIClientOptions { Endpoint = new Uri(opts.BaseUrl) });
 });
 ```
 
-`appsettings.json` (values in user secrets / env):
+`appsettings.json` (values in user secrets / env). Same `Llm` section as [task 46](feedback/46-feedback-ai-triage.md); this feature's model goes in `Llm__Models__SchemaSuggest`:
 ```json
-"AlexandraAi": {
-  "BaseUrl": "",
+"Llm": {
+  "BaseUrl": "https://api.scaleway.ai/v1",
   "ApiKey": "",
   "Model": ""
 }
 ```
 
-> **TODO**: Log into platform.alexandra.dk and confirm:
-> - Exact base URL
-> - Available model name(s)
-> - Auth header format (standard `Authorization: Bearer` expected)
+Auth is `Authorization: Bearer <Scaleway IAM secret key>`, which the `OpenAI` client sends by default.
 
 ---
 
@@ -260,15 +258,15 @@ We pay the API key — protect cost. One suggestion request per tenant per ~1 mi
 - `QueueLimit = 0` → reject immediately, no queuing
 - `RateLimitRejectedException` caught in service → 429 `ProblemDetails`
 - Frontend shows toast: "Vent et øjeblik før du genererer et nyt forslag."
-- `RateLimitSeconds` in `AlexandraAiOptions` (default `60`) — tunable without redeploy
+- `RateLimitSeconds` in `LlmOptions` (default `60`) — tunable without redeploy
 
 ```csharp
 public int RateLimitSeconds { get; init; } = 60;
 ```
 
 ```json
-"AlexandraAi": {
-  "BaseUrl": "",
+"Llm": {
+  "BaseUrl": "https://api.scaleway.ai/v1",
   "ApiKey": "",
   "Model": "",
   "RateLimitSeconds": 60
@@ -310,11 +308,11 @@ This feature must be surfaced during onboarding, not just discovered later insid
 
 ## Open questions
 
-1. Alexandra platform: exact base URL, model name, auth format — check after login
+1. Model: run ~10 real classes through GLM 5.3 Flash (if listed), `glm-5.3` and `deepseek-v4.1-flash`. Compare valid IDs, conflicts after the retry loop, UVM fit and cost per suggestion. Pick the cheapest that is good enough. `glm-5.3` caps output at 16k tokens on Serverless, plenty for one class.
 2. ~~Does class entity have `GradeLevel`?~~ Confirmed: `Class.GradeLevel` is `int?` (0=børnehaveklasse, 1–10). Handle `null` as follows:
    - Omit UVM timetal block from the prompt entirely
    - Add `"UVM timetal ikke tilgængeligt — klassen mangler klassetrin"` to `SchemaSuggestionResponse.warnings`
    - Show warning inline above ghost slots in the UI (same amber banner, different text)
    - Do **not** reject the request — proceed with reduced guidance; suggestions are still useful for teacher/room assignment even without UVM hours
 3. Token limits: 20 staff + 15 courses + 30 slots ≈ small — no chunking needed
-4. If Alexandra platform enforces its own rate limits, add `Polly` retry on 429 from upstream (separate from our per-tenant gate)
+4. Scaleway enforces per-organization rate limits on Serverless: add `Polly` retry on 429 from upstream (separate from our per-tenant gate)

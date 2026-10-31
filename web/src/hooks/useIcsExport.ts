@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import keycloak from '../auth/keycloak'
+import keycloak, { refreshToken } from '../auth/keycloak'
+import { apiFetch } from '../api/outage'
 import { actingAsHeaders } from '../auth/actingAs'
 
 export function useIcsExport() {
@@ -20,9 +21,9 @@ export function useIcsExport() {
     setExportDone(false)
     setExportError(false)
     try {
-      await keycloak.updateToken(30)
+      await refreshToken(30)
       // Raw fetch intentional: SDK client cannot return Blob responses (typed as unknown).
-      const res = await fetch('/api/v1/calendar/export.ics', {
+      const res = await apiFetch('/api/v1/calendar/export.ics', {
         headers: { Authorization: `Bearer ${keycloak.token}`, ...actingAsHeaders() },
       })
       if (!res.ok) throw new Error('Export fejlede')

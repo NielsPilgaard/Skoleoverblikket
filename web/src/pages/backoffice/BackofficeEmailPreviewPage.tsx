@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import keycloak from '../../auth/keycloak'
+import keycloak, { refreshToken } from '../../auth/keycloak'
+import { apiFetch } from '../../api/outage'
 
 type EmailType =
   | 'staff-invitation'
@@ -25,12 +26,10 @@ function initialType(): EmailType {
 }
 
 async function fetchEmailPreview(type: EmailType, params: Record<string, string>): Promise<string> {
-  await keycloak.updateToken(30).catch(() => {
-    keycloak.login()
-  })
+  await refreshToken(30)
   const qs = new URLSearchParams(params).toString()
   // Raw fetch intentional: endpoint returns text/html, not JSON; SDK client cannot handle non-JSON responses.
-  const res = await fetch(`/api/v1/admin/email-preview/${type}?${qs}`, {
+  const res = await apiFetch(`/api/v1/admin/email-preview/${type}?${qs}`, {
     headers: { Authorization: `Bearer ${keycloak.token}` },
   })
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)

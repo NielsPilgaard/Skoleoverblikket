@@ -9,7 +9,7 @@ on:
   workflow_call:
     inputs:
       image_tag:
-        description: "Tag of the published API and Keycloak images (e.g. sha-<commit>). Empty: build them from the checked-out code."
+        description: "Tag of the published API, Keycloak and web images (e.g. sha-<commit>). Empty: build them from the checked-out code."
         type: string
         default: ""
       ref:
@@ -31,14 +31,14 @@ jobs:
     env:
       API_IMAGE: ${{ inputs.image_tag && format('ghcr.io/nielspilgaard/skoleoverblikket-api:{0}', inputs.image_tag) || 'skoleoverblikket-api-e2e:latest' }}
       KEYCLOAK_IMAGE: ${{ inputs.image_tag && format('ghcr.io/nielspilgaard/skoleoverblikket-keycloak:{0}', inputs.image_tag) || 'skoleoverblikket-keycloak-e2e:latest' }}
-      WEB_IMAGE: skoleoverblikket-web-e2e:latest
+      # The published web image has the production Keycloak URL baked in. The staging compose
+      # file overrides it at container start (KEYCLOAK_URL, web/runtime-config.sh).
+      WEB_IMAGE: ${{ inputs.image_tag && format('ghcr.io/nielspilgaard/skoleoverblikket-web:{0}', inputs.image_tag) || 'skoleoverblikket-web-e2e:latest' }}
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref }}
           persist-credentials: false
-
-      - uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
         if: inputs.image_tag != ''
@@ -48,49 +48,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull published API and Keycloak images
+      - name: Pull published images
         if: inputs.image_tag != ''
         timeout-minutes: 15
-        run: docker compose pull api keycloak
+        run: docker compose pull api keycloak web
 
-      - name: Build API image
+      - uses: docker/setup-buildx-action@v3
+        if: inputs.image_tag == ''
+
+      # PRs only: one bake builds all three images in parallel. Targets, tags and caches are in
+      # the bake file. `source: .` builds the checked-out ref, not bake's default Git context.
+      - name: Build images
         if: inputs.image_tag == ''
         timeout-minutes: 10
-        uses: docker/build-push-action@v6
+        uses: docker/bake-action@v6
         with:
-          context: .
-          file: api/Dockerfile
+          source: .
+          files: infrastructure/docker/docker-bake.e2e.hcl
           load: true
-          tags: ${{ env.API_IMAGE }}
-          cache-from: type=gha,scope=e2e-api
-          cache-to: type=gha,scope=e2e-api,mode=max,ignore-error=true
-
-      - name: Build Keycloak image
-        if: inputs.image_tag == ''
-        timeout-minutes: 10
-        uses: docker/build-push-action@v6
-        with:
-          context: infrastructure/keycloak
-          file: infrastructure/keycloak/Dockerfile
-          load: true
-          tags: ${{ env.KEYCLOAK_IMAGE }}
-          cache-from: type=gha,scope=e2e-keycloak
-          cache-to: type=gha,scope=e2e-keycloak,mode=max,ignore-error=true
-
-      # The published web image has the production Keycloak URL baked in, so the e2e web
-      # image is always built here with http://localhost:8080.
-      - name: Build web image with local Keycloak URL
-        timeout-minutes: 10
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: web/Dockerfile
-          load: true
-          tags: ${{ env.WEB_IMAGE }}
-          build-args: |
-            VITE_KEYCLOAK_URL=http://localhost:8080
-          cache-from: type=gha,scope=e2e-web
-          cache-to: type=gha,scope=e2e-web,mode=max,ignore-error=true
 
       # Keycloak takes ~45s to boot, so start the stack in the background and install Node
       # dependencies meanwhile. A plain `up -d` would block too: it waits for each
@@ -111,10 +86,16 @@ jobs:
           cache: "npm"
           cache-dependency-path: web/package-lock.json
 
-      # Playwright uses the runner's preinstalled Chrome in CI (playwright.config.ts), so no
-      # browser install.
       - name: Install dependencies
         run: npm ci
+        working-directory: web
+
+      # Only the headless shell, and no --with-deps: the runner's preinstalled Chrome already
+      # brought the system libraries, and the apt step sometimes hung for 10+ minutes. Runs
+      # while the stack boots, so it adds no time.
+      - name: Install Playwright headless shell
+        timeout-minutes: 3
+        run: npx playwright install --only-shell chromium
         working-directory: web
 
       - name: Wait for staging stack

@@ -8,6 +8,21 @@ import './index.css'
 import './api/client'
 import App from './App.tsx'
 
+// After a deploy the old bundle's lazy chunks are gone, so opening another page fails. Reload to get
+// the new bundle (mid-deploy, the maintenance page shows and reloads once the site is back). At most
+// once per 10 s, so a chunk that is really broken reaches the ErrorBoundary instead of a reload loop.
+window.addEventListener('vite:preloadError', (event) => {
+  const key = 'skoleoverblikket_chunk_reload'
+  try {
+    if (Date.now() - Number(sessionStorage.getItem(key) ?? 0) < 10_000) return
+    sessionStorage.setItem(key, String(Date.now()))
+  } catch {
+    return
+  }
+  event.preventDefault()
+  window.location.reload()
+})
+
 const root = document.getElementById('root')!
 const app = (
   <StrictMode>

@@ -14,4 +14,6 @@ RUN npm run build
 FROM nginx:alpine AS runtime
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY web/nginx.conf /etc/nginx/conf.d/default.conf
+# Writes /env.js from KEYCLOAK_URL at start, overriding the build-time VITE_KEYCLOAK_URL.
+COPY --chmod=755 web/runtime-config.sh /docker-entrypoint.d/40-runtime-config.sh
 EXPOSE 80

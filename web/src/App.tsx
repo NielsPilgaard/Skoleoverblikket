@@ -8,6 +8,7 @@ import { AuthProvider } from './auth/AuthProvider'
 import { useAuth } from './auth/useAuth'
 import Layout from './components/Layout'
 import ViewModeToolbar from './components/ViewModeToolbar'
+import OutageNotice from './components/OutageNotice'
 
 // Keep critical public pages as regular imports
 import LandingPage from './pages/LandingPage'
@@ -170,6 +171,7 @@ export default function App() {
           <QueryClientProvider client={queryClient}>
             <ScrollToTop />
             <ViewModeToolbar />
+            <OutageNotice />
             <Routes>
               {/* Marketing pages: render before auth is ready (see AuthReady) */}
               <Route path="/" element={<HomeRedirect />} />

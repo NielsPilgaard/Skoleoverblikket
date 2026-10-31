@@ -8,7 +8,7 @@ var isRun = builder.ExecutionContext.IsRunMode;
 // variables). Dev-only helpers (Mailpit, Silo, Stripe CLI, pgAdmin) are added in run mode only.
 builder.AddDockerComposeEnvironment("prod")
        .WithDashboard(false)
-       .ConfigureComposeFile(ProdCompose.File);
+       .ConfigureComposeFile(file => ProdCompose.File(file, builder.AppHostDirectory));
 
 // PostgreSQL — the prod image (infrastructure/postgres): one cluster for the API and Keycloak databases,
 // started on /pgdata/a or /pgdata/b by the backup agent's A/B marker. See infrastructure/backup-agent/README.md.
@@ -95,6 +95,13 @@ builder.AddViteApp("web", appDirectory: "../../../web", runScriptName: "dev")
        .WithExternalHttpEndpoints()
        .WithReference(api)
        .PublishAsDockerComposeService((_, service) => ProdCompose.Web(service));
+
+// Prod only: the page Traefik shows while web is redeployed (infrastructure/maintenance).
+if (!isRun)
+{
+    builder.AddContainer("maintenance", "nginx", "1.29-alpine")
+           .PublishAsDockerComposeService((_, service) => ProdCompose.Maintenance(service));
+}
 
 if (isRun)
 {
