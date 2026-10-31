@@ -77,6 +77,9 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HOSTNAME_ADMIN: "http://localhost:18080"
+    ports:
+      - "127.0.0.1:18080:8080"
     networks:
       - "dokploy-network"
     restart: "unless-stopped"
@@ -98,7 +101,7 @@ services:
       start_period: "60s"
     labels:
       traefik.enable: "true"
-      traefik.http.routers.keycloak.rule: "Host(`auth.skoleoverblikket.dk`)"
+      traefik.http.routers.keycloak.rule: "Host(`auth.skoleoverblikket.dk`) && !PathRegexp(`(^|/)\\.\\.?(/|$)|;`) && !PathPrefix(`/realms/master`) && (!PathPrefix(`/admin`) || PathPrefix(`/admin/realms/Skoleoverblikket/`))"
       traefik.http.routers.keycloak.entrypoints: "websecure"
       traefik.http.routers.keycloak.tls.certresolver: "letsencrypt"
       traefik.http.services.keycloak.loadbalancer.server.port: "8080"

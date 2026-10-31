@@ -18,6 +18,9 @@ internal static class ProdCompose
     // Postgres and the backup agent only start with COMPOSE_PROFILES=selfhosted-db, set at the task 54 cutover.
     private const string SelfHostedDb = "selfhosted-db";
 
+    // Local end of the SSH tunnel to the Keycloak admin console: ssh -L 18080:127.0.0.1:18080 <user>@<vps>.
+    private const int KeycloakAdminPort = 18080;
+
     // The images prod runs, as sha-<main commit> (CI publishes both on every push to main). Pinned here,
     // not in Dokploy, so a normal deploy never restarts the database and an upgrade is a reviewed PR.
     // Separate tags, so upgrading the agent doesn't restart Postgres. Both are the PR #35 merge commit.
@@ -106,8 +109,22 @@ internal static class ProdCompose
         service.Environment["KC_HTTP_ENABLED"] = "true";
         service.Environment["KC_HOSTNAME_STRICT"] = "false";
         service.Environment["KC_HOSTNAME_BACKCHANNEL_DYNAMIC"] = "true";
+        // The admin console and the master realm (Keycloak's own admin login) are reachable only through
+        // an SSH tunnel to this localhost port, not from the internet. The master realm's Frontend URL
+        // must point here too, or its login form posts to the public hostname (docs/DEPLOYMENT.md).
+        service.Environment["KC_HOSTNAME_ADMIN"] = $"http://localhost:{KeycloakAdminPort}";
+        service.Ports.Add($"127.0.0.1:{KeycloakAdminPort}:8080");
         service.Networks.Add(DokployNetwork);
-        Traefik(service, "keycloak", "Host(`auth.skoleoverblikket.dk`)", 8080);
+        // The internet gets the school realm only. The API calls the admin REST API for its own realm
+        // through this hostname, so /admin/realms/Skoleoverblikket/ stays open (token-protected).
+        // Keycloak decodes %2e%2e to .. and resolves it, and drops ;params, so a path like
+        // /admin/realms/Skoleoverblikket/%2e%2e/%2e%2e/master/console/ would reach the console through
+        // the open prefix. Traefik sees the decoded path, so it refuses dot segments and ; outright.
+        Traefik(service, "keycloak",
+                """Host(`auth.skoleoverblikket.dk`) && !PathRegexp(`(^|/)\.\.?(/|$)|;`)"""
+                + """ && !PathPrefix(`/realms/master`)"""
+                + """ && (!PathPrefix(`/admin`) || PathPrefix(`/admin/realms/Skoleoverblikket/`))""",
+                8080);
     }
 
     public static void Api(Service service)
