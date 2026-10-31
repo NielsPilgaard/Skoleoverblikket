@@ -4,7 +4,9 @@
 
 Schools switching to Skoleoverblikket have existing schedules in other tools — exported as Excel, CSV, or PDF. Manually re-entering every slot is a barrier to adoption. This feature lets admins upload their current schedule file and get slot suggestions back — same ghost-slot UX as task 21 (accept individually or all at once).
 
-**No FastAPI sidecar.** Pure .NET: extract text from file, send to Alexandra AI LLM, parse structured response. Same AI setup as task 21.
+**No FastAPI sidecar.** Pure .NET: extract text from file, send to the EU LLM (Scaleway Generative APIs, [ai-data-boundary](../docs/adr/ai-data-boundary.md)), parse structured response. Same AI setup as task 21.
+
+**Model**: start with GLM 5.3 Flash where Scaleway lists it, otherwise `glm-5.3`; test `deepseek-v4.1-flash` against it on 3–5 real schedule exports (CSV, Excel, PDF) and keep the cheapest that resolves names correctly. Set it in `Llm__Models__SchemaImport`. `glm-5.3` caps output at 16k tokens on Serverless (DeepSeek: 32k), enough for one class's week.
 
 ---
 
@@ -16,7 +18,7 @@ Schools switching to Skoleoverblikket have existing schedules in other tools —
 | Excel (.xlsx / .xls) | **ClosedXML** (already in csproj) | Read cells as text table → LLM |
 | PDF | **PdfPig** (add to csproj, Apache 2.0) | Extract text per page → LLM |
 
-Images NOT supported — too expensive (would require vision LLM).
+Images NOT supported in v1. `deepseek-v4.1-flash` on Scaleway does take images, so photos or scanned PDFs are possible later if schools ask.
 
 ---
 
@@ -32,14 +34,14 @@ Only addition needed. ClosedXML already present.
 
 ### New files
 
-- `Services/SchemaImportService.cs` — text extraction per format + Alexandra AI call + fuzzy-match
+- `Services/SchemaImportService.cs` — text extraction per format + LLM call + fuzzy-match
 - `Services/SchemaImportTextExtractor.cs` — per-format extraction logic (CSV, Excel, PDF)
 
 ### Modified files
 
 - `Controllers/SchemasController.cs` — add `POST .../import` endpoint
 - `Services/ServicesExtensions.cs` — register `SchemaImportService`
-- `appsettings.json` — no new config needed (reuses `AlexandraAi` section from task 21)
+- `appsettings.json` — shared `Llm` section ([task 46](feedback/46-feedback-ai-triage.md) scope 1); built here if this task lands first
 - `Skoleoverblikket.Api.csproj` — add PdfPig
 
 ### New endpoint
@@ -81,7 +83,7 @@ record ImportedSlotSuggestion(
    - Extracted text
    - Known entity names as hints
    - Instruction to output structured JSON (`ImportedSlotSuggestion[]` shape)
-4. Call Alexandra AI via `IChatClient` (same setup as task 21, `GetResponseAsync<T>`)
+4. Call the LLM via `IChatClient` (same setup as task 21, `GetResponseAsync<T>`)
 5. Fuzzy-match LLM-returned names to entity IDs
 6. Return `SchemaImportSuggestionResponse`
 
@@ -156,7 +158,7 @@ Use generated typed API client after spec updates.
 ## Task 21 dependency
 
 Task 21 and task 25 share:
-- Same Alexandra AI `IChatClient` config
+- Same LLM `IChatClient` config
 - Same ghost-slot frontend component (task 21 defines it, task 25 reuses)
 
 If task 21 not yet implemented when this is built, we need to add the AI client setup as part of this task.
