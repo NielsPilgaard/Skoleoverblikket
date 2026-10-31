@@ -10,7 +10,7 @@ public sealed class ParentClassAccessRequirement : IAuthorizationRequirement { }
 /// <summary>
 /// Resource-based handler. Resource is classId (Guid).
 /// Admin role: always succeed.
-/// Non-parent staff (teacher, aide, etc.): always succeed — they can see all class data.
+/// Staff and board: always succeed. No school role: fail.
 /// Parent role: resolve parent by JWT sub → student class IDs → check classId is in set.
 /// </summary>
 public sealed class ParentClassAccessHandler(AppDbContext db, ITenantContext tenant)
@@ -27,10 +27,16 @@ public sealed class ParentClassAccessHandler(AppDbContext db, ITenantContext ten
 			return;
 		}
 
-		// Non-parent authenticated users (staff) can read all class data
-		if (!context.User.IsInRole(Roles.Parent))
+		// Staff read all class data. Board members are checked against CanAccessTeacherData by the caller.
+		// A login with no school role gets nothing.
+		if (context.User.IsInRole(Roles.Staff) || context.User.IsInRole(Roles.Board))
 		{
 			context.Succeed(requirement);
+			return;
+		}
+
+		if (!context.User.IsInRole(Roles.Parent))
+		{
 			return;
 		}
 
