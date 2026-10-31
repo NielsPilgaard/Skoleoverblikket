@@ -173,7 +173,7 @@ jobs:
             dotnet restore "$project" > /dev/null
             report=$(dotnet list "$project" package --vulnerable --include-transitive)
             echo "$report"
-            if echo "$report" | grep -qE "(High|Critical)"; then status=1; fi
+            if echo "$report" | grep -qE "\b(High|Critical)\b"; then status=1; fi
           done
           exit $status
 
