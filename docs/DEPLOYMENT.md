@@ -134,15 +134,14 @@ CD ([cd.yml](../.github/workflows/cd.yml)) watches prod for 15 minutes after eac
 
 ---
 
-## Frontend (Vite build-time)
+## Frontend
 
-The frontend is a static SPA. These variables must be set **at build time** (they are baked into the JS bundle).
+The frontend is a static SPA served by nginx. The Keycloak URL is baked in at build time and can be overridden when the container starts.
 
-| Variable            | Description                                                                                  |
-| ------------------- | -------------------------------------------------------------------------------------------- |
-| `VITE_KEYCLOAK_URL` | Keycloak base URL — no trailing slash, no realm path. Example: `https://auth.skoleoverblikket.dk` |
-
-Set in the CI/CD pipeline before running `npm run build`. See [web/.env.example](../web/.env.example).
+| Variable            | When | Description |
+| ------------------- | ---- | ----------- |
+| `VITE_KEYCLOAK_URL` | build | Keycloak base URL — no trailing slash, no realm path. CI builds the published image with `https://auth.skoleoverblikket.dk`. See [web/.env.example](../web/.env.example). |
+| `KEYCLOAK_URL`      | container start | Optional. Overrides `VITE_KEYCLOAK_URL` without a rebuild: [web/runtime-config.sh](../web/runtime-config.sh) writes it to `/env.js`. Prod leaves it unset. The e2e staging stack sets it to `http://localhost:8080`. |
 
 ---
 

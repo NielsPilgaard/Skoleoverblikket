@@ -1,7 +1,15 @@
 import Keycloak from 'keycloak-js'
 
+declare global {
+  interface Window {
+    /** Runtime config from /env.js, written by the web container at start (web/runtime-config.sh). */
+    __ENV?: { keycloakUrl?: string }
+  }
+}
+
 const keycloak = new Keycloak({
-  url: import.meta.env.VITE_KEYCLOAK_URL ?? 'http://localhost:8080',
+  // Runtime value first, so the published image works against any Keycloak (e2e, Staging).
+  url: window.__ENV?.keycloakUrl ?? import.meta.env.VITE_KEYCLOAK_URL ?? 'http://localhost:8080',
   realm: 'Skoleoverblikket',
   clientId: 'skoleoverblikket-web',
 })

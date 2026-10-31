@@ -149,6 +149,9 @@ services:
 
   web:
     image: ${WEB_IMAGE:-ghcr.io/nielspilgaard/skoleoverblikket-web:latest}
+    environment:
+      # Overrides the production Keycloak URL baked into the published image (web/runtime-config.sh).
+      KEYCLOAK_URL: http://localhost:8080
     ports:
       - "5173:80"
     depends_on:
