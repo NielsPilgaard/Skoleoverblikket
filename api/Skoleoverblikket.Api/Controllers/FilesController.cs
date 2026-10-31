@@ -12,7 +12,7 @@ namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/files")]
-[Authorize]
+[Authorize(Roles = Roles.Staff)]
 public sealed class FilesController(
 	AppDbContext db,
 	ITenantContext tenant,

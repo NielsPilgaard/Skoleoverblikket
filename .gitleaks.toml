@@ -1,0 +1,20 @@
+# Secret scanning config for gitleaks (pre-commit hook and CI). Extends the default rules.
+# Every allowlist entry is a decision that the value is safe to publish: say why.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+# Stripe test-mode keys for local dev (appsettings.Development.json, the Aspire AppHost). Kept on purpose:
+# test mode moves no money. Matched by value, not path: gitleaks 8.28 ignores condition = "AND", so a
+# path entry would also let a live key through in those files. sk_live_ keys are still caught everywhere.
+description = "Stripe test-mode keys and webhook secrets"
+regexes = ['''^(sk_test_|whsec_)\w+$''']
+
+[[allowlists]]
+description = "Throwaway passwords for the e2e stack, which runs only on CI runners."
+paths = ['''^infrastructure/docker/docker-compose\.staging\.yml$''']
+
+[[allowlists]]
+description = "Build output and dependencies."
+paths = ['''(^|/)(bin|obj|node_modules)/''']

@@ -119,6 +119,27 @@ else {
     Write-Ok "ryni installed"
 }
 
+# ── gitleaks (secret scan in the pre-commit hook) ───────────────────────────
+
+Write-Step "Checking gitleaks..."
+
+$gitleaksVersion = $null
+try { $gitleaksVersion = (gitleaks version 2>$null) } catch {}
+
+if ($gitleaksVersion) {
+    Write-Skip "gitleaks is already installed ($gitleaksVersion)"
+}
+else {
+    Write-Step "Installing gitleaks via winget..."
+    winget install Gitleaks.Gitleaks --accept-source-agreements --accept-package-agreements
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail "Failed to install gitleaks. Install manually: https://github.com/gitleaks/gitleaks#installing"
+        exit 1
+    }
+    $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+    Write-Ok "gitleaks installed"
+}
+
 # ── Web dependencies + Playwright browser ───────────────────────────────────
 # npm install also enables the .githooks pre-commit formatter. The Playwright browser
 # version is pinned by @playwright/test, so it must be re-downloaded after every bump;

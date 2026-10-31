@@ -122,6 +122,70 @@ jobs:
         shell: pwsh
         run: pwsh scripts/verify.ps1 -SkipFrontend -SkipDotnet
 
+  # Secrets in any commit, not just the tip: deleting a secret in a later commit doesn't unpublish it.
+  # Values that are safe to publish are listed in .gitleaks.toml. Takes ~10s.
+  secret-scan:
+    name: Secrets — gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install gitleaks
+        env:
+          VERSION: 8.30.1
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}"
+          curl -sSfLO "$base/gitleaks_${VERSION}_linux_x64.tar.gz"
+          curl -sSfL "$base/gitleaks_${VERSION}_checksums.txt" | grep "linux_x64.tar.gz" | sha256sum -c -
+          tar -xzf "gitleaks_${VERSION}_linux_x64.tar.gz" gitleaks
+
+      - name: Scan git history
+        run: ./gitleaks git . --no-banner --redact
+
+  # Known high or critical vulnerabilities in what ships: the API, the backup agent and the web app.
+  # The AppHost and tests never run in production; Dependabot alerts still cover them.
+  # Dependabot opens the fix PRs.
+  vulnerabilities:
+    name: Dependencies — known vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: NuGet
+        run: |
+          status=0
+          for project in api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj infrastructure/backup-agent/Skoleoverblikket.BackupAgent.csproj; do
+            dotnet restore "$project" > /dev/null
+            report=$(dotnet list "$project" package --vulnerable --include-transitive)
+            echo "$report"
+            if echo "$report" | grep -qE "\b(High|Critical)\b"; then status=1; fi
+          done
+          exit $status
+
+      # xlsx (SheetJS) is an accepted risk: it has no fixed version on npm (SheetJS publishes fixes only
+      # on its own CDN), and it only parses spreadsheets staff uploaded, in staff browsers, for the
+      # Filer preview. Everything else high or critical fails the job.
+      - name: npm
+        working-directory: web
+        run: |
+          npm audit --omit=dev || true
+          npm audit --omit=dev --json | jq -e '[.vulnerabilities[] | select(.severity == "high" or .severity == "critical") | select(.name != "xlsx")] | length == 0' > /dev/null
+
   # Playwright against the compose stack, built from the PR's code. Runs in parallel with the
   # API job and takes about as long (~4 min), so it adds little wall-clock time.
   # Pushes to main get the same suite in Staging, against the published images, before deploy.
@@ -139,7 +203,7 @@ jobs:
   ci-result:
     name: CI result
     if: always()
-    needs: [api, web, prod-compose, docs, e2e]
+    needs: [api, web, prod-compose, docs, secret-scan, vulnerabilities, e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Check jobs

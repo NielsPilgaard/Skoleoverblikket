@@ -32,6 +32,7 @@ public sealed class RoomScheduleTests(ApiFactory factory)
 	public async Task SetUp()
 	{
 		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
+		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, keycloakSubject: "room-schedule-user");
 		_client = _factory.CreateClient();
 		_client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
 		_client.DefaultRequestHeaders.Add("X-Test-Roles", "user");

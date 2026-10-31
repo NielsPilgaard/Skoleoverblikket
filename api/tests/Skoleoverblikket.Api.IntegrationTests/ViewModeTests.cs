@@ -72,13 +72,14 @@ public sealed class ViewModeTests(ApiFactory factory)
 	}
 
 	[Test]
-	public async Task GetMe_Returns404_WhenSubjectNotLinkedToStaff()
+	public async Task GetMe_Returns403_WhenSubjectNotLinkedToStaff()
 	{
+		// No Staff row means no staff role, so the staff endpoints turn the login away.
 		using var client = CreateClientWithSubject("unknown-subject", "teacher");
 
 		var response = await client.GetAsync("/api/v1/staff/me");
 
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
 	}
 
 	[Test]

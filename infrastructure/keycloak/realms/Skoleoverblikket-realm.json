@@ -34,6 +34,11 @@
   "maxDeltaTimeSeconds": 43200,
   "permanentLockout": false,
 
+  "eventsEnabled": true,
+  "eventsExpiration": 7776000,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+
   "accessTokenLifespan": 300,
   "ssoSessionIdleTimeout": 2592000,
   "ssoSessionMaxLifespan": 2592000,
