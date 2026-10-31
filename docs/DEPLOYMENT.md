@@ -160,6 +160,15 @@ The frontend is a static SPA served by nginx. The Keycloak URL is baked in at bu
 | `VITE_KEYCLOAK_URL` | build | Keycloak base URL — no trailing slash, no realm path. CI builds the published image with `https://auth.skoleoverblikket.dk`. See [web/.env.example](../web/.env.example). |
 | `KEYCLOAK_URL`      | container start | Optional. Overrides `VITE_KEYCLOAK_URL` without a rebuild: [web/runtime-config.sh](../web/runtime-config.sh) writes it to `/env.js`. Prod leaves it unset. The e2e staging stack sets it to `http://localhost:8080`. |
 
+### Maintenance page during deploys
+
+While a container is replaced, Traefik sends `skoleoverblikket.dk` and `auth.skoleoverblikket.dk` to the `maintenance` service (router priority 1, below the others) instead of answering 404. Every response is a 503 with an `X-Maintenance` header:
+
+- A page load gets [infrastructure/maintenance/index.html](../infrastructure/maintenance/index.html), which polls and reloads once the site is back.
+- A tab that is already open holds its API calls behind a "Vi opdaterer" notice and carries on afterwards ([web/src/api/outage.ts](../web/src/api/outage.ts)). Calls the maintenance service answered are always resent, because the API never saw them. A failed token refresh waits for Keycloak instead of logging out.
+
+Both that page and its nginx config are inlined into the compose file as `configs.content`, which needs Docker Compose 2.23.1 or newer on the server. To change the page, edit the file and regenerate the compose file (`pwsh scripts/generate-prod-compose.ps1`).
+
 ---
 
 ## Generating secrets

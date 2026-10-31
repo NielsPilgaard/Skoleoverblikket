@@ -24,6 +24,9 @@ internal static class ProdCompose
     private const string PostgresTag = "sha-af85693a0235c8490b1ad2736ab30a89c04bf858";
     private const string BackupAgentTag = "sha-af85693a0235c8490b1ad2736ab30a89c04bf858";
 
+    private const string MaintenancePage = "maintenance-page";
+    private const string MaintenanceNginx = "maintenance-nginx";
+
     private static string Var(string name, string? fallback = null) =>
         fallback is null ? $"${{{name}}}" : $"${{{name}:-{fallback}}}";
 
@@ -70,8 +73,18 @@ internal static class ProdCompose
         service.Restart = "unless-stopped";
     }
 
-    public static void File(ComposeFile file)
+    /// <summary>Reads a file for a compose <c>configs.content</c>. Compose interpolates content too, so <c>$</c> is doubled.</summary>
+    private static string ConfigContent(string path) =>
+        System.IO.File.ReadAllText(path).Replace("\r\n", "\n").Replace("$", "$$");
+
+    public static void File(ComposeFile file, string appHostDirectory)
     {
+        // Inlined, so the server needs nothing but the compose file. Changing either file recreates
+        // only the maintenance container.
+        var maintenance = Path.GetFullPath(Path.Combine(appHostDirectory, "..", "..", "maintenance"));
+        file.Configs[MaintenancePage] = new Config { Name = MaintenancePage, Content = ConfigContent(Path.Combine(maintenance, "index.html")) };
+        file.Configs[MaintenanceNginx] = new Config { Name = MaintenanceNginx, Content = ConfigContent(Path.Combine(maintenance, "nginx.conf")) };
+
         file.Name = "skoleoverblikket";
         file.Networks.Clear();
         file.Networks[DokployNetwork] = new Network { Name = DokployNetwork, External = true };
@@ -178,7 +191,23 @@ internal static class ProdCompose
         };
         service.Networks.Add(DokployNetwork);
         service.DependsOn["api"] = new ServiceDependency { Condition = "service_healthy" };
-        Traefik(service, "web", "Host(`skoleoverblikket.dk`)", 80, priority: 1);
+        Traefik(service, "web", "Host(`skoleoverblikket.dk`)", 80, priority: 2);
+    }
+
+    /// <summary>
+    /// Catch-all for the site and Keycloak, below their routers. While a container is replaced or not
+    /// yet healthy, Traefik has no router for it and sends requests here instead of answering 404.
+    /// Pages get infrastructure/maintenance/index.html, which polls until the site is back; open tabs
+    /// see X-Maintenance and hold their API calls (web/src/api/outage.ts).
+    /// </summary>
+    public static void Maintenance(Service service)
+    {
+        Reset(service, "nginx:1.29-alpine");
+        service.Configs.Add(new ConfigReference { Source = MaintenancePage, Target = "/usr/share/nginx/html/index.html" });
+        service.Configs.Add(new ConfigReference { Source = MaintenanceNginx, Target = "/etc/nginx/conf.d/default.conf" });
+        service.Deploy = new Deploy { Resources = new Resources { Limits = new ResourceSpec { Memory = "32m" } } };
+        service.Networks.Add(DokployNetwork);
+        Traefik(service, "maintenance", "Host(`skoleoverblikket.dk`) || Host(`auth.skoleoverblikket.dk`)", 80, priority: 1);
     }
 
     /// <summary>One cluster for the app and Keycloak databases (task 54 D2). No published port: only dokploy-network reaches it.</summary>
