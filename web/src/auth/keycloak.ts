@@ -1,4 +1,5 @@
 import Keycloak from 'keycloak-js'
+import { retryWhileDown } from '../api/outage'
 
 declare global {
   interface Window {
@@ -13,6 +14,34 @@ const keycloak = new Keycloak({
   realm: 'Skoleoverblikket',
   clientId: 'skoleoverblikket-web',
 })
+
+/**
+ * keycloak-js rejects a failed refresh with the token endpoint's response. Only a 400 means Keycloak
+ * refused the session; anything else (network error, 5xx, maintenance page) means it is unreachable.
+ */
+export function sessionRefused(error: unknown): boolean {
+  return (error as { response?: Response } | undefined)?.response?.status === 400
+}
+
+/**
+ * Makes sure the access token is valid for minValidity more seconds. Keycloak restarts on every
+ * deploy, so while it is down this waits (OutageNotice shows) instead of sending the user to a
+ * login page that is down too. Logs in only when Keycloak refuses the session.
+ */
+export async function refreshToken(minValidity: number): Promise<void> {
+  await retryWhileDown(async () => {
+    try {
+      await keycloak.updateToken(minValidity)
+      return true
+    } catch (error) {
+      if (!keycloak.refreshToken || sessionRefused(error)) {
+        keycloak.login()
+        throw new Error('Not authenticated')
+      }
+      return undefined
+    }
+  })
+}
 
 const SIGNUP_TOKEN_KEY = 'skoleoverblikket_signup_token'
 

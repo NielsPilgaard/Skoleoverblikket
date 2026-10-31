@@ -2,6 +2,7 @@ import Footer from '../components/Footer'
 import PublicNav from '../components/PublicNav'
 import SeoMeta from '../components/SeoMeta'
 import { useState } from 'react'
+import { apiFetch } from '../api/outage'
 
 export default function DemoPage() {
   return (
@@ -48,7 +49,7 @@ function DemoForm() {
     try {
       // Plain fetch — the generated client always calls keycloak.login() when no token exists,
       // which would redirect unauthenticated visitors to the login page.
-      const res = await fetch('/api/v1/demo-request', {
+      const res = await apiFetch('/api/v1/demo-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

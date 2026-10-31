@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { usePageTitle } from '../hooks/usePageTitle'
-import keycloak from '../auth/keycloak'
+import keycloak, { refreshToken } from '../auth/keycloak'
+import { apiFetch } from '../api/outage'
 import { actingAsHeaders } from '../auth/actingAs'
 import { postApiV1ExportsSchoolZipLink } from '../api/generated/sdk.gen'
 
@@ -89,9 +90,9 @@ export default function ExportsPage() {
     setError(null)
     setDownloading(filename)
     try {
-      await keycloak.updateToken(30).catch(() => keycloak.login())
+      await refreshToken(30)
       // Raw fetch intentional: SDK client cannot return Blob responses (typed as unknown).
-      const res = await fetch(`/api/v1${path}`, {
+      const res = await apiFetch(`/api/v1${path}`, {
         headers: { Authorization: `Bearer ${keycloak.token}`, ...actingAsHeaders() },
       })
       if (!res.ok) throw new Error('Download mislykkedes')

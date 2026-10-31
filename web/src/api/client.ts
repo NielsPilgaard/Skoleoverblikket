@@ -1,14 +1,12 @@
-import keycloak from '../auth/keycloak'
+import keycloak, { refreshToken } from '../auth/keycloak'
 import { ACTING_AS_HEADER, actingAsHeaders, getActingAs } from '../auth/actingAs'
 import { client } from './generated/client.gen'
+import { apiFetch } from './outage'
 
 export const API_BASE = '/api/v1'
 
 async function getToken(): Promise<string> {
-  await keycloak.updateToken(30).catch(() => {
-    keycloak.login()
-    throw new Error('Not authenticated')
-  })
+  await refreshToken(30)
   if (!keycloak.token) {
     keycloak.login()
     throw new Error('Not authenticated')
@@ -17,9 +15,11 @@ async function getToken(): Promise<string> {
 }
 
 // Configure the generated client with Keycloak bearer auth and the correct base URL.
+// apiFetch waits out a deploy instead of failing.
 client.setConfig({
   baseUrl: '',
   auth: getToken,
+  fetch: apiFetch,
 })
 
 // One login can be staff, parent and board member; the API acts as the role chosen under "Vis som".
@@ -41,7 +41,7 @@ export class ApiError extends Error {
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = await getToken()
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await apiFetch(`${API_BASE}${path}`, {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
@@ -60,7 +60,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 async function requestForm<T>(path: string, body: FormData): Promise<T> {
   const token = await getToken()
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await apiFetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, ...actingAsHeaders() },
     body,
