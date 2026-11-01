@@ -31,11 +31,11 @@ The short version of everything below that concerns Postgres and the backup agen
 
 **Pin the images (any time, one PR)**
 
-4. In [ProdCompose.cs](../infrastructure/aspire/Skoleoverblikket.AppHost/ProdCompose.cs), set `PostgresTag` and `BackupAgentTag` to `sha-<commit>` of a `main` commit whose publish jobs passed. Run `pwsh scripts/generate-prod-compose.ps1`, merge. Prod doesn't change: the profile is still off there. **Done 2026-10-19:** both pinned to the PR #35 merge commit `af85693`. Move a pin only when the Postgres image or the agent changes.
+4. In [docker-compose.prod.yml](../infrastructure/docker/docker-compose.prod.yml), set the `postgres` and `backup-agent` image tags to `sha-<commit>` of a `main` commit whose publish jobs passed, merge. Prod doesn't change: the profile is still off there. **Done 2026-10-19:** both pinned to the PR #35 merge commit `af85693`. Move a pin only when the Postgres image or the agent changes.
 
 **On the VPS, before the cutover (prod keeps running on the Dokploy DBs)**
 
-5. Remove the unrelated Dokploy stack. Then check headroom with `free -h` and `df -h`: disk must fit two copies of the database (`pgdata-a`, `pgdata-b`) plus 4 GB for `wal-receive`. Set `POSTGRES_MEMORY`, `PG_SHARED_BUFFERS`, `PG_EFFECTIVE_CACHE_SIZE` and `BACKUP_AGENT_MEMORY` (default 5g, too much here) so Postgres, the agent, the app and the Dokploy DBs fit at the same time during the cutover.
+5. Remove the unrelated Dokploy stack. Then check headroom with `free -h` and `df -h`: disk must fit three copies of the database (`pgdata-a`, `pgdata-b`, and the `drill` volume while a drill runs) plus 4 GB for `wal-receive`. Set `POSTGRES_MEMORY`, `PG_SHARED_BUFFERS`, `PG_EFFECTIVE_CACHE_SIZE` and `BACKUP_AGENT_MEMORY` (default 1g) so Postgres, the agent, the app and the Dokploy DBs fit at the same time during the cutover.
 6. In Dokploy, check that the compose type is **Docker Compose**, not Stack (Stack ignores profiles).
 7. `pwsh scripts/create-prod-volumes.ps1 ubuntu@<vps>`
 8. Dokploy env: `COMPOSE_PROFILES=selfhosted-db` and the variables from step 1–3. Leave `DATABASE_URL` and `KEYCLOAK_DB_URL` pointing at the Dokploy DBs.
@@ -49,7 +49,7 @@ The short version of everything below that concerns Postgres and the backup agen
 
 **After the cutover**
 
-13. Remove the `selfhosted-db` profile from ProdCompose.cs, regenerate, and drop the profile from DEPLOYMENT.md, RESTORE.md §10 and the [ADR](../docs/adr/postgres-backup-agent.md). Merge, then delete `COMPOSE_PROFILES` in Dokploy.
+13. Remove the `selfhosted-db` profile from docker-compose.prod.yml and drop the profile from DEPLOYMENT.md, RESTORE.md §10 and the [ADR](../docs/adr/postgres-backup-agent.md). Merge, then delete `COMPOSE_PROFILES` in Dokploy.
 
 ## Context
 

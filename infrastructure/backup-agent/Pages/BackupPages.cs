@@ -186,7 +186,7 @@ public static class BackupPages
 
 		var drillForm = Form(context, "/actions/drill", $"""
 			<div class="actions"><button class="primary" type="submit"{(busy ? " disabled" : "")}>Drill now</button>
-			<span class="muted small">Restores to tmpfs, checks against live, discards the copy.</span></div>
+			<span class="muted small">Restores to a scratch volume, checks against live, discards the copy.</span></div>
 			""");
 		var manualForm = Form(context, "/drills/manual", $"""
 			<label>Date <input type="date" name="date" required value="{Fmt.LocalDate(now):yyyy-MM-dd}"></label>

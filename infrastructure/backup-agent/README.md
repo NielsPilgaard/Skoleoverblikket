@@ -10,7 +10,7 @@ This README covers what it does, where everything is, and how to move it to anot
 - **Point-in-time restore** to any minute in the last 14 days, to "just before migration X", or to a backup as it was.
 - **A restore never touches live.** It goes into the other of two data volumes (A/B), gets checked, and only goes live when a person clicks **Go live** and redeploys. The old volume stays for forensics until you delete it.
 - **Backups can't take Postgres down.** Postgres has no `archive_command`. If pgBackRest, S3 or the agent breaks, the result is a WAL gap and an alert, never a full disk.
-- **Weekly drill.** Every Sunday the agent restores the newest backup into tmpfs, checks it against live, and throws it away. Restore time (RTO) is tracked per drill.
+- **Weekly drill.** Every Sunday the agent restores the newest backup into a scratch volume, checks it against live, and throws it away. Restore time (RTO) is tracked per drill.
 - **Alerts through heartbeats** (elmah.io, or any ping-URL service such as Healthchecks.io): WAL (carries overall health every 5 minutes), backup, verify, drill. A quarterly manual drill that is overdue also raises an alert.
 - **History** of every run, action and checklist tick, in the console and in an S3 ops bucket. No row content is ever stored, only names and counts.
 
@@ -80,7 +80,7 @@ flowchart LR
 - [AppHost Program.cs](../aspire/Skoleoverblikket.AppHost/Program.cs) runs Postgres and the agent under `aspire run`, with Silo standing in for S3.
 - [scripts/backup-console.ps1](../../scripts/backup-console.ps1) opens the tunnel, reads the access link and opens the browser.
 - [ProdBackupConsole.cs](../aspire/Skoleoverblikket.AppHost/ProdBackupConsole.cs) does the same from the Aspire dashboard when `BACKUP_CONSOLE_SERVER` is set, plus `pgbackrest info`, agent logs and expire as commands.
-- [ProdCompose.cs](../aspire/Skoleoverblikket.AppHost/ProdCompose.cs) is their prod side. `aspire publish` generates [docker-compose.prod.yml](../docker/docker-compose.prod.yml) from it ([scripts/generate-prod-compose.ps1](../../scripts/generate-prod-compose.ps1)); CI fails when the committed file is stale.
+- [docker-compose.prod.yml](../docker/docker-compose.prod.yml) is their prod side, hand-written. It may drift from the AppHost.
 - The API's read-only status card (`SuperAdminBackupStatusController`) reads `status.json`. It's optional.
 
 ## The contract another project must reproduce
@@ -94,9 +94,9 @@ flowchart LR
 | `pg-socket` | `/var/run/postgresql` | same | The socket. The agent's only way into Postgres |
 | `wal-receive` | – | `/wal-receive` | WAL received but not yet in the repo. The only copy until it's pushed |
 | `backup-agent-state` | – | `/var/lib/backup-agent` | `state.json`, the console key, local copies of the ops files |
-| tmpfs | – | `/drill` | The weekly drill's restore. Must fit the whole cluster, and it counts against the agent's memory limit |
+| `drill` | – | `/drill` | The weekly drill's restore. Needs disk for the whole cluster while a drill runs; empty otherwise. The agent wipes it on start, so a crashed drill leaves nothing behind |
 
-Pin the names of every volume except `pg-socket` (`name:` in compose, or external volumes, see Aspire below). Never delete them, and never run `docker compose down -v`.
+Pin the names of every volume except `pg-socket` (`name:` in compose, or external volumes, see [Docker compose](#docker-compose) below). Never delete them, and never run `docker compose down -v`.
 
 ### Roles and authentication
 
@@ -107,7 +107,7 @@ Pin the names of every volume except `pg-socket` (`name:` in compose, or externa
 
 ### Environment
 
-Every setting the agent reads. Bound in [Program.cs](Program.cs) from the `Agent`, `OpsBucket` and `Heartbeats` sections ([AgentOptions.cs](AgentOptions.cs)); pgBackRest reads its own `PGBACKREST_*` variables, which the agent's child processes inherit. **Prod compose** says whether [docker-compose.prod.yml](../docker/docker-compose.prod.yml) passes it through from Dokploy (and under which name). A setting marked *no* uses its default on prod; to change it, add it to the agent's environment in [ProdCompose.cs](../aspire/Skoleoverblikket.AppHost/ProdCompose.cs) and regenerate.
+Every setting the agent reads. Bound in [Program.cs](Program.cs) from the `Agent`, `OpsBucket` and `Heartbeats` sections ([AgentOptions.cs](AgentOptions.cs)); pgBackRest reads its own `PGBACKREST_*` variables, which the agent's child processes inherit. **Prod compose** says whether [docker-compose.prod.yml](../docker/docker-compose.prod.yml) passes it through from Dokploy (and under which name). A setting marked *no* uses its default on prod; to change it, add it to the agent's environment in [docker-compose.prod.yml](../docker/docker-compose.prod.yml).
 
 **Secrets and endpoints** (set these on every deploy):
 
@@ -136,7 +136,7 @@ Every setting the agent reads. Bound in [Program.cs](Program.cs) from the `Agent
 | `Agent__DataRoot` | `/pgdata` | Both data volumes are mounted under it as `a` and `b` |
 | `Agent__ControlDirectory` | `/pg-control` | Holds `active`, which picks the data volume at Postgres' next start |
 | `Agent__StateDirectory` | `/var/lib/backup-agent` | `state.json`, the console key, antiforgery keys, local copies of the ops files |
-| `Agent__DrillDirectory` | `/drill` | tmpfs for the weekly drill |
+| `Agent__DrillDirectory` | `/drill` | Scratch volume for the weekly drill |
 | `Agent__WalReceiveDirectory` | `/wal-receive` | pg_receivewal's directory. The only copy of WAL until it's pushed to the repo |
 | `Agent__AppDatabase`, `Agent__KeycloakDatabase` | `skoleoverblikket`, `keycloak` | Databases the drill and restore checks look at |
 | `Agent__KeycloakRealm` | `Skoleoverblikket` | Realm the Keycloak check looks for |
@@ -153,7 +153,7 @@ Every setting the agent reads. Bound in [Program.cs](Program.cs) from the `Agent
 | `Agent__StatusInterval` | `00:05:00` | How often status and the WAL heartbeat are sent |
 | `Agent__MaxDataLoss` | `00:15:00` | The RPO. Data secured longer ago than this makes the agent unhealthy |
 
-The image sets `ASPNETCORE_URLS=http://+:9090` and `DOTNET_ENVIRONMENT=Production` ([Dockerfile](Dockerfile)). Compose also sizes the container with `BACKUP_AGENT_MEMORY` and `DRILL_TMPFS_SIZE` ([DEPLOYMENT.md](../../docs/DEPLOYMENT.md#self-hosted-postgres-and-the-backup-agent)).
+The image sets `ASPNETCORE_URLS=http://+:9090` and `DOTNET_ENVIRONMENT=Production` ([Dockerfile](Dockerfile)). Compose also sizes the container with `BACKUP_AGENT_MEMORY` ([DEPLOYMENT.md](../../docs/DEPLOYMENT.md#self-hosted-postgres-and-the-backup-agent)).
 
 ## Adapting it to another project
 
@@ -179,7 +179,7 @@ The drill and restore checks count every table in the restored copy exactly, and
 
 - Replace the two hard-coded databases in `DrillChecks.RunAsync` with a loop over a list, prefixing table names with the database so they don't collide in the summary.
 - `backup_agent` needs `CONNECT` on each database. It has it by default unless `PUBLIC` was revoked.
-- The drill restores the whole cluster into tmpfs. Size `/drill` and the agent's memory limit from the cluster size (`SELECT pg_size_pretty(sum(pg_database_size(datname))) FROM pg_database`) with headroom. If that's too much RAM, mount a disk volume at `/drill` instead. Nothing restored there survives the drill either way.
+- The drill restores the whole cluster into `/drill`. Leave disk for it (`SELECT pg_size_pretty(sum(pg_database_size(datname))) FROM pg_database`) with headroom. The drill shares the host disk with live Postgres, so it fails (and alerts) instead of restoring when free space is under twice the cluster size plus 1 GB. Use a disk volume, not tmpfs: tmpfs counts against the memory limit, so the agent would need RAM the size of the cluster.
 
 ### Alembic instead of EF Core
 
@@ -203,74 +203,21 @@ A restore brings back everything deleted after the restore point, including cust
 
 To adapt, change the three queries (`LedgerAsync`, `ResurrectedAsync`, `PrepareRedeletionAsync`) and the "school" wording. The `DeletedAutomatically` flag (whether the app's job will delete the row anyway) is specific to how Skoleoverblikket's retention works; drop it if you have no equivalent.
 
-### Hand-written docker compose
+### Docker compose
 
-Copy the `postgres` and `backup-agent` services, their networks and the volumes from [docker-compose.prod.yml](../docker/docker-compose.prod.yml) (generated from Aspire here, but plain compose). Keep:
+Copy the `postgres` and `backup-agent` services, their networks and the volumes from [docker-compose.prod.yml](../docker/docker-compose.prod.yml). Keep:
 
 - the agent off the app network, on its own;
 - `ports: ["127.0.0.1:<port>:9090"]`;
-- the tmpfs and `mem_limit`;
-- `name:` on every volume except `pg-socket`;
+- the `/drill` volume and the memory limit;
+- every volume except `pg-socket` pinned by name: `external: true` (what we do) or `name:`;
 - image tags pinned to a sha, so a normal deploy never restarts the database.
-
-### Aspire-generated compose
-
-This is what Skoleoverblikket does: [ProdCompose.cs](../aspire/Skoleoverblikket.AppHost/ProdCompose.cs) is the full version. Aspire 13.4 can publish all of this, but it can't write a volume's `name:`. Declare the pinned volumes as **external** instead. This snippet is checked with `aspire publish` and `docker compose config` (Aspire 13.4.3, `Aspire.Hosting.Docker`):
-
-```csharp
-using Aspire.Hosting.Docker.Resources.ComposeNodes;
-using Aspire.Hosting.Docker.Resources.ServiceNodes.Swarm;
-
-const string prefix = "myapp-";
-string[] pinned = ["pgdata-a", "pgdata-b", "pg-control", "wal-receive", "backup-agent-state"];
-
-builder.AddDockerComposeEnvironment("compose")
-	.ConfigureComposeFile(file =>
-	{
-		foreach (var name in pinned)
-		{
-			// External: the name is exact, and `down -v` or Dokploy's "delete volumes" can't remove it.
-			file.Volumes[prefix + name].External = true;
-			file.Volumes[prefix + name].Driver = null; // compose rejects "external" together with "driver"
-		}
-
-		file.Networks["backup"] = new Network { Name = "backup", Driver = "bridge" };
-	});
-
-var postgres = builder.AddPostgres("postgres")
-	.WithImageRegistry("ghcr.io")
-	.WithImage("you/myapp-postgres", "sha-…") // built from infrastructure/postgres
-	.WithVolume(prefix + "pgdata-a", "/pgdata/a")
-	.WithVolume(prefix + "pgdata-b", "/pgdata/b")
-	.WithVolume(prefix + "pg-control", "/pg-control")
-	.WithVolume("pg-socket", "/var/run/postgresql");
-
-builder.AddContainer("backup-agent", "ghcr.io/you/myapp-backup-agent", "sha-…")
-	.WithVolume("pg-socket", "/var/run/postgresql")
-	.WithVolume(prefix + "pgdata-a", "/pgdata/a")
-	.WithVolume(prefix + "pgdata-b", "/pgdata/b")
-	.WithVolume(prefix + "pg-control", "/pg-control")
-	.WithVolume(prefix + "wal-receive", "/wal-receive")
-	.WithVolume(prefix + "backup-agent-state", "/var/lib/backup-agent")
-	.WithEnvironment("Agent__VolumeNamePrefix", prefix + "pgdata-")
-	.WithEnvironment("PGBACKREST_REPO1_CIPHER_PASS", builder.AddParameter("pgbackrest-cipher-pass", secret: true))
-	// … the other PGBACKREST_*, OpsBucket__* and Heartbeats__* variables the same way
-	.WaitFor(postgres)
-	.PublishAsDockerComposeService((resource, service) =>
-	{
-		service.Ports = ["127.0.0.1:9090:9090"];
-		service.Tmpfs = ["/drill:size=1g,uid=999,gid=999,mode=0700"];
-		service.Deploy = new Deploy { Resources = new Resources { Limits = new ResourceSpec { Memory = "2g" } } };
-		service.Networks = ["backup"]; // only this network: app containers can't reach the console
-	});
-```
 
 Notes:
 
-- **Create the external volumes once per server**, before the first deploy: `docker volume create myapp-pgdata-a` and the same for the other four. Compose refuses to start without them, which is the point: a typo can't silently start an empty database. Docker still copies the image's directory ownership into an empty pre-created volume on first mount (checked).
-- `AddPostgres` adds its own `POSTGRES_*` variables and leaves the image's `CMD` alone, so our `config_file` and `pg_hba.conf` apply. Its `POSTGRES_INITDB_ARGS` only matter for the `pg_hba.conf` inside `PGDATA`, which our config doesn't use.
-- `PublishAsDockerComposeService` only affects publishing. Under `aspire run` the agent has no tmpfs or memory limit, which is fine for development.
+- **Create the external volumes once per server**, before the first deploy: `docker volume create myapp-pgdata-a` and the same for the others ([scripts/create-prod-volumes.ps1](../../scripts/create-prod-volumes.ps1) does it from the compose file). Compose refuses to start without them, which is the point: a typo can't silently start an empty database. External also keeps `down -v` and Dokploy's "delete volumes" away from them. Docker still copies the image's directory ownership into an empty pre-created volume on first mount (checked).
 - **Several projects on one server:** give each agent its own host port (`127.0.0.1:9091:9090`, …) and volume prefix. Then use `pwsh scripts/backup-console.ps1 <server> -RemotePort 9091 -Project <compose project>`. Without `-Project`, the script finds the agent by service name and would match all of them. The compose project name is the Dokploy app name, e.g. `myapp-abc123`.
+- Under `aspire run` (dev) the agent has no memory limit, which is fine for development. The AppHost is not the source of the prod compose; the two may drift.
 
 ### Moving from an `archive_command` + pgBackRest sidecar setup
 
@@ -284,7 +231,7 @@ Notes:
 
 It's part of the normal dev stack. `aspire run` starts our Postgres image and the agent next to it, with the same volumes as prod and Silo standing in for both buckets (a one-shot `silo-buckets` container creates them). Open **Backup console** on the `backup-agent` resource in the Aspire dashboard: the link carries a fixed dev key (`Agent__ConsoleKey`), so there's no `docker exec` step. The backoffice backup card reads the same Silo ops bucket.
 
-The slot cap is 256 MB and the WAL switch and status run every minute, so lost-slot and RPO cases take minutes to try. To go live with a restore: **Go live** in the console, then restart `postgres` in the dashboard (its entrypoint reads the marker on start). Silo runs over plain HTTP: pgBackRest defaults to HTTPS, but an `http://` scheme on `repo1-s3-endpoint` turns that off (works on 2.59.3, not in its option help). The drill's tmpfs is 1 GB; under `aspire run` there's no memory limit.
+The slot cap is 256 MB and the WAL switch and status run every minute, so lost-slot and RPO cases take minutes to try. To go live with a restore: **Go live** in the console, then restart `postgres` in the dashboard (its entrypoint reads the marker on start). Silo runs over plain HTTP: pgBackRest defaults to HTTPS, but an `http://` scheme on `repo1-s3-endpoint` turns that off (works on 2.59.3, not in its option help). Under `aspire run` the agent has no memory limit.
 
 The agent is infrastructure, so it's proven by breaking it on purpose rather than by unit tests. The list (agent killed past the slot cap, wrong S3 key, container recreated with unpushed WAL, Postgres stopped, reaching the console from another container, a full restore with go-live and switch back) is under Testing in [task 60](../../tasks/60-backup-console.md). Run it again after adapting.
 

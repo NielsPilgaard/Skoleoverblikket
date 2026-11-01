@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react'
 
 const DELAYS_MS = [2_000, 3_000, 5_000, 8_000, 13_000, 20_000, 30_000]
 
-/** Set by the maintenance container (infrastructure/maintenance): the API never saw the request. */
+/** Set by the maintenance container (`maintenance` in infrastructure/docker/docker-compose.prod.yml): the API never saw the request. */
 const MAINTENANCE_HEADER = 'X-Maintenance'
 
 let waiting = 0

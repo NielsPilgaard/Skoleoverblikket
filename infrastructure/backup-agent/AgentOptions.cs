@@ -30,7 +30,7 @@ public sealed class AgentOptions
 	/// <summary>Persistent agent volume: state.json, the console key and local copies of the ops bucket files.</summary>
 	public string StateDirectory { get; init; } = "/var/lib/backup-agent";
 
-	/// <summary>tmpfs for the weekly drill. Nothing restored there survives the drill.</summary>
+	/// <summary>Disk volume for the weekly drill. Nothing restored there survives the drill or an agent restart.</summary>
 	public string DrillDirectory { get; init; } = "/drill";
 
 	public string AppDatabase { get; init; } = "skoleoverblikket";

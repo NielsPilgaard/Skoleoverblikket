@@ -127,7 +127,7 @@ Check the result under Realm settings → Events in the admin console. Add a ste
 
 From the task [54](../tasks/54-move-vps.md) cutover, Postgres and the backup agent run in `docker-compose.prod.yml` behind the `selfhosted-db` profile ([postgres-backup-agent](adr/postgres-backup-agent.md)). Until then these variables are unused. Runbook: [RESTORE.md](RESTORE.md).
 
-`docker-compose.prod.yml` is generated from the Aspire AppHost: edit `ProdCompose.cs`, then run `pwsh scripts/generate-prod-compose.ps1`. Its volumes are **external**, so create them once per server before the first deploy with the profile. Compose refuses to start without them, so a typo can't start an empty database:
+`docker-compose.prod.yml` is hand-written and may drift from the Aspire AppHost, which is the dev stack only. CI checks it with `docker compose config`. Its volumes are **external**, so create them once per server before the first deploy with the profile. Compose refuses to start without them, so a typo can't start an empty database:
 
 ```bash
 pwsh scripts/create-prod-volumes.ps1 ubuntu@<vps>
@@ -137,13 +137,13 @@ It reads the names from `docker-compose.prod.yml` and only creates the ones that
 
 | Variable (Dokploy env) | Description |
 | --- | --- |
-| `COMPOSE_PROFILES` | `selfhosted-db` starts `postgres` and `backup-agent`. Set before the cutover (the app keeps using the Dokploy DBs until `DATABASE_URL` and `KEYCLOAK_DB_URL` move to host `postgres`), and delete it once the profile is removed from `ProdCompose.cs` ([task 54 steps](../tasks/54-move-vps.md#switching-to-the-backup-agent-step-by-step)). |
-| (no image variables) | The Postgres and agent image tags are pinned in `ProdCompose.cs` (`PostgresTag`, `BackupAgentTag`), not in Dokploy, so a normal deploy never restarts the database and an upgrade is a PR. |
+| `COMPOSE_PROFILES` | `selfhosted-db` starts `postgres` and `backup-agent`. Set before the cutover (the app keeps using the Dokploy DBs until `DATABASE_URL` and `KEYCLOAK_DB_URL` move to host `postgres`), and delete it once the profile is removed from `docker-compose.prod.yml` ([task 54 steps](../tasks/54-move-vps.md#switching-to-the-backup-agent-step-by-step)). |
+| (no image variables) | The Postgres and agent image tags are pinned in `docker-compose.prod.yml`, not in Dokploy, so a normal deploy never restarts the database and an upgrade is a PR. |
 | `POSTGRES_PASSWORD` | Superuser password. Only used by the init script and by hand. |
 | `APP_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD` | Passwords of the `skoleoverblikket` and `keycloak` roles, created on first start. `DATABASE_URL` and `KEYCLOAK_DB_PASSWORD` for Keycloak use the same values, host `postgres`. |
 | (none for the data volume) | Postgres starts on `pgdata-a` or `pgdata-b`, whichever the `pg-control` volume's `active` file names. The console's Go live writes it; then Redeploy. See [RESTORE.md](RESTORE.md) §4. |
 | `PG_SHARED_BUFFERS`, `PG_EFFECTIVE_CACHE_SIZE`, `POSTGRES_MEMORY` | Sized for the VPS (about 25% of Postgres' memory for shared buffers). |
-| `BACKUP_AGENT_MEMORY`, `DRILL_TMPFS_SIZE` | The drill restores into tmpfs, which counts against the agent's memory limit. Size from the first drill. |
+| `BACKUP_AGENT_MEMORY` | Default `1g`. The drill restores to the `skoleoverblikket-drill` volume on disk, so this doesn't grow with the database. The disk needs room for one more copy of the database while a drill runs. |
 | `PGBACKREST_REPO1_S3_ENDPOINT`, `PGBACKREST_REPO1_S3_REGION`, `PGBACKREST_REPO1_S3_BUCKET` | The pgBackRest repo: its own OVH bucket, not the files bucket and not the ops bucket. |
 | `PGBACKREST_REPO1_S3_KEY`, `PGBACKREST_REPO1_S3_KEY_SECRET` | Read-write key for the repo bucket only. |
 | `PGBACKREST_REPO1_CIPHER_PASS` | Encrypts every backup and WAL file. Keep it in the password manager: without it the backups are unreadable. Generate with `openssl rand -base64 48`. |
@@ -186,10 +186,10 @@ The frontend is a static SPA served by nginx. The Keycloak URL is baked in at bu
 
 While a container is replaced, Traefik sends `skoleoverblikket.dk` and `auth.skoleoverblikket.dk` to the `maintenance` service (router priority 1, below the others) instead of answering 404. Every response is a 503 with an `X-Maintenance` header:
 
-- A page load gets [infrastructure/maintenance/index.html](../infrastructure/maintenance/index.html), which polls and reloads once the site is back.
+- A page load gets the `maintenance-page` config in [docker-compose.prod.yml](../infrastructure/docker/docker-compose.prod.yml), which polls and reloads once the site is back.
 - A tab that is already open holds its API calls behind a "Vi opdaterer" notice and carries on afterwards ([web/src/api/outage.ts](../web/src/api/outage.ts)). Calls the maintenance service answered are always resent, because the API never saw them. A failed token refresh waits for Keycloak instead of logging out.
 
-Both that page and its nginx config are inlined into the compose file as `configs.content`, which needs Docker Compose 2.23.1 or newer on the server. To change the page, edit the file and regenerate the compose file (`pwsh scripts/generate-prod-compose.ps1`).
+Both that page and its nginx config are inlined into the compose file as `configs.content`, which needs Docker Compose 2.23.1 or newer on the server. To change the page, edit it there. Compose interpolates `configs.content` too, so a literal `$` is written `$$`.
 
 ---
 

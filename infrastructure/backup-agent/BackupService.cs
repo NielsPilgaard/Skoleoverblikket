@@ -14,6 +14,7 @@ public sealed class BackupService(
 	Heartbeats heartbeats)
 {
 	private static readonly TimeSpan WalWait = TimeSpan.FromMinutes(10);
+	private const long DrillHeadroomBytes = 1L << 30;
 
 	public async Task<JobOutcome> BackupAsync(Job job, string type, string reason, CancellationToken cancellationToken)
 	{
@@ -133,7 +134,7 @@ public sealed class BackupService(
 		return new JobOutcome(result.Ok, summary);
 	}
 
-	/// <summary>The weekly 53 drill: restore into tmpfs, check against live, throw it away.</summary>
+	/// <summary>The weekly 53 drill: restore into the drill volume, check against live, throw it away.</summary>
 	public async Task<JobOutcome> DrillAsync(Job job, DrillChecks checks, CancellationToken cancellationToken)
 	{
 		var opts = options.Value;
@@ -174,7 +175,17 @@ public sealed class BackupService(
 		try
 		{
 			Volumes.Recreate(dataDirectory);
-			job.Log($"Restoring to {description} in {dataDirectory} (tmpfs)…");
+
+			// The drill volume shares the host's disk with live Postgres. A restore that fills it would stop
+			// live writes, so leave room for the cluster, the WAL it replays, and spare.
+			var needed = newest.DatabaseBytes * 2 + DrillHeadroomBytes;
+			var free = new DriveInfo(opts.DrillDirectory).AvailableFreeSpace;
+			if (free < needed)
+			{
+				return await DrillFailedAsync($"Not enough disk for the drill: needs {Fmt.Bytes(needed)}, {Fmt.Bytes(free)} free", total.Elapsed, cancellationToken);
+			}
+
+			job.Log($"Restoring to {description} in {dataDirectory}…");
 			var restoreWatch = Stopwatch.StartNew();
 			var restore = await pgBackRest.RestoreAsync(dataDirectory, targetArguments, job.Log, cancellationToken);
 			if (!restore.Ok)
@@ -235,7 +246,7 @@ public sealed class BackupService(
 	}
 }
 
-/// <summary>Wiping restore targets. Only ever the drill tmpfs or the spare volume, never the live one.</summary>
+/// <summary>Wiping restore targets. Only ever the drill volume or the spare volume, never the live one.</summary>
 public static class Volumes
 {
 	public static void Recreate(string directory)

@@ -95,10 +95,10 @@ New project `infrastructure/backup-agent/` (Dockerfile + .NET minimal API). Back
 
 - [x] **WAL**: supervise `pg_receivewal` into `/wal-receive` (D2a), push finished segments and delete each one only after its push succeeds, push leftovers on start, pause streaming at the 4 GB unpushed cap, `pg_switch_wal()` every 5 min. Restart on crash. Detect a lost slot, recreate it, mark a gap and go `Unhealthy`.
 - [x] **Backups**: daily full at 02:00 Europe/Copenhagen, `expire` after each, weekly `verify`. Retention rules from [54](54-move-vps.md) §1 (retention note) apply unchanged.
-- [x] **Drill**: the weekly [53](53-restore-drill.md) drill (restore into tmpfs, checks, PII-free summary). The bash `drill.sh` from 53 becomes agent code.
+- [x] **Drill**: the weekly [53](53-restore-drill.md) drill (restore into a scratch volume, checks, PII-free summary). The bash `drill.sh` from 53 becomes agent code.
 - [x] **Status**: every 5 min write `status.json` to the ops bucket: newest full backup, newest WAL in the repo (the real RPO), oldest restorable point vs. 14 days, slot `wal_status` and retained WAL (in the slot and unpushed in `wal-receive`), disk %, last drill result and duration, last verify, schedule of the next runs. Append each run (backup, drill, verify, restore) to `history/YYYY-MM.json`.
 - [x] **Heartbeats**: elmah.io heartbeats per 53 D3 (WAL every 30 min, backup daily, drill weekly). A stale `status.json` is itself caught by the WAL heartbeat.
-- [x] Compose ([docker-compose.prod.yml](../infrastructure/docker/docker-compose.prod.yml)): `backup-agent` service, own network (not `dokploy-network`), `ports: ["127.0.0.1:9090:9090"]`, volumes: `pg-socket` (shared), `wal-receive` (persistent, read-write, mounted at `/wal-receive`, D2a), `pgdata-a`, `pgdata-b` and `pg-control` at the same paths as Postgres, a tmpfs for the drill. Memory limit so a drill can't starve Postgres.
+- [x] Compose ([docker-compose.prod.yml](../infrastructure/docker/docker-compose.prod.yml)): `backup-agent` service, own network (not `dokploy-network`), `ports: ["127.0.0.1:9090:9090"]`, volumes: `pg-socket` (shared), `wal-receive` (persistent, read-write, mounted at `/wal-receive`, D2a), `pgdata-a`, `pgdata-b` and `pg-control` at the same paths as Postgres, a `drill` volume for the drill. Memory limit so a drill can't starve Postgres. **Changed 2026-10-31:** the drill restored into tmpfs, which needed RAM the size of the whole cluster (5g limit). It now restores to disk, the agent wipes leftovers on start, and the limit is 1g.
 - [x] Postgres: `pg-socket` volume for `/var/run/postgresql`, `wal_level = replica`, `max_wal_senders`, `max_replication_slots`, `max_slot_wal_keep_size = 4GB`, a `backup_agent` role with `REPLICATION` + `pg_read_all_settings` + `pg_checkpoint` (only what pgBackRest needs).
 - [ ] Ops bucket `skoleoverblikket-ops` at OVH (same region as the repo). Two users: agent (RW) and api (read-only). Lifecycle: delete `history/` after 400 days (PII-free, but no reason to keep it forever).
 - [x] CI: build and push `ghcr.io/nielspilgaard/skoleoverblikket-backup-agent` like the other `publish-*` jobs. Pin a tag in compose.
@@ -154,5 +154,5 @@ Restore to the spare volume (Phase C), then run the task-51 export filtered on o
 
 ## Open questions
 
-- **Agent memory**: drill restore + temporary Postgres + .NET in one container. Size the limit from the first drill (54 sets `BACKUP_AGENT_MEMORY` from the RAM left on the current VPS).
+- **Agent memory**: temporary Postgres + pgBackRest + .NET in one container, 1g by default. Check the first drill's peak and adjust `BACKUP_AGENT_MEMORY`.
 - **Staging**: same agent with archiving off and no ops bucket, or a staging ops bucket? Leaning: a staging bucket, so the wizard can be tested end to end on staging.
