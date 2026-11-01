@@ -37,7 +37,7 @@ test.describe('FilesPage — folders', () => {
     await expect(page.getByText('Mappen er tom')).not.toBeVisible()
   })
 
-  test('rename folder via pencil icon', async ({ page }) => {
+  test('rename folder via "Omdøb"', async ({ page }) => {
     const originalName = `E2E-Omdøb-${Date.now()}`
     const renamedName = `${originalName}-RENAMED`
 
@@ -47,7 +47,7 @@ test.describe('FilesPage — folders', () => {
     await expect(page.getByRole('cell', { name: originalName })).toBeVisible({ timeout: 10_000 })
 
     const folderRow = page.locator('tr', { hasText: originalName })
-    await folderRow.locator('[title="Omdøb mappe"]').click()
+    await folderRow.locator('[data-testid^="rename-folder-"]').click()
 
     // After clicking rename, the span is replaced by an inline input.
     // folderRow no longer matches by text, so locate the input globally.
@@ -70,7 +70,7 @@ test.describe('FilesPage — folders', () => {
     page.once('dialog', (dialog) => dialog.accept())
 
     const folderRow = page.locator('tr', { hasText: folderName })
-    await folderRow.locator('[title="Slet mappe"]').click()
+    await folderRow.locator('[data-testid^="delete-folder-"]').click()
 
     await expect(page.getByRole('cell', { name: folderName })).not.toBeVisible({ timeout: 10_000 })
   })
@@ -150,10 +150,10 @@ test.describe('FilesPage — file preview modal', () => {
     await expect(page.getByRole('heading', { name: 'Upload fil' })).not.toBeVisible({ timeout: 15_000 })
   }
 
-  test('clicking eye icon on a file opens preview modal', async ({ page }) => {
+  test('clicking "Vis" on a file opens preview modal', async ({ page }) => {
     await uploadTestImage(page)
     const fileRow = page.locator('[data-testid^="file-row-"]').filter({ hasText: 'e2e-preview-test' }).first()
-    await fileRow.locator('[title="Forhåndsvis"]').click()
+    await fileRow.locator('[data-testid^="preview-"]').click()
     await expect(page.locator('button[title="Luk"]')).toBeVisible({ timeout: 5_000 })
   })
 
@@ -167,7 +167,7 @@ test.describe('FilesPage — file preview modal', () => {
   test('preview modal closes when clicking close button', async ({ page }) => {
     await uploadTestImage(page)
     const fileRow = page.locator('[data-testid^="file-row-"]').filter({ hasText: 'e2e-preview-test' }).first()
-    await fileRow.locator('[title="Forhåndsvis"]').click()
+    await fileRow.locator('[data-testid^="preview-"]').click()
     const closeBtn = page.locator('button[title="Luk"]')
     await expect(closeBtn).toBeVisible({ timeout: 5_000 })
     await closeBtn.click()
@@ -177,7 +177,7 @@ test.describe('FilesPage — file preview modal', () => {
   test('preview modal closes on backdrop click', async ({ page }) => {
     await uploadTestImage(page)
     const fileRow = page.locator('[data-testid^="file-row-"]').filter({ hasText: 'e2e-preview-test' }).first()
-    await fileRow.locator('[title="Forhåndsvis"]').click()
+    await fileRow.locator('[data-testid^="preview-"]').click()
     await expect(page.locator('button[title="Luk"]')).toBeVisible({ timeout: 5_000 })
     // Click the backdrop overlay directly (the fixed inset-0 div that wraps the modal)
     const backdrop = page.locator('.fixed.inset-0.bg-black\\/60')

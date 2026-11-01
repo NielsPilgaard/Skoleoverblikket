@@ -25,6 +25,7 @@ import {
   todayIso,
 } from '../../lib/absence'
 import { problemDetail } from '../../lib/problem'
+import { type Column, DataTable } from '../ui/list'
 
 const QUARTER_MONTHS = ['januar–marts', 'april–juni', 'juli–september', 'oktober–december']
 
@@ -34,6 +35,28 @@ function weekValue(w: WeekAbsenceDto, c: AbsenceCategory): number {
     : c === 'ExtraordinaryLeave'
       ? w.leaveDays
       : w.unauthorizedDays
+}
+
+interface DayCounts {
+  illnessDays: number
+  leaveDays: number
+  unauthorizedDays: number
+}
+
+/** Sygdom / Frihed / Ulovligt columns, shared by the class and student tables. */
+function dayColumns<T extends DayCounts>(): Column<T>[] {
+  const days = (key: keyof DayCounts, header: string): Column<T> => ({
+    key,
+    header,
+    align: 'right',
+    cell: (r) => <span className="tabular-nums">{formatDays(r[key])}</span>,
+    sortValue: (r) => r[key],
+  })
+  return [
+    days('illnessDays', 'Sygdom'),
+    days('leaveDays', 'Frihed'),
+    days('unauthorizedDays', 'Ulovligt'),
+  ]
 }
 
 function FlagBadge({ flag }: { flag: AbsenceFlag }) {
@@ -177,21 +200,15 @@ export function AbsenceStatsTab({ isAdmin }: { isAdmin: boolean }) {
     ExtraordinaryLeave: students.reduce((sum, s) => sum + s.leaveDays, 0),
     Unauthorized: students.reduce((sum, s) => sum + s.unauthorizedDays, 0),
   } satisfies Record<AbsenceCategory, number>
-  const visibleStudents = students
-    .filter((s) =>
-      category === ''
-        ? s.illnessDays + s.leaveDays + s.unauthorizedDays > 0
-        : category === 'Illness'
-          ? s.illnessDays > 0
-          : category === 'ExtraordinaryLeave'
-            ? s.leaveDays > 0
-            : s.unauthorizedDays > 0
-    )
-    .sort(
-      (a, b) =>
-        b.unauthorizedPercent - a.unauthorizedPercent ||
-        a.studentName.localeCompare(b.studentName, 'da')
-    )
+  const visibleStudents = students.filter((s) =>
+    category === ''
+      ? s.illnessDays + s.leaveDays + s.unauthorizedDays > 0
+      : category === 'Illness'
+        ? s.illnessDays > 0
+        : category === 'ExtraordinaryLeave'
+          ? s.leaveDays > 0
+          : s.unauthorizedDays > 0
+  )
 
   return (
     <div className="space-y-6">
@@ -331,34 +348,43 @@ export function AbsenceStatsTab({ isAdmin }: { isAdmin: boolean }) {
           {!classId && (stats.classes ?? []).length > 0 && (
             <section>
               <h2 className="text-sm font-semibold text-gray-900 mb-2">Klasser</h2>
-              <div className="overflow-x-auto bg-white border border-gray-200 rounded-xl">
-                <table className="w-full text-sm">
-                  <thead className="text-xs text-gray-500 text-left">
-                    <tr className="border-b border-gray-100">
-                      <th className="px-4 py-2 font-medium">Klasse</th>
-                      <th className="px-3 py-2 font-medium text-right">Elever</th>
-                      <th className="px-3 py-2 font-medium text-right">Sygdom</th>
-                      <th className="px-3 py-2 font-medium text-right">Frihed</th>
-                      <th className="px-3 py-2 font-medium text-right">Ulovligt</th>
-                      <th className="px-3 py-2 font-medium text-right">Fravær i alt</th>
-                      <th className="px-4 py-2 font-medium text-right">Flag</th>
-                    </tr>
-                  </thead>
-                  <tbody className="tabular-nums">
-                    {(stats.classes ?? []).map((c) => (
-                      <tr key={c.classId} className="border-b border-gray-50 last:border-0">
-                        <td className="px-4 py-2 text-gray-900">{c.className}</td>
-                        <td className="px-3 py-2 text-right text-gray-600">{c.studentCount}</td>
-                        <td className="px-3 py-2 text-right">{formatDays(c.illnessDays)}</td>
-                        <td className="px-3 py-2 text-right">{formatDays(c.leaveDays)}</td>
-                        <td className="px-3 py-2 text-right">{formatDays(c.unauthorizedDays)}</td>
-                        <td className="px-3 py-2 text-right">{formatPercent(c.absencePercent)}</td>
-                        <td className="px-4 py-2 text-right">{c.flaggedStudents || ''}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable
+                items={stats.classes ?? []}
+                caption="Fravær pr. klasse"
+                rowKey={(c) => c.classId}
+                noun={{ one: 'klasse', other: 'klasser' }}
+                empty={null}
+                columns={[
+                  {
+                    key: 'class',
+                    header: 'Klasse',
+                    cell: (c) => c.className,
+                    sortValue: (c) => c.className,
+                  },
+                  {
+                    key: 'students',
+                    header: 'Elever',
+                    align: 'right',
+                    cell: (c) => c.studentCount,
+                    sortValue: (c) => c.studentCount,
+                  },
+                  ...dayColumns(),
+                  {
+                    key: 'total',
+                    header: 'Fravær i alt',
+                    align: 'right',
+                    cell: (c) => formatPercent(c.absencePercent),
+                    sortValue: (c) => c.absencePercent,
+                  },
+                  {
+                    key: 'flagged',
+                    header: 'Elever med flag',
+                    align: 'right',
+                    cell: (c) => c.flaggedStudents || '–',
+                    sortValue: (c) => c.flaggedStudents,
+                  },
+                ]}
+              />
             </section>
           )}
 
@@ -382,45 +408,50 @@ export function AbsenceStatsTab({ isAdmin }: { isAdmin: boolean }) {
                 </select>
               </label>
             </div>
-            {visibleStudents.length === 0 ? (
-              <p className="text-sm text-gray-500">
-                {category === ''
-                  ? 'Intet fravær i kvartalet.'
-                  : `Ingen elever med ${CATEGORY_LABEL[category].toLowerCase()} i kvartalet.`}
-              </p>
-            ) : (
-              <div className="overflow-x-auto bg-white border border-gray-200 rounded-xl">
-                <table className="w-full text-sm" data-testid="absence-stats-students">
-                  <thead className="text-xs text-gray-500 text-left">
-                    <tr className="border-b border-gray-100">
-                      <th className="px-4 py-2 font-medium">Elev</th>
-                      <th className="px-3 py-2 font-medium">Klasse</th>
-                      <th className="px-3 py-2 font-medium text-right">Sygdom</th>
-                      <th className="px-3 py-2 font-medium text-right">Frihed</th>
-                      <th className="px-3 py-2 font-medium text-right">Ulovligt</th>
-                      <th className="px-4 py-2 font-medium text-right">Ulovligt %</th>
-                    </tr>
-                  </thead>
-                  <tbody className="tabular-nums">
-                    {visibleStudents.map((s) => (
-                      <tr key={s.studentId} className="border-b border-gray-50 last:border-0">
-                        <td className="px-4 py-2 text-gray-900">{s.studentName}</td>
-                        <td className="px-3 py-2 text-gray-600">{s.className}</td>
-                        <td className="px-3 py-2 text-right">{formatDays(s.illnessDays)}</td>
-                        <td className="px-3 py-2 text-right">{formatDays(s.leaveDays)}</td>
-                        <td className="px-3 py-2 text-right">{formatDays(s.unauthorizedDays)}</td>
-                        <td className="px-4 py-2 text-right">
-                          <span className="inline-flex items-center gap-2">
-                            <FlagBadge flag={s.flag} />
-                            {formatPercent(s.unauthorizedPercent)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <DataTable
+              items={visibleStudents}
+              caption="Fravær pr. elev"
+              testId="absence-stats-students"
+              rowKey={(s) => s.studentId}
+              noun={{ one: 'elev', other: 'elever' }}
+              searchText={(s) => `${s.studentName} ${s.className}`}
+              searchPlaceholder="Søg efter elev eller klasse"
+              defaultSort={{ value: 'percent', descending: true }}
+              empty={
+                <p>
+                  {category === ''
+                    ? 'Intet fravær i kvartalet.'
+                    : `Ingen elever med ${CATEGORY_LABEL[category].toLowerCase()} i kvartalet.`}
+                </p>
+              }
+              columns={[
+                {
+                  key: 'name',
+                  header: 'Elev',
+                  cell: (s) => s.studentName,
+                  sortValue: (s) => s.studentName,
+                },
+                {
+                  key: 'class',
+                  header: 'Klasse',
+                  cell: (s) => s.className,
+                  sortValue: (s) => s.className,
+                },
+                ...dayColumns(),
+                {
+                  key: 'percent',
+                  header: 'Ulovligt %',
+                  align: 'right',
+                  sortValue: (s) => s.unauthorizedPercent,
+                  cell: (s) => (
+                    <span className="inline-flex flex-wrap items-center justify-end gap-2">
+                      <FlagBadge flag={s.flag} />
+                      {formatPercent(s.unauthorizedPercent)}
+                    </span>
+                  ),
+                },
+              ]}
+            />
           </section>
         </>
       )}

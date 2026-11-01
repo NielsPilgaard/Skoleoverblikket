@@ -22,18 +22,9 @@ import { uploadFile, uploadBoardFile } from '../../api/upload'
 import type { CourseDto, FolderDto } from '../../api/client'
 import type { BoardFilesControllerBoardFolderDto } from '../../api/generated/types.gen'
 import keycloak from '../../auth/keycloak'
-import {
-  FileIcon,
-  FolderIcon,
-  ChevronIcon,
-  PencilIcon,
-  TrashIcon,
-  UploadIcon,
-  DownloadIcon,
-  EyeIcon,
-  CloseIcon,
-} from './fileIcons'
+import { FileIcon, FolderIcon, ChevronIcon, UploadIcon, CloseIcon } from './fileIcons'
 import { formatBytes, formatDate } from './fileHelpers'
+import { DataTable } from '../ui/list'
 
 type Variant = 'staff' | 'board'
 
@@ -57,6 +48,8 @@ interface FolderRow {
   createdAt?: string
   courseName?: string | null
 }
+
+type Entry = { kind: 'folder'; folder: FolderRow } | { kind: 'file'; file: FileRow }
 
 // ─── Upload modal ─────────────────────────────────────────────────────────────
 
@@ -652,7 +645,8 @@ function InlineRename({ variant, folder, onDone }: InlineRenameProps) {
         if (e.key === 'Escape') onDone()
       }}
       disabled={mutation.isPending}
-      className="px-2 py-0.5 border border-brand-400 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 w-40 disabled:opacity-50"
+      aria-label="Nyt navn til mappen"
+      className="h-11 px-3 border border-brand-400 rounded-lg text-base font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 w-full max-w-xs disabled:opacity-50"
       onClick={(e) => e.stopPropagation()}
     />
   )
@@ -764,7 +758,10 @@ export function FileSystemBrowser({
 
   const files: FileRow[] = data?.files ?? []
   const folders: FolderRow[] = data?.folders ?? []
-  const isEmpty = !isLoading && files.length === 0 && folders.length === 0
+  const entries: Entry[] = [
+    ...folders.map((folder) => ({ kind: 'folder' as const, folder })),
+    ...files.map((file) => ({ kind: 'file' as const, file })),
+  ]
 
   const rootLabel = variant === 'board' ? 'Bestyrelsesdokumenter' : 'Filer'
   const headerTitle = variant === 'board' ? 'Bestyrelsesdokumenter' : 'Filer'
@@ -789,6 +786,28 @@ export function FileSystemBrowser({
   function handleFolderCreated() {
     qc.invalidateQueries({ queryKey: filesQueryKey })
     setShowCreateFolder(false)
+  }
+
+  function openPreview(f: FileRow) {
+    setPreviewFile({
+      fileName: f.fileName ?? '',
+      contentType: f.contentType ?? '',
+      url: f.url ?? '',
+    })
+  }
+
+  function download(f: FileRow) {
+    if (!f.url || !f.fileName) return
+    const name = f.fileName
+    fetch(f.url)
+      .then((r) => r.blob())
+      .then((blob) => {
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download = name
+        a.click()
+        URL.revokeObjectURL(a.href)
+      })
   }
 
   function handleDeleteFolder(folder: FolderRow) {
@@ -869,227 +888,162 @@ export function FileSystemBrowser({
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Navn
-              </th>
-              {variant === 'staff' && (
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">
-                  Fag
-                </th>
-              )}
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">
-                Dato
-              </th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">
-                Af
-              </th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Handlinger
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {isLoading &&
-              Array.from({ length: 4 }).map((_, i) => (
-                <tr key={i} className="animate-pulse">
-                  <td className="px-5 py-3">
-                    <div className="h-4 w-40 bg-gray-200 rounded" />
-                  </td>
-                  {variant === 'staff' && (
-                    <td className="px-5 py-3 hidden md:table-cell">
-                      <div className="h-4 w-24 bg-gray-100 rounded" />
-                    </td>
-                  )}
-                  <td className="px-5 py-3 hidden sm:table-cell">
-                    <div className="h-4 w-20 bg-gray-100 rounded" />
-                  </td>
-                  <td className="px-5 py-3 hidden lg:table-cell">
-                    <div className="h-4 w-24 bg-gray-100 rounded" />
-                  </td>
-                  <td className="px-5 py-3" />
-                </tr>
-              ))}
-
-            {folders.map((folder) => (
-              <tr
-                key={`folder-${folder.id}`}
-                className="hover:bg-amber-50 transition-colors cursor-pointer"
-                data-testid={`folder-row-${folder.id}`}
-                onClick={() => navigateInto(folder)}
-              >
-                <td className="px-5 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-amber-400 shrink-0">
-                      <FolderIcon size={16} />
-                    </span>
-                    <div className="min-w-0 flex items-center gap-2">
-                      {renamingFolderId === folder.id ? (
-                        <InlineRename
-                          variant={variant}
-                          folder={folder}
-                          onDone={() => setRenamingFolderId(null)}
-                        />
-                      ) : (
-                        <span className="font-medium text-gray-900 truncate">{folder.name}</span>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                {variant === 'staff' && (
-                  <td className="px-5 py-3 text-gray-500 hidden md:table-cell">
-                    {folder.courseName ?? <span className="text-gray-300">—</span>}
-                  </td>
-                )}
-                <td className="px-5 py-3 text-gray-500 hidden sm:table-cell">
-                  {folder.createdAt ? formatDate(folder.createdAt) : '—'}
-                </td>
-                <td className="px-5 py-3 hidden lg:table-cell" />
-                <td className="px-5 py-3 text-right">
-                  {isAdmin && (
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setRenamingFolderId(folder.id!)
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-brand-600 rounded-md hover:bg-brand-50 transition-colors"
-                        title="Omdøb mappe"
-                        data-testid={`rename-folder-${folder.id}`}
-                      >
-                        <PencilIcon />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteFolder(folder)
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                        title="Slet mappe"
-                        data-testid={`delete-folder-${folder.id}`}
-                      >
-                        <TrashIcon />
-                      </button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-
-            {files.map((f) => (
-              <tr
-                key={f.id}
-                className="hover:bg-gray-50 transition-colors"
-                data-testid={`file-row-${f.id}`}
-              >
-                <td className="px-5 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-400 shrink-0">
-                      <FileIcon contentType={f.contentType ?? ''} />
-                    </span>
-                    <div className="min-w-0">
-                      <button
-                        onClick={() =>
-                          setPreviewFile({
-                            fileName: f.fileName ?? '',
-                            contentType: f.contentType ?? '',
-                            url: f.url ?? '',
-                          })
-                        }
-                        className="font-medium text-gray-900 truncate block text-left hover:text-brand-600 transition-colors"
-                      >
-                        {f.fileName}
-                      </button>
-                      <span className="text-xs text-gray-400">{formatBytes(f.sizeBytes ?? 0)}</span>
-                    </div>
-                  </div>
-                </td>
-                {variant === 'staff' && (
-                  <td className="px-5 py-3 text-gray-500 hidden md:table-cell">
-                    {f.courseName ?? <span className="text-gray-300">—</span>}
-                  </td>
-                )}
-                <td className="px-5 py-3 text-gray-500 hidden sm:table-cell">
-                  {formatDate(f.uploadedAt ?? new Date().toISOString())}
-                </td>
-                <td className="px-5 py-3 text-gray-500 hidden lg:table-cell">
-                  {f.uploadedBy ?? '—'}
-                </td>
-                <td className="px-5 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
+      <DataTable
+        items={entries}
+        isLoading={isLoading}
+        caption={headerTitle}
+        testId="file-list"
+        rowKey={(e) => `${e.kind}-${e.kind === 'folder' ? e.folder.id : e.file.id}`}
+        rowTestId={(e) =>
+          e.kind === 'folder' ? `folder-row-${e.folder.id}` : `file-row-${e.file.id}`
+        }
+        onRowClick={(e) => {
+          if (e.kind === 'folder' && renamingFolderId !== e.folder.id) navigateInto(e.folder)
+        }}
+        noun={{ one: 'fil eller mappe', other: 'filer og mapper' }}
+        searchText={(e) =>
+          e.kind === 'folder'
+            ? `${e.folder.name ?? ''} ${e.folder.courseName ?? ''}`
+            : `${e.file.fileName ?? ''} ${e.file.courseName ?? ''} ${e.file.uploadedBy ?? ''}`
+        }
+        searchPlaceholder="Søg efter filnavn"
+        empty={
+          <>
+            <p className="font-semibold text-gray-700">
+              {currentFolderId ? 'Mappen er tom' : 'Ingen filer her endnu'}
+            </p>
+            <p className="text-sm mt-1">
+              {currentFolderId
+                ? 'Upload filer til denne mappe via "Upload fil"'
+                : 'Klik "Upload fil" for at komme i gang'}
+            </p>
+          </>
+        }
+        columns={[
+          {
+            key: 'name',
+            header: 'Navn',
+            // Folders before files, then by name.
+            sortValue: (e) =>
+              e.kind === 'folder' ? `0 ${e.folder.name ?? ''}` : `1 ${e.file.fileName ?? ''}`,
+            cell: (e) =>
+              e.kind === 'folder' ? (
+                <span className="flex items-center gap-2">
+                  <span className="text-amber-500 shrink-0">
+                    <FolderIcon size={16} />
+                  </span>
+                  {renamingFolderId === e.folder.id ? (
+                    <InlineRename
+                      variant={variant}
+                      folder={e.folder}
+                      onDone={() => setRenamingFolderId(null)}
+                    />
+                  ) : (
                     <button
-                      onClick={() =>
-                        setPreviewFile({
-                          fileName: f.fileName ?? '',
-                          contentType: f.contentType ?? '',
-                          url: f.url ?? '',
-                        })
-                      }
-                      className="p-1.5 text-gray-400 hover:text-brand-600 rounded-md hover:bg-brand-50 transition-colors"
-                      title="Forhåndsvis"
-                    >
-                      <EyeIcon />
-                    </button>
-                    <button
-                      data-testid={`download-${f.id}`}
-                      onClick={() => {
-                        if (!f.url || !f.fileName) return
-                        const url = f.url
-                        const name = f.fileName
-                        fetch(url)
-                          .then((r) => r.blob())
-                          .then((blob) => {
-                            const a = document.createElement('a')
-                            a.href = URL.createObjectURL(blob)
-                            a.download = name
-                            a.click()
-                            URL.revokeObjectURL(a.href)
-                          })
+                      type="button"
+                      onClick={(ev) => {
+                        ev.stopPropagation()
+                        navigateInto(e.folder)
                       }}
-                      className="p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-                      title="Hent fil"
+                      className="min-h-[44px] text-left font-semibold text-gray-900 hover:text-brand-700 break-words"
                     >
-                      <DownloadIcon />
+                      {e.folder.name}
                     </button>
-                    {isAdmin && (
-                      <button
-                        data-testid={`delete-${f.id}`}
-                        onClick={() => {
-                          if (f.id && confirm(`Slet filen "${f.fileName ?? 'fil'}"?`)) {
-                            deleteMutation.mutate(f.id)
-                          }
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                        title="Slet fil"
-                      >
-                        <TrashIcon />
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-
-            {isEmpty && (
-              <tr>
-                <td colSpan={variant === 'staff' ? 5 : 4} className="px-5 py-12 text-center">
-                  <p className="text-gray-400 text-sm">
-                    {currentFolderId ? 'Mappen er tom' : 'Ingen filer her endnu'}
-                  </p>
-                  <p className="text-gray-300 text-xs mt-1">
-                    {currentFolderId
-                      ? 'Upload filer til denne mappe via "Upload fil"'
-                      : 'Klik "Upload fil" for at komme i gang'}
-                  </p>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                  )}
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <span className="text-gray-500 shrink-0">
+                    <FileIcon contentType={e.file.contentType ?? ''} />
+                  </span>
+                  <span className="min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => openPreview(e.file)}
+                      className="block text-left font-semibold text-gray-900 hover:text-brand-700 break-words"
+                    >
+                      {e.file.fileName}
+                    </button>
+                    <span className="text-xs font-normal text-gray-600">
+                      {formatBytes(e.file.sizeBytes ?? 0)}
+                    </span>
+                  </span>
+                </span>
+              ),
+          },
+          ...(variant === 'staff'
+            ? [
+                {
+                  key: 'course',
+                  header: 'Fag',
+                  sortValue: (e: Entry) =>
+                    (e.kind === 'folder' ? e.folder.courseName : e.file.courseName) ?? '',
+                  cell: (e: Entry) =>
+                    (e.kind === 'folder' ? e.folder.courseName : e.file.courseName) ?? '—',
+                },
+              ]
+            : []),
+          {
+            key: 'date',
+            header: 'Dato',
+            sortValue: (e) => (e.kind === 'folder' ? e.folder.createdAt : e.file.uploadedAt) ?? '',
+            cell: (e) => {
+              const iso = e.kind === 'folder' ? e.folder.createdAt : e.file.uploadedAt
+              return iso ? formatDate(iso) : '—'
+            },
+          },
+          {
+            key: 'by',
+            header: 'Af',
+            cell: (e) => (e.kind === 'file' ? (e.file.uploadedBy ?? '—') : '—'),
+          },
+        ]}
+        actions={(e) => {
+          if (e.kind === 'folder') {
+            const folder = e.folder
+            return isAdmin
+              ? [
+                  {
+                    label: 'Omdøb',
+                    variant: 'secondary',
+                    testId: `rename-folder-${folder.id}`,
+                    onClick: () => setRenamingFolderId(folder.id!),
+                  },
+                  {
+                    label: 'Slet',
+                    variant: 'danger',
+                    testId: `delete-folder-${folder.id}`,
+                    onClick: () => handleDeleteFolder(folder),
+                  },
+                ]
+              : []
+          }
+          const f = e.file
+          return [
+            { label: 'Vis', testId: `preview-${f.id}`, onClick: () => openPreview(f) },
+            {
+              label: 'Hent',
+              variant: 'secondary',
+              testId: `download-${f.id}`,
+              onClick: () => download(f),
+            },
+            ...(isAdmin
+              ? [
+                  {
+                    label: 'Slet',
+                    variant: 'danger' as const,
+                    testId: `delete-${f.id}`,
+                    onClick: () => {
+                      if (f.id && confirm(`Slet filen "${f.fileName ?? 'fil'}"?`)) {
+                        deleteMutation.mutate(f.id)
+                      }
+                    },
+                  },
+                ]
+              : []),
+          ]
+        }}
+      />
 
       {previewFile && <FilePreviewModal {...previewFile} onClose={() => setPreviewFile(null)} />}
 
