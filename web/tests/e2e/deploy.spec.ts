@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 // While a deploy replaces the API, Traefik sends API calls to the maintenance container, which
-// answers 503 with X-Maintenance (infrastructure/maintenance/nginx.conf). A tab that was already
+// answers 503 with X-Maintenance (`maintenance-nginx` in docker-compose.prod.yml). A tab that was already
 // open must hold its requests behind a notice and carry on afterwards, not show errors.
 
 test('an open tab waits out a deploy and carries on', async ({ page }) => {
