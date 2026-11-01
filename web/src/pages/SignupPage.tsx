@@ -67,7 +67,7 @@ export default function SignupPage() {
         return
       }
 
-      if (response.status === 400) {
+      if (response?.status === 400) {
         const fieldErrors: ValidationErrors = {}
         const validation = (error ?? {}) as { errors?: Record<string, string[]> }
         for (const [field, msgs] of Object.entries(validation.errors ?? {})) {
@@ -75,13 +75,13 @@ export default function SignupPage() {
           fieldErrors[key] = msgs[0]
         }
         setErrors(fieldErrors)
-      } else if (response.status === 409) {
+      } else if (response?.status === 409) {
         setErrors({
           adminEmail:
             problemDetail(error) ??
             'Der findes allerede en bruger med den e-mail. En bruger kan kun høre til én skole, så brug en anden e-mail til den nye skole.',
         })
-      } else if (response.status === 502) {
+      } else if (response?.status === 502) {
         setErrors({ general: 'Der opstod en fejl ved oprettelse af brugerkonto. Prøv igen.' })
       } else {
         setErrors({ general: 'Der opstod en fejl. Prøv igen.' })
