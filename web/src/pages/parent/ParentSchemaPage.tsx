@@ -105,7 +105,7 @@ export default function ParentSchemaPage() {
     queryFn: () => getApiV1ParentsMe({ throwOnError: false }),
   })
 
-  const notFound = meRes?.response.status === 404
+  const notFound = meRes?.response?.status === 404
   const me = meRes?.data as ParentMeDto | undefined
   const students: ParentStudentDto[] = notFound ? [] : (me?.students ?? [])
 

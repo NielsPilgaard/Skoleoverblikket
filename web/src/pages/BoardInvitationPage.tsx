@@ -64,13 +64,13 @@ export default function BoardInvitationPage() {
       if (preview.needsPassword) {
         const pw = await postApiV1BoardInvitationsPassword({ body: { token, password } })
         if (pw.error) {
-          if (pw.response.status === 409) {
+          if (pw.response?.status === 409) {
             setPreview({ ...preview, needsPassword: false })
           } else {
             setError({
               title: 'Adgangskoden blev ikke gemt',
               message:
-                pw.response.status === 400
+                pw.response?.status === 400
                   ? `Adgangskoden skal være mindst ${MIN_PASSWORD_LENGTH} tegn.`
                   : 'Linket er ugyldigt eller udløbet.',
             })
@@ -85,7 +85,7 @@ export default function BoardInvitationPage() {
         // 403: the school no longer has the board module, and the detail says so.
         const detail = (res.error as { detail?: string }).detail
         setError(
-          res.response.status === 403
+          res.response?.status === 403
             ? { title: 'Modulet er ikke aktivt', message: detail ?? 'Kontakt skolens kontor.' }
             : { title: 'Ugyldigt link', message: detail ?? 'Invitation kunne ikke accepteres' }
         )
