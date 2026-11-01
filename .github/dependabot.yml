@@ -1,0 +1,48 @@
+# Weekly update PRs, grouped per ecosystem so there are a few PRs a week, not dozens.
+# Security updates (a known vulnerability) are opened right away, outside this schedule, once
+# "Dependabot security updates" is on in the repo settings.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directories:
+      - /api/Skoleoverblikket.Api
+      - /api/tests/Skoleoverblikket.Api.IntegrationTests
+      - /infrastructure/aspire/Skoleoverblikket.AppHost
+      - /infrastructure/aspire/Skoleoverblikket.ServiceDefaults
+      - /infrastructure/backup-agent
+    schedule:
+      interval: weekly
+    groups:
+      nuget:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directories:
+      - /api
+      - /web
+      - /infrastructure/backup-agent
+      - /infrastructure/keycloak
+      - /infrastructure/postgres
+    schedule:
+      interval: weekly
+    groups:
+      docker:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

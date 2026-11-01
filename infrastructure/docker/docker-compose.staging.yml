@@ -36,6 +36,10 @@ services:
   keycloak:
     image: ${KEYCLOAK_IMAGE:-ghcr.io/nielspilgaard/skoleoverblikket-keycloak:latest}
     command: start-dev --import-realm
+    # The image holds the production realm, without the Debugskolen login and fixed client secret
+    # that the e2e tests and the API below use. Mount the dev realm over it.
+    volumes:
+      - ../keycloak/realms:/opt/keycloak/data/import:ro
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak

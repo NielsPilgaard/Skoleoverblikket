@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Skoleoverblikket.Api.Auth;
 using Skoleoverblikket.Api.Data;
 
 namespace Skoleoverblikket.Api.Controllers;
@@ -8,7 +9,7 @@ namespace Skoleoverblikket.Api.Controllers;
 [ApiController]
 [Route("api/v1")]
 [Authorize]
-public sealed class SchedulesController(AppDbContext db) : ControllerBase
+public sealed class SchedulesController(AppDbContext db, IAuthorizationService authz) : ControllerBase
 {
 	public record ScheduleSlotDto(
 		DayOfWeek Weekday,
@@ -32,6 +33,17 @@ public sealed class SchedulesController(AppDbContext db) : ControllerBase
 	[HttpGet("classes/{classId:guid}/schedule")]
 	public async Task<ActionResult<List<ScheduleSlotDto>>> GetClassSchedule(Guid classId, CancellationToken cancellationToken)
 	{
+		if (User.IsInRole(Roles.Board)
+			&& !(await authz.AuthorizeAsync(User, null, Policies.CanAccessTeacherData)).Succeeded)
+		{
+			return Forbid();
+		}
+
+		if (!(await authz.AuthorizeAsync(User, classId, Policies.ParentClassAccess)).Succeeded)
+		{
+			return Forbid();
+		}
+
 		var classExists = await db.Classes.AnyAsync(c => c.Id == classId, cancellationToken);
 		if (!classExists)
 		{
@@ -75,6 +87,7 @@ public sealed class SchedulesController(AppDbContext db) : ControllerBase
 	/// Weekly schedule for a staff member (teacher or aide) across all active schemas.
 	/// </summary>
 	[HttpGet("staff/{staffId:guid}/schedule")]
+	[Authorize(Roles = Roles.Staff)]
 	public async Task<ActionResult<List<ScheduleSlotDto>>> GetStaffSchedule(Guid staffId, CancellationToken cancellationToken)
 	{
 		var staffExists = await db.Staff.AnyAsync(s => s.Id == staffId, cancellationToken);
@@ -120,6 +133,7 @@ public sealed class SchedulesController(AppDbContext db) : ControllerBase
 	/// Weekly schedule for a room across all active schemas.
 	/// </summary>
 	[HttpGet("rooms/{roomId:guid}/schedule")]
+	[Authorize(Roles = Roles.Staff)]
 	public async Task<ActionResult<List<ScheduleSlotDto>>> GetRoomSchedule(Guid roomId, CancellationToken cancellationToken)
 	{
 		var roomExists = await db.Rooms.AnyAsync(r => r.Id == roomId, cancellationToken);

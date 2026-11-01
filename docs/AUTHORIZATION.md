@@ -165,12 +165,17 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 
 ## Endpoint authorization summary
 
+A bare `[Authorize]` admits any login: parents, board members and logins with no school role. So every endpoint names roles or a policy. The few that don't are listed, with the reason they're safe, in `EndpointAuthorizationTests`, which fails on any endpoint that is in neither.
+
 | Endpoint group | Required | Note |
 |---|---|---|
 | `GET /api/v1/classes` | `[Authorize]` | Results filtered by ClassPermission when rows exist |
 | `POST/PUT/DELETE /api/v1/classes` | `[Authorize(Roles = "admin")]` | |
 | `GET /api/v1/me` | `[Authorize]` | The caller's school roles and acting role. Not gated by modules |
-| `GET /api/v1/staff/me` | `[Authorize]` | Returns own staff record |
+| `GET /api/v1/staff`, `GET /api/v1/staff/{id}`, `GET /api/v1/staff/me` | `[Authorize(Roles = "staff,board")]` | Board also needs `CanAccessTeacherData`. `me` returns the caller's own staff record |
+| `/api/v1/files` (staff file area) | `[Authorize(Roles = "staff")]` | Deletes are admin-only. The board has its own `/api/v1/board-files` |
+| `GET /api/v1/classes/{id}/schedule` | `[Authorize]` + `ParentClassAccess` | Staff: any class. Parents: only their children's classes. Board: needs `CanAccessTeacherData`. No school role: 403 |
+| `GET /api/v1/staff/{id}/schedule`, `GET /api/v1/rooms/{id}/schedule` | `[Authorize(Roles = "staff")]` | |
 | `POST/PUT/DELETE /api/v1/staff` | `[Authorize(Roles = "admin")]` | |
 | `PATCH /api/v1/staff/{id}/admin-permission` | `[Authorize(Roles = "admin")]` | Sets `Staff.IsAdmin`. Cannot remove self or last admin |
 | `GET/POST/DELETE /api/v1/classes/{id}/permissions` | `[Authorize(Roles = "admin")]` | |

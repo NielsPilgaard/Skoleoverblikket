@@ -54,6 +54,10 @@ public sealed class S3ObjectStorage(IAmazonS3 s3, IOptions<S3Options> opts) : IO
 			Protocol = new Uri(_options.PublicEndpoint).Scheme == Uri.UriSchemeHttp ? Protocol.HTTP : Protocol.HTTPS,
 		};
 
+		// Signing the length makes S3 reject an upload of any other size, so the size checked against
+		// the limit and quota at presign time is the size that gets stored.
+		request.Headers.ContentLength = contentLength;
+
 		// SigV4 signs the Host header, so sign for the host the browser uploads to. In the
 		// docker-compose stack the API reaches S3 at silo:9000 but the browser at localhost:9000.
 		// Presigning is local; this client never sends a request.

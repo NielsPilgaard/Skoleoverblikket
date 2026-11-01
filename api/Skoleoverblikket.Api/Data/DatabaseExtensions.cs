@@ -46,7 +46,10 @@ public static class DatabaseExtensions
 				}
 			}
 
-			if (!string.IsNullOrEmpty(app.Configuration.GetConnectionString("skoleoverblikket-db")))
+			// Debugskolen and its admin match the dev login in the realm file, whose password is public.
+			// Production must never create them, e.g. after the retention job deleted the school.
+			if (!app.Environment.IsProduction()
+				&& !string.IsNullOrEmpty(app.Configuration.GetConnectionString("skoleoverblikket-db")))
 			{
 				_ = Task.Run(() => app.Services.SeedAsync());
 			}

@@ -57,7 +57,8 @@ public sealed class SchoolSignupService(
 		LoginFailed,
 	}
 
-	public sealed record Result(TenantCreatedDto? Created, Failure? Failure = null, string? Detail = null);
+	/// <summary>A failure is logged here, not returned: signup is anonymous, so the caller must not see internals.</summary>
+	public sealed record Result(TenantCreatedDto? Created, Failure? Failure = null);
 
 	public async Task<Result> CreateAsync(CreateTenantRequest req, CancellationToken cancellationToken)
 	{
@@ -90,7 +91,8 @@ public sealed class SchoolSignupService(
 		}
 		catch (KeycloakException ex)
 		{
-			return new Result(null, Failure.AccountFailed, ex.Message);
+			logger.LogError(ex, "Could not create the Keycloak login for a new school");
+			return new Result(null, Failure.AccountFailed);
 		}
 
 		var adminName = $"{req.AdminFirstName} {req.AdminLastName}".Trim();
@@ -124,7 +126,8 @@ public sealed class SchoolSignupService(
 				logger.LogError(cleanupEx, "Could not delete Keycloak user {KeycloakSubject} after failed signup save", keycloakSubject);
 			}
 
-			return new Result(null, Failure.SaveFailed, ex.Message);
+			logger.LogError(ex, "Could not save a new school");
+			return new Result(null, Failure.SaveFailed);
 		}
 
 		TokenResponse token;
@@ -134,7 +137,8 @@ public sealed class SchoolSignupService(
 		}
 		catch (Exception ex)
 		{
-			return new Result(null, Failure.LoginFailed, ex.Message);
+			logger.LogError(ex, "New school {SchoolId} was created, but logging in its admin failed", school.Id);
+			return new Result(null, Failure.LoginFailed);
 		}
 
 		return new Result(new TenantCreatedDto(school.Id, school.Name, req.AdminEmail, token.AccessToken, token.RefreshToken, token.ExpiresIn));

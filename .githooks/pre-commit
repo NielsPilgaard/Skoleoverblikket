@@ -1,5 +1,5 @@
 #!/bin/sh
-# Auto-format staged files so CI never fails on formatting.
+# Auto-formats staged files so CI never fails on formatting, then blocks staged secrets.
 # Enabled by `npm install` in web/ (the `prepare` script sets core.hooksPath).
 # Fixed files are re-staged whole, so partially staged hunks in them get committed too.
 # Skip once with `git commit --no-verify`.
@@ -35,6 +35,17 @@ if [ -n "$cs" ]; then
 	else
 		echo "pre-commit: dotnet not found, skipping C# formatting." >&2
 	fi
+fi
+
+# Runs last, so it scans the index as committed: the formatters above re-stage whole files, unstaged hunks included.
+# Values that are safe to publish are allowlisted in .gitleaks.toml. CI scans the whole history too.
+if command -v gitleaks >/dev/null 2>&1; then
+	gitleaks git --pre-commit --staged --redact --no-banner . || {
+		echo "pre-commit: gitleaks found a secret in the staged changes (see above). Remove it (unstage the file first if the formatter re-staged it whole), and rotate it if it was real." >&2
+		exit 1
+	}
+else
+	echo "pre-commit: gitleaks not installed (run scripts/setup.ps1), skipping the secret scan. CI still runs it." >&2
 fi
 
 exit 0

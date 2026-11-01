@@ -105,7 +105,7 @@ public sealed class BoardMemberInvitationService(
 		catch (KeycloakException ex)
 		{
 			// The invitation page creates the login when the invitee chooses a password.
-			logger.LogWarning(ex, "Could not pre-create Keycloak account for board member {Email}", normalizedEmail);
+			logger.LogWarning(ex, "Could not pre-create Keycloak account for a board member of school {TenantId}", tenant.TenantId);
 		}
 
 		if (member is null)

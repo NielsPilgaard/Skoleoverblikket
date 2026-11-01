@@ -10,7 +10,7 @@ namespace Skoleoverblikket.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/staff")]
-[Authorize]
+[Authorize(Roles = $"{Roles.Staff},{Roles.Board}")]
 public sealed class StaffController(AppDbContext db, StaffService staffService, IAuthorizationService authz) : ControllerBase
 {
 	public record StaffDto(Guid Id, string Name, string? Email, string? Phone, StaffRole Role, bool IsAdmin, string? KeycloakSubject);
