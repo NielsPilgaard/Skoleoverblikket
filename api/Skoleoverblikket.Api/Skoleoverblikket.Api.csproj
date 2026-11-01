@@ -42,7 +42,7 @@
     <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
     <PackageReference Include="Refit.HttpClientFactory" Version="11.0.1" />
-    <PackageReference Include="Stripe.net" Version="47.3.0" />
+    <PackageReference Include="Stripe.net" Version="53.1.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
     <!-- Security fix pin (CVE-2026-84008), above MimeKit's 10.0.0. Drop once MailKit depends on 10.0.13+. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
