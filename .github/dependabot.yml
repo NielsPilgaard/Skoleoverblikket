@@ -16,6 +16,10 @@ updates:
       nuget:
         patterns: ["*"]
         update-types: [minor, patch]
+    ignore:
+      # Billing may move off Stripe (tasks/62-stripe-to-alunta.md); don't chase Stripe.net majors meanwhile.
+      - dependency-name: Stripe.net
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /web
