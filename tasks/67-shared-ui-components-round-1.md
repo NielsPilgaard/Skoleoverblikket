@@ -9,10 +9,28 @@ description: >-
   with autosave and "Næste lektion", and a one-list file picker with
   suggestions and an upload queue. The published mockup page is the visual
   spec. Round 2 picks (task 65) get their own build task.
-status: 'Ready'
+status: 'In progress'
 ---
 
 # Shared UI components, round 1
+
+## Status (2026-11-01)
+
+**Part 1 is built:** PR [#89](https://github.com/NielsPilgaard/Skoleoverblikket/pull/89), branch `feature/shared-ui-lists`. Not merged yet, and not yet checked by hand on a phone, with a keyboard or with a screen reader. Start part 2 from `main` once #89 is merged, or branch from `feature/shared-ui-lists` if it isn't.
+
+- **Built:** [web/src/components/ui/list/](../web/src/components/ui/list/) has `PersonList`, `DataTable`, `ListToolbar`, `useListControls` (search, filter and sort state) and `parts.tsx` (row actions, badges, empty states). [web/src/components/ui/select/](../web/src/components/ui/select/) has `Select` and the rule-table comment, built early because the toolbar needs it. Part 2 adds the rest of the family there.
+- **Moved:** Medarbejdere, Elever, Forældre and Kontakter to `PersonList`. Lokaler, Fag, Filer, both Oversigt tables, both fravær statistics tables and backoffice Skoler to `DataTable`.
+- **`DataTable` renders one layout at a time** (`useMediaQuery`, [web/src/hooks/useMediaQuery.ts](../web/src/hooks/useMediaQuery.ts)). If both layouts were in the DOM with one hidden by CSS, every `data-testid` would exist twice and Playwright's strict mode would fail.
+- **Filters:** 2–5 options render as chips, more than 5 as a `Select`, and a lone "Alle" renders nothing.
+- **Left as they are (part 1):**
+  - `ParentContactBookPage`: a message inbox, not a list of people.
+  - `ImportPage` invite table: a checkbox picker, which becomes part 2's `MultiSelect`.
+  - Timetable and print grids: CalendarGrid, PrintSchemaPage, SfoPrintPage, WeekPlanPrintPage, MySchedulePage, StaffSchedulePage, RoomSchedulePage, ParentSchemaPage.
+  - `PasteGrid` (an input grid) and `ComplianceCoveragePage` (UVM-timetal).
+- **For part 2:** the course filter `<select>` in `FileSystemBrowser` and the `absence-stats-category` select in `AbsenceStatsTab` are still native, so move them to `Select`.
+- **Cleanup after #89 merges:** delete the `pr-assets/shared-ui-lists` branch, which only holds the PR's screenshots.
+
+**Parts 2–5 are left.**
 
 ## TL;DR
 
