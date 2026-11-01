@@ -1,0 +1,11 @@
+# The API, web and backup agent images build from the repo root. Keep local build output out
+# of the context: a host node_modules or obj/ copied over the container's breaks native
+# binaries and restore, and makes the context hundreds of MB.
+**/node_modules
+**/bin
+**/obj
+web/dist
+web/dist-ssr
+web/test-results
+web/playwright-report
+web/tests/e2e/.auth

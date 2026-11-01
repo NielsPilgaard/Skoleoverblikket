@@ -5,7 +5,7 @@ import path from 'path'
 import fs from 'fs'
 
 function codegenWatchPlugin() {
-  const openApiSpec = path.resolve(__dirname, '../openapi/Skoleoverblikket.Api.json')
+  const openApiSpec = path.resolve(import.meta.dirname, '../openapi/Skoleoverblikket.Api.json')
 
   return {
     name: 'codegen-watch',
@@ -14,7 +14,7 @@ function codegenWatchPlugin() {
         if (filename !== 'Skoleoverblikket.Api.json') return
         console.log('\n[codegen] OpenAPI spec changed — regenerating...')
         try {
-          execSync('npm run api:generate --silent', { cwd: __dirname, stdio: 'inherit' })
+          execSync('npm run api:generate --silent', { cwd: import.meta.dirname, stdio: 'inherit' })
           console.log('[codegen] Done.')
           server.ws.send({ type: 'full-reload' })
         } catch (e) {
@@ -31,7 +31,7 @@ export default defineConfig({
   plugins: [react(), codegenWatchPlugin()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   server: {
