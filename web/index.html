@@ -15,6 +15,8 @@
 	</head>
 	<body>
 		<div id="root"></div>
+		<!-- Runtime config (public/env.js), written by the web container at start. Must load before the app. -->
+		<script src="/env.js"></script>
 		<script type="module" src="/src/main.tsx"></script>
 	</body>
 </html>

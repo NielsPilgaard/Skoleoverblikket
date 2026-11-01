@@ -79,8 +79,25 @@ What Dokploy's Environment tab sets for `docker-compose.prod.yml`. Compose maps 
 | `Stripe_ModulePriceIds_ParentModule_Monthly`, `_Yearly`, `Stripe_ModulePriceIds_BoardModule_Monthly`, `_Yearly` | API `Stripe__ModulePriceIds__<Module>__<Interval>` | Price IDs of the paid modules. |
 | `KEYCLOAK_DB_URL` | Keycloak `KC_DB_URL` | JDBC URL of Keycloak's database, e.g. `jdbc:postgresql://<host>:5432/keycloak`. |
 | `KEYCLOAK_DB_USERNAME`, `KEYCLOAK_DB_PASSWORD` | Keycloak `KC_DB_USERNAME`, `KC_DB_PASSWORD` | Keycloak's database login. |
-| `KEYCLOAK_ADMIN_PASSWORD` | Keycloak `KC_BOOTSTRAP_ADMIN_PASSWORD` | Password of Keycloak's `admin` user. Strong and random. |
 | `API_IMAGE`, `WEB_IMAGE`, `KEYCLOAK_IMAGE` | image | Optional, default `ghcr.io/nielspilgaard/skoleoverblikket-<name>:latest`. `deploy.mjs` sets all three to the release tag on every deploy. |
+
+There is no Keycloak admin password variable: prod has no bootstrap admin (see below).
+
+### Keycloak admin console
+
+The master realm (`/realms/master`, `/admin/master`) answers 403 on `auth.skoleoverblikket.dk`. The admin REST API (`/admin/realms/*`) stays public, because the API calls it with the `skoleoverblikket-admin` service account, whose token comes from the app realm. Keycloak listens on the VPS's `127.0.0.1:8180`, and `KC_HOSTNAME_ADMIN` points the console there:
+
+```bash
+ssh -L 8180:127.0.0.1:8180 ubuntu@<vps>
+# then open http://localhost:8180/admin/master/console/
+```
+
+Master realm admins are personal users with OTP required, never a shared `admin`. Locked out (no admin left, or lost OTP): create a temporary admin from inside the container, log in through the tunnel, fix your user, then delete the temporary one.
+
+```bash
+docker exec -it $(docker ps -qf label=com.docker.compose.service=keycloak) \
+  /opt/keycloak/bin/kc.sh bootstrap-admin user
+```
 
 ---
 
@@ -120,7 +137,7 @@ It reads the names from `docker-compose.prod.yml` and only creates the ones that
 
 | Variable (Dokploy env) | Description |
 | --- | --- |
-| `COMPOSE_PROFILES` | `selfhosted-db` starts `postgres` and `backup-agent`. Set only on the new VPS, and delete it once the profile is removed from `ProdCompose.cs` ([task 54 steps](../tasks/54-move-vps.md#switching-to-the-backup-agent-step-by-step)). |
+| `COMPOSE_PROFILES` | `selfhosted-db` starts `postgres` and `backup-agent`. Set before the cutover (the app keeps using the Dokploy DBs until `DATABASE_URL` and `KEYCLOAK_DB_URL` move to host `postgres`), and delete it once the profile is removed from `ProdCompose.cs` ([task 54 steps](../tasks/54-move-vps.md#switching-to-the-backup-agent-step-by-step)). |
 | (no image variables) | The Postgres and agent image tags are pinned in `ProdCompose.cs` (`PostgresTag`, `BackupAgentTag`), not in Dokploy, so a normal deploy never restarts the database and an upgrade is a PR. |
 | `POSTGRES_PASSWORD` | Superuser password. Only used by the init script and by hand. |
 | `APP_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD` | Passwords of the `skoleoverblikket` and `keycloak` roles, created on first start. `DATABASE_URL` and `KEYCLOAK_DB_PASSWORD` for Keycloak use the same values, host `postgres`. |
@@ -156,15 +173,23 @@ CD ([cd.yml](../.github/workflows/cd.yml)) watches prod for 15 minutes after eac
 
 ---
 
-## Frontend (Vite build-time)
+## Frontend
 
-The frontend is a static SPA. These variables must be set **at build time** (they are baked into the JS bundle).
+The frontend is a static SPA served by nginx. The Keycloak URL is baked in at build time and can be overridden when the container starts.
 
-| Variable            | Description                                                                                  |
-| ------------------- | -------------------------------------------------------------------------------------------- |
-| `VITE_KEYCLOAK_URL` | Keycloak base URL — no trailing slash, no realm path. Example: `https://auth.skoleoverblikket.dk` |
+| Variable            | When | Description |
+| ------------------- | ---- | ----------- |
+| `VITE_KEYCLOAK_URL` | build | Keycloak base URL — no trailing slash, no realm path. CI builds the published image with `https://auth.skoleoverblikket.dk`. See [web/.env.example](../web/.env.example). |
+| `KEYCLOAK_URL`      | container start | Optional. Overrides `VITE_KEYCLOAK_URL` without a rebuild: [web/runtime-config.sh](../web/runtime-config.sh) writes it to `/env.js`. Prod leaves it unset. The e2e staging stack sets it to `http://localhost:8080`. |
 
-Set in the CI/CD pipeline before running `npm run build`. See [web/.env.example](../web/.env.example).
+### Maintenance page during deploys
+
+While a container is replaced, Traefik sends `skoleoverblikket.dk` and `auth.skoleoverblikket.dk` to the `maintenance` service (router priority 1, below the others) instead of answering 404. Every response is a 503 with an `X-Maintenance` header:
+
+- A page load gets [infrastructure/maintenance/index.html](../infrastructure/maintenance/index.html), which polls and reloads once the site is back.
+- A tab that is already open holds its API calls behind a "Vi opdaterer" notice and carries on afterwards ([web/src/api/outage.ts](../web/src/api/outage.ts)). Calls the maintenance service answered are always resent, because the API never saw them. A failed token refresh waits for Keycloak instead of logging out.
+
+Both that page and its nginx config are inlined into the compose file as `configs.content`, which needs Docker Compose 2.23.1 or newer on the server. To change the page, edit the file and regenerate the compose file (`pwsh scripts/generate-prod-compose.ps1`).
 
 ---
 

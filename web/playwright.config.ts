@@ -21,9 +21,9 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      // CI uses the Chrome preinstalled on GitHub's runners: installing Playwright's Chromium
-      // needs apt for its system libraries, which sometimes hangs for 10+ minutes.
-      use: { ...devices['Desktop Chrome'], channel: process.env.CI ? 'chrome' : undefined },
+      // Playwright's headless shell, in CI too. The runner's full Chrome made every test ~1.6x
+      // slower. e2e.yml installs the shell without apt, which sometimes hung for 10+ minutes.
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
   // Start the full Aspire stack before tests if not already running.

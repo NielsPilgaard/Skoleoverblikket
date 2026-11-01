@@ -62,7 +62,7 @@ Review pass (2026-10-04): added the art. 28(3) duty to flag unlawful instruction
 ## Open questions
 
 - ~~Does elmah.io store data in the EU?~~ **No.** elmah.io stores all data in Azure West US / East US and offers no EU region ([legal FAQ](https://elmah.io/legal/legal-faq)). Listed as a US transfer. `ElmahIoScrubber` now runs on every message from both elmah.io hooks (unhandled exceptions and Error logs): it drops form data, cookies, query values and all headers except a short allowlist (so no Authorization, cookies or client IP), and masks emails, phone and CPR numbers, bearer tokens/JWTs and PostgreSQL key values in titles, details, data and breadcrumbs. Ids are kept on purpose.
-- Alexandra Instituttet and Scaleway transcription are not on the list yet: the AI features are not built. Send the 30-day notice before they ship.
+- Scaleway's AI purposes (LLM and transcription) and the encrypted backup copy ([53](../53-restore-drill.md) Phase 2) were added to the list on 2026-10-31 without a notice period: there were no customers to notify. (Same day the LLM moved from Alexandra Instituttet to Scaleway Generative APIs, so no new company joined the list.)
 
 ## Out of scope
 

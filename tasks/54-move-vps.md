@@ -1,22 +1,23 @@
 ---
-title: 'Move prod to a bigger VPS, Postgres in compose with pgBackRest'
-purpose: 'Plan and checklist for moving the prod Dokploy instance to a new, bigger OVH VPS, and everything that is easy to forget when doing it.'
+title: 'Postgres into compose on the current VPS, with pgBackRest'
+purpose: 'Plan and checklist for moving prod Postgres from Dokploy Database resources into the compose app on the current OVH VPS, and everything that is easy to forget when doing it.'
 description: >-
-  Fresh Dokploy install on a bigger OVH VPS in France. Postgres moves from
-  Dokploy Database resources into docker-compose.prod.yml as one cluster (app +
-  Keycloak DBs). A separate backup-agent container (task 60) streams WAL and
-  runs pgBackRest to Object Storage (15-min RPO, point-in-time restore), so
-  backup problems can't take Postgres down. Migrations run as a one-shot compose service, so
-  Postgres has no public port. Cutover is a rehearsed dump/restore with a short
-  maintenance window. Pulls Phase 4 and 5 of task 53 forward.
+  Postgres moves from Dokploy Database resources into docker-compose.prod.yml
+  as one cluster (app + Keycloak DBs), on the current OVH VPS. A separate
+  backup-agent container (task 60) streams WAL and runs pgBackRest to Object
+  Storage (15-min RPO, point-in-time restore), so backup problems can't take
+  Postgres down. Migrations run as a one-shot compose service, so Postgres has
+  no public port. Room comes from removing an unrelated Dokploy stack. Cutover
+  is a dump/restore with a short maintenance window. Pulls Phase 4 and 5 of
+  task 53 forward. A bigger VPS waits until we scale.
 status: 'Proposed'
 ---
 
-# Move prod to a bigger VPS, Postgres in compose with pgBackRest
+# Postgres into compose on the current VPS, with pgBackRest
 
 ## TL;DR
 
-Stand up a new, bigger OVH VPS (France) with a **fresh** Dokploy install. Don't clone the old one. Postgres becomes a service in `docker-compose.prod.yml`: one cluster holding both the app DB and the Keycloak DB. The Postgres image stays free of backup tooling. A separate `backup-agent` container ([task 60](60-backup-console.md)) streams WAL over a shared socket and runs **pgBackRest** to OVH Object Storage, encrypted. Migrations become a one-shot `migrate` service, so CI no longer talks to the DB and port 5432 closes. Rehearse the whole move on the new VPS first. Then cut over: stop old → final dump → restore → start new → DNS. Keep the old VPS stopped but intact for 7 days, then wipe it. This also counts as the first full-rebuild drill from [task 53](53-restore-drill.md) Phase 3.
+**Decided 2026-10-31: no VPS move.** First remove the unrelated Dokploy stack from the VPS (frees 2–3 GB RAM). Then, on the same box, Postgres becomes a service in `docker-compose.prod.yml`: one cluster holding both the app DB and the Keycloak DB. The Postgres image stays free of backup tooling. A separate `backup-agent` container ([task 60](60-backup-console.md)) streams WAL over a shared socket and runs **pgBackRest** to OVH Object Storage, encrypted. Migrations become a one-shot `migrate` service, so CI no longer talks to the DB and port 5432 closes. Rehearse on a scratch stanza and temporary hostname first. Then cut over: stop app → dump the Dokploy DBs → restore into the compose Postgres → start. Keep the old Dokploy Database resources stopped but intact for 7 days, then delete them. Moving to a bigger VPS is [later](#later-bigger-vps).
 
 ## Switching to the backup agent, step by step
 
@@ -30,20 +31,25 @@ The short version of everything below that concerns Postgres and the backup agen
 
 **Pin the images (any time, one PR)**
 
-4. In [ProdCompose.cs](../infrastructure/aspire/Skoleoverblikket.AppHost/ProdCompose.cs), set `PostgresTag` and `BackupAgentTag` to `sha-<commit>` of a `main` commit whose publish jobs passed. Run `pwsh scripts/generate-prod-compose.ps1`, merge. The old box doesn't change: the profile is still off there. **Done 2026-10-19:** both pinned to the PR #35 merge commit `af85693`. Move a pin only when the Postgres image or the agent changes.
+4. In [ProdCompose.cs](../infrastructure/aspire/Skoleoverblikket.AppHost/ProdCompose.cs), set `PostgresTag` and `BackupAgentTag` to `sha-<commit>` of a `main` commit whose publish jobs passed. Run `pwsh scripts/generate-prod-compose.ps1`, merge. Prod doesn't change: the profile is still off there. **Done 2026-10-19:** both pinned to the PR #35 merge commit `af85693`. Move a pin only when the Postgres image or the agent changes.
 
-**On the new box (rehearsal, then cutover)**
+**On the VPS, before the cutover (prod keeps running on the Dokploy DBs)**
 
-5. In Dokploy, check that the compose type is **Docker Compose**, not Stack (Stack ignores profiles).
-6. `pwsh scripts/create-prod-volumes.ps1 ubuntu@<new-vps>`
-7. Dokploy env: `COMPOSE_PROFILES=selfhosted-db`, the variables from step 1–3, and `DATABASE_URL` and `KEYCLOAK_DB_URL` with host `postgres`.
-8. Deploy. Postgres creates its roles and databases; the agent creates the pgBackRest stanza by itself.
-9. Restore the dump (§6 step 3), then run the `GRANT` from [RESTORE.md](../docs/RESTORE.md#13-after-a-pg_restore-into-a-new-cluster) §13.
-10. `pwsh scripts/backup-console.ps1 ubuntu@<new-vps>`, then **Back up now**. Done when the console is green, WAL is less than 15 minutes old and all four heartbeats have checked in.
+5. Remove the unrelated Dokploy stack. Then check headroom with `free -h` and `df -h`: disk must fit two copies of the database (`pgdata-a`, `pgdata-b`) plus 4 GB for `wal-receive`. Set `POSTGRES_MEMORY`, `PG_SHARED_BUFFERS`, `PG_EFFECTIVE_CACHE_SIZE` and `BACKUP_AGENT_MEMORY` (default 5g, too much here) so Postgres, the agent, the app and the Dokploy DBs fit at the same time during the cutover.
+6. In Dokploy, check that the compose type is **Docker Compose**, not Stack (Stack ignores profiles).
+7. `pwsh scripts/create-prod-volumes.ps1 ubuntu@<vps>`
+8. Dokploy env: `COMPOSE_PROFILES=selfhosted-db` and the variables from step 1–3. Leave `DATABASE_URL` and `KEYCLOAK_DB_URL` pointing at the Dokploy DBs.
+9. Deploy. Postgres starts empty and creates its roles and databases; the agent creates the pgBackRest stanza by itself. `api` and `keycloak` don't depend on it, so prod is unaffected.
+10. Rehearse (§5).
 
-**After the cutover (old box stopped, GitHub `production` secrets point at the new box)**
+**Cutover (§6)**
 
-11. Remove the `selfhosted-db` profile from ProdCompose.cs, regenerate, and drop the profile from DEPLOYMENT.md, RESTORE.md §10 and the [ADR](../docs/adr/postgres-backup-agent.md). Merge, then delete `COMPOSE_PROFILES` in Dokploy. Not earlier: CD deploys `main` to whatever box the secrets point at.
+11. Restore the dump, then run the `GRANT` from [RESTORE.md](../docs/RESTORE.md#13-after-a-pg_restore-into-a-new-cluster) §13. Switch `DATABASE_URL` and `KEYCLOAK_DB_URL` to host `postgres` and redeploy.
+12. `pwsh scripts/backup-console.ps1 ubuntu@<vps>`, then **Back up now**. Done when the console is green, WAL is less than 15 minutes old and all four heartbeats have checked in.
+
+**After the cutover**
+
+13. Remove the `selfhosted-db` profile from ProdCompose.cs, regenerate, and drop the profile from DEPLOYMENT.md, RESTORE.md §10 and the [ADR](../docs/adr/postgres-backup-agent.md). Merge, then delete `COMPOSE_PROFILES` in Dokploy.
 
 ## Context
 
@@ -55,66 +61,49 @@ Today ([phase-0-vps](completed/phase-0-vps.md), [self-hosted-postgres-backups](.
 - Uploaded files live in OVH Object Storage, not on the VPS. They don't move.
 - The DPA lists OVH with location **EU (Frankrig)** ([dataProcessing.ts](../web/src/content/dataProcessing.ts)).
 
-The VPS is too small, and [task 53](53-restore-drill.md) already wants WAL archiving (Phase 4) and migrations out of CI (Phase 5). Both are much easier on an empty server than as surgery on the live one. And a move done from backups and written notes is the best test we'll get that we can rebuild prod.
+The VPS is tight on RAM, and [task 53](53-restore-drill.md) already wants WAL archiving (Phase 4) and migrations out of CI (Phase 5). The first plan was a move to a bigger VPS, doing both on an empty server. **Changed 2026-10-31:** an unrelated Dokploy stack on the same VPS uses 2–3 GB RAM. Removing it gives enough room for now, so we stay on the current box and move to a bigger one when we scale ([Later](#later-bigger-vps)). The cost: this is surgery on the live box instead of a clean build, and we don't get the full-rebuild proof (53 Phase 3 stays open).
 
-Constraints ([vendor rules](../docs/adr/ai-data-boundary.md)): data stays in the EU, no personal data through GitHub. The bigger VPS is a deliberate cost increase. Record the new monthly price in the PR.
+Constraints ([vendor rules](../docs/adr/ai-data-boundary.md)): data stays in the EU, no personal data through GitHub. Same VPS, same vendor and location, so the DPA and sub-processor list don't change.
 
 ## Decisions (proposed)
 
-- **D1: Fresh Dokploy install, not a Dokploy restore.** The architecture changes (DB resources → compose services), so restoring Dokploy's own backup would bring back config we're removing. Rebuilding by hand from a written inventory also proves the inventory is complete.
+- ~~**D1: Fresh Dokploy install, not a Dokploy restore.**~~ Dropped 2026-10-31: no new VPS, the existing Dokploy instance stays.
 - **D2: One Postgres cluster, two databases.** `skoleoverblikket` and `keycloak` live in the same cluster with separate roles. One pgBackRest stanza and one WAL stream means a restore brings app and Keycloak back to **the same point in time**. That removes the "user exists in Keycloak but not the app DB" reconcile step from the 53 runbook.
 - **D3: pgBackRest instead of WAL-G** (supersedes the WAL-G suggestion in 53 Phase 4). It supports several repos natively (OVH now, Scaleway as `repo2` for 53 Phase 2), and has built-in AES-256 encryption and `verify` and `check` commands.
 - **D3a: pgBackRest runs in a separate `backup-agent` container, and WAL is streamed, not archived** ([task 60](60-backup-console.md) D1–D2). Postgres has no `archive_command`. With one, a broken pgBackRest makes archiving fail, `pg_wal` fills the disk and prod stops. Instead the agent runs `pg_receivewal` against a replication slot over a shared socket volume, with `max_slot_wal_keep_size = 4GB`. If the agent is down too long, Postgres drops the slot and keeps running: a WAL gap and an alert, not an outage. Task 60 Phase 0 is a spike that proves this before §1 is built, with a capped spool-copy `archive_command` as the fallback.
 - **D4: Postgres has no published port.** It is only on the compose network. Migrations run in a one-shot `migrate` service (53 Phase 5, done here). Important: Docker-published ports bypass `ufw`, so the only safe port is no port.
 - **D5: Same Postgres major as prod, or upgrade during the move.** The cutover uses `pg_dump`/`pg_restore`, which can move to a newer major. pgBackRest physical restores can't. If we want Postgres 17 → 18, this move is the cheap moment to do it.
-- **D6: Stay with OVH in France.** Then the DPA and sub-processor list don't change and no 30-day notice is needed. Moving to another country or vendor would require the notice ([task 48](completed/48-databehandleraftale.md)).
+- **D6: Stay with OVH in France.** Then the DPA and sub-processor list don't change and no 30-day notice is needed. Moving to another country or vendor would require the notice ([task 48](completed/48-databehandleraftale.md)). Staying on the current VPS keeps this automatically; it applies again to the [later](#later-bigger-vps) move.
 
-## Remember when moving a Dokploy instance
+## Remember when switching Postgres on the live box
 
 This is the "easy to forget" list. Most items cost an outage if missed.
 
-**Inventory the old instance first** (into the password manager, not the repo):
+**Inventory first** (into the password manager, not the repo):
 
-- [ ] Every env var of the compose app. Copy the whole env block. It is the only copy of several secrets (Stripe keys and webhook secret, Keycloak admin client secret, object storage keys, presigned-upload signing key, SMTP, elmah.io, OTEL).
-- [ ] Compose app settings: source type (Git provider + path, or raw), compose type (**Docker Compose vs. Stack**), domains, auto-deploy toggles.
+- [ ] Every env var of the compose app. Copy the whole env block before editing it. It is the only copy of several secrets (Stripe keys and webhook secret, Keycloak admin client secret, object storage keys, presigned-upload signing key, SMTP, elmah.io, OTEL).
 - [ ] Dokploy Database resources: Postgres version (`SELECT version();`), DB names, users, passwords, extensions (`\dx` in both DBs).
-- [ ] S3 destinations, backup schedules, server schedules (cron jobs), notification channels.
-- [ ] Registry credentials (GHCR pull, if the images aren't public), Git provider / GitHub App link, SSH keys.
-- [ ] Custom Traefik config: anything under `/etc/dokploy/traefik/` that isn't generated by Dokploy, e.g. middlewares or rules blocking Keycloak `/admin`.
-- [ ] Host-level things outside Dokploy: `ufw` rules, `/etc/skoleoverblikket/*` env files (53), crontab, unattended-upgrades, swap, timezone.
-- [ ] DNS records that point at the VPS IP: `skoleoverblikket.dk`, `auth.skoleoverblikket.dk`, the Dokploy dashboard hostname, any `ip4:` in SPF (email goes through Scaleway TEM, so probably none).
-
-**Things that change identity on a new instance:**
-
-- [ ] **GitHub `production` secrets**: `DOKPLOY_URL`, `DOKPLOY_API_KEY` (new instance = new key), `DOKPLOY_COMPOSE_ID` (new compose = new ID). Without these, CD deploys to the old box or fails.
-- [ ] Any Dokploy backup or schedule IDs stored as secrets (`DOKPLOY_PRE_MIGRATION_BACKUP_ID` from 53, if it exists by then).
-- [ ] Uptime checks (Pingpuffin, task 44) and elmah.io heartbeats point at hostnames, so they're fine. Check that nothing points at the raw IP.
+- [ ] Dokploy backup schedules and S3 destinations for the old DBs, so you know what to turn off.
 
 **Data and state:**
 
-- [ ] **Never run two live stacks at once.** The `api` runs background jobs (`SchoolRetentionJob`, `AbsenceRetentionJob`, notification emails). If the old and new stacks are up together, schools get double emails, or both stacks delete data. Stop the old stack before starting the new `api` against real data.
+- [ ] **Never run two `api`s against real data.** The `api` runs background jobs (`SchoolRetentionJob`, `AbsenceRetentionJob`, notification emails). Two at once means double emails, or both deleting data. The cutover stops the app before the dump and starts it once against the new DB.
 - [ ] Keycloak keeps its realm signing keys and sessions in its DB. Restoring the Keycloak DB keeps existing logins and tokens valid. A fresh realm import would log everyone out and change the admin client secret. `--import-realm` skips a realm that already exists, so it's safe to leave on.
 - [ ] Stripe webhooks that fail during the window are retried automatically for up to 3 days. After cutover, check *Developers → Webhooks* for failed deliveries and resend if needed.
-- [ ] Files in Object Storage don't move. Only the keys in env vars matter.
+- [ ] Files in Object Storage don't move.
 - [ ] **Named volumes are the database now.** Deleting the compose app in Dokploy with "delete volumes" ticked, or `docker compose down -v`, wipes prod. Pin the volume names (`pgdata-a`, `pgdata-b`, `pg-control`) and write this in the runbook. `/pg-control/active` says which one is live, and the other is the restore target (task 60), so never "clean up" the spare one without checking.
+- [ ] RAM during the cutover: the Dokploy DBs and the compose Postgres run side by side until the old DBs are stopped. Check `free -h` before restoring.
 
-**TLS and DNS:**
+**Security:**
 
-- [ ] Lower DNS TTL to 300s at least 24h before cutover.
-- [ ] Let's Encrypt certs on the new box are issued by HTTP-01 only after DNS points there, so expect a few minutes of cert errors. To avoid it, copy `acme.json` from the old Traefik to the new one before switching DNS (`chmod 600`).
-- [ ] Set the Dokploy dashboard domain + HTTPS on the new box, then close port 3000.
-
-**Security on the new box:**
-
-- [ ] SSH key only, `PermitRootLogin no`, password auth off, unattended-upgrades on.
-- [ ] `ufw` allows 22, 80, 443 only. Since Docker bypasses `ufw` for published ports, also use **OVH's Edge Network Firewall** (in front of the VPS) to allow only 22/80/443. That holds even if someone adds a `ports:` line by mistake.
-- [ ] 2FA on the Dokploy admin user.
+- [ ] `ufw` allows 22, 80, 443 only. Since Docker bypasses `ufw` for published ports, also use **OVH's Edge Network Firewall** (in front of the VPS) to allow only 22/80/443. That holds even if someone adds a `ports:` line by mistake. Do this once nothing needs the Dokploy DBs' public port (after the cutover, with §2 `migrate` live).
+- [ ] Check while you're there: SSH key only, `PermitRootLogin no`, password auth off, unattended-upgrades on, 2FA on the Dokploy admin user, Dokploy dashboard behind HTTPS with port 3000 closed.
 - [ ] Rotate every DB password (the new cluster gets new roles anyway). `DATABASE_URL` has lived in GitHub secrets, so treat it as leaked.
 
-**Decommission:**
+**Decommission the old DBs:**
 
-- [ ] The old VPS holds personal data (DB volumes). After the 7-day fallback window: delete the Dokploy Database resources and their volumes, then delete the VPS in the OVH panel (OVH wipes the disk). Log the date.
-- [ ] Old Dokploy `pg_dump` backups in the bucket expire through their retention (14 days, 53 Phase 1). Turn off the old backup schedules before deleting the instance so nothing writes half-finished dumps.
+- [ ] The Dokploy Database resources hold personal data. After the 7-day fallback window: delete them and their volumes. Log the date.
+- [ ] Old Dokploy `pg_dump` backups in the bucket expire through their retention (14 days, 53 Phase 1). Turn off the old backup schedules at the cutover so nothing writes half-finished dumps.
 
 ## Scope
 
@@ -127,7 +116,7 @@ This is the "easy to forget" list. Most items cost an outage if missed.
 New folder `infrastructure/postgres/` (Postgres only, no backup tooling):
 
 - [ ] `Dockerfile`: `FROM postgres:<major>` + config and init script. No pgBackRest: it lives in the `backup-agent` image (task 60).
-- [ ] `postgresql.conf` overrides: `wal_level = replica`, `max_wal_senders = 5`, `max_replication_slots = 5`, `max_slot_wal_keep_size = 4GB`, **no `archive_command`**, memory settings sized for the new VPS (`shared_buffers` ≈ 25% of the RAM given to Postgres). Socket dir `/var/run/postgresql` on a named volume `pg-socket` shared with the agent.
+- [ ] `postgresql.conf` overrides: `wal_level = replica`, `max_wal_senders = 5`, `max_replication_slots = 5`, `max_slot_wal_keep_size = 4GB`, **no `archive_command`**, memory settings sized for what's free on the VPS after the unrelated stack is gone (`shared_buffers` ≈ 25% of the RAM given to Postgres). Socket dir `/var/run/postgresql` on a named volume `pg-socket` shared with the agent.
 - [ ] `pg_hba.conf`: `local replication backup_agent` and `local all backup_agent` (socket only, no TCP).
 - [ ] `pgbackrest.conf` (in the agent image, task 60): `repo1-type=s3` on a **new, separate** OVH bucket (not the files bucket, not the old dump bucket, not the ops bucket), `repo1-cipher-type=aes-256-cbc`, `repo1-retention-full-type=time`, `repo1-retention-full=13` (see the retention note), ~~`archive-copy=y`~~ not possible with streamed WAL (see the Phase 0 note; the agent checks each backup's WAL reached the repo instead), `start-fast=y`, `compress-type=zst`, `pg1-path` passed per call by the agent (the live one of `/pgdata/a`, `/pgdata/b`), `pg1-socket-path=/var/run/postgresql`. S3 keys and cipher pass come from env vars (`PGBACKREST_REPO1_S3_KEY` etc.), never from the file.
 - [ ] Init script (`/docker-entrypoint-initdb.d/`): create roles `skoleoverblikket` (app), `keycloak`, `restore_drill` (only `CONNECT`, for 53) and `backup_agent` (`REPLICATION`, plus what pgBackRest needs for backups), both databases, and the physical replication slot `agent`.
@@ -158,47 +147,44 @@ New folder `infrastructure/postgres/` (Postgres only, no backup tooling):
 - [ ] Failures go to elmah.io heartbeats (53 D3).
 - Pre-migration backup (53 Phase 1 §2) is no longer needed: with continuous WAL, restore to the second before `migrate` started. The `migrate` service logs its start time, which becomes the `--target` time.
 
-### 4. New VPS and Dokploy
+### 4. Free up the VPS
 
-- [ ] Order the VPS: OVH, **France**, size picked from measured usage on the old box (RAM peak, disk + 14 days of WAL headroom). Record model and price in the PR.
-- [ ] Harden (see list above), install Dokploy, set dashboard domain + HTTPS, enable 2FA, close 3000.
-- [ ] Recreate from the inventory: registry, Git provider, S3 destination, compose app, env vars (with new DB credentials), schedules, notifications.
-- [ ] Turn on Dokploy's own self-backup to the bucket.
+- [ ] Remove the unrelated Dokploy stack (and its volumes, once you're sure nothing in it is needed). Measure RAM and disk after.
+- [ ] Size the memory limits from that (step 5 above). Write the numbers in the PR.
 
-### 5. Rehearsal (on the new VPS, before cutover)
+### 5. Rehearsal (on the VPS, before cutover)
 
-Run the whole cutover once on an internal hostname, with real data, but with **the new `api` unable to send email or run jobs against real schools**:
+With the profile on and prod still on the Dokploy DBs (steps 5–9 above):
 
-- [ ] Take a fresh dump of both prod DBs and restore it into the new cluster (step 6.3 below). Time every step.
-- [ ] Start `keycloak` + `api` + `web` on a temporary hostname, with SMTP and Stripe keys left empty, so background jobs can't email schools or touch Stripe.
-- [ ] Log in as the smoke user (task 44), open schema, ugeplan and a file. Smoke tenant only, never a real school user.
-- [ ] Run `pgbackrest backup`, then do a **point-in-time restore** of it into a scratch container, to prove the new backups work before they're the only ones.
-- [ ] Wipe the rehearsal: drop the databases, `stanza-delete`, empty the pgBackRest bucket. It holds a copy of prod that must not stick around.
+- [ ] Take a fresh dump of both prod DBs and restore it into the compose Postgres (step 6.3 below). Time every step. Check RAM while it runs.
+- [ ] Don't start a second `keycloak` or `api` against it: no room, and a second `api` would run jobs. Check row counts instead (step 6.4).
+- [ ] Run `pgbackrest backup`, then do a **point-in-time restore** of it into the spare volume from the console, to prove the new backups work before they're the only ones.
+- [ ] Wipe the rehearsal: drop the restored databases (or recreate the volumes so the init script runs again), `stanza-delete`, empty the pgBackRest bucket. It holds a copy of prod that must not stick around until the real cutover.
 - [ ] Fix the runbook with whatever went wrong. Note the measured downtime.
 
 ### 6. Cutover runbook
 
-Weekend evening, outside school hours, not at the time of a scheduled job. Tell admins the day before (email or banner): "Skoleoverblikket er utilgængeligt lørdag kl. 21–22 pga. flytning til en ny server."
+Weekend evening, outside school hours, not at the time of a scheduled job. Tell admins the day before (email or banner): "Skoleoverblikket er utilgængeligt lørdag kl. 21–22 pga. vedligeholdelse."
 
-1. Lower DNS TTL 24h ahead (see list above). Copy `acme.json` across.
-2. **Old box:** stop the compose app in Dokploy (Stop, not Delete). Turn off old backup schedules. Now nothing writes; the Database resources keep running for the dump.
-3. Final dump from the old box: `pg_dump -Fc` for both DBs. Copy them to the new box over SSH (`scp` between the VPSs, never through a laptop or GitHub). Restore with `pg_restore --exit-on-error --no-owner --role=<new role>`.
+1. Copy the current Dokploy env block to the password manager.
+2. Stop `api` and `keycloak` in Dokploy (Stop, not Delete). Turn off the old DB backup schedules. Now nothing writes; the Dokploy DBs keep running for the dump.
+3. Final dump: `pg_dump -Fc` for both DBs, on the VPS (never through a laptop or GitHub). Restore into the compose Postgres with `pg_restore --exit-on-error --no-owner --role=<new role>`.
 4. Check: row counts per table match (`pg_stat_user_tables` on both sides, after `ANALYZE`), latest `__EFMigrationsHistory` row matches, Keycloak realm and user count match.
-5. **New box:** deploy the compose app. `migrate` should be a no-op, then `keycloak` and `api` start. Run the `GRANT` from [RESTORE.md](../docs/RESTORE.md) §13 once, or the backup agent can't read the deleted-schools ledger and migration times (`pg_restore` doesn't carry it).
-6. Switch DNS A/AAAA records to the new IP.
+5. Switch `DATABASE_URL` and `KEYCLOAK_DB_URL` to host `postgres` and redeploy. Run the `GRANT` from [RESTORE.md](../docs/RESTORE.md) §13 once, or the backup agent can't read the deleted-schools ledger and migration times (`pg_restore` doesn't carry it).
+6. Stop the Dokploy Database resources (Stop, not Delete), so nothing can write to them by mistake.
 7. Smoke test via the real hostnames: login, schema, file download, a Stripe webhook test event.
-8. `pgbackrest backup --type=full` right away, so the new box has a backup from minute one.
-9. Update GitHub `production` secrets (`DOKPLOY_URL`, `DOKPLOY_API_KEY`, `DOKPLOY_COMPOSE_ID`). Run CD with the current tag via `workflow_dispatch` to prove deploys reach the new box.
+8. `pgbackrest backup --type=full` right away, so there is a backup from minute one.
+9. Run CD with the current tag via `workflow_dispatch` to prove deploys still work with the new env.
 10. Check Stripe for failed webhook deliveries during the window. Check elmah.io for errors.
 
-**Rollback:** until step 6 nothing changed on the old box, so start its compose app again. After DNS has switched and schools have written data, rollback means losing that data, so fix forward instead. The old box stays stopped, not deleted, for 7 days.
+**Rollback:** until schools have written data, start the Dokploy DBs, point `DATABASE_URL` and `KEYCLOAK_DB_URL` back at them and redeploy. After that, rollback means losing data, so fix forward instead. The Dokploy DBs stay stopped, not deleted, for 7 days.
 
 ### 7. Docs
 
 - [ ] New ADR that supersedes the backup part of [self-hosted-postgres-backups](../docs/adr/self-hosted-postgres-backups.md): Postgres in compose, one cluster, pgBackRest, 15-min RPO, 14-day retention. Update [INDEX.md](../docs/adr/INDEX.md).
 - [ ] [DEPLOYMENT.md](../docs/DEPLOYMENT.md): new env vars (pgBackRest S3 keys, cipher pass, Postgres role passwords), and remove `DATABASE_URL` as a GitHub secret.
 - [ ] Re-check [task 53](53-restore-drill.md) against what was built. It already assumes the drill runs in the `backup-agent` ([task 60](60-backup-console.md)) and restores pgBackRest backups, that Phases 4 and 5 are done here, and that Phase 2 is `repo2` (Scaleway) for the DB with rclone only for files. Its runbook loses the Keycloak/app reconcile step.
-- [ ] `docs/RESTORE.md` (53): add the inventory list above as "where everything lives", and the measured rebuild time.
+- [ ] `docs/RESTORE.md` (53): add the inventory list above as "where everything lives".
 
 ## Testing
 
@@ -210,17 +196,28 @@ No tUnit or Playwright tests: this is infrastructure ([TESTING.md](../docs/TESTI
 - [ ] **Archive-push failure**: set a wrong S3 key on a scratch stanza with the agent running. `archive-push` fails, unpushed WAL in `wal-receive` grows (the slot keeps advancing, so this is not slot loss), and the WAL heartbeat alerts before the 4 GB cap. Fix the key and confirm the held segments are pushed with no gap.
 - [ ] A deliberately failing migration on staging: `migrate` exits non-zero and `api` doesn't start.
 - [ ] From outside: `nc -zv <new-ip> 5432` and `nc -zv <new-ip> 3000` fail.
-- [ ] After cutover: one CD deploy goes all the way through to the new box.
+- [ ] After cutover: one CD deploy goes all the way through.
 
 ## Done when
 
-- Prod runs on the new VPS, the old one is wiped and the date is logged.
+- The unrelated stack is off the VPS. Prod runs on the compose Postgres, the old Dokploy DBs are deleted and the date is logged.
 - Both DBs are in the compose `postgres` service, WAL archives continuously, and a PITR restore has been done once.
 - CI no longer has `DATABASE_URL`, and 5432 is closed from outside.
-- Measured downtime and rebuild time are written down, and the ADR, DEPLOYMENT.md and task 53 are updated.
+- Measured downtime is written down, and the ADR, DEPLOYMENT.md and task 53 are updated.
 
 ## Open questions
 
-- **VPS size and price**: pick from measured usage. Can OVH upgrade the current VPS in place instead? That avoids the move, but not the Postgres restructuring, and we'd lose the rebuild proof. Decide once the numbers are in.
 - **Postgres major**: stay on the current prod major or move to 18 during the move? Check what the app's Npgsql/EF Core version supports.
 - **Keep a nightly logical dump** next to pgBackRest? It doesn't depend on the WAL chain, but it's a second backup system to watch. Leaning no, because `archive-copy=y` full backups restore on their own.
+
+## Later: bigger VPS
+
+When we scale, move to a bigger OVH VPS in France (D6) or ask OVH to upgrade this one in place. After this task that move is simpler: Dokploy app plus compose volumes, restored through the backup console ([RESTORE.md](../docs/RESTORE.md)). Doing it from backups also counts as the 53 Phase 3 full-rebuild drill. What to recreate on a new box (inventory it into the password manager first):
+
+- [ ] Compose app settings: source type (Git provider + path, or raw), compose type (**Docker Compose vs. Stack**), domains, auto-deploy toggles, the whole env block.
+- [ ] Registry credentials (GHCR pull, if the images aren't public), Git provider / GitHub App link, SSH keys, notification channels, Dokploy's own self-backup.
+- [ ] Custom Traefik config: anything under `/etc/dokploy/traefik/` that isn't generated by Dokploy, e.g. rules blocking the Keycloak master realm.
+- [ ] Host-level things outside Dokploy: `ufw` and OVH Edge Network Firewall rules, `/etc/skoleoverblikket/*` env files (53), crontab, unattended-upgrades, swap, timezone, SSH hardening, 2FA on Dokploy.
+- [ ] GitHub `production` secrets: `DOKPLOY_URL`, `DOKPLOY_API_KEY` (new instance = new key), `DOKPLOY_COMPOSE_ID` (new compose = new ID). Without these, CD deploys to the old box or fails.
+- [ ] DNS records pointing at the VPS IP (`skoleoverblikket.dk`, `auth.skoleoverblikket.dk`, the Dokploy dashboard). Lower TTL to 300s a day ahead, and copy `acme.json` (`chmod 600`) to avoid cert errors.
+- [ ] Never two live `api`s: stop the old stack before the new one starts against real data. Wipe the old VPS after 7 days (OVH wipes the disk on delete) and log the date.

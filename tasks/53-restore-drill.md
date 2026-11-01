@@ -20,7 +20,7 @@ status: 'Proposed'
 
 ## TL;DR
 
-**Update 2026-10-07: after [54](54-move-vps.md) and [60](60-backup-console.md), much of this task moved.** The drill no longer runs as a separate container on a Dokploy schedule. It's code in the `backup-agent` ([task 60](60-backup-console.md) Phase A) and restores pgBackRest backups instead of Dokploy dumps. Phase 1 §3–4 (drill image, schedules) and the drill checks now live in 60. §2 (pre-migration backup) is dropped, because continuous WAL lets you restore to just before `migrate`. Phases 4 and 5 are done in 54. Still owned here: §1 (Dokploy config on the old box until 54 cuts over), §5 runbook, §6 docs, Phase 2 off-site copy (run by the agent), Phase 3 quarterly drill (logged in the 60 console). The text below is the original plan. Where it says "drill image" or "Dokploy schedule", read "backup-agent".
+**Update 2026-10-07: after [54](54-move-vps.md) and [60](60-backup-console.md), much of this task moved.** The drill no longer runs as a separate container on a Dokploy schedule. It's code in the `backup-agent` ([task 60](60-backup-console.md) Phase A) and restores pgBackRest backups instead of Dokploy dumps. Phase 1 §3–4 (drill image, schedules) and the drill checks now live in 60. §2 (pre-migration backup) is dropped, because continuous WAL lets you restore to just before `migrate`. Phases 4 and 5 are done in 54. **Update 2026-10-31:** 54 no longer moves to a new VPS, so it isn't the first full-rebuild drill; Phase 3 is fully open here. Still owned here: §1 (Dokploy DB backups until 54 cuts over), §5 runbook, §6 docs, Phase 2 off-site copy (run by the agent), Phase 3 quarterly drill (logged in the 60 console). The text below is the original plan. Where it says "drill image" or "Dokploy schedule", read "backup-agent".
 
 A backup nobody has restored is a hope, not a backup. Phase 1: a small `restore-drill` container (built in CI, run by a Dokploy schedule **on the VPS**, never in GitHub Actions) restores the newest dump of the app DB and the Keycloak DB into a tmpfs Postgres every Sunday night, checks the result and reports to an **elmah.io heartbeat**. Elmah.io alerts on an unhealthy result and on a missing one. A `--check-only` mode runs daily to catch a stopped backup within 24h. CI takes a backup before it applies migrations. Retention set to 14 days to match the DPA. A written restore runbook. Phase 2: encrypted off-site copy of DB dumps **and uploaded files** at Scaleway (EU, 75 GB free), write-protected with Object Lock; the drill restores from there. Phase 3: quarterly manual drill that rebuilds prod from nothing and times it. Phase 4 (trigger: 5 paying schools): RPO from 24h down to 15 min with continuous WAL archiving. Phase 5: migrations run as a one-shot service in docker compose, CI's `migrate` job goes away and the Postgres port closes to the internet.
 
@@ -144,7 +144,8 @@ Also in the runbook: where every secret lives (password manager entry names), ho
 - [ ] Weekly drill restores from **Scaleway (decrypting)** instead of OVH, and checks the newest OVH dump has the same timestamp. This tests the worst-case path every week.
 - [ ] Weekly drill also restores 20 random files from `files/` and compares size and hash with OVH (`rclone check --download` on a sample).
 - [ ] crypt password + salt in the password manager. Printed copy in a safe place. Without it the off-site copy is useless.
-- [ ] **Sub-processor change**: Scaleway goes from "email" to "email + encrypted backups". Send the 30-day notice from the backoffice ([task 48](completed/48-databehandleraftale.md)), update `dataProcessing.ts` purpose text and the DPA security section ("backups are encrypted and stored with a second EU provider"). **The notice goes out 30 days before the first upload.**
+- [x] **Sub-processor change**: Scaleway's "encrypted backup copy" purpose was added to `dataProcessing.ts` on 2026-10-31 without a notice, because there were no customers ([task 48](completed/48-databehandleraftale.md)).
+- [ ] When the first upload runs, update the DPA security section ("backups are encrypted and stored with a second EU provider"). That is a change to the agreement text, so bump `DPA_VERSION` and `CurrentVersion`.
 - [ ] Cost check: estimate DB dumps × 14 + files total against Scaleway's 75 GB free tier. Alert at 60 GB.
 
 ### Phase 3 — Quarterly full-rebuild drill (manual, ~2h)
@@ -212,7 +213,7 @@ No tUnit or Playwright tests: this is infrastructure, not app behavior ([TESTING
 - Retention is 14 days on both DBs and the drill enforces it.
 - `docs/RESTORE.md` exists and someone other than the author could follow it.
 - ADR updated.
-- Phases 2–5 ship as separate PRs. Phase 2 waits for the 30-day sub-processor notice. Phase 4 starts when school 4 signs up. Phase 5 can go any time after Phase 1.
+- Phases 2–5 ship as separate PRs. Phase 4 starts when school 4 signs up. Phase 5 can go any time after Phase 1.
 
 ## Open questions
 

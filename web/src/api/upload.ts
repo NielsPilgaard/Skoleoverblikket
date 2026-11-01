@@ -1,6 +1,7 @@
-import keycloak from '../auth/keycloak'
+import keycloak, { refreshToken } from '../auth/keycloak'
 import { actingAsHeaders } from '../auth/actingAs'
 import { API_BASE, ApiError } from './client'
+import { apiFetch } from './outage'
 
 export interface UploadOptions {
   file: File
@@ -33,9 +34,9 @@ async function presignConfirmUpload(
   presignBody: Record<string, unknown>,
   onProgress?: (pct: number) => void
 ): Promise<UploadedFile> {
-  await keycloak.updateToken(30).catch(() => keycloak.login())
+  await refreshToken(30)
 
-  const presignRes = await fetch(presignUrl, {
+  const presignRes = await apiFetch(presignUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -82,8 +83,8 @@ async function presignConfirmUpload(
 
   onProgress?.(95)
 
-  await keycloak.updateToken(30).catch(() => keycloak.login())
-  const confirmRes = await fetch(confirmUrl, {
+  await refreshToken(30)
+  const confirmRes = await apiFetch(confirmUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

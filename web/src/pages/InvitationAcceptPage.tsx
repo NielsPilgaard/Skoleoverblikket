@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
+import { apiFetch } from '../api/outage'
 import { setActingAs, storeActingAs } from '../auth/actingAs'
 import keycloak, { logout, seedPostSignupToken } from '../auth/keycloak'
 import { useAuth } from '../auth/useAuth'
@@ -84,7 +85,7 @@ export default function InvitationAcceptPage() {
     async function loadPreview() {
       // Use plain fetch for these [AllowAnonymous] endpoints to avoid the SDK's
       // auth interceptor triggering a Keycloak login redirect for unauthenticated users.
-      const staffRes = await fetch(
+      const staffRes = await apiFetch(
         `/api/v1/staff-invitations/preview?token=${encodeURIComponent(inviteToken)}`,
         { signal: controller.signal }
       )
@@ -97,7 +98,7 @@ export default function InvitationAcceptPage() {
 
       let normalized: InvitationPreview
       if (staffRes.status === 404) {
-        const parentRes = await fetch(
+        const parentRes = await apiFetch(
           `/api/v1/parent-invitations/preview?token=${encodeURIComponent(inviteToken)}`,
           { signal: controller.signal }
         )
@@ -202,7 +203,7 @@ export default function InvitationAcceptPage() {
     try {
       // Plain fetch, like the preview: the SDK's auth interceptor would send the anonymous user to Keycloak.
       const api = preview.type === 'parent' ? 'parent-invitations' : 'staff-invitations'
-      const res = await fetch(`/api/v1/${api}/password`, {
+      const res = await apiFetch(`/api/v1/${api}/password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password }),

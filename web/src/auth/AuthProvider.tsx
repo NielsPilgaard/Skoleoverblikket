@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import keycloak, { getInitPromise, logout } from './keycloak'
+import keycloak, { getInitPromise, logout, sessionRefused } from './keycloak'
 import { AuthContext, type SchoolRoleState, type ViewAs } from './AuthContext'
 import {
   isSchoolRole,
@@ -45,7 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && keycloak.authenticated) {
-        keycloak.updateToken(300).catch(() => keycloak.login())
+        // Keycloak down (a deploy) is not a logout: the next API call waits for it instead.
+        keycloak.updateToken(300).catch((error) => {
+          if (sessionRefused(error)) keycloak.login()
+        })
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -61,8 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Proactively refresh token before it expires (30s before expiry)
         intervalId = setInterval(() => {
-          keycloak.updateToken(30).catch(() => {
-            if (document.visibilityState === 'visible') {
+          keycloak.updateToken(30).catch((error) => {
+            if (sessionRefused(error) && document.visibilityState === 'visible') {
               keycloak.login()
             }
           })

@@ -115,7 +115,8 @@ export default function PrivacyPolicyPage() {
           </Li>
           <Li>
             <strong>OVH SAS</strong> (Frankrig) driver vores servere, og{' '}
-            <strong>Scaleway SAS</strong> (Frankrig) sender vores e-mails.
+            <strong>Scaleway SAS</strong> (Frankrig) sender vores e-mails og kører vores
+            AI-funktioner.
           </Li>
           <Li>
             <strong>elmah.io ApS</strong> (Danmark) opbevarer vores fejllogs hos Microsoft Azure i

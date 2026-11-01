@@ -24,7 +24,7 @@ status: 'Proposed'
 - `web/` already has the generated hey-api client (`src/api/generated`) and the `xlsx` package.
 - Endpoints a migration needs, all admin-only and tenant-scoped: `PUT /api/v1/time-slot-template`, rooms, courses (`UpsertCourseRequest`), staff, classes, `POST /api/v1/classes/{id}/schemas`, `PUT .../schemas/{id}/slots` (`UpsertSlotRequest`: time slot, weekday, course, **one** teacher, optional room, optional aide), `GET .../conflicts`. Bulk imports exist for staff, rooms and classes (`/api/v1/imports/...`).
 - Keycloak clients: `skoleoverblikket-web` (public, direct access grants on), `-api`, `-admin`. None has device grant enabled.
-- [ai-data-boundary](../docs/adr/ai-data-boundary.md): personal data may only go to the EU zone (prod, OVH, Alexandra Instituttet LLM). Never to GitHub or Claude. Agents with code access run only in GitHub Actions, which is the public zone, so **an agent that sees school data can't run there**.
+- [ai-data-boundary](../docs/adr/ai-data-boundary.md): personal data may only go to the EU zone (prod, OVH, Scaleway Generative APIs LLM). Never to GitHub or Claude. Agents with code access run only in GitHub Actions, which is the public zone, so **an agent that sees school data can't run there**.
 - Staff names and e-mails in a schema export are personal data. Low sensitivity, but in scope.
 
 ## Decisions
@@ -72,7 +72,7 @@ status: 'Proposed'
 
 **Trigger**: the hours log from task 56 shows migrations taking more than about one day a week, or the same format arrives too varied for converters (D10).
 
-- **`migrate draft <files...> -o <out.migration.json>`**: extracts text locally (xlsx/csv as tables, PDF via text extraction), sends it with `manifest.schema.json` as structured output to the **EU LLM** (Alexandra Instituttet, already approved in the ADR), and writes the manifest plus a `draft-notes.md` listing everything the model was unsure of (unknown abbreviations, double-teacher lessons, missing rooms).
+- **`migrate draft <files...> -o <out.migration.json>`**: extracts text locally (xlsx/csv as tables, PDF via text extraction), sends it with `manifest.schema.json` as structured output to the **EU LLM** (Scaleway Generative APIs, already approved in the ADR; GLM 5.3 / GLM 5.3 Flash or DeepSeek V4.1 Flash, test which drafts best), and writes the manifest plus a `draft-notes.md` listing everything the model was unsure of (unknown abbreviations, double-teacher lessons, missing rooms).
 - **Human gate unchanged**: `validate` → `plan` → read the notes → `apply`. The agent never runs `apply`.
 - **Where it runs**: on the operator's machine, never in GitHub Actions (public zone), never via Claude. If we later want Claude for drafting, local pseudonymization (teacher names → `L01`… with the mapping kept local) needs an amendment to [ai-data-boundary](../docs/adr/ai-data-boundary.md) first. Pseudonymized data is still personal data under GDPR.
 - **Agent loop, not just one call**: the agent may run `validate` and `plan` itself and fix its own draft until both are clean. It may not run `apply`, and this is enforced, not just asked for:
