@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { CalendarEntryDto } from '../../api/client'
 import { capitalizeFirst } from '../../lib/absence'
+import { getISOWeek } from '../../utils/isoWeek'
 
 export const TYPE_LABELS: Record<string, string> = {
   Ferie: 'Ferie',
@@ -53,15 +54,6 @@ export function getSchoolYearMonths(
   return months
 }
 
-export function getISOWeek(year: number, month: number, day: number): number {
-  const date = new Date(year, month - 1, day)
-  const thursday = new Date(date)
-  thursday.setDate(date.getDate() - ((date.getDay() + 6) % 7) + 3)
-  const firstThursday = new Date(thursday.getFullYear(), 0, 4)
-  firstThursday.setDate(firstThursday.getDate() - ((firstThursday.getDay() + 6) % 7) + 3)
-  return Math.round((thursday.getTime() - firstThursday.getTime()) / 604800000) + 1
-}
-
 export function isEntryInSchoolYear(entry: CalendarEntryDto, startYear: number): boolean {
   const schoolStart = new Date(startYear, 7, 1)
   const schoolEnd = new Date(startYear + 1, 6, 31)
@@ -94,8 +86,7 @@ export function getDayEntries(
   day: number,
   entries: CalendarEntryDto[]
 ): CalendarEntryDto[] {
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  const dateStr = `${year}-${pad(month)}-${pad(day)}`
+  const dateStr = toDateString(year, month, day)
   return entries.filter(
     (e) => (e.startDate ?? '') <= dateStr && dateStr <= (e.endDate ?? e.startDate ?? '')
   )
@@ -388,7 +379,8 @@ export function CalendarGrid({
           ))}
           {weeks.map((week, wi) => {
             const firstDay = week.find((d) => d !== null)
-            const weekNum = firstDay != null ? getISOWeek(year, month, firstDay) : null
+            const weekNum =
+              firstDay != null ? getISOWeek(new Date(year, month - 1, firstDay)) : null
             return [
               <div key={`wn-${wi}`} className={weekNumClass} data-testid="week-num">
                 {weekNum}
