@@ -133,7 +133,7 @@ public sealed class BackupService(
 		return new JobOutcome(result.Ok, summary);
 	}
 
-	/// <summary>The weekly 53 drill: restore into tmpfs, check against live, throw it away.</summary>
+	/// <summary>The weekly 53 drill: restore into the drill volume, check against live, throw it away.</summary>
 	public async Task<JobOutcome> DrillAsync(Job job, DrillChecks checks, CancellationToken cancellationToken)
 	{
 		var opts = options.Value;
@@ -174,7 +174,7 @@ public sealed class BackupService(
 		try
 		{
 			Volumes.Recreate(dataDirectory);
-			job.Log($"Restoring to {description} in {dataDirectory} (tmpfs)…");
+			job.Log($"Restoring to {description} in {dataDirectory}…");
 			var restoreWatch = Stopwatch.StartNew();
 			var restore = await pgBackRest.RestoreAsync(dataDirectory, targetArguments, job.Log, cancellationToken);
 			if (!restore.Ok)
@@ -235,7 +235,7 @@ public sealed class BackupService(
 	}
 }
 
-/// <summary>Wiping restore targets. Only ever the drill tmpfs or the spare volume, never the live one.</summary>
+/// <summary>Wiping restore targets. Only ever the drill volume or the spare volume, never the live one.</summary>
 public static class Volumes
 {
 	public static void Recreate(string directory)

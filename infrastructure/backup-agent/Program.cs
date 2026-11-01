@@ -67,6 +67,10 @@ app.Use(async (context, next) =>
 	await next();
 });
 app.Services.GetRequiredService<ConsoleAccess>(); // Writes console-link at startup, before anyone asks.
+												  // A drill cut short by a crash or restart leaves a copy of prod on the drill volume. No restored copy
+												  // may survive the drill, or a deleted school would live on in it.
+var drillDirectory = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<AgentOptions>>().Value.DrillDirectory;
+Volumes.Delete(Path.Combine(drillDirectory, "pgdata"));
 ConsoleAccess.Map(app);
 
 // UseAntiforgery only records the result, and minimal APIs reject a bad token while binding form

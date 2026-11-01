@@ -161,7 +161,7 @@ public sealed class LivePostgres(IOptions<AgentOptions> options)
 }
 
 /// <summary>
-/// A throwaway Postgres server inside the agent container, on a restored data directory (drill tmpfs
+/// A throwaway Postgres server inside the agent container, on a restored data directory (drill volume
 /// or the spare volume). Socket only, in a private directory, trust auth, archiving off: it must
 /// never push WAL to the repo. hot_standby is off, so start returns once recovery has promoted.
 /// </summary>
