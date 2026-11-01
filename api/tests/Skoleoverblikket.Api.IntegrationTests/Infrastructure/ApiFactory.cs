@@ -7,6 +7,7 @@ using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,6 +54,27 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 
 	/// <summary>Every email the API sent during the test session. Filter by a per-test address.</summary>
 	public RecordingEmailSender Emails { get; } = new();
+
+	// WebApplicationFactory tracks clients and derived factories in plain lists, and tests call these
+	// in parallel. A racing List.Add can leave a null slot, which makes DisposeAsync throw
+	// NullReferenceException at the end of the session, so creation is serialized.
+	private readonly Lock _createLock = new();
+
+	public new HttpClient CreateClient()
+	{
+		lock (_createLock)
+		{
+			return base.CreateClient();
+		}
+	}
+
+	public new WebApplicationFactory<Program> WithWebHostBuilder(Action<IWebHostBuilder> configuration)
+	{
+		lock (_createLock)
+		{
+			return base.WithWebHostBuilder(configuration);
+		}
+	}
 
 	public async Task InitializeAsync()
 	{
