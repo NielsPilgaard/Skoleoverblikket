@@ -96,7 +96,7 @@ flowchart LR
 | `backup-agent-state` | – | `/var/lib/backup-agent` | `state.json`, the console key, local copies of the ops files |
 | `drill` | – | `/drill` | The weekly drill's restore. Needs disk for the whole cluster while a drill runs; empty otherwise. The agent wipes it on start, so a crashed drill leaves nothing behind |
 
-Pin the names of every volume except `pg-socket` and `drill` (`name:` in compose, or external volumes, see [Docker compose](#docker-compose) below). Never delete them, and never run `docker compose down -v`.
+Pin the names of every volume except `pg-socket` (`name:` in compose, or external volumes, see [Docker compose](#docker-compose) below). Never delete them, and never run `docker compose down -v`.
 
 ### Roles and authentication
 
@@ -179,7 +179,7 @@ The drill and restore checks count every table in the restored copy exactly, and
 
 - Replace the two hard-coded databases in `DrillChecks.RunAsync` with a loop over a list, prefixing table names with the database so they don't collide in the summary.
 - `backup_agent` needs `CONNECT` on each database. It has it by default unless `PUBLIC` was revoked.
-- The drill restores the whole cluster into `/drill`. Leave disk for it (`SELECT pg_size_pretty(sum(pg_database_size(datname))) FROM pg_database`) with headroom. Use a disk volume, not tmpfs: tmpfs counts against the memory limit, so the agent would need RAM the size of the cluster.
+- The drill restores the whole cluster into `/drill`. Leave disk for it (`SELECT pg_size_pretty(sum(pg_database_size(datname))) FROM pg_database`) with headroom. The drill shares the host disk with live Postgres, so it fails (and alerts) instead of restoring when free space is under twice the cluster size plus 1 GB. Use a disk volume, not tmpfs: tmpfs counts against the memory limit, so the agent would need RAM the size of the cluster.
 
 ### Alembic instead of EF Core
 
@@ -210,7 +210,7 @@ Copy the `postgres` and `backup-agent` services, their networks and the volumes 
 - the agent off the app network, on its own;
 - `ports: ["127.0.0.1:<port>:9090"]`;
 - the `/drill` volume and the memory limit;
-- every volume except `pg-socket` and `drill` pinned by name: `external: true` (what we do) or `name:`;
+- every volume except `pg-socket` pinned by name: `external: true` (what we do) or `name:`;
 - image tags pinned to a sha, so a normal deploy never restarts the database.
 
 Notes:

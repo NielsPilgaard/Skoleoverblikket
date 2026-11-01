@@ -14,6 +14,7 @@ public sealed class BackupService(
 	Heartbeats heartbeats)
 {
 	private static readonly TimeSpan WalWait = TimeSpan.FromMinutes(10);
+	private const long DrillHeadroomBytes = 1L << 30;
 
 	public async Task<JobOutcome> BackupAsync(Job job, string type, string reason, CancellationToken cancellationToken)
 	{
@@ -174,6 +175,16 @@ public sealed class BackupService(
 		try
 		{
 			Volumes.Recreate(dataDirectory);
+
+			// The drill volume shares the host's disk with live Postgres. A restore that fills it would stop
+			// live writes, so leave room for the cluster, the WAL it replays, and spare.
+			var needed = newest.DatabaseBytes * 2 + DrillHeadroomBytes;
+			var free = new DriveInfo(opts.DrillDirectory).AvailableFreeSpace;
+			if (free < needed)
+			{
+				return await DrillFailedAsync($"Not enough disk for the drill: needs {Fmt.Bytes(needed)}, {Fmt.Bytes(free)} free", total.Elapsed, cancellationToken);
+			}
+
 			job.Log($"Restoring to {description} in {dataDirectory}…");
 			var restoreWatch = Stopwatch.StartNew();
 			var restore = await pgBackRest.RestoreAsync(dataDirectory, targetArguments, job.Log, cancellationToken);

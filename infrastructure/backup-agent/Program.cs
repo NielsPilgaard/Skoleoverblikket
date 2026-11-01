@@ -66,11 +66,22 @@ app.Use(async (context, next) =>
 	headers.CacheControl = "no-store";
 	await next();
 });
-app.Services.GetRequiredService<ConsoleAccess>(); // Writes console-link at startup, before anyone asks.
-												  // A drill cut short by a crash or restart leaves a copy of prod on the drill volume. No restored copy
-												  // may survive the drill, or a deleted school would live on in it.
+// Writes console-link at startup, before anyone asks.
+app.Services.GetRequiredService<ConsoleAccess>();
+
+// A drill cut short by a crash or restart leaves a copy of prod on the drill volume. No restored copy
+// may survive the drill, or a deleted school would live on in it. A failed wipe must not stop WAL
+// streaming or the console: the next drill wipes again first, and fails loudly if it still can't.
 var drillDirectory = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<AgentOptions>>().Value.DrillDirectory;
-Volumes.Delete(Path.Combine(drillDirectory, "pgdata"));
+try
+{
+	Volumes.Delete(Path.Combine(drillDirectory, "pgdata"));
+}
+catch (Exception ex)
+{
+	app.Logger.LogError(ex, "Could not wipe a leftover drill copy in {DrillDirectory}", drillDirectory);
+}
+
 ConsoleAccess.Map(app);
 
 // UseAntiforgery only records the result, and minimal APIs reject a bad token while binding form
