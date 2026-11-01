@@ -200,15 +200,18 @@ export function AbsenceStatsTab({ isAdmin }: { isAdmin: boolean }) {
     ExtraordinaryLeave: students.reduce((sum, s) => sum + s.leaveDays, 0),
     Unauthorized: students.reduce((sum, s) => sum + s.unauthorizedDays, 0),
   } satisfies Record<AbsenceCategory, number>
-  const visibleStudents = students.filter((s) =>
-    category === ''
-      ? s.illnessDays + s.leaveDays + s.unauthorizedDays > 0
-      : category === 'Illness'
-        ? s.illnessDays > 0
-        : category === 'ExtraordinaryLeave'
-          ? s.leaveDays > 0
-          : s.unauthorizedDays > 0
-  )
+  // Name order first, so DataTable's stable sort keeps ties alphabetical.
+  const visibleStudents = students
+    .filter((s) =>
+      category === ''
+        ? s.illnessDays + s.leaveDays + s.unauthorizedDays > 0
+        : category === 'Illness'
+          ? s.illnessDays > 0
+          : category === 'ExtraordinaryLeave'
+            ? s.leaveDays > 0
+            : s.unauthorizedDays > 0
+    )
+    .sort((a, b) => a.studentName.localeCompare(b.studentName, 'da'))
 
   return (
     <div className="space-y-6">

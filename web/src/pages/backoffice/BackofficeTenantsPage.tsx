@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
 import { getApiV1AdminTenantsOptions } from '../../api/generated/@tanstack/react-query.gen'
 import type { SubscriptionStatus } from '../../api/client'
 import { DataTable } from '../../components/ui/list'
@@ -33,7 +32,6 @@ function formatDate(iso: string) {
 }
 
 export default function BackofficeTenantsPage() {
-  const navigate = useNavigate()
   const { data: tenants, isLoading, isError } = useQuery(getApiV1AdminTenantsOptions())
   const today = danishDate.format(new Date())
 
@@ -131,9 +129,7 @@ export default function BackofficeTenantsPage() {
             sortValue: (t) => t.activeModuleCount,
           },
         ]}
-        actions={(t) => [
-          { label: 'Se detaljer', onClick: () => navigate(`/backoffice/tenants/${t.id}`) },
-        ]}
+        actions={(t) => [{ label: 'Se detaljer', href: `/backoffice/tenants/${t.id}` }]}
       />
     </div>
   )

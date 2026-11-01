@@ -501,7 +501,8 @@ export default function ParentsPage() {
             key: p.id ?? p.name,
             name: p.name,
             subtitle: children ? `Forælder til ${children}` : 'Ingen børn tilknyttet',
-            badge: p.hasAccount ? undefined : { label: 'Inviteret', tone: 'amber' },
+            // Not "Inviteret": the list doesn't know whether the invitation has expired.
+            badge: p.hasAccount ? undefined : { label: 'Ikke logget ind', tone: 'amber' },
             details: [
               { label: 'Telefon', value: p.phone ?? '—' },
               { label: 'Børn', value: children || '—' },

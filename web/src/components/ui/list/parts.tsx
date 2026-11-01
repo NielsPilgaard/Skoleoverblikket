@@ -1,14 +1,55 @@
 import type React from 'react'
+import { Link } from 'react-router-dom'
 
-export interface RowAction {
+/** Give `href` for navigation (ctrl-click and copy-link work), `onClick` for anything else. */
+export type RowAction = RowActionBase &
+  ({ href: string; onClick?: never } | { onClick: () => void; href?: never })
+
+interface RowActionBase {
   label: string
-  onClick: () => void
   /** Defaults: the first action is primary, the rest secondary. */
   variant?: 'primary' | 'secondary' | 'danger'
   disabled?: boolean
   /** Why the action is disabled. Shown as text under the buttons, not only as a tooltip. */
   disabledReason?: string
   testId?: string
+}
+
+/** A row action as a router link or a button. Clicks don't reach the row's own onClick. */
+export function RowActionControl({
+  action: a,
+  className,
+}: {
+  action: RowAction
+  className: string
+}) {
+  if (a.href !== undefined && !a.disabled) {
+    return (
+      <Link
+        to={a.href}
+        onClick={(e) => e.stopPropagation()}
+        data-testid={a.testId}
+        className={`inline-flex items-center justify-center ${className}`}
+      >
+        {a.label}
+      </Link>
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        a.onClick?.()
+      }}
+      disabled={a.disabled}
+      title={a.disabled ? a.disabledReason : undefined}
+      data-testid={a.testId}
+      className={className}
+    >
+      {a.label}
+    </button>
+  )
 }
 
 export interface Badge {
@@ -48,21 +89,13 @@ export function ActionButtons({ actions }: { actions: RowAction[] }) {
     <div className="mt-3">
       <div className="flex flex-wrap gap-2">
         {actions.map((a, i) => (
-          <button
+          <RowActionControl
             key={a.label}
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              a.onClick()
-            }}
-            disabled={a.disabled}
-            data-testid={a.testId}
+            action={a}
             className={`flex-1 sm:flex-none sm:px-6 h-11 px-4 rounded-lg font-semibold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
               actionStyle[a.variant ?? (i === 0 ? 'primary' : 'secondary')]
             }`}
-          >
-            {a.label}
-          </button>
+          />
         ))}
       </div>
       {reasons.map((a) => (
@@ -74,17 +107,17 @@ export function ActionButtons({ actions }: { actions: RowAction[] }) {
   )
 }
 
-/** "Ingen matcher søgningen" + "Ryd søgning". */
+/** Rows exist, but the search or filter hides them all. "Vis alle" clears both. */
 export function NoMatches({ onClear }: { onClear: () => void }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 text-center">
-      <p className="font-semibold text-gray-900">Ingen matcher søgningen</p>
+      <p className="font-semibold text-gray-900">Ingen matcher søgningen eller filteret</p>
       <button
         type="button"
         onClick={onClear}
         className="mt-2 h-11 px-4 rounded-lg border border-gray-300 font-semibold text-gray-800 hover:bg-gray-50"
       >
-        Ryd søgning
+        Vis alle
       </button>
     </div>
   )
