@@ -137,17 +137,33 @@ if ($gitleaksHasGit) {
     Write-Skip "gitleaks is already installed ($gitleaksVersion)"
 }
 else {
+    # From the release zip, not winget: winget isn't on PATH on every machine. Pinned and checked
+    # against the release's checksums file, so a tampered download is never run.
+    $gitleaksRelease = '8.30.1'
+    $gitleaksSha256 = 'd29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e'
     if ($gitleaksVersion) {
-        Write-Step "gitleaks $gitleaksVersion is too old (no 'gitleaks git'). Upgrading via winget..."
-        winget upgrade Gitleaks.Gitleaks --accept-source-agreements --accept-package-agreements
+        Write-Step "gitleaks $gitleaksVersion is too old (no 'gitleaks git'). Installing v$gitleaksRelease..."
     }
     else {
-        Write-Step "Installing gitleaks via winget..."
-        winget install Gitleaks.Gitleaks --accept-source-agreements --accept-package-agreements
+        Write-Step "Installing gitleaks v$gitleaksRelease..."
     }
-    if ($LASTEXITCODE -ne 0) {
-        Write-Fail "Failed to install gitleaks v8.19.0 or newer. Install manually: https://github.com/gitleaks/gitleaks#installing"
-        exit 1
+    $gitleaksDir = Join-Path $env:LOCALAPPDATA 'Programs\gitleaks'
+    $gitleaksZip = Join-Path ([System.IO.Path]::GetTempPath()) "gitleaks_${gitleaksRelease}_windows_x64.zip"
+    try {
+        Invoke-WebRequest -Uri "https://github.com/gitleaks/gitleaks/releases/download/v$gitleaksRelease/gitleaks_${gitleaksRelease}_windows_x64.zip" -OutFile $gitleaksZip -UseBasicParsing
+        if ((Get-FileHash $gitleaksZip -Algorithm SHA256).Hash -ne $gitleaksSha256) {
+            Write-Fail "gitleaks download failed its checksum. Install manually: https://github.com/gitleaks/gitleaks#installing"
+            exit 1
+        }
+        New-Item -ItemType Directory -Force $gitleaksDir | Out-Null
+        Expand-Archive -Path $gitleaksZip -DestinationPath $gitleaksDir -Force
+    }
+    finally {
+        Remove-Item $gitleaksZip -ErrorAction SilentlyContinue
+    }
+    $userPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
+    if (($userPath -split ';') -notcontains $gitleaksDir) {
+        [System.Environment]::SetEnvironmentVariable("PATH", "$gitleaksDir;$userPath", "User")
     }
     $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
     try { gitleaks git --help *> $null; $gitleaksHasGit = ($LASTEXITCODE -eq 0) } catch {}
