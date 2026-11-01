@@ -106,7 +106,7 @@ New `AccountService` (`Services/`) and `AccountController` at `/api/v1/account`,
 
 - [ ] `GET /api/v1/account/security` → `{ email, hasPassword, otp: { configured, createdAt }, recoveryCodes: { configured, remaining? }, passkeys: [] , externalLogin: string? }` for `User.GetKeycloakSubject()`. Reads `GET /users/{id}/credentials` and `GET /users/{id}/federated-identity` through `KeycloakAdminService`. Returns credential ids so the web app can pass them to `delete_credential:<id>`.
 - [ ] `POST /api/v1/account/logout-everywhere` → admin API `POST /users/{id}/logout`. 204.
-- [ ] `POST /api/v1/account/security/cleanup-recovery-codes` → 204, for `User.GetKeycloakSubject()`, called by `/min-konto` after "Slå tofaktor fra" returns. When no `otp` or `webauthn` credential is left, delete `recovery-authn-codes` through the admin API, so the login flow no longer offers a recovery code. No-op otherwise.
+- [ ] `POST /api/v1/account/security/cleanup-recovery-codes` → 204, for `User.GetKeycloakSubject()`, called by `/min-konto` on every load while no `otp` credential is left (not only after "Slå tofaktor fra" returns, so a closed tab or failed call is retried next visit). When no `otp` or `webauthn` credential is left, delete `recovery-authn-codes` through the admin API, so the login flow no longer offers a recovery code. No-op otherwise.
 - [ ] Extend `IKeycloakAdminApi` (credentials with id/createdDate/userLabel, delete credential, logout user, federated identities) and `FakeKeycloak` to match.
 
 Admin reset (D4), in the owning services (`StaffService` or equivalent, plus parent and board):

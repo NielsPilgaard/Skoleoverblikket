@@ -1,7 +1,7 @@
 import keycloak, { refreshToken } from '../auth/keycloak'
 import { ACTING_AS_HEADER, actingAsHeaders, getActingAs } from '../auth/actingAs'
 import { client } from './generated/client.gen'
-import { apiFetch } from './outage'
+import { apiFetch, setRetryTokenSource } from './outage'
 
 export const API_BASE = '/api/v1'
 
@@ -13,6 +13,14 @@ async function getToken(): Promise<string> {
   }
   return keycloak.token
 }
+
+// A request resent after a deploy wait gets a token that is valid now. Only for a Keycloak session:
+// a tab without one (e.g. tokens seeded after signup) keeps the token it sent.
+setRetryTokenSource(async () => {
+  if (!keycloak.authenticated) return undefined
+  await refreshToken(30)
+  return keycloak.token
+})
 
 // Configure the generated client with Keycloak bearer auth and the correct base URL.
 // apiFetch waits out a deploy instead of failing.

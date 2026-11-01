@@ -14,7 +14,9 @@ import App from './App.tsx'
 window.addEventListener('vite:preloadError', (event) => {
   const key = 'skoleoverblikket_chunk_reload'
   try {
-    if (Date.now() - Number(sessionStorage.getItem(key) ?? 0) < 10_000) return
+    // A clock set back makes elapsed negative: treat that as outside the cooldown.
+    const elapsed = Date.now() - Number(sessionStorage.getItem(key) ?? 0)
+    if (elapsed >= 0 && elapsed < 10_000) return
     sessionStorage.setItem(key, String(Date.now()))
   } catch {
     return

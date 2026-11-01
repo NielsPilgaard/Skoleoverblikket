@@ -252,7 +252,9 @@ services:
       start_period: 10s
     labels:
       - traefik.enable=true
-      - traefik.http.routers.web.rule=Host(`skoleoverblikket.dk`)
+      # Not /api: while the API has no router, /api goes to the maintenance fallback, which marks the
+      # response with X-Maintenance so open tabs wait. Through web, nginx would answer a plain 502.
+      - traefik.http.routers.web.rule=Host(`skoleoverblikket.dk`) && !PathPrefix(`/api`)
       - traefik.http.routers.web.priority=2
       - traefik.http.routers.web.entrypoints=websecure
       - traefik.http.routers.web.tls.certresolver=letsencrypt
@@ -444,8 +446,15 @@ configs:
             clearInterval(timer);
             say("Tjekker…");
             try {
-              const res = await fetch(location.href, { cache: "no-store" });
-              if (res.ok) {
+              // manual: a recovered Keycloak may redirect to the app host, and following that cross-origin
+              // redirect would fail CORS. The fallback answers 503 without a redirect, so it stays "down".
+              // The timeout keeps a hung request from blocking every later check.
+              const res = await fetch(location.href, {
+                cache: "no-store",
+                redirect: "manual",
+                signal: AbortSignal.timeout(10000),
+              });
+              if (res.ok || res.type === "opaqueredirect") {
                 say("Klar! Genindlæser…");
                 setTimeout(() => location.reload(), 700);
                 return;
