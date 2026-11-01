@@ -103,7 +103,8 @@ if (-not $SkipDotnet) {
             # Build the test project too, or --no-build runs against a stale copy of the API dll.
             dotnet build api/tests/Skoleoverblikket.Api.IntegrationTests/Skoleoverblikket.Api.IntegrationTests.csproj --configuration Release
             if ($LASTEXITCODE -ne 0) { return }
-            dotnet test --project api/tests/Skoleoverblikket.Api.IntegrationTests/Skoleoverblikket.Api.IntegrationTests.csproj --configuration Release --no-build -- --timeout 120s
+            # A whole-session cap, so a hung test can't hang verify. The suite takes ~2 min; leave room.
+            dotnet test --project api/tests/Skoleoverblikket.Api.IntegrationTests/Skoleoverblikket.Api.IntegrationTests.csproj --configuration Release --no-build -- --timeout 240s
         }
     }
 }

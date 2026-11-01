@@ -101,6 +101,28 @@ docker exec -it $(docker ps -qf label=com.docker.compose.service=keycloak) \
 
 ---
 
+## Keycloak realm changes
+
+Keycloak imports `infrastructure/keycloak/realms/Skoleoverblikket-realm.json` only when the realm doesn't exist yet. A change to realm settings in that file reaches a fresh database, not production. Apply it by hand on the server, with the `admin` user (`KEYCLOAK_ADMIN_PASSWORD`). `kcadm.sh` asks for the password:
+
+```bash
+docker exec -it <keycloak container> /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user admin
+```
+
+Login and admin events, kept 90 days (added with the security hardening in PR 65):
+
+```bash
+docker exec -it <keycloak container> /opt/keycloak/bin/kcadm.sh update events/config -r Skoleoverblikket -s eventsEnabled=true -s eventsExpiration=7776000 -s adminEventsEnabled=true -s adminEventsDetailsEnabled=true
+```
+
+```bash
+docker exec -it <keycloak container> /opt/keycloak/bin/kcadm.sh update realms/Skoleoverblikket -s attributes.adminEventsExpiration=7776000
+```
+
+Check the result under Realm settings → Events in the admin console. Add a step here for each later realm change.
+
+---
+
 ## Self-hosted Postgres and the backup agent
 
 From the task [54](../tasks/54-move-vps.md) cutover, Postgres and the backup agent run in `docker-compose.prod.yml` behind the `selfhosted-db` profile ([postgres-backup-agent](adr/postgres-backup-agent.md)). Until then these variables are unused. Runbook: [RESTORE.md](RESTORE.md).

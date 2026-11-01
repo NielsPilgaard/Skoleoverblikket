@@ -73,45 +73,53 @@ public sealed class StatsController(
 		var roomCount = await db.Rooms.CountAsync(cancellationToken);
 
 		var today = DateOnly.FromDateTime(DateTime.UtcNow);
-		// TODO: Fetching all schemas is overkill, visualize something else
-		var allSchemas = await db.Schemas.AsNoTracking().ToListAsync(cancellationToken);
-		var schemasTotal = allSchemas.Count;
-		var schemasComplete = allSchemas.Count(s => s.StartDate.HasValue && s.EndDate.HasValue);
+		var schemasTotal = await db.Schemas.CountAsync(cancellationToken);
+		var schemasComplete = await db.Schemas.CountAsync(s => s.StartDate.HasValue && s.EndDate.HasValue, cancellationToken);
 
-		// Hours per course per class (active schemas only)
+		// Hours per course per class (active schemas only). One row per lektion with just the
+		// columns the sums need, instead of six split queries loading whole entities.
 		var activeSlots = await db.SchemaSlots
-			.AsNoTrackingWithIdentityResolution()
-			.AsSplitQuery()
+			.AsNoTracking()
 			.Where(s => s.Schema.StartDate <= today && s.Schema.EndDate >= today)
-			.Include(s => s.Course)
-			.Include(s => s.Schema).ThenInclude(sc => sc.Class)
-			.Include(s => s.TimeSlot)
-			.Include(s => s.Teacher)
-			.Include(s => s.Aide)
+			.Select(s => new
+			{
+				s.CourseId,
+				CourseName = s.Course.Name,
+				s.Schema.ClassId,
+				ClassName = s.Schema.Class.Name,
+				s.TeacherId,
+				TeacherName = s.Teacher.Name,
+				TeacherRole = s.Teacher.Role,
+				s.AideId,
+				AideName = s.Aide != null ? s.Aide.Name : null,
+				AideRole = s.Aide != null ? s.Aide.Role : (StaffRole?)null,
+				s.TimeSlot.StartTime,
+				s.TimeSlot.EndTime,
+			})
 			.ToListAsync(cancellationToken);
 
 		var hoursPerCourse = activeSlots
-			.GroupBy(s => (s.CourseId, CourseName: s.Course.Name, s.Schema.ClassId, ClassName: s.Schema.Class.Name))
+			.GroupBy(s => (s.CourseId, s.CourseName, s.ClassId, s.ClassName))
 			.Select(g => new HoursPerCourse(
 				g.Key.CourseId, g.Key.CourseName,
 				g.Key.ClassId, g.Key.ClassName,
-				Math.Round(g.Sum(s => (s.TimeSlot.EndTime - s.TimeSlot.StartTime).TotalHours), 2)))
+				Math.Round(g.Sum(s => (s.EndTime - s.StartTime).TotalHours), 2)))
 			.OrderBy(h => h.ClassName).ThenBy(h => h.CourseName)
 			.ToList();
 
 		// Hours per staff member (active schemas only)
 		var teacherHours = activeSlots
-			.GroupBy(s => (s.TeacherId, s.Teacher.Name, s.Teacher.Role))
+			.GroupBy(s => (s.TeacherId, s.TeacherName, s.TeacherRole))
 			.Select(g => new HoursPerStaff(
-				g.Key.TeacherId, g.Key.Name, g.Key.Role,
-				Math.Round(g.Sum(s => (s.TimeSlot.EndTime - s.TimeSlot.StartTime).TotalHours), 2)));
+				g.Key.TeacherId, g.Key.TeacherName, g.Key.TeacherRole,
+				Math.Round(g.Sum(s => (s.EndTime - s.StartTime).TotalHours), 2)));
 
 		var aideHours = activeSlots
 			.Where(s => s.AideId.HasValue)
-			.GroupBy(s => (AideId: s.AideId!.Value, s.Aide!.Name, s.Aide.Role))
+			.GroupBy(s => (AideId: s.AideId!.Value, AideName: s.AideName!, AideRole: s.AideRole!.Value))
 			.Select(g => new HoursPerStaff(
-				g.Key.AideId, g.Key.Name, g.Key.Role,
-				Math.Round(g.Sum(s => (s.TimeSlot.EndTime - s.TimeSlot.StartTime).TotalHours), 2)));
+				g.Key.AideId, g.Key.AideName, g.Key.AideRole,
+				Math.Round(g.Sum(s => (s.EndTime - s.StartTime).TotalHours), 2)));
 
 		var hoursPerStaff = teacherHours.Concat(aideHours)
 			.OrderBy(h => h.StaffName)
@@ -119,17 +127,16 @@ public sealed class StatsController(
 
 		// Unassigned slots: classes with no active schema, or active schemas with empty time slots
 		var activeSchemas = await db.Schemas
-			.AsNoTrackingWithIdentityResolution()
+			.AsNoTracking()
 			.Where(s => s.StartDate <= today && s.EndDate >= today)
-			.Include(s => s.Class)
-			.Include(s => s.Slots)
+			.Select(s => new { s.ClassId, ClassName = s.Class.Name, SlotCount = s.Slots.Count })
 			.ToListAsync(cancellationToken);
 
-		var classTimeSlots = await db.TimeSlots.AsNoTracking().ToListAsync(cancellationToken);
+		var timeSlotClassIds = await db.TimeSlots.AsNoTracking().Select(ts => ts.ClassId).ToListAsync(cancellationToken);
 
 		var activeSchemaClassIds = activeSchemas.Select(s => s.ClassId).ToHashSet();
 
-		var allClasses = await db.Classes.AsNoTracking().ToListAsync(cancellationToken);
+		var allClasses = await db.Classes.AsNoTracking().Select(c => new { c.Id, c.Name }).ToListAsync(cancellationToken);
 
 		// Classes with no active schema at all
 		var classesWithoutSchema = allClasses
@@ -139,11 +146,9 @@ public sealed class StatsController(
 		// Classes with an active schema but empty slots
 		var classesWithGaps = activeSchemas.Select(schema =>
 		{
-			var applicable = classTimeSlots
-				.Where(ts => ts.ClassId == schema.ClassId || ts.ClassId == null)
-				.ToList();
-			var emptySlots = applicable.Count * SchoolDaysPerWeek - schema.Slots.Count;
-			return new UnassignedClass(schema.ClassId, schema.Class.Name, Math.Max(0, emptySlots), HasSchema: true);
+			var applicable = timeSlotClassIds.Count(id => id == schema.ClassId || id == null);
+			var emptySlots = applicable * SchoolDaysPerWeek - schema.SlotCount;
+			return new UnassignedClass(schema.ClassId, schema.ClassName, Math.Max(0, emptySlots), HasSchema: true);
 		})
 		.Where(u => u.EmptySlots > 0);
 

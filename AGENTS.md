@@ -58,6 +58,17 @@ public async Task<IActionResult> UpdateWindow(Guid id, UpdateWindowRequest req, 
 
 Before finishing API work, check that no controller you touched still writes to `AppDbContext` for the entity you changed.
 
+## Security
+
+The repo is public. These rules come from a security review; each has a check that enforces it.
+
+- **Every endpoint names who may call it**: roles, a policy, or `[AllowAnonymous]`. A bare `[Authorize]` admits parents, board members and logins with no school role. `EndpointAuthorizationTests` fails on an endpoint that does neither, unless it is listed there with the reason it's safe. Adding to that list is a security decision, not a way to make the test pass.
+- **No real secrets in tracked files.** Production secrets live in Dokploy's environment. Dev-only values that are safe to publish (the Stripe test key) are allowlisted in `.gitleaks.toml`, with the reason. gitleaks runs in the pre-commit hook and in CI over the whole history.
+- **The Keycloak realm file is for development.** Its Debugskolen login, client secret and localhost redirects are public. The Keycloak image strips users and secrets and fails the build if any are left. Never add a production user or secret to the realm file.
+- **Nothing is seeded in Production.** `DbSeeder` creates Debugskolen, whose admin login has a public password.
+- **Anonymous endpoints** get a rate limit policy (`RateLimitingExtensions`) and never return exception messages: log them and return a fixed Danish message.
+- **Uploads** are presigned with their size. The size is signed into the URL, so storage rejects any other size; keep presign-time checks (limit, quota, file type) on that size.
+
 ## Frontend (React / TypeScript)
 
 - Call the API only through the generated client (hey-api/openapi-ts), regenerated with `/codegen`. Never read, grep or diff `web/src/api/generated/` or `openapi/` (their lines are 12k+ characters). Find hook names from usages in `web/src/pages`.

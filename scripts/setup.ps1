@@ -119,6 +119,45 @@ else {
     Write-Ok "ryni installed"
 }
 
+# ── gitleaks (secret scan in the pre-commit hook) ───────────────────────────
+
+Write-Step "Checking gitleaks..."
+
+$gitleaksVersion = $null
+try { $gitleaksVersion = (gitleaks version 2>$null) } catch {}
+
+# The pre-commit hook runs `gitleaks git`, which only exists from v8.19.0. An older install
+# prints a version but would fail every commit, so it is upgraded.
+$gitleaksHasGit = $false
+if ($gitleaksVersion) {
+    try { gitleaks git --help *> $null; $gitleaksHasGit = ($LASTEXITCODE -eq 0) } catch {}
+}
+
+if ($gitleaksHasGit) {
+    Write-Skip "gitleaks is already installed ($gitleaksVersion)"
+}
+else {
+    if ($gitleaksVersion) {
+        Write-Step "gitleaks $gitleaksVersion is too old (no 'gitleaks git'). Upgrading via winget..."
+        winget upgrade Gitleaks.Gitleaks --accept-source-agreements --accept-package-agreements
+    }
+    else {
+        Write-Step "Installing gitleaks via winget..."
+        winget install Gitleaks.Gitleaks --accept-source-agreements --accept-package-agreements
+    }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail "Failed to install gitleaks v8.19.0 or newer. Install manually: https://github.com/gitleaks/gitleaks#installing"
+        exit 1
+    }
+    $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+    try { gitleaks git --help *> $null; $gitleaksHasGit = ($LASTEXITCODE -eq 0) } catch {}
+    if (-not $gitleaksHasGit) {
+        Write-Fail "gitleaks on PATH has no 'git' command (needs v8.19.0 or newer). Remove the old install, then rerun setup."
+        exit 1
+    }
+    Write-Ok "gitleaks installed"
+}
+
 # ── Web dependencies + Playwright browser ───────────────────────────────────
 # npm install also enables the .githooks pre-commit formatter. The Playwright browser
 # version is pinned by @playwright/test, so it must be re-downloaded after every bump;

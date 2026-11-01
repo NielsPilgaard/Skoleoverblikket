@@ -10,6 +10,7 @@ namespace Skoleoverblikket.Api.IntegrationTests;
 /// <summary>
 /// Verifies that files are strictly scoped to the uploading tenant.
 /// Skole A's files must never appear in Skole B's list or be fetchable by ID.
+/// Also checks that storage only accepts an upload of the size checked at presign time.
 /// </summary>
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
 public sealed class FilesTenantIsolationTests(ApiFactory factory)
@@ -72,5 +73,27 @@ public sealed class FilesTenantIsolationTests(ApiFactory factory)
 		var listResponse = await clientA.GetAsync("/api/v1/files");
 		var body = await listResponse.Content.ReadFromJsonAsync<FilesController.FilesResponseDto>(JsonOpts);
 		await Assert.That(body!.Files.Any(f => f.Id == fileA.Id)).IsTrue();
+	}
+
+	[Test]
+	public async Task Upload_OfAnotherSizeThanDeclared_IsRejectedByStorage()
+	{
+		using var client = CreateAdminClient(_tenantA);
+		using var storage = new HttpClient();
+
+		async Task<HttpStatusCode> UploadAsync(int declaredBytes, int actualBytes)
+		{
+			var presign = await client.PostAsJsonAsync("/api/v1/files/presign",
+				new FilesController.PresignRequest("skema.pdf", declaredBytes, null, null));
+			await Assert.That(presign.StatusCode).IsEqualTo(HttpStatusCode.OK);
+			var body = await presign.Content.ReadFromJsonAsync<FilesController.PresignResponse>(JsonOpts);
+
+			var content = new ByteArrayContent(new byte[actualBytes]);
+			content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(body!.ContentType);
+			return (await storage.PutAsync(body.UploadUrl, content)).StatusCode;
+		}
+
+		await Assert.That(await UploadAsync(declaredBytes: 10, actualBytes: 10)).IsEqualTo(HttpStatusCode.OK);
+		await Assert.That(await UploadAsync(declaredBytes: 10, actualBytes: 5000)).IsEqualTo(HttpStatusCode.Forbidden);
 	}
 }

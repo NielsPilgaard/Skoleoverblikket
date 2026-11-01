@@ -228,6 +228,74 @@ public sealed class StatsControllerTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task GetDashboard_SummarizesActiveSchemas()
+	{
+		var tenantId = await CreateTenantAsync();
+		var teacher = await TestDataBuilder.CreateStaffAsync(
+			_factory.Services, tenantId, "Anders Lærer", StaffRole.Teacher);
+		var aide = await TestDataBuilder.CreateStaffAsync(
+			_factory.Services, tenantId, "Pia Pædagog", StaffRole.Aide);
+		var (klass, schema) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, tenantId, "2.b");
+		await CreateClassWithoutSchemaAsync(tenantId, "3.a");
+		var course = await TestDataBuilder.CreateCourseAsync(_factory.Services, tenantId);
+		var timeSlot = await TestDataBuilder.CreateTimeSlotAsync(
+			_factory.Services, tenantId, new TimeOnly(8, 0), new TimeOnly(8, 45));
+
+		await TestDataBuilder.CreateSchemaSlotAsync(
+			_factory.Services, tenantId, schema.Id, timeSlot.Id, course.Id, teacher.Id, DayOfWeek.Monday);
+		var withAide = await TestDataBuilder.CreateSchemaSlotAsync(
+			_factory.Services, tenantId, schema.Id, timeSlot.Id, course.Id, teacher.Id, DayOfWeek.Tuesday);
+		// An archived class's schema and lektioner stay out of every figure except the schema counts.
+		var (archived, archivedSchema) = await TestDataBuilder.CreateClassWithSchemaAsync(_factory.Services, tenantId, "9.x");
+		await TestDataBuilder.CreateSchemaSlotAsync(
+			_factory.Services, tenantId, archivedSchema.Id, timeSlot.Id, course.Id, teacher.Id, DayOfWeek.Monday);
+		using (var scope = _factory.Services.CreateScope())
+		{
+			var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+			var tracked = await db.SchemaSlots.IgnoreQueryFilters().FirstAsync(s => s.Id == withAide.Id);
+			tracked.AideId = aide.Id;
+			var archivedClass = await db.Classes.IgnoreQueryFilters().FirstAsync(c => c.Id == archived.Id);
+			archivedClass.ArchivedAt = DateTimeOffset.UtcNow;
+			await db.SaveChangesAsync();
+		}
+
+		using var client = CreateClient(tenantId, "admin", "stats-admin-schemas");
+		var stats = await client.GetFromJsonAsync<StatsController.DashboardStats>(
+			"/api/v1/stats/dashboard", JsonOpts);
+
+		await Assert.That(stats!.SchemasTotal).IsEqualTo(2);
+		await Assert.That(stats.SchemasComplete).IsEqualTo(2);
+
+		await Assert.That(stats.HoursPerCourse.Count).IsEqualTo(1);
+		await Assert.That(stats.HoursPerCourse[0].ClassId).IsEqualTo(klass.Id);
+		await Assert.That(stats.HoursPerCourse[0].ClassName).IsEqualTo("2.b");
+		await Assert.That(stats.HoursPerCourse[0].CourseName).IsEqualTo("Dansk");
+		await Assert.That(stats.HoursPerCourse[0].Hours).IsEqualTo(1.5);
+
+		await Assert.That(stats.HoursPerStaff.Count).IsEqualTo(2);
+		await Assert.That(stats.HoursPerStaff[0].StaffId).IsEqualTo(teacher.Id);
+		await Assert.That(stats.HoursPerStaff[0].Hours).IsEqualTo(1.5);
+		await Assert.That(stats.HoursPerStaff[1].StaffId).IsEqualTo(aide.Id);
+		await Assert.That(stats.HoursPerStaff[1].Role).IsEqualTo(StaffRole.Aide);
+		await Assert.That(stats.HoursPerStaff[1].Hours).IsEqualTo(0.75);
+
+		// The class without a schema comes first; 2.b has one time slot × 5 days − 2 lektioner = 3 gaps.
+		await Assert.That(stats.UnassignedClasses.Count).IsEqualTo(2);
+		await Assert.That(stats.UnassignedClasses[0].ClassName).IsEqualTo("3.a");
+		await Assert.That(stats.UnassignedClasses[0].HasSchema).IsFalse();
+		await Assert.That(stats.UnassignedClasses[1].ClassId).IsEqualTo(klass.Id);
+		await Assert.That(stats.UnassignedClasses[1].HasSchema).IsTrue();
+		await Assert.That(stats.UnassignedClasses[1].EmptySlots).IsEqualTo(3);
+	}
+
+	private async Task CreateClassWithoutSchemaAsync(Guid tenantId, string name)
+	{
+		using var admin = CreateClient(tenantId, "admin", "stats-admin-classes");
+		var response = await admin.PostAsJsonAsync("/api/v1/classes", new ClassesController.UpsertClassRequest(name, null, null));
+		response.EnsureSuccessStatusCode();
+	}
+
+	[Test]
 	public async Task GetDashboard_NoPendingAbsences_ReturnsZero()
 	{
 		var tenantId = await CreateTenantAsync();

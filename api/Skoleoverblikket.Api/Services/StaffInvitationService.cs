@@ -48,7 +48,7 @@ public sealed class StaffInvitationService(
 		catch (KeycloakException ex)
 		{
 			// The invitation page creates the login when the invitee chooses a password.
-			logger.LogWarning(ex, "Could not pre-create Keycloak account for invited staff {Email}; invitation email will still be sent", staff.Email);
+			logger.LogWarning(ex, "Could not pre-create Keycloak account for invited staff {StaffId}; invitation email will still be sent", staff.Id);
 		}
 
 		// Expire any existing pending invitations for this staff member
