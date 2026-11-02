@@ -13,6 +13,7 @@ import {
 import type { SubscriptionDto, BillingInterval } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { BILLING_INTERVAL_STORAGE_KEY, parseBillingInterval } from '../lib/billingInterval'
+import { SegmentedControl } from '../components/ui/select'
 
 function initialBillingInterval(): BillingInterval {
   return parseBillingInterval(localStorage.getItem(BILLING_INTERVAL_STORAGE_KEY)) ?? 'Monthly'
@@ -796,24 +797,17 @@ function IntervalToggle({
   onChange: (interval: BillingInterval) => void
 }) {
   return (
-    <fieldset className="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 p-1 m-0">
-      <legend className="sr-only">Betalingsinterval</legend>
-      {(['Monthly', 'Yearly'] as const).map((interval) => (
-        <button
-          key={interval}
-          type="button"
-          aria-pressed={selected === interval}
-          onClick={() => onChange(interval)}
-          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-            selected === interval
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          {interval === 'Monthly' ? 'Månedligt' : 'Årligt'}
-        </button>
-      ))}
-    </fieldset>
+    <SegmentedControl
+      className="w-56"
+      label="Betalingsinterval"
+      hideLabel
+      value={selected}
+      onChange={onChange}
+      options={[
+        { value: 'Monthly', label: 'Månedligt' },
+        { value: 'Yearly', label: 'Årligt' },
+      ]}
+    />
   )
 }
 

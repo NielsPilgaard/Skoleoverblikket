@@ -14,6 +14,7 @@ import type {
   VacationRegistrationControllerWindowDto as WindowDto,
   VacationRegistrationGranularity,
 } from '../api/generated/types.gen'
+import { SegmentedControl } from '../components/ui/select'
 
 const QUERY_KEY = [{ _id: 'getApiV1VacationRegistration' }] as const
 
@@ -228,24 +229,17 @@ export default function VacationRegistrationPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Granularitet</label>
-            <div className="flex gap-3">
-              {(['Weeks', 'Days'] as VacationRegistrationGranularity[]).map((g) => (
-                <label key={g} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="granularity"
-                    value={g}
-                    checked={form.granularity === g}
-                    onChange={() => setForm((f) => ({ ...f, granularity: g }))}
-                    className="accent-brand-600"
-                  />
-                  <span className="text-sm text-gray-700">{g === 'Weeks' ? 'Uger' : 'Dage'}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+          <SegmentedControl
+            label="Forældre vælger"
+            value={form.granularity}
+            onChange={(granularity: VacationRegistrationGranularity) =>
+              setForm((f) => ({ ...f, granularity }))
+            }
+            options={[
+              { value: 'Weeks', label: 'Uger' },
+              { value: 'Days', label: 'Dage' },
+            ]}
+          />
 
           <div className="flex gap-3">
             <div className="flex-1 min-w-0">

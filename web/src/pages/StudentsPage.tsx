@@ -14,6 +14,7 @@ import type { StudentDto, ClassDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { useSubscription } from '../hooks/useSubscription'
 import { PersonList } from '../components/ui/list'
+import { Select } from '../components/ui/select'
 
 interface StudentModalProps {
   initial?: StudentDto
@@ -85,18 +86,12 @@ function StudentModal({ initial, classes, onClose }: StudentModalProps) {
           </label>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Klasse *</label>
-          <select
+          <Select
+            label="Klasse"
+            options={classes.map((c) => ({ value: c.id, label: c.name }))}
             value={classId}
-            onChange={(e) => setClassId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
-          >
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            onChange={setClassId}
+          />
         </div>
         {isError && <p className="text-sm text-red-600">Der opstod en fejl. Prov igen.</p>}
       </div>

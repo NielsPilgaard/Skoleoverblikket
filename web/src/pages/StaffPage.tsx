@@ -18,6 +18,7 @@ import type { StaffDto, StaffRole, InvitationDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 import keycloak from '../auth/keycloak'
 import { type Badge, PersonList, type RowAction } from '../components/ui/list'
+import { Select } from '../components/ui/select'
 
 const ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
   { value: 'Teacher', label: 'Lærer' },
@@ -170,18 +171,12 @@ function StaffModal({ initial, onClose, onSaved, currentUserKeycloakSubject }: S
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Rolle *</label>
-          <select
+          <Select
+            label="Rolle"
+            options={ROLE_OPTIONS.map((r) => ({ value: r.value, label: r.label }))}
             value={role}
-            onChange={(e) => setRole(e.target.value as StaffRole)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
-          >
-            {ROLE_OPTIONS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => setRole(value as StaffRole)}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
@@ -378,9 +373,18 @@ export default function StaffPage() {
   const currentUserKeycloakSubject = (keycloak.tokenParsed as Record<string, string> | undefined)
     ?.sub
 
-  const { data: staff, isLoading, isError, refetch } = useQuery(getApiV1StaffOptions())
-
-  const { data: allInvitations } = useQuery(getApiV1StaffInvitationsOptions())
+  const staffQuery = useQuery(getApiV1StaffOptions())
+  const invitationsQuery = useQuery(getApiV1StaffInvitationsOptions())
+  const staff = staffQuery.data
+  const allInvitations = invitationsQuery.data
+  // Login status comes from the invitations, so the list waits for both: without them everyone
+  // would look not invited and offer "Send invitation".
+  const isLoading = staffQuery.isLoading || invitationsQuery.isLoading
+  const isError = staffQuery.isError || invitationsQuery.isError
+  const refetch = () => {
+    void staffQuery.refetch()
+    void invitationsQuery.refetch()
+  }
 
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
@@ -460,7 +464,7 @@ export default function StaffPage() {
       )}
 
       <PersonList
-        items={staff}
+        items={isError ? [] : staff}
         isLoading={isLoading}
         testId="staff-list"
         noun={{ one: 'medarbejder', other: 'medarbejdere' }}

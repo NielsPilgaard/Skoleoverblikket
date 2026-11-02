@@ -26,6 +26,7 @@ import {
 } from '../../lib/absence'
 import { problemDetail } from '../../lib/problem'
 import { type Column, DataTable } from '../ui/list'
+import { Select, WeekStepper } from '../ui/select'
 
 const QUARTER_MONTHS = ['januar–marts', 'april–juni', 'juli–september', 'oktober–december']
 
@@ -213,44 +214,27 @@ export function AbsenceStatsTab({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center bg-white border border-gray-300 rounded-lg">
-          <button
-            type="button"
-            onClick={() => shift(-1)}
-            className="px-3 py-1.5 text-gray-600 hover:bg-gray-50 rounded-l-lg"
-            aria-label="Forrige kvartal"
-          >
-            ‹
-          </button>
-          <span
-            className="px-2 text-sm font-medium text-gray-900"
-            data-testid="absence-stats-quarter"
-          >
-            {quarter}. kvartal {year}
-          </span>
-          <button
-            type="button"
-            onClick={() => shift(1)}
-            disabled={isCurrent || isFuture}
-            className="px-3 py-1.5 text-gray-600 hover:bg-gray-50 rounded-r-lg disabled:opacity-30"
-            aria-label="Næste kvartal"
-          >
-            ›
-          </button>
-        </div>
-        <select
+        <WeekStepper
+          className="w-64"
+          main={`${quarter}. kvartal ${year}`}
+          onPrev={() => shift(-1)}
+          onNext={() => shift(1)}
+          prevLabel="Forrige kvartal"
+          nextLabel="Næste kvartal"
+          nextDisabled={isCurrent || isFuture}
+          mainTestId="absence-stats-quarter"
+        />
+        <Select
+          label="Klasse"
+          hideLabel
+          options={[
+            { value: '', label: 'Hele skolen' },
+            ...classes.map((c) => ({ value: c.id, label: c.name })),
+          ]}
           value={classId}
-          onChange={(e) => setClassId(e.target.value)}
-          className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-          data-testid="absence-stats-class"
-        >
-          <option value="">Hele skolen</option>
-          {classes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          onChange={setClassId}
+          testId="absence-stats-class"
+        />
       </div>
 
       {isLoading && <p className="text-sm text-gray-400">Indlæser…</p>}
@@ -391,22 +375,21 @@ export function AbsenceStatsTab({ isAdmin }: { isAdmin: boolean }) {
           <section>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <h2 className="text-sm font-semibold text-gray-900">Elever</h2>
-              <label className="flex items-center gap-2 text-sm text-gray-600">
-                Vis elever med
-                <select
+              <div className="flex items-center gap-2 text-sm text-gray-700">
+                <span aria-hidden="true">Vis elever med</span>
+                <Select
+                  label="Vis elever med"
+                  hideLabel
+                  options={[
+                    { value: '', label: 'Alt fravær' },
+                    ...CHART_CATEGORY_ORDER.map((c) => ({ value: c, label: CATEGORY_LABEL[c] })),
+                  ]}
                   value={category}
-                  onChange={(e) => setCategory(e.target.value as AbsenceCategory | '')}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900"
-                  data-testid="absence-stats-category"
-                >
-                  <option value="">Alt fravær</option>
-                  {CHART_CATEGORY_ORDER.map((c) => (
-                    <option key={c} value={c}>
-                      {CATEGORY_LABEL[c]}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  onChange={(value) => setCategory(value as AbsenceCategory | '')}
+                  testId="absence-stats-category"
+                  className="w-44"
+                />
+              </div>
             </div>
             <DataTable
               items={visibleStudents}

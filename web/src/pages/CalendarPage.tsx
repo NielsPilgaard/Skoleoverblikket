@@ -23,6 +23,7 @@ import {
   toDateString,
   CalendarGrid,
 } from '../components/calendar/CalendarGrid'
+import { Select, RadioCards } from '../components/ui/select'
 
 // ─── DeleteOccurrenceDialog ───────────────────────────────────────────────────
 
@@ -96,26 +97,18 @@ function DeleteOccurrenceDialog({
         <h2 className="font-display text-lg font-semibold text-gray-900">Slet begivenhed</h2>
         <p className="text-sm text-gray-500 mt-1">"{entry.title}" gentages. Hvad vil du slette?</p>
       </div>
-      <div className="px-6 py-5 space-y-3">
-        {(
-          [
-            ['single', 'Kun denne begivenhed'],
-            ['from', 'Denne og alle efterfølgende'],
-            ['all', 'Alle begivenheder i serien'],
-          ] as [DeleteMode, string][]
-        ).map(([val, label]) => (
-          <label key={val} className="flex items-center gap-3 cursor-pointer group">
-            <input
-              type="radio"
-              name="deleteMode"
-              value={val}
-              checked={mode === val}
-              onChange={() => setMode(val)}
-              className="accent-brand-600 w-4 h-4"
-            />
-            <span className="text-sm text-gray-800 group-hover:text-gray-900">{label}</span>
-          </label>
-        ))}
+      <div className="px-6 py-5">
+        <RadioCards
+          label="Hvad vil du slette?"
+          hideLabel
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: 'single', label: 'Kun denne begivenhed' },
+            { value: 'from', label: 'Denne og alle efterfølgende' },
+            { value: 'all', label: 'Alle begivenheder i serien' },
+          ]}
+        />
       </div>
       <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
         <button
@@ -212,24 +205,13 @@ function EntryModal({ initial, defaultDate, onClose, onSaved }: EntryModalProps)
     <Modal isOpen onClose={onClose} title={initial ? 'Rediger begivenhed' : 'Tilføj begivenhed'}>
       <div className="px-6 py-5 space-y-4">
         <div>
-          <label
-            htmlFor="calendar-entry-type"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Type
-          </label>
-          <select
+          <Select
+            label="Type"
+            options={Object.keys(TYPE_LABELS).map((t) => ({ value: t, label: TYPE_LABELS[t] }))}
             id="calendar-entry-type"
             value={type}
-            onChange={(e) => setType(e.target.value as EntryType)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-          >
-            {Object.keys(TYPE_LABELS).map((t) => (
-              <option key={t} value={t}>
-                {TYPE_LABELS[t]}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => setType(value as EntryType)}
+          />
         </div>
         <div>
           <label
@@ -278,23 +260,18 @@ function EntryModal({ initial, defaultDate, onClose, onSaved }: EntryModalProps)
           {dateError && <p className="mt-1 text-sm text-red-600">{dateError}</p>}
         </div>
         <div>
-          <label
-            htmlFor="calendar-entry-recurrence"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Gentagelse
-          </label>
-          <select
+          <Select
+            label="Gentagelse"
+            options={[
+              { value: '', label: 'Ingen gentagelse' },
+              { value: 'FREQ=WEEKLY', label: 'Ugentlig' },
+              { value: 'FREQ=WEEKLY;INTERVAL=2', label: 'Hver 2. uge' },
+              { value: 'FREQ=MONTHLY', label: 'Månedlig' },
+            ]}
             id="calendar-entry-recurrence"
             value={recurrenceRule}
-            onChange={(e) => setRecurrenceRule(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-          >
-            <option value="">Ingen gentagelse</option>
-            <option value="FREQ=WEEKLY">Ugentlig</option>
-            <option value="FREQ=WEEKLY;INTERVAL=2">Hver 2. uge</option>
-            <option value="FREQ=MONTHLY">Månedlig</option>
-          </select>
+            onChange={setRecurrenceRule}
+          />
         </div>
         {recurrenceRule && (
           <div>
@@ -436,17 +413,14 @@ export default function CalendarPage() {
               Tilføj begivenhed
             </button>
           )}
-          <select
-            value={schoolStartYear}
-            onChange={(e) => setSchoolStartYear(Number(e.target.value))}
-            className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-          >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>
-                {y}/{y + 1}
-              </option>
-            ))}
-          </select>
+          <Select
+            label="Skoleår"
+            hideLabel
+            options={yearOptions.map((y) => ({ value: String(y), label: `${y}/${y + 1}` }))}
+            value={String(schoolStartYear)}
+            onChange={(value) => setSchoolStartYear(Number(value))}
+            className="w-36"
+          />
           <button
             onClick={handleExportIcs}
             disabled={exportPending}

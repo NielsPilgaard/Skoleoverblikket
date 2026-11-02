@@ -14,4 +14,7 @@
 // No swipe chips. Switching child uses SegmentedControl; switching class uses Select.
 // Build the missing ones when a page needs them, and add them here.
 
+export { RadioCards, type RadioCardOption } from './RadioCards'
+export { SegmentedControl, type SegmentedOption } from './SegmentedControl'
 export { Select, type SelectOption } from './Select'
+export { WeekStepper } from './WeekStepper'

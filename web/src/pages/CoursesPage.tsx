@@ -13,6 +13,7 @@ import { usePageTitle } from '../hooks/usePageTitle'
 import { useAuth } from '../auth/useAuth'
 import { SUBJECT_CATEGORY_LABELS, ALL_SUBJECT_CATEGORIES } from '../constants/subjects'
 import { DataTable } from '../components/ui/list'
+import { Select } from '../components/ui/select'
 
 const COURSE_COLOR_PALETTE = [
   '#3b82f6', // blue
@@ -103,19 +104,18 @@ function CourseModal({ initial, onClose, onSaved }: CourseModalProps) {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-          <select
+          <Select
+            label="Kategori"
+            options={[
+              { value: '', label: '— Ingen kategori —' },
+              ...ALL_SUBJECT_CATEGORIES.map((c) => ({
+                value: c,
+                label: SUBJECT_CATEGORY_LABELS[c],
+              })),
+            ]}
             value={category}
-            onChange={(e) => setCategory(e.target.value as SubjectCategory | '')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
-          >
-            <option value="">— Ingen kategori —</option>
-            {ALL_SUBJECT_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {SUBJECT_CATEGORY_LABELS[c]}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => setCategory(value as SubjectCategory | '')}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Farve</label>

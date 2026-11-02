@@ -19,7 +19,7 @@ import type { ClassDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { FilePicker } from '../components/files/FilePicker'
 import { AssignSubstitutePanel } from '../components/substitute/AssignSubstitutePanel'
-import { getISOWeek, getISOWeekYear, getISOWeeksInYear, getPlanningDate } from '../utils/isoWeek'
+import { useWeekNavigation } from '../hooks/useWeekNavigation'
 
 // ─── Local types ─────────────────────────────────────────────────────────────
 
@@ -84,52 +84,6 @@ interface CourseDto {
   name: string
 }
 
-// Returns the Monday of the ISO week
-function isoWeekToMonday(isoYear: number, isoWeek: number): Date {
-  const jan4 = new Date(Date.UTC(isoYear, 0, 4))
-  const dayOfWeek = jan4.getUTCDay() || 7
-  const weekOneMonday = new Date(jan4.getTime() - (dayOfWeek - 1) * 86400000)
-  return new Date(weekOneMonday.getTime() + (isoWeek - 1) * 7 * 86400000)
-}
-
-interface SchoolYearWeek {
-  isoYear: number
-  isoWeek: number
-  label: string
-}
-
-// School year: Aug 1 – Jun 30. Given current isoYear/isoWeek, generate all weeks.
-function getSchoolYearWeeks(isoYear: number, isoWeek: number): SchoolYearWeek[] {
-  // Determine which school year: if week is in Aug–Dec, school year starts that calendar year
-  const monday = isoWeekToMonday(isoYear, isoWeek)
-  const calYear = monday.getUTCFullYear()
-  const calMonth = monday.getUTCMonth() // 0-based
-  // School year start = Aug 1 of startYear
-  const startYear = calMonth >= 7 ? calYear : calYear - 1
-  const startDate = new Date(Date.UTC(startYear, 7, 1)) // Aug 1
-  const endDate = new Date(Date.UTC(startYear + 1, 5, 30)) // Jun 30
-
-  // Find ISO week of Aug 1 and Jun 30
-  const startWeek = getISOWeek(startDate)
-  const startWeekYear = getISOWeekYear(startDate)
-  const endWeek = getISOWeek(endDate)
-  const endWeekYear = getISOWeekYear(endDate)
-
-  const weeks: SchoolYearWeek[] = []
-  let y = startWeekYear
-  let w = startWeek
-  while (y < endWeekYear || (y === endWeekYear && w <= endWeek)) {
-    const label = y !== startWeekYear || w === 1 ? `Uge ${w}, ${y}` : `Uge ${w}`
-    weeks.push({ isoYear: y, isoWeek: w, label })
-    w++
-    if (w > getISOWeeksInYear(y)) {
-      y++
-      w = 1
-    }
-  }
-  return weeks
-}
-
 // ─── Course colors (matches SchemaBuilderPage) ────────────────────────────────
 
 const COURSE_COLORS = [
@@ -153,6 +107,7 @@ function getCourseColor(courseId: string, courseIds: string[]): string {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 import { WEEKDAY_LABELS as WEEKDAYS, WEEKDAY_KEYS } from '../lib/weekdays'
+import { Select, WeekStepper } from '../components/ui/select'
 
 // ─── Edit modal ───────────────────────────────────────────────────────────────
 
@@ -416,21 +371,17 @@ function EditSlotModal({
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Fagbytte</label>
-          <select
+          <Select
+            label="Fagbytte"
+            options={[
+              { value: '', label: 'Intet fagbytte (brug skemaets fag)' },
+              ...courses
+                .filter((c) => c.id !== (slot.originalCourseId ?? slot.courseId))
+                .map((c) => ({ value: c.id, label: c.name })),
+            ]}
             value={overrideCourseId}
-            onChange={(e) => setOverrideCourseId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
-          >
-            <option value="">Intet fagbytte (brug skemaets fag)</option>
-            {courses
-              .filter((c) => c.id !== (slot.originalCourseId ?? slot.courseId))
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-          </select>
+            onChange={setOverrideCourseId}
+          />
         </div>
       </div>
 
@@ -601,37 +552,10 @@ export default function WeekPlanPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
-  const [isoYear, setIsoYear] = useState(() => getISOWeekYear(getPlanningDate()))
-  const [isoWeek, setIsoWeek] = useState(() => getISOWeek(getPlanningDate()))
+  const { isoYear, isoWeek, stepper } = useWeekNavigation()
   const [editingSchemaSlotId, setEditingSchemaSlotId] = useState<string | null>(null)
   const [substituteSchemaSlotId, setSubstituteSchemaSlotId] = useState<string | null>(null)
   const [showParentPreview, setShowParentPreview] = useState(false)
-
-  function prevWeek() {
-    if (isoWeek === 1) {
-      const prevYear = isoYear - 1
-      setIsoYear(prevYear)
-      setIsoWeek(getISOWeeksInYear(prevYear))
-    } else {
-      setIsoWeek(isoWeek - 1)
-    }
-  }
-
-  function nextWeek() {
-    const weeksInYear = getISOWeeksInYear(isoYear)
-    if (isoWeek === weeksInYear) {
-      setIsoYear(isoYear + 1)
-      setIsoWeek(1)
-    } else {
-      setIsoWeek(isoWeek + 1)
-    }
-  }
-
-  function goToThisWeek() {
-    const now = getPlanningDate()
-    setIsoYear(getISOWeekYear(now))
-    setIsoWeek(getISOWeek(now))
-  }
 
   const { data: rawWeekPlanData, isLoading } = useQuery({
     ...getApiV1ClassesByClassIdWeekPlanOptions({
@@ -705,7 +629,7 @@ export default function WeekPlanPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Top bar */}
-      <div className="shrink-0 sticky top-0 z-10 bg-white border-b border-gray-200 px-4 lg:px-6 py-3 flex items-center justify-between">
+      <div className="shrink-0 sticky top-0 z-10 bg-white border-b border-gray-200 px-4 lg:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={() => navigate(-1)}
@@ -727,42 +651,10 @@ export default function WeekPlanPage() {
             {className} · Ugeplan
           </h1>
         </div>
-        {/* Week navigator */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={prevWeek}
-            aria-label="Forrige uge"
-            className="text-sm text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
-          >
-            ←
-          </button>
-          <select
-            value={`${isoYear}-${isoWeek}`}
-            aria-label="Vælg uge"
-            onChange={(e) => {
-              const [y, w] = e.target.value.split('-').map(Number)
-              setIsoYear(y)
-              setIsoWeek(w)
-            }}
-            className="text-sm font-semibold text-gray-900 px-2 py-1 border border-gray-200 rounded bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-          >
-            {getSchoolYearWeeks(isoYear, isoWeek).map(({ isoYear: y, isoWeek: w, label }) => (
-              <option key={`${y}-${w}`} value={`${y}-${w}`}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={nextWeek}
-            aria-label="Næste uge"
-            className="text-sm text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
-          >
-            →
-          </button>
-          <button onClick={goToThisWeek} className="text-xs text-brand-600 hover:underline ml-2">
-            Denne uge
-          </button>
-        </div>
+        <WeekStepper
+          {...stepper}
+          className="min-w-48 flex-1 max-w-xs order-last md:order-none basis-full md:basis-auto"
+        />
         <div className="flex justify-end w-32">
           <button
             onClick={() =>
