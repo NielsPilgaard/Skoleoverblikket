@@ -48,6 +48,17 @@ status: 'Active'
 | 20 | [59 Microsoft and Google login](59-microsoft-google-login.md) | M | Niels + agent | Ask schools which accounts staff use | Free replacement for UNI•Login (07, parked over STIL fees). One password fewer for staff. Niels checks with schools first. |
 | 21 | [62 Move billing from Stripe to Alunta](62-stripe-to-alunta.md) | L | Niels + agent | Niels decides D1, D3, D4 (D2 settled), ADR superseding stripe-checkout-billing | Feasible and EU-hosted (investigated 2026-10-26, Alunta answers 2026-10-27). Adds invoice, EAN, Betalingsservice and MobilePay payment. Move up if a school asks to pay by invoice or EAN. |
 
+## Held-back dependency upgrades
+
+Dependabot PRs too risky to merge as-is. Do them when there's time to watch the result; none blocks a feature. Stripe.net majors are deliberately skipped (see 71).
+
+| # | Task | Size | Owner | Replaces | Why held back |
+|---|---|---|---|---|---|
+| 1 | [71 NuGet updates](71-nuget-updates.md) | M | Agent | #82, #83, #84 | #82 (minor/patch group) is green and goes first. #83 moves the OpenApi pin to 3.x, which Swashbuckle isn't built for. #84 (Refit 16) fails 47 API tests. |
+| 2 | [68 TypeScript 6, then 7](68-typescript-6-and-7.md) | S | Agent | #78 | TS 7 breaks `api:generate` (openapi-ts needs the JS compiler API). TS 6 works today. |
+| 3 | [70 GitHub Actions majors](70-github-actions-majors.md) | S | Niels + agent | #80 | PR CI is green, but deploy, Staging, changelog and nightly only run after merge. |
+| 4 | [69 Keycloak 26.8](69-keycloak-26-8.md) | S–M | Niels + agent | #72 | One-way Keycloak DB migration on first start; back up first. AppHost pins 26.2 separately. |
+
 ## Folkeskole track (blocked on STIL / Aula)
 
 Secondary market. Runs in parallel with the list above because the calendar time is bureaucracy, not code.

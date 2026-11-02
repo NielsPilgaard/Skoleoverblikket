@@ -99,7 +99,7 @@ export default function ParentWeekPlanPage() {
   if (isError)
     return <div className="p-6 text-sm text-red-600">Noget gik galt. Prøv igen senere.</div>
 
-  const notFound = meRes?.response.status === 404
+  const notFound = meRes?.response?.status === 404
   const me = meRes?.data as ParentMeDto | undefined
   const classes = notFound ? [] : (me?.classes ?? [])
 

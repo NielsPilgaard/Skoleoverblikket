@@ -42,6 +42,11 @@ public static class ElmahIoStartupExtensions
 		// elmah.io logger provider so we don't get a duplicate entry per unhandled exception.
 		builder.Logging.AddFilter<ElmahIoLoggerProvider>(
 			"Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware", LogLevel.None);
+		// An unhealthy /api/health is logged at Error on every poll, and Keycloak answers 404
+		// for the realm for a few seconds after every deploy. The CD watch job and the uptime
+		// monitor already alert on /api/health, so these would only be duplicate emails.
+		builder.Logging.AddFilter<ElmahIoLoggerProvider>(
+			"Microsoft.Extensions.Diagnostics.HealthChecks.DefaultHealthCheckService", LogLevel.None);
 		builder.Logging.AddFilter<ElmahIoLoggerProvider>(null, LogLevel.Error);
 
 		return builder;
@@ -52,6 +57,24 @@ public static class ElmahIoStartupExtensions
 		if (TryGetOptions(app.Configuration, out _, out _))
 		{
 			app.UseElmahIo();
+			// A client that closes the request (page reload, navigating away) cancels
+			// RequestAborted, and the OperationCanceledException would reach UseElmahIo as an
+			// error. Answer 499 here instead, as ExceptionHandlerMiddleware does, so elmah.io
+			// never sees it. Server-side timeouts don't cancel RequestAborted and still get logged.
+			app.Use(async (context, next) =>
+			{
+				try
+				{
+					await next(context);
+				}
+				catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+				{
+					if (!context.Response.HasStarted)
+					{
+						context.Response.StatusCode = StatusCodes.Status499ClientClosedRequest;
+					}
+				}
+			});
 		}
 
 		return app;
