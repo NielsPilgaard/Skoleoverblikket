@@ -7,8 +7,8 @@ import type {
   ParentMeControllerParentStudentDto as ParentStudentDto,
   ParentMeControllerParentMeDto as ParentMeDto,
 } from '../../api/generated/types.gen'
-import { buildTimeAxis } from '../../lib/timeAxis'
-import { WEEKDAY_LABELS, WEEKDAY_NUM } from '../../lib/weekdays'
+import { buildSlotGrid, buildTimeAxis } from '../../lib/timeAxis'
+import { WEEKDAYS } from '../../lib/weekdays'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { Select } from '../../components/ui/select'
 
@@ -22,15 +22,7 @@ function ClassScheduleGrid({ classId, className }: { classId: string; className:
   const slots: ScheduleSlotDto[] = Array.isArray(rawSlots) ? (rawSlots as ScheduleSlotDto[]) : []
   const timeAxis = buildTimeAxis(slots)
 
-  const slotMap: Record<string, Record<number, ScheduleSlotDto[]>> = {}
-  for (const s of slots) {
-    if (!s.startTime || !s.weekday) continue
-    const day = typeof s.weekday === 'string' ? (WEEKDAY_NUM[s.weekday] ?? -1) : s.weekday
-    if (day < 0) continue
-    if (!slotMap[s.startTime]) slotMap[s.startTime] = {}
-    if (!slotMap[s.startTime][day]) slotMap[s.startTime][day] = []
-    slotMap[s.startTime][day].push(s)
-  }
+  const slotMap = buildSlotGrid(slots)
 
   if (isLoading) return <div className="p-4 text-sm text-gray-500">Indlæser skema...</div>
   if (isError) return <div className="p-4 text-sm text-red-600">Kunne ikke hente skema.</div>
@@ -47,27 +39,31 @@ function ClassScheduleGrid({ classId, className }: { classId: string; className:
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 border-b border-gray-200 w-20">
                 Tid
               </th>
-              {WEEKDAY_LABELS.map((d) => (
+              {WEEKDAYS.map((d) => (
                 <th
-                  key={d}
+                  key={d.num}
                   className="px-3 py-2 text-left text-xs font-medium text-gray-500 border-b border-gray-200"
                 >
-                  {d}
+                  {d.label}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {timeAxis.map((ts, i) => (
-              <tr key={ts.startTime} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+              <tr key={ts.key} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                 <td className="px-3 py-2 text-xs text-gray-500 border-b border-gray-100 whitespace-nowrap">
                   <div>{ts.startTime}</div>
                   <div className="text-gray-400">{ts.endTime}</div>
                 </td>
-                {[0, 1, 2, 3, 4].map((day) => {
-                  const daySlots = slotMap[ts.startTime]?.[day] ?? []
+                {WEEKDAYS.map(({ num: day, key: weekday }) => {
+                  const daySlots = slotMap[ts.key]?.[day] ?? []
                   return (
-                    <td key={day} className="px-2 py-1 border-b border-gray-100 align-top">
+                    <td
+                      key={day}
+                      className="px-2 py-1 border-b border-gray-100 align-top"
+                      data-testid={`parent-schedule-cell-${ts.key}-${weekday}`}
+                    >
                       {daySlots.map((s, idx) => (
                         <div
                           key={`${s.schemaId ?? ''}-${s.startTime ?? ''}-${idx}`}

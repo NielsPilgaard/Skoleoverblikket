@@ -7,7 +7,7 @@ description: >-
   @hey-api/openapi-ts calls, so `api:generate` crashes. Step 1 is TypeScript
   6.0.x, which openapi-ts supports today. Step 2 is TypeScript 7 once
   openapi-ts lists it as a peer.
-status: 'Ready'
+status: 'Blocked'
 ---
 
 # TypeScript 6, then 7
@@ -17,8 +17,8 @@ status: 'Ready'
 - #78 (TS 5.6.3 → 7.0.2) fails "Web — build & lint" and e2e. Close it when step 1 lands; Dependabot reopens a TS 7 PR later.
 - Cause: `npm run api:generate` dies with `TypeError: Cannot read properties of undefined (reading 'LineFeed')` at `ts.NewLineKind.LineFeed`. TS 7's npm package has no JS compiler API.
 - `@hey-api/openapi-ts` 0.99.0 has peer `typescript: ">=5.5.3 || >=6.0.0 || 6.0.1-rc"`, so TS 6 is supported and TS 7 isn't.
-- Step 1 (S, Agent): `typescript ~6.0.3`, fix new type errors, `/verify` + `/test`.
-- Step 2 (S, Agent): TS 7 once an openapi-ts release supports it. Until then, keep the `~6.0` pin.
+- Step 1 (S, Agent): **done 2026-11-01.** `typescript ~6.0.3` built with no new errors and no codegen diff.
+- Step 2 (S, Agent): TS 7 once an openapi-ts release supports it. Until then, keep the `~6.0` pin. Blocked: openapi-ts 0.99.0 is still the latest.
 
 ## Step 1: TypeScript 6.0
 
@@ -30,7 +30,7 @@ status: 'Ready'
 
 ## Step 2: TypeScript 7
 
-Blocked on openapi-ts. Check with `npm view @hey-api/openapi-ts@latest peerDependencies`. When it lists 7.x, bump both, run `/codegen`, `/verify` and `/test`. Biome doesn't use the `typescript` package, so it isn't affected.
+Blocked on openapi-ts. Check with `npm view @hey-api/openapi-ts@latest peerDependencies` and its release notes. The `>=5.5.3` range already matches 7.x without supporting it, so look for 7 named explicitly or a release note about the native compiler. Then bump both, run `/codegen`, `/verify` and `/test`. Biome doesn't use the `typescript` package, so it isn't affected.
 
 ## Done when
 

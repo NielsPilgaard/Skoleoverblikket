@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Auth;
+using Skoleoverblikket.Api.Services;
 using Skoleoverblikket.Api.Storage;
 using Skoleoverblikket.Api.Tenancy;
 using ZiggyCreatures.Caching.Fusion;
@@ -73,38 +74,11 @@ public sealed class SchoolsController(AppDbContext db, ITenantContext tenant, IO
 	internal static string OnboardingCacheKey(Guid tenantId) => $"onboarding:{tenantId}";
 
 	[HttpGet("onboarding-status")]
-	public async Task<ActionResult<OnboardingStatusDto>> GetOnboardingStatus(CancellationToken cancellationToken)
+	public async Task<ActionResult<OnboardingStatusDto>> GetOnboardingStatus(
+		[FromServices] OnboardingService onboarding,
+		CancellationToken cancellationToken)
 	{
-		var result = await cache.GetOrSetAsync(
-			OnboardingCacheKey(tenant.TenantId),
-			async token =>
-			{
-				var school = await db.Schools
-									 .AsNoTracking()
-									 .IgnoreQueryFilters()
-									 .FirstOrDefaultAsync(s => s.Id == tenant.TenantId, token);
-
-				if (school is null)
-				{
-					return null;
-				}
-
-				var staffCount = await db.Staff.CountAsync(token);
-				var classCount = await db.Classes.CountAsync(token);
-				var courseCount = await db.Courses.CountAsync(token);
-				var roomCount = await db.Rooms.CountAsync(token);
-				var hasLogo = !string.IsNullOrEmpty(school.LogoUrl);
-
-				var stepsCompleted =
-					(hasLogo ? 1 : 0) +
-					(staffCount > 0 ? 1 : 0) +
-					(classCount > 0 ? 1 : 0) +
-					(courseCount > 0 ? 1 : 0) +
-					(roomCount > 0 ? 1 : 0);
-
-				return new OnboardingStatusDto(hasLogo, staffCount, classCount, courseCount, roomCount, stepsCompleted, StepsTotal: 5);
-			},
-			token: cancellationToken);
+		var result = await onboarding.GetStatusAsync(cancellationToken);
 
 		return result is null ? NotFound() : Ok(result);
 	}

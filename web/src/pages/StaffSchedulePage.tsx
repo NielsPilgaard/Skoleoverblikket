@@ -5,12 +5,8 @@ import {
   getApiV1StaffByStaffIdScheduleOptions,
 } from '../api/generated/@tanstack/react-query.gen'
 import type { ScheduleSlotDto } from '../api/client'
-import { buildTimeAxis } from '../lib/timeAxis'
-import { WEEKDAYS, WEEKDAY_NUM } from '../lib/weekdays'
-
-function toNum(weekday: string | number): number {
-  return typeof weekday === 'string' ? (WEEKDAY_NUM[weekday] ?? -1) : weekday
-}
+import { buildSlotGrid, buildTimeAxis } from '../lib/timeAxis'
+import { WEEKDAYS } from '../lib/weekdays'
 
 export default function StaffSchedulePage() {
   const { staffId } = useParams<{ staffId: string }>()
@@ -32,15 +28,7 @@ export default function StaffSchedulePage() {
 
   const timeAxis = buildTimeAxis(slots)
 
-  // slotMap: startTime → weekdayNum → slots[]
-  const slotMap: Record<string, Record<number, ScheduleSlotDto[]>> = {}
-  for (const s of slots) {
-    if (!s.startTime || !s.weekday) continue
-    const day = toNum(s.weekday)
-    if (!slotMap[s.startTime]) slotMap[s.startTime] = {}
-    if (!slotMap[s.startTime][day]) slotMap[s.startTime][day] = []
-    slotMap[s.startTime][day].push(s)
-  }
+  const slotMap = buildSlotGrid(slots)
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
@@ -133,7 +121,7 @@ export default function StaffSchedulePage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {timeAxis.map((ts) => (
-                <tr key={ts.startTime} className="hover:bg-gray-50/50">
+                <tr key={ts.key} className="hover:bg-gray-50/50">
                   <td className="px-3 py-2 text-right align-top border-r border-gray-200 bg-gray-50/50 whitespace-nowrap">
                     <span className="block text-xs font-semibold text-gray-600">
                       {ts.startTime}
@@ -141,9 +129,13 @@ export default function StaffSchedulePage() {
                     <span className="block text-xs text-gray-400">{ts.endTime}</span>
                   </td>
                   {WEEKDAYS.map((d) => {
-                    const daySlots = slotMap[ts.startTime]?.[d.num]
+                    const daySlots = slotMap[ts.key]?.[d.num]
                     return (
-                      <td key={d.key} className="px-2 py-2 align-top">
+                      <td
+                        key={d.key}
+                        className="px-2 py-2 align-top"
+                        data-testid={`staff-schedule-cell-${ts.key}-${d.key}`}
+                      >
                         {daySlots?.map((slot, i) => (
                           <div
                             key={i}

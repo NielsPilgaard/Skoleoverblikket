@@ -27,17 +27,6 @@ export const WEEKDAY_NUM: Record<string, number> = {
   Saturday: 6,
 }
 
-export function toWeekdayNum(weekday: string | number | undefined): number | null {
-  if (weekday === undefined) return null
-  if (typeof weekday === 'number') return weekday
-  const n = WEEKDAY_NUM[weekday]
-  if (n === undefined) {
-    console.warn(`Unknown weekday: ${weekday}`)
-    return null
-  }
-  return n
-}
-
 export function weekdayLabel(day: string | undefined): string {
   if (!day) return ''
   const entry = WEEKDAYS.find((w) => w.key === day)

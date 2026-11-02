@@ -8,7 +8,7 @@ description: >-
   publish jobs, cd.yml, staging.yml, changelog.yml and nightly-improvement.yml
   first run after merge, so a breaking input change would surface as a failed
   deploy.
-status: 'Ready'
+status: 'In review'
 ---
 
 # GitHub Actions major versions
@@ -19,6 +19,10 @@ status: 'Ready'
 - Files: `cd.yml`, `changelog.yml`, `ci-fix.yml`, `ci.yml`, `e2e.yml`, `nightly-improvement.yml`.
 - PR CI passes, but the image publish jobs, the deploy, Staging, the weekly changelog and the nightly job only run on `main` or on a schedule.
 - Size S. Owner: Niels + agent (the agent reads changelogs and prepares, Niels merges when there's time to watch the deploy).
+
+## Status (2026-11-02)
+
+Agent steps 1–2 are done. The bumps are one commit on the local branch `chore/actions-majors`, because a token without the `workflow` scope can't push changes to `.github/workflows/`. No input or script we use is affected, and `actionlint` reports no problems beyond existing shell style warnings. Left: run `gh auth refresh -h github.com -s workflow`, push the branch, open its PR, then Niels's steps 3–4.
 
 ## Steps
 

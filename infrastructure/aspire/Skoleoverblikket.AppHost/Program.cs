@@ -29,7 +29,7 @@ var db = postgres.AddDatabase("skoleoverblikket-db", databaseName: "skoleoverbli
 postgres.AddDatabase("keycloak-db", databaseName: "keycloak");
 
 // Keycloak (raw container — no first-party Aspire hosting package)
-var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.2")
+var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.8")
                       .WithLifetime(ContainerLifetime.Persistent)
                       .WithHttpEndpoint(port: 8080, targetPort: 8080, name: "http")
                       .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
