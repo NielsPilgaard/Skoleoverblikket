@@ -154,6 +154,19 @@ public sealed class InvitationPasswordTests(ApiFactory factory)
 		await Assert.That(problem!.Status).IsEqualTo(StatusCodes.Status503ServiceUnavailable);
 	}
 
+	[Test]
+	public async Task KeycloakUnreachable_PreviewIs503_NotAnInvalidLink()
+	{
+		var email = UniqueEmail("keycloak-uden-forbindelse");
+		await InviteTeacherAsync(email);
+		var token = factory.Emails.LastInvitationToken(email, "invitation");
+
+		// The real Keycloak clients, not the fake: no Keycloak runs in tests, so the call fails to connect.
+		var response = await factory.CreateClient().GetAsync($"/api/v1/staff-invitations/preview?token={token}");
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.ServiceUnavailable);
+	}
+
 	// ── Helpers ──────────────────────────────────────────────────────────────────
 
 	private static string UniqueEmail(string prefix) => $"{prefix}-{Guid.NewGuid():N}@test.dk";
