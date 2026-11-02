@@ -8,16 +8,18 @@ description: >-
   states, buttons, form field, status badges, tabs/segmented control, the week
   navigator and the page header. Output is one published showcase page, not
   app code.
-status: 'Ready'
+status: 'Done'
 ---
 
 # UI variants, round 2: ten more shared components
 
+**Done 2026-11-02.** Published at <https://claude.ai/artifact/TBw9bUfcNbqVoJ9RK6iHXA> (slug `d41469b1-459c-4a41-8794-78c8984c070d`). Niels's picks are in [task 73](../73-shared-ui-components-round-2.md), which builds them.
+
 ## TL;DR
 
 - Build one HTML showcase page with **10 variants for each of the 10 components below** (100 variants), in the same format as round 1, and publish it as a private artifact.
-- Mark one recommended variant per component and say why, tied to the personas ([PERSONAS.md](../docs/PERSONAS.md)).
-- No app code in this task. The chosen variants become shared components under `web/src/components/ui/` in their own build task, like the round 1 picks did in [task 67](67-shared-ui-components-round-1.md).
+- Mark one recommended variant per component and say why, tied to the personas ([PERSONAS.md](../../docs/PERSONAS.md)).
+- No app code in this task. The chosen variants become shared components under `web/src/components/ui/` in their own build task, like the round 1 picks did in [task 67](../67-shared-ui-components-round-1.md).
 - Done when: the page is published, every component has 10 working variants with "Bedst til" and pros/cons, and the reply lists the recommended pick per component.
 
 ## Why
@@ -35,7 +37,7 @@ Every page builds its own buttons, dialogs and states, so the same thing looks a
 
 Round 1 is published at <https://claude.ai/artifact/Jw7yR1mhfDjXt1FEgo5x1s> (private to Niels, slug `9139d15e-b6c3-4f85-9732-47f801a8da0e`). Read its HTML with the artifacts `read_artifact` tool and reuse the scaffold (head, icon sprite, switcher script) rather than rebuilding it.
 
-- **One self-contained HTML page.** Tailwind Play CDN (`cdn.tailwindcss.com?plugins=container-queries`) with the `brand` colors and the Lato/Playfair Display fonts from [tailwind.config.js](../web/tailwind.config.js). Danish UI text and realistic data (Hanne Jensen, Thomas Nielsen, 3.A, uge 45).
+- **One self-contained HTML page.** Tailwind Play CDN (`cdn.tailwindcss.com?plugins=container-queries`) with the `brand` colors and the Lato/Playfair Display fonts from [tailwind.config.js](../../web/tailwind.config.js). Danish UI text and realistic data (Hanne Jensen, Thomas Nielsen, 3.A, uge 45).
 - **Variant switcher** in each section: numbered tabs, ‹ › buttons, ←/→ keys, a "Vis alle" toggle, and a `#id` per variant (round 1 used `t`, `v`, `u`, `l`, `f`; pick unused prefixes).
 - **Telefon / Computer toggle.** Each variant renders in a `.frame` with `@container`; use container variants (`@2xl:`) where the app would use `sm:`/`md:`.
 - **Per variant:** number, name, "Bedst til" line, an interactive mockup, 2–3 pros (+) and 1 con (–). Recommended variants get a green "Anbefalet" badge.
@@ -61,7 +63,7 @@ For each one, explore genuinely different approaches, not ten color tweaks. Idea
 
 ## Steps
 
-1. Read [PERSONAS.md](../docs/PERSONAS.md) and skim round 1's HTML for the scaffold.
+1. Read [PERSONAS.md](../../docs/PERSONAS.md) and skim round 1's HTML for the scaffold.
 2. Look at how each component is done today: grep `web/src/pages` and `web/src/components` (`Modal.tsx`, `window.confirm`, `animate-pulse`, `prevWeek`, `role="tablist"`). Note the worst examples in each section's intro, as round 1 did.
 3. Build the page in the scratchpad, one section per component.
 4. Check it in a browser once (no console errors, switcher works, Telefon/Computer both render).
