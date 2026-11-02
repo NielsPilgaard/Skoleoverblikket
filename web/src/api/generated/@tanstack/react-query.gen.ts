@@ -790,27 +790,30 @@ const createInfiniteParams = <K extends Pick<QueryKey<Options>[0], 'body' | 'hea
 
 export const getApiV1ClassChatsByClassIdMessagesInfiniteQueryKey = (options: Options<GetApiV1ClassChatsByClassIdMessagesData>): QueryKey<Options<GetApiV1ClassChatsByClassIdMessagesData>> => createQueryKey('getApiV1ClassChatsByClassIdMessages', options, true);
 
-export const getApiV1ClassChatsByClassIdMessagesInfiniteOptions = (options: Options<GetApiV1ClassChatsByClassIdMessagesData>) => infiniteQueryOptions<GetApiV1ClassChatsByClassIdMessagesResponse, DefaultError, InfiniteData<GetApiV1ClassChatsByClassIdMessagesResponse>, QueryKey<Options<GetApiV1ClassChatsByClassIdMessagesData>>, number | Pick<QueryKey<Options<GetApiV1ClassChatsByClassIdMessagesData>>[0], 'body' | 'headers' | 'path' | 'query'>>(
-// @ts-ignore
-{
-    queryFn: async ({ pageParam, queryKey, signal }) => {
-        // @ts-ignore
-        const page: Pick<QueryKey<Options<GetApiV1ClassChatsByClassIdMessagesData>>[0], 'body' | 'headers' | 'path' | 'query'> = typeof pageParam === 'object' ? pageParam : {
-            query: {
-                page: pageParam
-            }
-        };
-        const params = createInfiniteParams(queryKey, page);
-        const { data } = await getApiV1ClassChatsByClassIdMessages({
-            ...options,
-            ...params,
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: getApiV1ClassChatsByClassIdMessagesInfiniteQueryKey(options)
-});
+export const getApiV1ClassChatsByClassIdMessagesInfiniteOptions = (options: Options<GetApiV1ClassChatsByClassIdMessagesData>) => {
+    const opts = infiniteQueryOptions<GetApiV1ClassChatsByClassIdMessagesResponse, DefaultError, InfiniteData<GetApiV1ClassChatsByClassIdMessagesResponse>, QueryKey<Options<GetApiV1ClassChatsByClassIdMessagesData>>, number | Pick<QueryKey<Options<GetApiV1ClassChatsByClassIdMessagesData>>[0], 'body' | 'headers' | 'path' | 'query'>>(
+    // @ts-ignore
+    {
+        queryFn: async ({ pageParam, queryKey, signal }) => {
+            // @ts-ignore
+            const page: Pick<QueryKey<Options<GetApiV1ClassChatsByClassIdMessagesData>>[0], 'body' | 'headers' | 'path' | 'query'> = typeof pageParam === 'object' ? pageParam : {
+                query: {
+                    page: pageParam
+                }
+            };
+            const params = createInfiniteParams(queryKey, page);
+            const { data } = await getApiV1ClassChatsByClassIdMessages({
+                ...options,
+                ...params,
+                signal,
+                throwOnError: true
+            });
+            return data;
+        },
+        queryKey: getApiV1ClassChatsByClassIdMessagesInfiniteQueryKey(options)
+    });
+    return opts as Omit<typeof opts, 'initialData'>;
+};
 
 export const postApiV1ClassChatsByClassIdMessagesMutation = (options?: Partial<Options<PostApiV1ClassChatsByClassIdMessagesData>>): UseMutationOptions<PostApiV1ClassChatsByClassIdMessagesResponse, DefaultError, Options<PostApiV1ClassChatsByClassIdMessagesData>> => {
     const mutationOptions: UseMutationOptions<PostApiV1ClassChatsByClassIdMessagesResponse, DefaultError, Options<PostApiV1ClassChatsByClassIdMessagesData>> = {
@@ -1146,27 +1149,30 @@ export const getApiV1ContactThreadsByThreadIdMessagesOptions = (options: Options
 
 export const getApiV1ContactThreadsByThreadIdMessagesInfiniteQueryKey = (options: Options<GetApiV1ContactThreadsByThreadIdMessagesData>): QueryKey<Options<GetApiV1ContactThreadsByThreadIdMessagesData>> => createQueryKey('getApiV1ContactThreadsByThreadIdMessages', options, true);
 
-export const getApiV1ContactThreadsByThreadIdMessagesInfiniteOptions = (options: Options<GetApiV1ContactThreadsByThreadIdMessagesData>) => infiniteQueryOptions<GetApiV1ContactThreadsByThreadIdMessagesResponse, DefaultError, InfiniteData<GetApiV1ContactThreadsByThreadIdMessagesResponse>, QueryKey<Options<GetApiV1ContactThreadsByThreadIdMessagesData>>, number | Pick<QueryKey<Options<GetApiV1ContactThreadsByThreadIdMessagesData>>[0], 'body' | 'headers' | 'path' | 'query'>>(
-// @ts-ignore
-{
-    queryFn: async ({ pageParam, queryKey, signal }) => {
-        // @ts-ignore
-        const page: Pick<QueryKey<Options<GetApiV1ContactThreadsByThreadIdMessagesData>>[0], 'body' | 'headers' | 'path' | 'query'> = typeof pageParam === 'object' ? pageParam : {
-            query: {
-                page: pageParam
-            }
-        };
-        const params = createInfiniteParams(queryKey, page);
-        const { data } = await getApiV1ContactThreadsByThreadIdMessages({
-            ...options,
-            ...params,
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: getApiV1ContactThreadsByThreadIdMessagesInfiniteQueryKey(options)
-});
+export const getApiV1ContactThreadsByThreadIdMessagesInfiniteOptions = (options: Options<GetApiV1ContactThreadsByThreadIdMessagesData>) => {
+    const opts = infiniteQueryOptions<GetApiV1ContactThreadsByThreadIdMessagesResponse, DefaultError, InfiniteData<GetApiV1ContactThreadsByThreadIdMessagesResponse>, QueryKey<Options<GetApiV1ContactThreadsByThreadIdMessagesData>>, number | Pick<QueryKey<Options<GetApiV1ContactThreadsByThreadIdMessagesData>>[0], 'body' | 'headers' | 'path' | 'query'>>(
+    // @ts-ignore
+    {
+        queryFn: async ({ pageParam, queryKey, signal }) => {
+            // @ts-ignore
+            const page: Pick<QueryKey<Options<GetApiV1ContactThreadsByThreadIdMessagesData>>[0], 'body' | 'headers' | 'path' | 'query'> = typeof pageParam === 'object' ? pageParam : {
+                query: {
+                    page: pageParam
+                }
+            };
+            const params = createInfiniteParams(queryKey, page);
+            const { data } = await getApiV1ContactThreadsByThreadIdMessages({
+                ...options,
+                ...params,
+                signal,
+                throwOnError: true
+            });
+            return data;
+        },
+        queryKey: getApiV1ContactThreadsByThreadIdMessagesInfiniteQueryKey(options)
+    });
+    return opts as Omit<typeof opts, 'initialData'>;
+};
 
 export const postApiV1ContactThreadsByThreadIdMessagesMutation = (options?: Partial<Options<PostApiV1ContactThreadsByThreadIdMessagesData>>): UseMutationOptions<unknown, DefaultError, Options<PostApiV1ContactThreadsByThreadIdMessagesData>> => {
     const mutationOptions: UseMutationOptions<unknown, DefaultError, Options<PostApiV1ContactThreadsByThreadIdMessagesData>> = {
