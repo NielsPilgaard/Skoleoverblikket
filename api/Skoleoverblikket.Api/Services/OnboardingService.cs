@@ -24,6 +24,7 @@ public sealed class OnboardingService(TenantCache cache, ITenantContext tenant)
 		Guid tenantId,
 		CancellationToken cancellationToken)
 	{
+		// School.TenantId is computed from Id and has no column, so the tenant filter can't run here. Matching on Id scopes it to this tenant.
 		var school = await db.Schools
 							 .AsNoTracking()
 							 .IgnoreQueryFilters()
