@@ -874,6 +874,8 @@ export function FileSystemBrowser({
       )}
 
       <DataTable
+        // Remount per folder, so a search in one folder doesn't filter the next.
+        key={currentFolderId ?? 'root'}
         items={entries}
         isLoading={isLoading}
         caption={headerTitle}
@@ -882,8 +884,9 @@ export function FileSystemBrowser({
         rowTestId={(e) =>
           e.kind === 'folder' ? `folder-row-${e.folder.id}` : `file-row-${e.file.id}`
         }
+        isRowClickable={(e) => e.kind === 'folder' && renamingFolderId !== e.folder.id}
         onRowClick={(e) => {
-          if (e.kind === 'folder' && renamingFolderId !== e.folder.id) navigateInto(e.folder)
+          if (e.kind === 'folder') navigateInto(e.folder)
         }}
         noun={{ one: 'fil eller mappe', other: 'filer og mapper' }}
         searchText={(e) =>

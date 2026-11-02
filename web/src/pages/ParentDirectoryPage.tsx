@@ -85,7 +85,8 @@ export default function ParentDirectoryPage() {
         items={groups}
         isLoading={isLoading}
         testId="contact-directory"
-        noun={{ one: 'elev', other: 'elever' }}
+        // Not "elever": parents with no linked student get a card of their own.
+        noun={{ one: 'kontakt', other: 'kontakter' }}
         searchText={(g) => `${g.studentName} ${g.parents.map((p) => p.name ?? '').join(' ')}`}
         searchPlaceholder="Søg efter elev eller forælder"
         empty={<p>Ingen forældre at vise.</p>}

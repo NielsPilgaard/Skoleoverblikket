@@ -31,6 +31,8 @@ export function Select({
   testId,
   className,
   id,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedBy,
   ...rest
 }: SelectProps) {
   const autoId = useId()
@@ -51,8 +53,10 @@ export function Select({
           data-testid={testId}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? errorId : undefined}
+          aria-invalid={error ? true : ariaInvalid}
+          aria-describedby={
+            [ariaDescribedBy, error ? errorId : undefined].filter(Boolean).join(' ') || undefined
+          }
           className={`appearance-none w-full h-11 pl-3 pr-10 rounded-lg border bg-white text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-gray-50 disabled:text-gray-500 ${
             error ? 'border-red-500' : 'border-gray-300'
           }`}

@@ -3,7 +3,7 @@ import type React from 'react'
 import { useMediaQuery } from '../../../hooks/useMediaQuery'
 import { SortAscIcon, SortIcon } from '../icons'
 import { ListToolbar } from './ListToolbar'
-import { ActionButtons, EmptyList, NoMatches, type RowAction } from './parts'
+import { ActionButtons, EmptyList, NoMatches, type RowAction, RowActionControl } from './parts'
 import { type ListControls, type ListSort, useListControls } from './useListControls'
 
 export interface Column<T> {
@@ -23,6 +23,8 @@ interface DataTableProps<T> extends Omit<ListControls<T>, 'sorts'> {
   actions?: (row: T) => RowAction[]
   /** Clicking the row (outside its buttons) does this, e.g. open a folder. */
   onRowClick?: (row: T) => void
+  /** Rows onRowClick applies to. Defaults to every row. */
+  isRowClickable?: (row: T) => boolean
   isLoading?: boolean
   /** Shown when there are no rows at all. */
   empty: React.ReactNode
@@ -48,6 +50,7 @@ export function DataTable<T>({
   columns,
   actions,
   onRowClick,
+  isRowClickable,
   isLoading,
   empty,
   caption,
@@ -88,6 +91,8 @@ export function DataTable<T>({
   if (list.total === 0) return <EmptyList>{empty}</EmptyList>
 
   const [titleCol, ...restCols] = columns
+  const clickHandler = (row: T) =>
+    onRowClick && (isRowClickable?.(row) ?? true) ? () => onRowClick(row) : undefined
 
   return (
     <div className="space-y-2" data-testid={testId}>
@@ -102,8 +107,8 @@ export function DataTable<T>({
             <li
               key={rowKey(row)}
               data-testid={rowTestId?.(row)}
-              onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={`bg-white rounded-xl border border-gray-200 p-4 ${onRowClick ? 'cursor-pointer' : ''}`}
+              onClick={clickHandler(row)}
+              className={`bg-white rounded-xl border border-gray-200 p-4 ${clickHandler(row) ? 'cursor-pointer' : ''}`}
             >
               <div className="font-semibold text-gray-900">{titleCol.cell(row)}</div>
               {restCols.length > 0 && (
@@ -177,8 +182,8 @@ export function DataTable<T>({
                 <tr
                   key={rowKey(row)}
                   data-testid={rowTestId?.(row)}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  className={`hover:bg-gray-50 ${onRowClick ? 'cursor-pointer' : ''}`}
+                  onClick={clickHandler(row)}
+                  className={`hover:bg-gray-50 ${clickHandler(row) ? 'cursor-pointer' : ''}`}
                 >
                   {columns.map((c, i) => (
                     <td
@@ -210,24 +215,15 @@ function RowActionLinks({ actions }: { actions: RowAction[] }) {
   return (
     <div className="flex items-center justify-end gap-1">
       {actions.map((a) => (
-        <button
+        <RowActionControl
           key={a.label}
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            a.onClick()
-          }}
-          disabled={a.disabled}
-          title={a.disabled ? a.disabledReason : undefined}
-          data-testid={a.testId}
+          action={a}
           className={`h-10 px-3 rounded-lg font-semibold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
             a.variant === 'danger'
               ? 'text-red-700 hover:bg-red-50'
               : 'text-brand-700 hover:bg-brand-50'
           }`}
-        >
-          {a.label}
-        </button>
+        />
       ))}
     </div>
   )
