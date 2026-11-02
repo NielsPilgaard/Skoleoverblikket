@@ -20,9 +20,9 @@ status: 'In review'
 - PR CI passes, but the image publish jobs, the deploy, Staging, the weekly changelog and the nightly job only run on `main` or on a schedule.
 - Size S. Owner: Niels + agent (the agent reads changelogs and prepares, Niels merges when there's time to watch the deploy).
 
-## Status (2026-11-01)
+## Status (2026-11-02)
 
-Agent steps 1–2 are done in the `chore/dependency-upgrades` PR (#80 was closed, so the bumps were reapplied there). No input or script we use is affected; the release-note review is in the PR description. Left: Niels's steps 3–4.
+Agent steps 1–2 are done. The bumps are one commit on the local branch `chore/actions-majors`, because a token without the `workflow` scope can't push changes to `.github/workflows/`. No input or script we use is affected, and `actionlint` reports no problems beyond existing shell style warnings. Left: run `gh auth refresh -h github.com -s workflow`, push the branch, open its PR, then Niels's steps 3–4.
 
 ## Steps
 

@@ -24,7 +24,8 @@ status: 'Done'
 
 - Part 1: all 32 updates taken. Spec unchanged.
 - Part 2: the pin stays, at 2.13.0. Swashbuckle 10.3.1 depends on 2.7.5, but the build-time spec generator in Microsoft.Extensions.ApiDescription.Server 10.0.14 is built against Microsoft.OpenApi 2.12.2 and fails to load 2.7.5. OpenApi 3 waits for a Swashbuckle release on 3.x.
-- Part 3: Refit 16.4.0. Every Keycloak method generates inline (no RF006), so `KeycloakAdminExtensions` registers the clients with `AddRefitGeneratedClient` and no `Refit.Reflection` package is needed. One change in behavior: when Keycloak is down, a call used to give up after its first 10 s attempt timeout. Under Refit 16 the standard resilience handler retries it until the 30 s total timeout, as configured. Tests run without Keycloak, so `ApiFactory` turns retries off, which keeps those tests fast.
+- Part 3: Refit 16.4.0. Every Keycloak method generates inline (no RF006), so `KeycloakAdminExtensions` registers the clients with `AddRefitGeneratedClient` and no `Refit.Reflection` package is needed.
+- Keycloak outages: Refit 16 made a failing call wait up to 30 s, because a timed-out attempt is now retried instead of ending the call. The Keycloak clients now give up after 10 s, as they did on Refit 11. Connection failures also became `KeycloakException`, so signup shows its Danish message (502) instead of a generic 500, and other uncaught calls get a 503. Tests run without Keycloak, so `ApiFactory` turns retries off to keep them fast.
 
 ## Part 1: minor/patch group (#82)
 

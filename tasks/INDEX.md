@@ -47,6 +47,7 @@ status: 'Active'
 | 19 | [21 AI schema suggestions](21-ai-suggestions-for-schema.md) | M | Agent | Shared LLM client (25 or 46) | Nice to have. Hanne builds a schema once a year, and 25 covers the switching case. |
 | 20 | [59 Microsoft and Google login](59-microsoft-google-login.md) | M | Niels + agent | Ask schools which accounts staff use | Free replacement for UNI•Login (07, parked over STIL fees). One password fewer for staff. Niels checks with schools first. |
 | 21 | [62 Move billing from Stripe to Alunta](62-stripe-to-alunta.md) | L | Niels + agent | Niels decides D1, D3, D4 (D2 settled), ADR superseding stripe-checkout-billing | Feasible and EU-hosted (investigated 2026-10-26, Alunta answers 2026-10-27). Adds invoice, EAN, Betalingsservice and MobilePay payment. Move up if a school asks to pay by invoice or EAN. |
+| 22 | [72 One dev Postgres per worktree](72-dev-postgres-per-worktree.md) | S | Agent | None | Aspire stacks in different worktrees run separate Postgres servers on the same data volume, which can corrupt dev data. Dev only, but every parallel agent session risks it. |
 
 ## Held-back dependency upgrades
 
@@ -55,8 +56,8 @@ Dependabot PRs too risky to merge as-is. Do them when there's time to watch the 
 | # | Task | Size | Owner | Replaces | Why held back |
 |---|---|---|---|---|---|
 | 1 | [69 Keycloak 26.8](69-keycloak-26-8.md) | S | Niels | #72 | Code is in the `chore/dependency-upgrades` PR. Back up the Keycloak database before merging: the first start migrates it one way. Then log in on prod as staff and parent. |
-| 2 | [70 GitHub Actions majors](70-github-actions-majors.md) | S | Niels | #80 | Same PR. Watch the first `main` run through publish, deploy and Staging, then dispatch changelog and nightly once. |
-| 3 | [68 TypeScript 7](68-typescript-6-and-7.md) | S | Agent | #78 | TS 6 is in the same PR. TS 7 is blocked until openapi-ts stops using the JS compiler API. |
+| 2 | [70 GitHub Actions majors](70-github-actions-majors.md) | S | Niels | #80 | Ready on local branch `chore/actions-majors`. Pushing needs a token with the `workflow` scope. Watch the first `main` run through publish, deploy and Staging, then dispatch changelog and nightly once. |
+| 3 | [68 TypeScript 7](68-typescript-6-and-7.md) | S | Agent | #78 | TS 6 is in the `chore/dependency-upgrades` PR. TS 7 is blocked until openapi-ts stops using the JS compiler API. |
 
 ## Folkeskole track (blocked on STIL / Aula)
 
