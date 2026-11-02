@@ -7,7 +7,7 @@ description: >-
   first start and can't be rolled back without a restore, the Aspire AppHost
   pins 26.2 separately, and six minor versions of release notes need reading
   for theme and realm changes. Its web/Dockerfile node bump is already in #86.
-status: 'Ready'
+status: 'In review'
 ---
 
 # Keycloak 26.2 → 26.8
@@ -19,6 +19,10 @@ status: 'Ready'
 - Risk 2: [AppHost Program.cs](../infrastructure/aspire/Skoleoverblikket.AppHost/Program.cs) pins `quay.io/keycloak/keycloak:26.2` separately. Dev would keep running 26.2 while prod runs 26.8.
 - Risk 3: custom login theme in `infrastructure/keycloak/themes/` and the realm import. Read the 26.3–26.8 upgrade notes for theme, realm-import and hostname changes.
 - Size S–M. Owner: Niels + agent (the agent does the code and notes, Niels does the prod backup and watches the deploy).
+
+## Status (2026-11-02)
+
+Agent steps 1–2 are done in the `chore/dependency-upgrades` PR, which also carries 68 and 71. The upgrade-note review and test results are in the PR description. Tested locally on an isolated stack: upgrading a populated 26.2 database to 26.8, then e2e on it; the prod `start` command with the stripped realm on an empty database; and 26.2 serving logins while 26.8 migrates. Left: Niels's steps 3–5, and step 3 has to happen before that PR merges.
 
 ## Steps
 
