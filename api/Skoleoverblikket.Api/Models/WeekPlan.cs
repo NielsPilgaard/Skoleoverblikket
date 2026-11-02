@@ -17,6 +17,12 @@ public sealed class WeekPlan : ITenantScoped, IEntityTypeConfiguration<WeekPlan>
 	[StringLength(8000)]
 	public string? Notes { get; set; }
 
+	/// <summary>Who last changed <see cref="Notes"/>, shown to parents above "Generelt for ugen".</summary>
+	[StringLength(200)]
+	public string? NotesUpdatedBy { get; set; }
+
+	public DateTimeOffset? NotesUpdatedAt { get; set; }
+
 	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 	public ICollection<WeekPlanSlot> Slots { get; set; } = [];
 

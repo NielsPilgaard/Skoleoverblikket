@@ -963,6 +963,7 @@ export type ParentMeControllerParentStudentDto = {
     studentId: string;
     studentName: string;
     classId: string;
+    isEnrolledInSfo: boolean;
 };
 
 export type ParentMeControllerUpdateContactRequest = {
@@ -1694,6 +1695,8 @@ export type WeekPlanControllerHolidayDayDto = {
 
 export type WeekPlanControllerNotesDto = {
     notes?: string | null;
+    notesUpdatedBy?: string | null;
+    notesUpdatedAt?: string | null;
 };
 
 export type WeekPlanControllerUpdateNotesRequest = {
@@ -1720,6 +1723,8 @@ export type WeekPlanControllerWeekPlanDto = {
     breakSlots?: Array<WeekPlanControllerBreakTimeSlotDto>;
     slots?: Array<WeekPlanControllerWeekPlanSlotDto>;
     notes?: string | null;
+    notesUpdatedBy?: string | null;
+    notesUpdatedAt?: string | null;
 };
 
 export type WeekPlanControllerWeekPlanSlotDto = {
@@ -1749,6 +1754,15 @@ export type WeekPlanControllerWeekPlanSlotFileDto = {
     schoolFileId: string;
     fileName: string;
     url: string;
+};
+
+export type WeekPlanServiceRecentFileDto = {
+    id: string;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    courseName?: string | null;
+    lastUsedAt: string;
 };
 
 export type GetApiV1AbsenceData = {
@@ -3264,6 +3278,22 @@ export type GetApiV1FilesResponses = {
 };
 
 export type GetApiV1FilesResponse = GetApiV1FilesResponses[keyof GetApiV1FilesResponses];
+
+export type GetApiV1FilesRecentData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/files/recent';
+};
+
+export type GetApiV1FilesRecentResponses = {
+    /**
+     * OK
+     */
+    200: Array<WeekPlanServiceRecentFileDto>;
+};
+
+export type GetApiV1FilesRecentResponse = GetApiV1FilesRecentResponses[keyof GetApiV1FilesRecentResponses];
 
 export type PostApiV1FilesPresignData = {
     body?: FilesControllerPresignRequest;

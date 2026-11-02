@@ -1949,6 +1949,13 @@ namespace Skoleoverblikket.Api.Data.Migrations
                         .HasMaxLength(8000)
                         .HasColumnType("character varying(8000)");
 
+                    b.Property<DateTimeOffset?>("NotesUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NotesUpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
@@ -2021,6 +2028,15 @@ namespace Skoleoverblikket.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset>("AttachedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("AttachedBySubject")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<Guid>("SchoolFileId")
                         .HasColumnType("uuid");
 
@@ -2036,6 +2052,8 @@ namespace Skoleoverblikket.Api.Data.Migrations
 
                     b.HasIndex("WeekPlanSlotId", "SchoolFileId")
                         .IsUnique();
+
+                    b.HasIndex("TenantId", "AttachedBySubject", "AttachedAt");
 
                     b.ToTable("WeekPlanSlotFiles");
                 });
