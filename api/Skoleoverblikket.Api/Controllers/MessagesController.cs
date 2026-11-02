@@ -11,7 +11,6 @@ using Skoleoverblikket.Api.Tenancy;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Text.Encodings.Web;
-using ZiggyCreatures.Caching.Fusion;
 
 namespace Skoleoverblikket.Api.Controllers;
 
@@ -28,7 +27,7 @@ public sealed class MessagesController(
 	IOptions<SmtpOptions> smtpOptions,
 	IOptions<ApplicationOptions> appOptions,
 	ILogger<MessagesController> logger,
-	IFusionCache cache) : ControllerBase
+	MessageRecipientService recipients) : ControllerBase
 {
 	public record InboxMessageDto(
 		Guid Id,
@@ -527,18 +526,7 @@ public sealed class MessagesController(
 
 		var (callerId, _, callerType) = caller.Value;
 
-		var cacheKey = $"recipients:{tenantContext.TenantId}:{callerId}";
-		var all = await cache.GetOrSetAsync(
-			cacheKey,
-			async token => await BuildAllRecipientsAsync(callerId, callerType, token),
-			options => options.SetDuration(TimeSpan.FromSeconds(30)),
-			cancellationToken);
-
-		var filtered = string.IsNullOrEmpty(q)
-			? all
-			: all.Where(r => r.Name.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
-
-		return Ok(filtered.Take(50).ToList());
+		return Ok(await recipients.SearchAsync(callerId, callerType, q, cancellationToken));
 	}
 
 	[HttpPost("group/preview")]
@@ -758,32 +746,4 @@ public sealed class MessagesController(
 			""");
 	}
 
-	private async Task<List<RecipientDto>> BuildAllRecipientsAsync(
-		Guid callerId,
-		RecipientType callerType,
-		CancellationToken cancellationToken)
-	{
-		var results = new List<RecipientDto>();
-
-		if (callerType == RecipientType.Parent)
-		{
-			var staff = await db.Staff.AsNoTracking().ToListAsync(cancellationToken);
-			results.AddRange(staff.Select(s => new RecipientDto(s.Id, s.Name, RecipientType.Staff, s.AvatarUrl)));
-
-			var parents = await db.Parents.AsNoTracking()
-				.Where(p => p.ShareContactInfo && p.Id != callerId)
-				.ToListAsync(cancellationToken);
-			results.AddRange(parents.Select(p => new RecipientDto(p.Id, p.Name, RecipientType.Parent, p.AvatarUrl)));
-		}
-		else
-		{
-			var parents = await db.Parents.AsNoTracking().ToListAsync(cancellationToken);
-			results.AddRange(parents.Select(p => new RecipientDto(p.Id, p.Name, RecipientType.Parent, p.AvatarUrl)));
-
-			var staff = await db.Staff.AsNoTracking().ToListAsync(cancellationToken);
-			results.AddRange(staff.Select(s => new RecipientDto(s.Id, s.Name, RecipientType.Staff, s.AvatarUrl)));
-		}
-
-		return results;
-	}
 }

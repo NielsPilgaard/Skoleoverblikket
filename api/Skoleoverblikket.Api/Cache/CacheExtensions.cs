@@ -14,13 +14,13 @@ public static class CacheExtensions
 				o.IsFailSafeEnabled = true;
 				o.FailSafeMaxDuration = TimeSpan.FromHours(1);
 				o.FailSafeThrottleDuration = TimeSpan.FromSeconds(30);
-				// Factories query the request's AppDbContext, and the tenant comes from the request's
-				// JWT, so a factory must never outlive its request. No eager refresh, no soft timeout
-				// and no background completion: each of those runs the factory after the response is
-				// sent, against a disposed DbContext.
+				// Eager refresh and timeouts run the factory after the response is sent, so factories
+				// must not touch the request's services. Go through TenantCache, never IFusionCache.
+				o.EagerRefreshThreshold = 0.9f;
+				o.FactorySoftTimeout = TimeSpan.FromSeconds(1);
 				o.FactoryHardTimeout = TimeSpan.FromSeconds(5);
-				o.AllowTimedOutFactoryBackgroundCompletion = false;
 			});
+		services.AddScoped<TenantCache>();
 
 		return services;
 	}
