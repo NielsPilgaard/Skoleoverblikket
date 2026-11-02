@@ -5,8 +5,8 @@ import {
   getApiV1StaffByStaffIdScheduleOptions,
 } from '../api/generated/@tanstack/react-query.gen'
 import type { ScheduleSlotDto } from '../api/client'
-import { buildTimeAxis } from '../lib/timeAxis'
-import { WEEKDAYS, toWeekdayNum as toNum } from '../lib/weekdays'
+import { buildSlotGrid, buildTimeAxis } from '../lib/timeAxis'
+import { WEEKDAYS } from '../lib/weekdays'
 
 function hexToAlpha(color: string, alpha: string): string {
   const hex = color.startsWith('#') ? color.slice(1) : color
@@ -30,14 +30,7 @@ export default function MySchedulePage() {
   const slots: ScheduleSlotDto[] = Array.isArray(rawSlots) ? (rawSlots as ScheduleSlotDto[]) : []
   const timeAxis = buildTimeAxis(slots)
 
-  const slotMap: Record<string, Record<number, ScheduleSlotDto[]>> = {}
-  for (const s of slots) {
-    const day = toNum(s.weekday)
-    if (day === null) continue
-    if (!slotMap[s.startTime!]) slotMap[s.startTime!] = {}
-    if (!slotMap[s.startTime!][day]) slotMap[s.startTime!][day] = []
-    slotMap[s.startTime!][day].push(s)
-  }
+  const slotMap = buildSlotGrid(slots)
 
   const isLoading = meLoading || (!!me && scheduleLoading)
   const isError = meError || scheduleError

@@ -10,14 +10,10 @@ import {
   getApiV1RoomsByRoomIdScheduleOptions,
 } from '../api/generated/@tanstack/react-query.gen'
 import type { ScheduleSlotDto } from '../api/client'
-import { buildTimeAxis } from '../lib/timeAxis'
-import { WEEKDAY_LABELS, WEEKDAY_NUM } from '../lib/weekdays'
+import { buildSlotGrid, buildTimeAxis } from '../lib/timeAxis'
+import { WEEKDAY_LABELS } from '../lib/weekdays'
 
 const WEEKDAYS = WEEKDAY_LABELS
-
-function toWeekdayNumber(weekday: number | string): number {
-  return typeof weekday === 'string' ? (WEEKDAY_NUM[weekday] ?? -1) : weekday
-}
 
 type PrintMode = 'class' | 'staff' | 'room'
 
@@ -33,15 +29,7 @@ function PrintGrid({
   // Build time axis
   const timeAxis = buildTimeAxis(slots)
 
-  // Build slot map: startTime → weekday → slots array (to preserve collisions)
-  const slotMap: Record<string, Record<number, ScheduleSlotDto[]>> = {}
-  for (const s of slots) {
-    if (!s.startTime || !s.weekday) continue
-    const day = toWeekdayNumber(s.weekday)
-    if (!slotMap[s.startTime]) slotMap[s.startTime] = {}
-    if (!slotMap[s.startTime][day]) slotMap[s.startTime][day] = []
-    slotMap[s.startTime][day].push(s)
-  }
+  const slotMap = buildSlotGrid(slots)
 
   return (
     <div className="print-page">
