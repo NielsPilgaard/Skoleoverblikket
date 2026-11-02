@@ -212,7 +212,7 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 	}
 }
 
-public class KeycloakException(string message) : Exception(message);
+public class KeycloakException(string message, Exception? innerException = null) : Exception(message, innerException);
 
 public sealed class KeycloakUserExistsException() : KeycloakException("A Keycloak user with this email already exists.");
 

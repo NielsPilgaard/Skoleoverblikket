@@ -157,8 +157,8 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 				apiKey: "sk_test_stub",
 				apiBase: stripeMockUrl));
 
-			// No Keycloak runs in tests, so its calls fail. Fail on the first attempt: retrying until
-			// the 30 s total timeout makes every test that touches a login wait for it.
+			// No Keycloak runs in tests, so its calls fail. Fail on the first attempt: retrying makes
+			// every test that touches a login wait for the retries.
 			services.ConfigureAll<HttpStandardResilienceOptions>(o => o.Retry.ShouldHandle = _ => PredicateResult.False());
 		});
 	}
