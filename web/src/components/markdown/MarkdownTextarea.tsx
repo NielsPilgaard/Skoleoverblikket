@@ -24,6 +24,7 @@ function writePreviewHidden(hidden: boolean) {
 }
 
 interface MarkdownTextareaProps {
+  id?: string
   value: string
   onChange: (value: string) => void
   onBlur?: React.FocusEventHandler<HTMLTextAreaElement>
@@ -176,6 +177,7 @@ const previewToggleBtn =
   'focus:outline-none focus:ring-2 focus:ring-brand-500 rounded px-1 py-0.5'
 
 export function MarkdownTextarea({
+  id,
   value,
   onChange,
   onBlur,
@@ -325,6 +327,7 @@ export function MarkdownTextarea({
         </button>
       </div>
       <textarea
+        id={id}
         ref={ref}
         value={value}
         onChange={handleInput}

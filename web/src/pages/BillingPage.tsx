@@ -882,11 +882,9 @@ function PricingCard({
           <div className="mt-4 flex items-center gap-3">
             <IntervalToggle selected={selectedInterval} onChange={onIntervalChange} />
             {isYearly && (
-              <>
-                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">
-                  Spar {YEARLY_SAVINGS_KR} kr/år
-                </span>
-              </>
+              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                Spar {YEARLY_SAVINGS_KR} kr/år
+              </span>
             )}
           </div>
         )}

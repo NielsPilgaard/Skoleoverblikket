@@ -1,23 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Modal } from '../components/Modal'
 import { MarkdownTextarea, type SaveStatus } from '../components/markdown/MarkdownTextarea'
+import { LessonEditor } from '../components/weekplan/LessonEditor'
 import { Markdown } from '../components/markdown/Markdown'
-import { WeekPlanList } from '../components/weekplan/WeekPlanList'
+import { ParentWeekPlan } from '../components/weekplan/ParentWeekPlan'
+import { preselectedDate } from '../utils/isoWeek'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getApiV1ClassesByClassIdWeekPlanOptions,
   getApiV1ClassesByClassIdWeekPlanQueryKey,
-  putApiV1ClassesByClassIdWeekPlanSlotsMutation,
   putApiV1ClassesByClassIdWeekPlanNotesMutation,
-  postApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesMutation,
-  deleteApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesByFileIdMutation,
   getApiV1CoursesOptions,
   getApiV1ClassesOptions,
 } from '../api/generated/@tanstack/react-query.gen'
 import type { ClassDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
-import { FilePicker } from '../components/files/FilePicker'
 import { AssignSubstitutePanel } from '../components/substitute/AssignSubstitutePanel'
 import { useWeekNavigation } from '../hooks/useWeekNavigation'
 
@@ -77,6 +74,8 @@ interface WeekPlanDto {
   breakSlots: BreakTimeSlotDto[]
   slots: WeekPlanSlotDto[]
   notes: string | null
+  notesUpdatedBy: string | null
+  notesUpdatedAt: string | null
 }
 
 interface CourseDto {
@@ -107,318 +106,7 @@ function getCourseColor(courseId: string, courseIds: string[]): string {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 import { WEEKDAY_LABELS as WEEKDAYS, WEEKDAY_KEYS } from '../lib/weekdays'
-import { Select, WeekStepper } from '../components/ui/select'
-
-// ─── Edit modal ───────────────────────────────────────────────────────────────
-
-interface EditSlotModalProps {
-  slot: WeekPlanSlotDto
-  classId: string
-  isoYear: number
-  isoWeek: number
-  schemaId: string | null
-  weekdayLabel: string
-  courses: CourseDto[]
-  onClose: () => void
-  onOpenSubstitute: () => Promise<void>
-}
-
-const AUTOSAVE_PREFIX = 'ugeplan_draft_'
-
-function autosaveKey(schemaSlotId: string) {
-  return `${AUTOSAVE_PREFIX}${schemaSlotId}`
-}
-
-function EditSlotModal({
-  slot,
-  classId,
-  isoYear,
-  isoWeek,
-  schemaId,
-  weekdayLabel,
-  courses,
-  onClose,
-  onOpenSubstitute,
-}: EditSlotModalProps) {
-  const qc = useQueryClient()
-
-  const savedDraft = (() => {
-    try {
-      return JSON.parse(sessionStorage.getItem(autosaveKey(slot.schemaSlotId)) ?? 'null')
-    } catch {
-      return null
-    }
-  })()
-
-  const [description, setDescription] = useState(savedDraft?.description ?? slot.description ?? '')
-  const [lektier, setLektier] = useState(savedDraft?.lektier ?? slot.lektier ?? '')
-  const [overrideCourseId, setOverrideCourseId] = useState(
-    slot.originalCourseId ? slot.courseId : ''
-  )
-  const [filesOpen, setFilesOpen] = useState(false)
-  const [fileSaveFailed, setFileSaveFailed] = useState(false)
-  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
-    autosaveTimer.current = setTimeout(() => {
-      sessionStorage.setItem(
-        autosaveKey(slot.schemaSlotId),
-        JSON.stringify({ description, lektier })
-      )
-    }, 1000)
-    return () => {
-      if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
-    }
-  }, [description, lektier, slot.schemaSlotId])
-
-  const weekPlanQueryKey = getApiV1ClassesByClassIdWeekPlanQueryKey({
-    path: { classId },
-    query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
-  })
-
-  async function ensureSlotSaved(): Promise<string> {
-    if (slot.id !== '00000000-0000-0000-0000-000000000000') return slot.id
-    const { mutationFn } = putApiV1ClassesByClassIdWeekPlanSlotsMutation()
-    const updated = await mutationFn!(
-      {
-        path: { classId },
-        query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
-        body: {
-          schemaSlotId: slot.schemaSlotId,
-          description: description || null,
-          lektier: lektier || null,
-          overrideCourseId: overrideCourseId || null,
-        },
-      },
-      undefined as never
-    )
-    qc.setQueryData(weekPlanQueryKey, (old: WeekPlanDto | undefined) => {
-      if (!old) return old
-      return {
-        ...old,
-        slots: old.slots.map((s) =>
-          s.schemaSlotId === (updated as WeekPlanSlotDto).schemaSlotId
-            ? { ...s, ...(updated as WeekPlanSlotDto) }
-            : s
-        ),
-      }
-    })
-    return (updated as WeekPlanSlotDto).id
-  }
-
-  const upsertMutation = useMutation({
-    ...putApiV1ClassesByClassIdWeekPlanSlotsMutation(),
-    onSuccess: (updated) => {
-      qc.setQueryData(weekPlanQueryKey, (old: WeekPlanDto | undefined) => {
-        if (!old) return old
-        return {
-          ...old,
-          slots: old.slots.map((s) =>
-            s.schemaSlotId === (updated as WeekPlanSlotDto).schemaSlotId
-              ? { ...s, ...(updated as WeekPlanSlotDto) }
-              : s
-          ),
-        }
-      })
-      sessionStorage.removeItem(autosaveKey(slot.schemaSlotId))
-      onClose()
-    },
-  })
-
-  const addFileMutation = useMutation({
-    ...postApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesMutation(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: weekPlanQueryKey }),
-  })
-
-  const removeFileMutation = useMutation({
-    ...deleteApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesByFileIdMutation(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: weekPlanQueryKey }),
-  })
-
-  function handleSave() {
-    if (upsertMutation.isPending) return
-    upsertMutation.mutate({
-      path: { classId },
-      query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
-      body: {
-        schemaSlotId: slot.schemaSlotId,
-        description: description || null,
-        lektier: lektier || null,
-        overrideCourseId: overrideCourseId || null,
-      },
-    })
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Escape') {
-      onClose()
-    }
-  }
-
-  async function handleFileToggle(fileId: string, checked: boolean) {
-    setFileSaveFailed(false)
-    addFileMutation.reset()
-    removeFileMutation.reset()
-    let slotId: string
-    try {
-      slotId = await ensureSlotSaved()
-    } catch {
-      setFileSaveFailed(true)
-      return
-    }
-    const existingLink = slot.files.find((f) => f.schoolFileId === fileId)
-    if (checked && !existingLink) {
-      addFileMutation.mutate({ path: { classId, slotId }, body: { schoolFileId: fileId } })
-    } else if (!checked && existingLink) {
-      removeFileMutation.mutate({ path: { classId, slotId, fileId: existingLink.id } })
-    }
-  }
-
-  const selectedFileIds = slot.files.map((f) => f.schoolFileId)
-  const isFileMutationPending = addFileMutation.isPending || removeFileMutation.isPending
-  const fileError = fileSaveFailed || addFileMutation.isError || removeFileMutation.isError
-
-  return (
-    <Modal
-      isOpen
-      onClose={onClose}
-      onKeyDown={handleKeyDown}
-      backdropClassName="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/40"
-      contentClassName="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg max-h-[92vh] sm:max-h-[90vh] overflow-y-auto"
-    >
-      <div className="px-6 py-5 border-b border-gray-100">
-        <h2 className="font-display text-lg font-semibold text-gray-900">
-          {slot.courseName} — {weekdayLabel}
-        </h2>
-        <p className="text-xs text-gray-400 mt-0.5">
-          {slot.startTime.slice(0, 5)}–{slot.endTime.slice(0, 5)}
-        </p>
-      </div>
-
-      <div className="px-6 py-5 space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Beskrivelse</label>
-          <MarkdownTextarea
-            autoFocus
-            rows={5}
-            value={description}
-            onChange={setDescription}
-            placeholder="Hvad skal der ske i denne lektion?"
-            maxLength={8000}
-            aria-label="Beskrivelse"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-blue-700 mb-1">Lektier</label>
-          <MarkdownTextarea
-            rows={4}
-            value={lektier}
-            onChange={setLektier}
-            placeholder="Opgaver til næste gang..."
-            maxLength={8000}
-            aria-label="Lektier"
-            className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-blue-50/40"
-          />
-        </div>
-
-        <div>
-          <button
-            type="button"
-            onClick={() => setFilesOpen((v) => !v)}
-            className="flex items-center justify-between w-full text-left px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
-          >
-            <span className="text-sm font-medium text-gray-700">
-              Filer
-              {selectedFileIds.length > 0 && (
-                <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-brand-600 text-white text-xs font-bold">
-                  {selectedFileIds.length}
-                </span>
-              )}
-            </span>
-            <span className="text-gray-400 text-xs">{filesOpen ? '▲' : '▼'}</span>
-          </button>
-          {filesOpen && (
-            <div className="mt-2 space-y-2">
-              <div className="flex justify-end">
-                <a
-                  href="/filer"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-gray-400 hover:text-gray-600"
-                >
-                  Administrer filer ↗
-                </a>
-              </div>
-              <FilePicker
-                selectedFileIds={selectedFileIds}
-                onToggle={handleFileToggle}
-                disabled={isFileMutationPending}
-              />
-              {fileError && (
-                <p className="text-sm text-red-600" role="alert">
-                  Filen kunne ikke gemmes på lektionen. Prøv igen.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {upsertMutation.isError && (
-          <p className="text-sm text-red-600">Der opstod en fejl. Prøv igen.</p>
-        )}
-
-        <div>
-          <Select
-            label="Fagbytte"
-            options={[
-              { value: '', label: 'Intet fagbytte (brug skemaets fag)' },
-              ...courses
-                .filter((c) => c.id !== (slot.originalCourseId ?? slot.courseId))
-                .map((c) => ({ value: c.id, label: c.name })),
-            ]}
-            value={overrideCourseId}
-            onChange={setOverrideCourseId}
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-center">
-        <button
-          type="button"
-          onClick={onOpenSubstitute}
-          className="w-3/4 flex items-center justify-center gap-2 px-4 py-2 mb-4 text-sm font-medium rounded-lg border border-blue-300 bg-blue-50 text-blue-800 hover:bg-blue-100 transition-colors"
-          data-testid="assign-substitute-button"
-        >
-          {slot.substituteTeacherName || slot.substituteAideName ? (
-            <>
-              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-white text-xs font-bold shrink-0">
-                V
-              </span>
-              Vikar: {slot.substituteTeacherName ?? slot.substituteAideName} · Skift
-            </>
-          ) : (
-            'Tildel vikar'
-          )}
-        </button>
-      </div>
-
-      <div className="px-6 py-4 border-t border-gray-100">
-        <div className="flex justify-end">
-          <button
-            onClick={handleSave}
-            disabled={upsertMutation.isPending}
-            className="px-4 py-2 text-sm rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-brand-600 text-white hover:bg-brand-700"
-          >
-            {upsertMutation.isPending ? 'Gemmer...' : 'Gem'}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
+import { WeekStepper } from '../components/ui/select'
 
 // ─── Generelt block ───────────────────────────────────────────────────────────
 
@@ -536,7 +224,7 @@ function NotesEditor({
         aria-label="Generelt for ugen"
         data-testid="notes-editor"
         saveStatus={saveStatus}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
       />
     </div>
   )
@@ -550,7 +238,6 @@ export default function WeekPlanPage() {
   const [searchParams] = useSearchParams()
   const schemaId = searchParams.get('schemaId')
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
 
   const { isoYear, isoWeek, stepper } = useWeekNavigation()
   const [editingSchemaSlotId, setEditingSchemaSlotId] = useState<string | null>(null)
@@ -791,6 +478,7 @@ export default function WeekPlanPage() {
                     return (
                       <button
                         key={`slot-${slot.schemaSlotId}`}
+                        data-testid={`weekplan-slot-${slot.schemaSlotId}`}
                         type="button"
                         onClick={() => setEditingSchemaSlotId(slot.schemaSlotId)}
                         className={`w-full text-left border-b border-r border-gray-200 p-2 min-h-[80px] cursor-pointer transition-colors ${isHolidayCol ? 'bg-amber-50 pointer-events-none' : 'bg-white hover:bg-gray-50'}`}
@@ -906,11 +594,10 @@ export default function WeekPlanPage() {
             </button>
             {showParentPreview && (
               <div className="mt-3 max-w-2xl" data-testid="parent-preview">
-                <WeekPlanList
-                  notes={weekPlanData.notes}
-                  slots={weekPlanData.slots}
-                  isHolidayWeek={weekPlanData.isHolidayWeek}
-                  holidayTitle={weekPlanData.holidayTitle}
+                <ParentWeekPlan
+                  key={`${isoYear}-${isoWeek}`}
+                  plan={weekPlanData}
+                  preselected={preselectedDate()}
                 />
               </div>
             )}
@@ -918,45 +605,22 @@ export default function WeekPlanPage() {
         )}
       </div>
 
-      {/* Edit modal */}
-      {editingSlot && classId && !substituteSchemaSlotId && (
-        <EditSlotModal
+      {/* Lesson editor */}
+      {editingSlot && classId && weekPlanData && !substituteSchemaSlotId && (
+        <LessonEditor
+          key={editingSlot.schemaSlotId}
           slot={editingSlot}
+          slots={weekPlanData.slots}
           classId={classId}
+          className={className}
           isoYear={isoYear}
           isoWeek={isoWeek}
           schemaId={schemaId}
-          weekdayLabel={WEEKDAYS[WEEKDAY_KEYS.indexOf(editingSlot.weekday)] ?? ''}
+          weekStartDate={weekPlanData.weekStartDate}
           courses={courses}
+          onGoToLesson={setEditingSchemaSlotId}
+          onOpenSubstitute={() => setSubstituteSchemaSlotId(editingSlot.schemaSlotId)}
           onClose={() => setEditingSchemaSlotId(null)}
-          onOpenSubstitute={async () => {
-            // Ensure the WeekPlanSlot row exists before opening the substitute panel
-            if (editingSlot.id === '00000000-0000-0000-0000-000000000000') {
-              const { mutationFn } = putApiV1ClassesByClassIdWeekPlanSlotsMutation()
-              await mutationFn!(
-                {
-                  path: { classId },
-                  query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
-                  body: {
-                    schemaSlotId: editingSlot.schemaSlotId,
-                    description: null,
-                    lektier: null,
-                    overrideCourseId: null,
-                  },
-                },
-                undefined as never
-              )
-              // Refetch so slot.id and slot.weekPlanId are populated
-              await queryClient.invalidateQueries({
-                queryKey: getApiV1ClassesByClassIdWeekPlanQueryKey({
-                  path: { classId },
-                  query: { isoYear, isoWeek, ...(schemaId ? { schemaId } : {}) },
-                }),
-              })
-            }
-            setEditingSchemaSlotId(null)
-            setSubstituteSchemaSlotId(editingSlot.schemaSlotId)
-          }}
         />
       )}
 
