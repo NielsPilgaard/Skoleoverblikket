@@ -8,7 +8,7 @@ public static class KeycloakAdminExtensions
 	public static IServiceCollection AddKeycloakAdmin(this IServiceCollection services)
 	{
 		services
-			.AddRefitClient<IKeycloakTokenApi>()
+			.AddRefitGeneratedClient<IKeycloakTokenApi>()
 			.ConfigureHttpClient((provider, client) =>
 			{
 				var options = provider.GetRequiredService<IOptions<KeycloakOptions>>().Value;
@@ -17,7 +17,7 @@ public static class KeycloakAdminExtensions
 
 		services
 			.AddTransient<KeycloakBearerHandler>()
-			.AddRefitClient<IKeycloakAdminApi>()
+			.AddRefitGeneratedClient<IKeycloakAdminApi>()
 			.ConfigureHttpClient((provider, client) =>
 			{
 				var options = provider.GetRequiredService<IOptions<KeycloakOptions>>().Value;

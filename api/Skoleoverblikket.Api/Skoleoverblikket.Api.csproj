@@ -38,10 +38,11 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <!-- Security fix pin (GHSA-v5pm-xwqc-g5wc), above Swashbuckle's 2.4.1. Drop once Swashbuckle depends on 2.7.5+. -->
+    <!-- Above Swashbuckle's 2.7.5: the build-time spec generator in Microsoft.Extensions.ApiDescription.Server 10.0.14 is built
+         against Microsoft.OpenApi 2.12.2 and fails to load an older one. Stay on 2.x until Swashbuckle depends on 3.x. -->
     <PackageReference Include="Microsoft.OpenApi" Version="2.13.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
-    <PackageReference Include="Refit.HttpClientFactory" Version="11.2.0" />
+    <PackageReference Include="Refit.HttpClientFactory" Version="16.4.0" />
     <PackageReference Include="Stripe.net" Version="47.4.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.3.1" />
     <!-- Security fix pin (CVE-2026-84008), above MimeKit's 10.0.0. Drop once MailKit depends on 10.0.13+. -->

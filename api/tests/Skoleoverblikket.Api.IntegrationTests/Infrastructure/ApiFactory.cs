@@ -12,7 +12,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
+using Polly;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Email;
 using Skoleoverblikket.Api.Services;
@@ -154,6 +156,10 @@ public sealed class ApiFactory : TestWebApplicationFactory<Program>, IAsyncIniti
 			services.AddSingleton<IStripeClient>(_ => new StripeClient(
 				apiKey: "sk_test_stub",
 				apiBase: stripeMockUrl));
+
+			// No Keycloak runs in tests, so its calls fail. Fail on the first attempt: retrying until
+			// the 30 s total timeout makes every test that touches a login wait for it.
+			services.ConfigureAll<HttpStandardResilienceOptions>(o => o.Retry.ShouldHandle = _ => PredicateResult.False());
 		});
 	}
 
