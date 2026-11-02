@@ -50,14 +50,13 @@ status: 'Active'
 
 ## Held-back dependency upgrades
 
-Dependabot PRs too risky to merge as-is. Do them when there's time to watch the result; none blocks a feature. Stripe.net majors are deliberately skipped (see 71).
+Dependabot PRs too risky to merge as-is. Do them when there's time to watch the result; none blocks a feature. Stripe.net majors are deliberately skipped (see [71](completed/71-nuget-updates.md)).
 
 | # | Task | Size | Owner | Replaces | Why held back |
 |---|---|---|---|---|---|
-| 1 | [71 NuGet updates](71-nuget-updates.md) | M | Agent | #82, #83, #84 | #82 (minor/patch group) is green and goes first. #83 moves the OpenApi pin to 3.x, which Swashbuckle isn't built for. #84 (Refit 16) fails 47 API tests. |
-| 2 | [68 TypeScript 6, then 7](68-typescript-6-and-7.md) | S | Agent | #78 | TS 7 breaks `api:generate` (openapi-ts needs the JS compiler API). TS 6 works today. |
-| 3 | [70 GitHub Actions majors](70-github-actions-majors.md) | S | Niels + agent | #80 | PR CI is green, but deploy, Staging, changelog and nightly only run after merge. |
-| 4 | [69 Keycloak 26.8](69-keycloak-26-8.md) | S–M | Niels + agent | #72 | One-way Keycloak DB migration on first start; back up first. AppHost pins 26.2 separately. |
+| 1 | [69 Keycloak 26.8](69-keycloak-26-8.md) | S | Niels | #72 | Code is in the `chore/dependency-upgrades` PR. Back up the Keycloak database before merging: the first start migrates it one way. Then log in on prod as staff and parent. |
+| 2 | [70 GitHub Actions majors](70-github-actions-majors.md) | S | Niels | #80 | Same PR. Watch the first `main` run through publish, deploy and Staging, then dispatch changelog and nightly once. |
+| 3 | [68 TypeScript 7](68-typescript-6-and-7.md) | S | Agent | #78 | TS 6 is in the same PR. TS 7 is blocked until openapi-ts stops using the JS compiler API. |
 
 ## Folkeskole track (blocked on STIL / Aula)
 
