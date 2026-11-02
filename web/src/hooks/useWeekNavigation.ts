@@ -12,14 +12,18 @@ function monthShort(date: Date): string {
   return date.toLocaleDateString('da-DK', { month: 'short' }).replace('.', '')
 }
 
-/** "2.–6. nov", or "30. nov – 4. dec" across a month, with the year when it isn't this year. */
+/** "2.–6. nov", or "30. nov – 4. dec" across a month. The year shows when it isn't this year. */
 export function formatWeekDates(isoYear: number, isoWeek: number, now: Date = new Date()): string {
   const monday = isoWeekToMonday(isoYear, isoWeek)
   const friday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 4)
+  const dayMonth = (d: Date) => `${d.getDate()}. ${monthShort(d)}`
+  if (monday.getFullYear() !== friday.getFullYear()) {
+    return `${dayMonth(monday)} ${monday.getFullYear()} – ${dayMonth(friday)} ${friday.getFullYear()}`
+  }
   const dates =
     monday.getMonth() === friday.getMonth()
-      ? `${monday.getDate()}.–${friday.getDate()}. ${monthShort(friday)}`
-      : `${monday.getDate()}. ${monthShort(monday)} – ${friday.getDate()}. ${monthShort(friday)}`
+      ? `${monday.getDate()}.–${dayMonth(friday)}`
+      : `${dayMonth(monday)} – ${dayMonth(friday)}`
   return friday.getFullYear() === now.getFullYear() ? dates : `${dates} ${friday.getFullYear()}`
 }
 

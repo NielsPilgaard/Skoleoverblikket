@@ -1,4 +1,4 @@
-import { SearchIcon } from '../icons'
+import { SearchIcon, SortAscIcon } from '../icons'
 import { Select } from '../select'
 
 interface Option {
@@ -18,6 +18,9 @@ export interface ListToolbarProps {
   sorts?: Option[]
   sort: string
   onSort: (value: string) => void
+  /** Phones have no column headers to click, so the direction gets its own button. */
+  descending?: boolean
+  onFlipSort?: () => void
   countText: string
 }
 
@@ -33,6 +36,8 @@ export function ListToolbar({
   sorts,
   sort,
   onSort,
+  descending,
+  onFlipSort,
   countText,
 }: ListToolbarProps) {
   // A lone "Alle" option filters nothing, so show no filter at all.
@@ -93,6 +98,21 @@ export function ListToolbar({
             onChange={onSort}
             className="w-44"
           />
+        )}
+        {sorts && onFlipSort && (
+          <button
+            type="button"
+            onClick={onFlipSort}
+            aria-label={
+              descending
+                ? 'Sorteret faldende. Vend rækkefølgen'
+                : 'Sorteret stigende. Vend rækkefølgen'
+            }
+            data-testid="list-sort-direction"
+            className="w-11 h-11 shrink-0 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-800 hover:bg-gray-50"
+          >
+            <SortAscIcon className={`w-5 h-5 ${descending ? 'rotate-180' : ''}`} />
+          </button>
         )}
       </div>
     </div>

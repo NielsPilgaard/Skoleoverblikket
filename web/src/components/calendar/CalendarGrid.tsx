@@ -460,7 +460,7 @@ export function CalendarGrid({
         <WeekStepper
           className="mt-4"
           main={capitalizeFirst(
-            new Date(currentCarouselMonth.year, currentCarouselMonth.month).toLocaleDateString(
+            new Date(currentCarouselMonth.year, currentCarouselMonth.month - 1).toLocaleDateString(
               'da-DK',
               {
                 month: 'long',

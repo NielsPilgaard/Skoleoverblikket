@@ -103,6 +103,8 @@ export function PersonList<T>({
     )
   }
 
+  // No data and not loading means the request failed. The page shows that, not "Ingen …".
+  if (!items) return null
   if (list.total === 0) return <EmptyList>{empty}</EmptyList>
 
   return (

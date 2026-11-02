@@ -88,6 +88,8 @@ export function DataTable<T>({
     )
   }
 
+  // No data and not loading means the request failed. The page shows that, not "Ingen …".
+  if (!items) return null
   if (list.total === 0) return <EmptyList>{empty}</EmptyList>
 
   const [titleCol, ...restCols] = columns
@@ -97,7 +99,12 @@ export function DataTable<T>({
   return (
     <div className="space-y-2" data-testid={testId}>
       {list.hasToolbar && (
-        <ListToolbar {...list.toolbar} sorts={isWide ? undefined : list.toolbar.sorts} />
+        <ListToolbar
+          {...list.toolbar}
+          sorts={isWide ? undefined : list.toolbar.sorts}
+          descending={list.descending}
+          onFlipSort={() => list.toggleSort(list.sort)}
+        />
       )}
       {list.visible.length === 0 ? (
         <NoMatches onClear={list.clear} />

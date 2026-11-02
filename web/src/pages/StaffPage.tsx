@@ -380,11 +380,9 @@ export default function StaffPage() {
   // Login status comes from the invitations, so the list waits for both: without them everyone
   // would look not invited and offer "Send invitation".
   const isLoading = staffQuery.isLoading || invitationsQuery.isLoading
-  const isError = staffQuery.isError || invitationsQuery.isError
-  const refetch = () => {
-    void staffQuery.refetch()
-    void invitationsQuery.refetch()
-  }
+  const isError = staffQuery.isError
+  const invitationsFailed = invitationsQuery.isError && !allInvitations
+  const refetch = () => void staffQuery.refetch()
 
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
@@ -463,8 +461,22 @@ export default function StaffPage() {
         </div>
       )}
 
+      {invitationsFailed && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between gap-3">
+          <p className="text-amber-900 text-sm font-medium">
+            Kunne ikke hente invitationer, så vi kan ikke vise hvem der er inviteret.
+          </p>
+          <button
+            onClick={() => void invitationsQuery.refetch()}
+            className="h-11 px-3 text-sm font-semibold bg-amber-100 text-amber-900 rounded-lg shrink-0"
+          >
+            Prøv igen
+          </button>
+        </div>
+      )}
+
       <PersonList
-        items={isError ? [] : staff}
+        items={staff}
         isLoading={isLoading}
         testId="staff-list"
         noun={{ one: 'medarbejder', other: 'medarbejdere' }}
@@ -505,9 +517,12 @@ export default function StaffPage() {
           const invite = getLatestInvite(s.id ?? '')
           const isSelf =
             s.keycloakSubject != null && s.keycloakSubject === currentUserKeycloakSubject
-          const status = loginStatus(s, invite)
+          const status =
+            invitationsFailed && !s.keycloakSubject
+              ? { text: 'Ukendt, invitationer kunne ikke hentes', badge: undefined }
+              : loginStatus(s, invite)
           const actions: RowAction[] = []
-          if (!s.keycloakSubject && !isSelf) {
+          if (!s.keycloakSubject && !isSelf && !invitationsFailed) {
             actions.push({
               label: invite ? 'Send invitation igen' : 'Send invitation',
               onClick: () => setInvitingStaff(s),

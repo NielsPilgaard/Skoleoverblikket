@@ -471,8 +471,8 @@ export default function ParentsPage() {
         filterLabel="Filtrer efter login"
         filters={[
           { value: '', label: 'Alle' },
-          { value: 'active', label: 'Logget ind', match: (p) => !!p.hasAccount },
-          { value: 'pending', label: 'Ikke logget ind', match: (p) => !p.hasAccount },
+          { value: 'active', label: 'Har konto', match: (p) => !!p.hasAccount },
+          { value: 'pending', label: 'Ingen konto', match: (p) => !p.hasAccount },
         ]}
         sorts={[
           {
@@ -502,11 +502,11 @@ export default function ParentsPage() {
             name: p.name,
             subtitle: children ? `Forælder til ${children}` : 'Ingen børn tilknyttet',
             // Not "Inviteret": the list doesn't know whether the invitation has expired.
-            badge: p.hasAccount ? undefined : { label: 'Ikke logget ind', tone: 'amber' },
+            badge: p.hasAccount ? undefined : { label: 'Ingen konto', tone: 'amber' },
             details: [
               { label: 'Telefon', value: p.phone ?? '—' },
               { label: 'Børn', value: children || '—' },
-              { label: 'Login', value: p.hasAccount ? 'Aktiv' : 'Ikke logget ind endnu' },
+              { label: 'Konto', value: p.hasAccount ? 'Oprettet' : 'Ikke oprettet endnu' },
             ],
             actions: [
               ...(!p.hasAccount && hasParentModule

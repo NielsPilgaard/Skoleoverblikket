@@ -82,7 +82,8 @@ export function useListControls<T>(items: T[], controls: ListControls<T>) {
     sort,
     onSort: (v) => {
       setSort(v)
-      setDescending(false)
+      // Back on the list's own default sort, its direction comes back too.
+      setDescending(v === controls.defaultSort?.value ? !!controls.defaultSort.descending : false)
     },
     countText,
   }

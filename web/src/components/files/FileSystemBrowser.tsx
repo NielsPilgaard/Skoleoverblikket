@@ -911,7 +911,7 @@ export function FileSystemBrowser({
           {
             key: 'name',
             header: 'Navn',
-            // Folders before files, then by name.
+            // A–Å lists folders before files. Å–A reverses all of it, files first.
             sortValue: (e) =>
               e.kind === 'folder' ? `0 ${e.folder.name ?? ''}` : `1 ${e.file.fileName ?? ''}`,
             cell: (e) =>
