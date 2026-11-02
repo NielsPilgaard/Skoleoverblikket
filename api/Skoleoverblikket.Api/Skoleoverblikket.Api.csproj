@@ -41,7 +41,7 @@
     <!-- Security fix pin (GHSA-v5pm-xwqc-g5wc), above Swashbuckle's 2.4.1. Drop once Swashbuckle depends on 2.7.5+. -->
     <PackageReference Include="Microsoft.OpenApi" Version="2.13.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
-    <PackageReference Include="Refit.HttpClientFactory" Version="11.2.0" />
+    <PackageReference Include="Refit.HttpClientFactory" Version="16.4.0" />
     <PackageReference Include="Stripe.net" Version="47.4.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.3.1" />
     <!-- Security fix pin (CVE-2026-84008), above MimeKit's 10.0.0. Drop once MailKit depends on 10.0.13+. -->
