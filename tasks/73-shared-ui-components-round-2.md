@@ -193,7 +193,7 @@ Niels, 2026-11-02, on the conflicts between the picks:
 - **Q3, B1 vs B7.** B7 when the user can fix it by filling something in. A grey button with a reason only for what they can't change. Typing the name (D-C) is the exception: grey until it matches.
 - **Q4, errors.** S6 and G4 weren't picked, but the picks had no failure state. Niels: "der opstod en fejl holder ikke, gør det ordentligt". Hence [Errors](#errors), which goes further than the S6 box. Failures show where the success would have: by the button, in the stack, on the page.
 - **Q5, D-D.** Added: a blocked state, because the API refuses some deletes, and the D-B lists would otherwise end in an error.
-- **Q6, board files.** In the trash too, one behaviour in `FileSystemBrowser`. Niels answered "ja" to a two-part question where the proposal was "not yet", so confirm before building the board half. The DPA has no promise about deleting single files at once (section 10 covers termination), but it's still awaiting legal review ([INDEX](INDEX.md)), so mention the trash there.
+- **Q6, board files.** In the trash too, one behaviour in `FileSystemBrowser` (confirmed by Niels). The DPA has no promise about deleting single files at once (section 10 covers termination), but it's still awaiting legal review ([INDEX](INDEX.md)), so mention the trash there.
 - **Q7, week dropdowns.** PR #89 keeps dropdowns beside the stepper. W3 replaces them with the week list. PR #89 merges unchanged; this task removes them.
 - **Q8, one branch and one PR** for all parts, trash included.
 
