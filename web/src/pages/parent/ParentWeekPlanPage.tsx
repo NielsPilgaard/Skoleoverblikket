@@ -4,68 +4,48 @@ import { getApiV1ClassesByClassIdWeekPlanOptions } from '../../api/generated/@ta
 import { getApiV1ParentsMe } from '../../api/generated/sdk.gen'
 import type { ParentMeDto } from '../../api/client'
 import { usePageTitle } from '../../hooks/usePageTitle'
-import { WeekPlanList } from '../../components/weekplan/WeekPlanList'
-import { getISOWeek, getISOWeekYear, getISOWeeksInYear, getPlanningDate } from '../../utils/isoWeek'
-
-interface Slot {
-  id: string
-  schemaSlotId: string
-  weekday: string
-  timeSlotLabel: string
-  startTime: string
-  courseName: string
-  description?: string | null
-  lektier?: string | null
-  substituteTeacherName?: string | null
-  substituteAideName?: string | null
-}
+import { useWeekNavigation } from '../../hooks/useWeekNavigation'
+import { ParentWeekPlan, type ParentWeekPlanData } from '../../components/weekplan/ParentWeekPlan'
+import { SegmentedControl, WeekStepper } from '../../components/ui/select'
+import { preselectedDate } from '../../utils/isoWeek'
 
 function ClassWeekPlan({
   classId,
-  className,
   isoYear,
   isoWeek,
+  preselected,
+  sfoAfterSchool,
 }: {
   classId: string
-  className: string
   isoYear: number
   isoWeek: number
+  preselected: Date
+  sfoAfterSchool: boolean
 }) {
   const { data, isLoading, isError } = useQuery(
     getApiV1ClassesByClassIdWeekPlanOptions({ path: { classId }, query: { isoYear, isoWeek } })
   )
 
-  if (isLoading) return <div className="text-sm text-gray-400">Indlæser ugeplan...</div>
-  if (isError) return <div className="text-sm text-red-500">Fejl ved hentning af ugeplan.</div>
-
-  const plan = data as
-    | {
-        isHolidayWeek?: boolean
-        holidayTitle?: string | null
-        slots?: Slot[]
-        notes?: string | null
-      }
-    | undefined
-  if (!plan) return null
+  if (isLoading) return <div className="text-gray-700">Indlæser ugeplan...</div>
+  if (isError) return <div className="text-red-700">Fejl ved hentning af ugeplan.</div>
+  if (!data) return null
 
   return (
-    <div>
-      <h2 className="text-base font-semibold text-gray-900 mb-3">{className}</h2>
-      <WeekPlanList
-        notes={plan.notes}
-        slots={plan.slots ?? []}
-        isHolidayWeek={plan.isHolidayWeek}
-        holidayTitle={plan.holidayTitle}
-      />
-    </div>
+    <ParentWeekPlan
+      key={`${classId}-${isoYear}-${isoWeek}`}
+      plan={data as ParentWeekPlanData}
+      preselected={preselected}
+      sfoAfterSchool={sfoAfterSchool}
+    />
   )
 }
 
 export default function ParentWeekPlanPage() {
   usePageTitle('Ugeplan')
 
-  const [isoYear, setIsoYear] = useState(() => getISOWeekYear(getPlanningDate()))
-  const [isoWeek, setIsoWeek] = useState(() => getISOWeek(getPlanningDate()))
+  const [preselected] = useState(() => preselectedDate())
+  const { isoYear, isoWeek, stepper } = useWeekNavigation(preselected)
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
 
   const {
     data: meRes,
@@ -76,93 +56,51 @@ export default function ParentWeekPlanPage() {
     queryFn: () => getApiV1ParentsMe({ throwOnError: false }),
   })
 
-  function prevWeek() {
-    if (isoWeek === 1) {
-      const prevYear = isoYear - 1
-      setIsoYear(prevYear)
-      setIsoWeek(getISOWeeksInYear(prevYear))
-    } else {
-      setIsoWeek((w) => w - 1)
-    }
-  }
-
-  function nextWeek() {
-    if (isoWeek >= getISOWeeksInYear(isoYear)) {
-      setIsoYear((y) => y + 1)
-      setIsoWeek(1)
-    } else {
-      setIsoWeek((w) => w + 1)
-    }
-  }
-
-  if (isLoading) return <div className="p-6 text-sm text-gray-500">Indlæser...</div>
-  if (isError)
-    return <div className="p-6 text-sm text-red-600">Noget gik galt. Prøv igen senere.</div>
+  if (isLoading) return <div className="p-6 text-gray-700">Indlæser...</div>
+  if (isError) return <div className="p-6 text-red-700">Noget gik galt. Prøv igen senere.</div>
 
   const notFound = meRes?.response?.status === 404
   const me = meRes?.data as ParentMeDto | undefined
-  const classes = notFound ? [] : (me?.classes ?? [])
+  const students = notFound ? [] : (me?.students ?? [])
+  const student = students.find((s) => s.studentId === selectedStudentId) ?? students[0]
+  const className = me?.classes?.find((c) => c.classId === student?.classId)?.className
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Ugeplan</h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={prevWeek}
-            aria-label="Forrige uge"
-            className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <span className="text-sm font-medium text-gray-700">
-            Uge {isoWeek}, {isoYear}
-          </span>
-          <button
-            onClick={nextWeek}
-            aria-label="Næste uge"
-            className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        </div>
-      </div>
+    <div className="p-4 md:p-6 space-y-3 max-w-2xl">
+      <h1 className="text-xl font-semibold text-gray-900">Ugeplan</h1>
 
-      {classes.length === 0 ? (
-        <p className="text-sm text-gray-500">
+      {!student ? (
+        <p className="text-gray-700">
           Din konto er endnu ikke tilknyttet nogen klasser. Kontakt skolen, hvis du mener dette er
           en fejl.
         </p>
       ) : (
-        <div className="space-y-8">
-          {classes.map((c) => (
-            <ClassWeekPlan
-              key={c.classId}
-              classId={c.classId ?? ''}
-              className={c.className ?? ''}
-              isoYear={isoYear}
-              isoWeek={isoWeek}
+        <>
+          {students.length > 1 && (
+            <SegmentedControl
+              label="Barn"
+              hideLabel
+              value={student.studentId ?? null}
+              onChange={setSelectedStudentId}
+              options={students.map((s) => ({
+                value: s.studentId ?? '',
+                label: s.studentName ?? '',
+                testId: `weekplan-child-${s.studentId}`,
+              }))}
             />
-          ))}
-        </div>
+          )}
+          <WeekStepper
+            {...stepper}
+            sub={className ? `${className} · ${stepper.sub}` : stepper.sub}
+          />
+          <ClassWeekPlan
+            classId={student.classId ?? ''}
+            isoYear={isoYear}
+            isoWeek={isoWeek}
+            preselected={preselected}
+            sfoAfterSchool={!!student.isEnrolledInSfo}
+          />
+        </>
       )}
     </div>
   )
