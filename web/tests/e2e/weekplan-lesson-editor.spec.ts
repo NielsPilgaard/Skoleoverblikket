@@ -159,6 +159,24 @@ test('file picker uploads and ticks a file, and a too big file only stops itself
   }
 })
 
+test('week and year dropdowns jump without stepping', async ({ page }) => {
+  test.setTimeout(60_000)
+  await page.goto('/sfo')
+  const week = page.getByTestId('week-jump')
+  await expect(week).toBeVisible({ timeout: 15_000 })
+
+  const lastWeek = await week.locator('option').last().getAttribute('value')
+  await week.selectOption(lastWeek!)
+  await expect(week).toHaveValue(lastWeek!)
+
+  const year = page.getByTestId('year-jump')
+  const before = await year.inputValue()
+  const next = String(Number(before) - 1)
+  await year.selectOption(next)
+  await expect(year).toHaveValue(next)
+  await expect(week).toHaveValue(new RegExp(`^${next}-`))
+})
+
 test.describe('parent view opens on the right day', () => {
   async function openPreview(page: Page, at: Date) {
     await page.clock.setFixedTime(at)

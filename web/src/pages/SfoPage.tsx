@@ -152,7 +152,7 @@ export default function SfoPage() {
   const [allDays, setAllDays] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
-  const { isoYear, isoWeek, stepper } = useWeekNavigation()
+  const { isoYear, isoWeek, stepper, weekJump, yearJump } = useWeekNavigation()
   const [selectedCell, setSelectedCell] = useState<{
     shift: SfoShiftDto
     weekShift: SfoWeekPlanShiftDto | undefined
@@ -302,7 +302,8 @@ export default function SfoPage() {
 
         <WeekStepper
           {...stepper}
-          className="flex-1 min-w-48 max-w-xs mx-auto order-last sm:order-none basis-full sm:basis-auto"
+          jumps={[weekJump, yearJump]}
+          className="flex-1 min-w-48 max-w-sm mx-auto order-last sm:order-none basis-full sm:basis-auto"
         />
 
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">

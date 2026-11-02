@@ -24,6 +24,8 @@ export interface ListControls<T> {
   /** First one is the default, unless `defaultSort` names another. */
   sorts?: ListSort<T>[]
   defaultSort?: { value: string; descending?: boolean }
+  /** Rows that stay on top whatever the sort and direction, e.g. folders above files. */
+  pinFirst?: (item: T) => boolean
   /** "1 medarbejder" / "12 medarbejdere" when nothing is filtered. */
   noun: { one: string; other: string }
 }
@@ -32,7 +34,7 @@ const norm = (s: string) => s.toLocaleLowerCase('da')
 
 /** Search, filter chips and sort shared by PersonList and DataTable. */
 export function useListControls<T>(items: T[], controls: ListControls<T>) {
-  const { searchText, filters, sorts } = controls
+  const { searchText, filters, sorts, pinFirst } = controls
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState(filters?.[0]?.value ?? '')
   const [sort, setSort] = useState(controls.defaultSort?.value ?? sorts?.[0]?.value ?? '')
@@ -45,9 +47,14 @@ export function useListControls<T>(items: T[], controls: ListControls<T>) {
       (item) => (!match || match(item)) && (!q || !searchText || norm(searchText(item)).includes(q))
     )
     const compare = sorts?.find((s) => s.value === sort)?.compare
-    if (compare) hits.sort((a, b) => (descending ? -compare(a, b) : compare(a, b)))
+    const direction = descending ? -1 : 1
+    hits.sort(
+      (a, b) =>
+        (pinFirst ? Number(pinFirst(b)) - Number(pinFirst(a)) : 0) ||
+        (compare ? direction * compare(a, b) : 0)
+    )
     return hits
-  }, [items, search, filter, sort, descending, searchText, filters, sorts])
+  }, [items, search, filter, sort, descending, searchText, filters, sorts, pinFirst])
 
   const isFiltered = search.trim() !== '' || filter !== (filters?.[0]?.value ?? '')
   const total = items.length

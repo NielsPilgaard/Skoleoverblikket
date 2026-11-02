@@ -1,10 +1,22 @@
 import { ChevronLeftIcon, ChevronRightIcon } from '../icons'
+import { Select, type SelectOption } from './Select'
+
+export interface StepperJump {
+  label: string
+  options: SelectOption[]
+  value: string
+  onChange: (value: string) => void
+  testId?: string
+  className?: string
+}
 
 interface WeekStepperProps {
   /** "Uge 45", "Marts 2027", "1. kvartal 2027". */
   main: string
   /** Dates under the main text, e.g. "2.–6. nov". */
   sub?: string
+  /** Dropdowns that replace the main text, for jumping far without tapping many times. */
+  jumps?: StepperJump[]
   onPrev: () => void
   onNext: () => void
   prevLabel?: string
@@ -25,6 +37,7 @@ interface WeekStepperProps {
 export function WeekStepper({
   main,
   sub,
+  jumps,
   onPrev,
   onNext,
   prevLabel = 'Forrige uge',
@@ -55,9 +68,22 @@ export function WeekStepper({
           <ChevronLeftIcon />
         </button>
         <div className="flex-1 min-w-0 text-center" aria-live="polite">
-          <p data-testid={mainTestId} className="font-bold leading-tight text-gray-900">
-            {main}
-          </p>
+          {jumps ? (
+            <div className="flex gap-1">
+              {jumps.map((jump) => (
+                <Select
+                  key={jump.label}
+                  hideLabel
+                  {...jump}
+                  className={jump.className ?? 'flex-1 min-w-0'}
+                />
+              ))}
+            </div>
+          ) : (
+            <p data-testid={mainTestId} className="font-bold leading-tight text-gray-900">
+              {main}
+            </p>
+          )}
           {sub && <p className="text-sm text-gray-700">{sub}</p>}
         </div>
         <button

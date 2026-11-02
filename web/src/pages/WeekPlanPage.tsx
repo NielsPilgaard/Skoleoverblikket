@@ -239,7 +239,7 @@ export default function WeekPlanPage() {
   const schemaId = searchParams.get('schemaId')
   const navigate = useNavigate()
 
-  const { isoYear, isoWeek, stepper } = useWeekNavigation()
+  const { isoYear, isoWeek, stepper, weekJump } = useWeekNavigation()
   const [editingSchemaSlotId, setEditingSchemaSlotId] = useState<string | null>(null)
   const [substituteSchemaSlotId, setSubstituteSchemaSlotId] = useState<string | null>(null)
   const [showParentPreview, setShowParentPreview] = useState(false)
@@ -340,6 +340,7 @@ export default function WeekPlanPage() {
         </div>
         <WeekStepper
           {...stepper}
+          jumps={[weekJump]}
           className="min-w-48 flex-1 max-w-xs order-last md:order-none basis-full md:basis-auto"
         />
         <div className="flex justify-end w-32">

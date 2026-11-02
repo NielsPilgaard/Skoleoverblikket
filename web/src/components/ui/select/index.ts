@@ -17,4 +17,4 @@
 export { RadioCards, type RadioCardOption } from './RadioCards'
 export { SegmentedControl, type SegmentedOption } from './SegmentedControl'
 export { Select, type SelectOption } from './Select'
-export { WeekStepper } from './WeekStepper'
+export { WeekStepper, type StepperJump } from './WeekStepper'

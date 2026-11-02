@@ -874,6 +874,7 @@ export function FileSystemBrowser({
       )}
 
       <DataTable
+        pinFirst={(e) => e.kind === 'folder'}
         // Remount per folder, so a search in one folder doesn't filter the next.
         key={currentFolderId ?? 'root'}
         items={entries}
@@ -911,9 +912,7 @@ export function FileSystemBrowser({
           {
             key: 'name',
             header: 'Navn',
-            // A–Å lists folders before files. Å–A reverses all of it, files first.
-            sortValue: (e) =>
-              e.kind === 'folder' ? `0 ${e.folder.name ?? ''}` : `1 ${e.file.fileName ?? ''}`,
+            sortValue: (e) => (e.kind === 'folder' ? e.folder.name : e.file.fileName) ?? '',
             cell: (e) =>
               e.kind === 'folder' ? (
                 <span className="flex items-center gap-2">
