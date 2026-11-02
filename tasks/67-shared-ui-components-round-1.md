@@ -14,23 +14,25 @@ status: 'In progress'
 
 # Shared UI components, round 1
 
-## Status (2026-11-01)
+## Status (2026-11-02)
 
-**Part 1 is built:** PR [#89](https://github.com/NielsPilgaard/Skoleoverblikket/pull/89), branch `feature/shared-ui-lists`. Not merged yet, and not yet checked by hand on a phone, with a keyboard or with a screen reader. Start part 2 from `main` once #89 is merged, or branch from `feature/shared-ui-lists` if it isn't.
+**All five parts are built on one branch:** PR [#89](https://github.com/NielsPilgaard/Skoleoverblikket/pull/89), `feature/shared-ui-lists`. Niels asked for one branch instead of one PR per part. Not merged yet.
 
-- **Built:** [web/src/components/ui/list/](../web/src/components/ui/list/) has `PersonList`, `DataTable`, `ListToolbar`, `useListControls` (search, filter and sort state) and `parts.tsx` (row actions, badges, empty states). [web/src/components/ui/select/](../web/src/components/ui/select/) has `Select` and the rule-table comment, built early because the toolbar needs it. Part 2 adds the rest of the family there.
-- **Moved:** Medarbejdere, Elever, Forældre and Kontakter to `PersonList`. Lokaler, Fag, Filer, both Oversigt tables, both fravær statistics tables and backoffice Skoler to `DataTable`.
-- **`DataTable` renders one layout at a time** (`useMediaQuery`, [web/src/hooks/useMediaQuery.ts](../web/src/hooks/useMediaQuery.ts)). If both layouts were in the DOM with one hidden by CSS, every `data-testid` would exist twice and Playwright's strict mode would fail.
-- **Filters:** 2–5 options render as chips, more than 5 as a `Select`, and a lone "Alle" renders nothing.
-- **Left as they are (part 1):**
+- **Part 1:** [web/src/components/ui/list/](../web/src/components/ui/list/) has `PersonList`, `DataTable`, `ListToolbar`, `useListControls` and `parts.tsx`. `DataTable` renders one layout at a time ([useMediaQuery](../web/src/hooks/useMediaQuery.ts)), because a CSS-hidden copy would give every `data-testid` two matches. Filters: 2–5 options are chips, more than 5 a `Select`, a lone "Alle" renders nothing.
+- **Part 2:** [web/src/components/ui/select/](../web/src/components/ui/select/) has `Select`, `SegmentedControl`, `RadioCards` and `WeekStepper`; [useWeekNavigation](../web/src/hooks/useWeekNavigation.ts) holds the week state. Every `<select>` moved. `RecentSelect`, `ComboBox`, `MultiSelect` and `PersonPicker` are not built: no page in parts 3–5 needed them.
+- **Part 3:** [ParentWeekPlan](../web/src/components/weekplan/ParentWeekPlan.tsx), also used by the staff preview. The API now stores who wrote "Generelt for ugen" and when (`NotesUpdatedBy`, `NotesUpdatedAt`), and `ParentStudentDto` has `IsEnrolledInSfo`.
+- **Part 4:** [LessonEditor](../web/src/components/weekplan/LessonEditor.tsx).
+- **Part 5:** [FilePicker](../web/src/components/files/FilePicker.tsx). "Senest brugt af dig" needed data: `WeekPlanSlotFile` now stores `AttachedBySubject` and `AttachedAt`, and `GET /api/v1/files/recent` reads them, so the section fills up from new attachments only. The real upload limit is 500 MB, not the mockup's 25 MB.
+- **Open question: the "Husk" box.** Part 3 asks for three boxes, but nothing stores "husk", and part 4 fixes the editor at two fields. The box is left out until there's a field to fill it. Folder rows also skip the file count, which the API doesn't return.
+- **Left as they are:**
   - `ParentContactBookPage`: a message inbox, not a list of people.
-  - `ImportPage` invite table: a checkbox picker, which becomes part 2's `MultiSelect`.
+  - `ImportPage` invite table: a checkbox picker, a future `MultiSelect`.
   - Timetable and print grids: CalendarGrid, PrintSchemaPage, SfoPrintPage, WeekPlanPrintPage, MySchedulePage, StaffSchedulePage, RoomSchedulePage, ParentSchemaPage.
   - `PasteGrid` (an input grid) and `ComplianceCoveragePage` (UVM-timetal).
-- **For part 2:** the course filter `<select>` in `FileSystemBrowser` and the `absence-stats-category` select in `AbsenceStatsTab` are still native, so move them to `Select`.
-- **Cleanup after #89 merges:** delete the `pr-assets/shared-ui-lists` branch, which only holds the PR's screenshots.
-
-**Parts 2–5 are left.**
+  - The per-student button in `AttendancePage` keeps `aria-pressed`: it's a toggle per child, not a group of options.
+- **Removed:** the week dropdown on Ugeplan and the year picker on SFO, which the stepper replaces, and the dots on the phone calendar.
+- **Before merge:** the migration needs the `migration-reviewed` label from Niels. Not yet checked by hand on a real phone or with a screen reader.
+- **After merge:** delete the `pr-assets/shared-ui-lists` branch, which only holds the PR's screenshots.
 
 ## TL;DR
 
@@ -83,7 +85,7 @@ No swipe chips (V4). Switching child uses `SegmentedControl`; switching class us
 
 ### 3. Parent ugeplan (U-A)
 
-[ParentWeekPlanPage.tsx](../web/src/pages/parent/ParentWeekPlanPage.tsx) and [WeekPlanList.tsx](../web/src/components/weekplan/WeekPlanList.tsx).
+[ParentWeekPlanPage.tsx](../web/src/pages/parent/ParentWeekPlanPage.tsx) and `WeekPlanList.tsx`.
 
 - Top: `WeekStepper` (week number, class and dates).
 - **"Generelt for ugen"** card next: teacher avatar and name, when it was written, text clamped to 3 lines with "Læs hele" / "Vis mindre". Hidden when the teacher wrote nothing. Data: the week plan notes that `NotesEditor` in [WeekPlanPage.tsx](../web/src/pages/WeekPlanPage.tsx) writes.
