@@ -54,14 +54,14 @@ function PrintGrid({
         </thead>
         <tbody>
           {timeAxis.map((ts) => (
-            <tr key={ts.startTime}>
+            <tr key={ts.key}>
               <td className="print-td print-td-time">
                 <div className="print-td-inner">
                   <span className="print-time">{ts.startTime.slice(0, 5)}</span>
                 </div>
               </td>
               {[1, 2, 3, 4, 5].map((day) => {
-                const daySlots = slotMap[ts.startTime]?.[day]
+                const daySlots = slotMap[ts.key]?.[day]
                 const hasConflict = daySlots && daySlots.length > 1
                 return (
                   <td key={day} className="print-td">

@@ -50,15 +50,19 @@ function ClassScheduleGrid({ classId, className }: { classId: string; className:
           </thead>
           <tbody>
             {timeAxis.map((ts, i) => (
-              <tr key={ts.startTime} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+              <tr key={ts.key} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                 <td className="px-3 py-2 text-xs text-gray-500 border-b border-gray-100 whitespace-nowrap">
                   <div>{ts.startTime}</div>
                   <div className="text-gray-400">{ts.endTime}</div>
                 </td>
-                {WEEKDAYS.map(({ num: day }) => {
-                  const daySlots = slotMap[ts.startTime]?.[day] ?? []
+                {WEEKDAYS.map(({ num: day, key: weekday }) => {
+                  const daySlots = slotMap[ts.key]?.[day] ?? []
                   return (
-                    <td key={day} className="px-2 py-1 border-b border-gray-100 align-top">
+                    <td
+                      key={day}
+                      className="px-2 py-1 border-b border-gray-100 align-top"
+                      data-testid={`parent-schedule-cell-${ts.key}-${weekday}`}
+                    >
                       {daySlots.map((s, idx) => (
                         <div
                           key={`${s.schemaId ?? ''}-${s.startTime ?? ''}-${idx}`}

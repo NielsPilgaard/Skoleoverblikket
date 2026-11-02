@@ -116,7 +116,7 @@ export default function RoomSchedulePage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {timeAxis.map((ts) => (
-                <tr key={ts.startTime} className="hover:bg-gray-50/50">
+                <tr key={ts.key} className="hover:bg-gray-50/50">
                   <td className="px-3 py-2 text-right align-top border-r border-gray-200 bg-gray-50/50 whitespace-nowrap">
                     <span className="block text-xs font-semibold text-gray-600">
                       {ts.startTime}
@@ -124,7 +124,7 @@ export default function RoomSchedulePage() {
                     <span className="block text-xs text-gray-400">{ts.endTime}</span>
                   </td>
                   {WEEKDAYS.map((d) => {
-                    const daySlots = slotMap[ts.startTime]?.[d.num]
+                    const daySlots = slotMap[ts.key]?.[d.num]
                     return (
                       <td key={d.key} className="px-2 py-2 align-top">
                         {daySlots?.map((slot, i) => (
