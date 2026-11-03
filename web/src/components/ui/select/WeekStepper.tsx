@@ -84,7 +84,7 @@ export function WeekStepper({
               {main}
             </p>
           )}
-          {sub && <p className="text-sm text-gray-700">{sub}</p>}
+          {!jumps && sub && <p className="text-sm text-gray-700">{sub}</p>}
         </div>
         <button
           type="button"
@@ -97,6 +97,12 @@ export function WeekStepper({
           <ChevronRightIcon />
         </button>
       </div>
+      {/* Under the whole row, so the dropdowns line up with the buttons. */}
+      {jumps && sub && (
+        <p className="mt-1 text-center text-sm text-gray-700" aria-live="polite">
+          {sub}
+        </p>
+      )}
       {onToday && (
         <div className="text-center">
           <button
