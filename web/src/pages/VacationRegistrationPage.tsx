@@ -133,7 +133,7 @@ export default function VacationRegistrationPage() {
         <h1 className="font-display text-2xl font-semibold text-gray-900">Ferietilmelding</h1>
         <button
           onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
+          className="min-h-11 sm:min-h-0 px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
         >
           Opret ny
         </button>

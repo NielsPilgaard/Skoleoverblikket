@@ -320,7 +320,7 @@ export default function WeekPlanPage() {
         <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={() => navigate(-1)}
-            className="text-gray-400 hover:text-gray-700 transition-colors shrink-0"
+            className="w-11 h-11 -ml-3 sm:w-auto sm:h-auto sm:ml-0 flex items-center justify-center text-gray-600 hover:text-gray-900 transition-colors shrink-0"
             aria-label="Tilbage"
           >
             <svg
@@ -351,7 +351,7 @@ export default function WeekPlanPage() {
                 '_blank'
               )
             }
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-1.5 min-h-11 sm:min-h-0 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             title="Udskriv ugeplan"
           >
             <svg
@@ -581,11 +581,11 @@ export default function WeekPlanPage() {
 
         {/* Parent-view preview */}
         {!isLoading && weekPlanData && (
-          <div className="border-t border-gray-200 px-4 lg:px-6 py-3">
+          <div className="border-t border-gray-200 px-4 lg:px-6 pt-3 pb-16">
             <button
               type="button"
               onClick={() => setShowParentPreview((v) => !v)}
-              className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="flex items-center gap-1.5 min-h-11 sm:min-h-0 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
               data-testid="parent-preview-toggle"
             >
               <span className={`transition-transform ${showParentPreview ? 'rotate-90' : ''}`}>
