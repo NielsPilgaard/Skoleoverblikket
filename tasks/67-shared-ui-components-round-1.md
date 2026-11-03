@@ -32,7 +32,7 @@ status: 'In progress'
   - The per-student button in `AttendancePage` keeps `aria-pressed`: it's a toggle per child, not a group of options.
 - **Kept beside the stepper** (Niels, 2026-11-02): the week dropdown on Ugeplan and the week and year dropdowns on SFO, through `WeekStepper`'s `jumps` prop. Removed: the dots on the phone calendar.
 - **Folders stay on top** in the Filer list, whatever the sort and direction (Niels, 2026-11-02): `pinFirst` in the list controls.
-- **Before merge:** the migration needs the `migration-reviewed` label from Niels. Not yet checked by hand on a real phone or with a screen reader.
+- **Checked (2026-11-03):** real key presses through every part, axe and tap sizes on laptop Chromium, 375 px Chromium and iPhone WebKit, and the accessibility tree. **Still not done:** a real phone, and a real screen reader (NVDA, VoiceOver).
 - **After merge:** delete the `pr-assets/shared-ui-lists` branch, which only holds the PR's screenshots.
 
 ## TL;DR
