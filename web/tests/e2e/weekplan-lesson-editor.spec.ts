@@ -169,9 +169,15 @@ test('a file that uploads but does not attach says so, and "Prøv igen" does not
   page.on('request', (r) => {
     if (r.method() === 'PUT' && !r.url().includes('/api/')) uploads++
   })
-  await page.route('**/week-plan/slots/*/files', (route) =>
-    route.request().method() === 'POST' ? route.abort() : route.continue()
-  )
+  let release = () => {}
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/week-plan/slots/*/files', async (route) => {
+    if (route.request().method() !== 'POST') return route.continue()
+    await held
+    return route.abort()
+  })
 
   await page.locator('[data-testid^="weekplan-slot-"]').first().click()
   await page.getByTestId('lesson-files').click()
@@ -180,6 +186,13 @@ test('a file that uploads but does not attach says so, and "Prøv igen" does not
     mimeType: 'text/plain',
     buffer: Buffer.from('hej'),
   })
+
+  // The picker stays open while the file is on its way, or a failure would have nowhere to show.
+  await expect(page.getByTestId('file-picker-done')).toBeDisabled()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('file-picker')).toBeVisible()
+  release()
+
   await expect(page.getByTestId('file-upload-failed')).toContainText('kom ikke med på lektionen', {
     timeout: 30_000,
   })

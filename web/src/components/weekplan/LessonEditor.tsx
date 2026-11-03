@@ -147,6 +147,7 @@ export function LessonEditor({
   const [status, setStatus] = useState<Status>('saved')
   const [step, setStep] = useState<Step>('lesson')
   const [fileError, setFileError] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   // Latest typed values, saved values and slot id live in refs: saves run after renders have moved on.
   const latest = useRef(opened)
@@ -155,6 +156,7 @@ export function LessonEditor({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Saves run one at a time, so an older response can never land after a newer one.
   const saveChain = useRef<Promise<boolean>>(Promise.resolve(true))
+  const pendingSaves = useRef(0)
   const { mutationFn: putSlot } = putApiV1ClassesByClassIdWeekPlanSlotsMutation()
 
   function mergeIntoCache(updated: Partial<LessonSlot> & { schemaSlotId?: string }) {
@@ -173,11 +175,13 @@ export function LessonEditor({
   function saveNow({ force = false } = {}): Promise<boolean> {
     if (timer.current) clearTimeout(timer.current)
     timer.current = null
+    pendingSaves.current++
     saveChain.current = saveChain.current.then(async () => {
       const snapshot = latest.current
       const key = JSON.stringify(snapshot)
       const creating = force && slotId.current === EMPTY_ID
       if (key === lastSaved.current && !creating) {
+        pendingSaves.current--
         setStatus('saved')
         return true
       }
@@ -205,6 +209,8 @@ export function LessonEditor({
       } catch {
         setStatus('error')
         return false
+      } finally {
+        pendingSaves.current--
       }
     })
     return saveChain.current
@@ -223,7 +229,9 @@ export function LessonEditor({
 
   useEffect(() => {
     function warnIfUnsaved(e: BeforeUnloadEvent) {
-      if (JSON.stringify(latest.current) !== lastSaved.current) e.preventDefault()
+      if (pendingSaves.current > 0 || JSON.stringify(latest.current) !== lastSaved.current) {
+        e.preventDefault()
+      }
     }
     window.addEventListener('beforeunload', warnIfUnsaved)
     return () => window.removeEventListener('beforeunload', warnIfUnsaved)
@@ -309,7 +317,7 @@ export function LessonEditor({
   }
 
   async function handleOpenSubstitute() {
-    if (await saveNow({ force: true })) onOpenSubstitute()
+    if ((await saveNow({ force: true })) && (await saveAll())) onOpenSubstitute()
   }
 
   const ordered = [...slots].sort(weekOrder)
@@ -346,8 +354,12 @@ export function LessonEditor({
   }
 
   if (step === 'files') {
+    // A running upload shows its progress and any failure in the picker, so it can't close yet.
+    const closePicker = () => {
+      if (!uploading) setStep('lesson')
+    }
     return (
-      <Modal {...modalProps} onClose={() => setStep('lesson')}>
+      <Modal {...modalProps} onClose={closePicker}>
         <FilePicker
           courseId={slot.courseId}
           courseName={slot.courseName}
@@ -355,7 +367,8 @@ export function LessonEditor({
           selectedFileIds={slot.files.map((f) => f.schoolFileId)}
           onToggle={handleFileToggle}
           error={fileError ? 'Filen kunne ikke gemmes på lektionen. Prøv igen.' : undefined}
-          onClose={() => setStep('lesson')}
+          onUploadingChange={setUploading}
+          onClose={closePicker}
         />
       </Modal>
     )

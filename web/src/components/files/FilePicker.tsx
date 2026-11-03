@@ -34,6 +34,7 @@ export interface FilePickerProps {
   onToggle: (fileId: string, checked: boolean) => Promise<boolean>
   /** Saving the choice failed. */
   error?: string
+  onUploadingChange?: (uploading: boolean) => void
   onClose: () => void
 }
 
@@ -185,6 +186,7 @@ export function FilePicker({
   selectedFileIds,
   onToggle,
   error,
+  onUploadingChange,
   onClose,
 }: FilePickerProps) {
   const qc = useQueryClient()
@@ -225,6 +227,9 @@ export function FilePicker({
   const browseFailed = browse.isError && !browse.data
   const nothingFound =
     isSearching && !browse.isLoading && !browseFailed && !files.length && !folders.length
+
+  const uploading = queue.some((i) => i.state === 'uploading')
+  useEffect(() => onUploadingChange?.(uploading), [uploading, onUploadingChange])
 
   const updateItem = (key: number, patch: Partial<QueueItem>) =>
     setQueue((q) => q.map((i) => (i.key === key ? { ...i, ...patch } : i)))
@@ -294,7 +299,8 @@ export function FilePicker({
             type="button"
             aria-label="Luk"
             onClick={onClose}
-            className="w-11 h-11 -mr-2 rounded-full flex items-center justify-center text-gray-800 hover:bg-gray-100"
+            disabled={uploading}
+            className="w-11 h-11 -mr-2 rounded-full flex items-center justify-center text-gray-800 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <CloseIcon />
           </button>
@@ -496,10 +502,11 @@ export function FilePicker({
         <button
           type="button"
           onClick={onClose}
+          disabled={uploading}
           data-testid="file-picker-done"
-          className="h-11 px-5 rounded-lg bg-brand-600 text-white font-bold hover:bg-brand-700"
+          className="h-11 px-5 rounded-lg bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:bg-gray-200 disabled:text-gray-700 disabled:cursor-not-allowed"
         >
-          Færdig
+          {uploading ? 'Uploader …' : 'Færdig'}
         </button>
       </div>
     </section>
