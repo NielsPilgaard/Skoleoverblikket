@@ -28,26 +28,28 @@ export function formatWeekDates(isoYear: number, isoWeek: number, now: Date = ne
   return friday.getFullYear() === now.getFullYear() ? dates : `${dates} ${friday.getFullYear()}`
 }
 
-/** Every week of the school year the given week is in, August to July. */
+/** The Monday of the week 1 August is in. */
+function schoolYearStart(year: number): Date {
+  const august1 = new Date(year, 7, 1)
+  return isoWeekToMonday(getISOWeekYear(august1), getISOWeek(august1))
+}
+
+/** Every week of the school year the given week is in, from the week of 1 August to the next. */
 function schoolYearWeeks(isoYear: number, isoWeek: number) {
   const monday = isoWeekToMonday(isoYear, isoWeek)
-  const startYear = monday.getMonth() >= 7 ? monday.getFullYear() : monday.getFullYear() - 1
-  const first = new Date(startYear, 7, 1)
-  const last = new Date(startYear + 1, 6, 31)
-  const endYear = getISOWeekYear(last)
-  const endWeek = getISOWeek(last)
+  const calendarYear = monday.getFullYear()
+  const startYear = monday >= schoolYearStart(calendarYear) ? calendarYear : calendarYear - 1
+  const start = schoolYearStart(startYear)
+  const end = schoolYearStart(startYear + 1)
 
   const weeks: { value: string; label: string }[] = []
-  let y = getISOWeekYear(first)
-  let w = getISOWeek(first)
-  const firstYear = y
-  while (y < endYear || (y === endYear && w <= endWeek)) {
-    weeks.push({ value: `${y}-${w}`, label: y === firstYear ? `Uge ${w}` : `Uge ${w}, ${y}` })
-    w++
-    if (w > getISOWeeksInYear(y)) {
-      y++
-      w = 1
-    }
+  for (let d = start; d < end; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7)) {
+    const y = getISOWeekYear(d)
+    const w = getISOWeek(d)
+    weeks.push({
+      value: `${y}-${w}`,
+      label: y === getISOWeekYear(start) ? `Uge ${w}` : `Uge ${w}, ${y}`,
+    })
   }
   return weeks
 }
