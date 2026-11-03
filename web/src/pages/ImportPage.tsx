@@ -392,12 +392,12 @@ function StudentsTab() {
         body: { rows: payload },
         throwOnError: true,
       })
-      setResult(res.data!)
+      setResult(res.data)
 
-      const uninvited = (res.data!.uninvitedParents ?? []).map((p) => ({
-        id: p.id!,
-        name: p.name!,
-        email: p.email!,
+      const uninvited = (res.data.uninvitedParents ?? []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        email: p.email,
       }))
       if (uninvited.length > 0) {
         setUninvitedParents(uninvited)
@@ -553,9 +553,9 @@ function StaffTab() {
     setUninvitedStaff(null)
     try {
       const res = await postApiV1ImportsStaff({ body: { rows: payload }, throwOnError: true })
-      setResult(res.data!)
+      setResult(res.data)
 
-      if ((res.data!.staffCreated ?? 0) > 0 || (res.data!.staffUpdated ?? 0) > 0) {
+      if ((res.data.staffCreated ?? 0) > 0 || (res.data.staffUpdated ?? 0) > 0) {
         const importedEmails = new Set(
           payload
             .map((r) => r.email)
@@ -563,9 +563,11 @@ function StaffTab() {
             .map((e) => e.toLowerCase())
         )
         const staffRes = await getApiV1Staff({ throwOnError: true })
-        const uninvited = (staffRes.data ?? [])
-          .filter((s) => !s.keycloakSubject && s.email && importedEmails.has(s.email.toLowerCase()))
-          .map((s) => ({ id: s.id!, name: s.name!, email: s.email! }))
+        const uninvited = staffRes.data.flatMap((s) =>
+          !s.keycloakSubject && s.email && importedEmails.has(s.email.toLowerCase())
+            ? [{ id: s.id, name: s.name, email: s.email }]
+            : []
+        )
         if (uninvited.length > 0) {
           setUninvitedStaff(uninvited)
         }
@@ -711,7 +713,7 @@ function ClassesTab() {
     setResult(null)
     try {
       const res = await postApiV1ImportsClasses({ body: { rows: payload }, throwOnError: true })
-      setResult(res.data!)
+      setResult(res.data)
     } catch (e) {
       setError(errorMessage(e))
     } finally {
@@ -799,7 +801,7 @@ function RoomsTab() {
     setResult(null)
     try {
       const res = await postApiV1ImportsRooms({ body: { rows: payload }, throwOnError: true })
-      setResult(res.data!)
+      setResult(res.data)
     } catch (e) {
       setError(errorMessage(e))
     } finally {
@@ -890,14 +892,14 @@ function BoardMembersTab() {
         body: { rows: payload },
         throwOnError: true,
       })
-      setResult(res.data!)
+      setResult(res.data)
 
-      if ((res.data!.boardMembersCreated ?? 0) > 0 || (res.data!.boardMembersUpdated ?? 0) > 0) {
+      if ((res.data.boardMembersCreated ?? 0) > 0 || (res.data.boardMembersUpdated ?? 0) > 0) {
         const importedEmails = new Set(payload.map((r) => r.email.toLowerCase()))
         const membersRes = await getApiV1BoardMembers({ throwOnError: true })
-        const uninvited = (membersRes.data ?? [])
+        const uninvited = membersRes.data
           .filter((m) => !m.hasAccount && m.email && importedEmails.has(m.email.toLowerCase()))
-          .map((m) => ({ id: m.id!, name: m.name!, email: m.email! }))
+          .map((m) => ({ id: m.id, name: m.name, email: m.email }))
         if (uninvited.length > 0) {
           setUninvitedMembers(uninvited)
         }
