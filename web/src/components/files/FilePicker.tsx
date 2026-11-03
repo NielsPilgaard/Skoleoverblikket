@@ -30,7 +30,8 @@ export interface FilePickerProps {
   courseName?: string | null
   className?: string | null
   selectedFileIds: string[]
-  onToggle: (fileId: string, checked: boolean) => void | Promise<void>
+  /** Resolves to false if the choice could not be saved. */
+  onToggle: (fileId: string, checked: boolean) => Promise<boolean>
   /** Saving the choice failed. */
   error?: string
   onClose: () => void
@@ -50,6 +51,8 @@ interface QueueItem {
   file: File
   progress: number
   state: 'uploading' | 'done' | 'failed' | 'tooBig'
+  /** Set once the file is uploaded, so "Prøv igen" only retries what failed. */
+  uploadedId?: string
 }
 
 function FileRow({
@@ -141,13 +144,16 @@ function QueueRow({
           <p className="mt-1 text-sm text-red-800" role="alert">
             {item.state === 'tooBig'
               ? `Den må højst være ${MAX_UPLOAD_LABEL}. Del et link til den i stedet.`
-              : 'Forbindelsen blev afbrudt, så filen kom ikke med.'}
+              : item.uploadedId
+                ? 'Filen er uploadet, men kom ikke med på lektionen.'
+                : 'Forbindelsen blev afbrudt, så filen kom ikke med.'}
           </p>
           <div className="mt-1 flex gap-2">
             {item.state === 'failed' && (
               <button
                 type="button"
                 onClick={onRetry}
+                data-testid="file-upload-retry"
                 className="h-11 px-3 rounded-lg border border-gray-300 text-sm font-semibold hover:bg-gray-50"
               >
                 Prøv igen
@@ -215,23 +221,30 @@ export function FilePicker({
     .slice(0, SECTION_ROWS)
   const folders = browse.data?.folders ?? []
   const files = browse.data?.files ?? []
-  const nothingFound = isSearching && !browse.isLoading && !files.length && !folders.length
+  // Cached rows stay on screen if only a background refetch failed.
+  const browseFailed = browse.isError && !browse.data
+  const nothingFound =
+    isSearching && !browse.isLoading && !browseFailed && !files.length && !folders.length
 
   const updateItem = (key: number, patch: Partial<QueueItem>) =>
     setQueue((q) => q.map((i) => (i.key === key ? { ...i, ...patch } : i)))
 
-  async function runUpload(key: number, file: File) {
-    updateItem(key, { state: 'uploading', progress: 0 })
+  async function runUpload(key: number, file: File, alreadyUploaded?: string) {
+    updateItem(key, { state: 'uploading', progress: alreadyUploaded ? 100 : 0 })
     try {
-      const uploaded = await uploadFile({
-        file,
-        courseId: courseId ?? undefined,
-        folderId,
-        onProgress: (progress) => updateItem(key, { progress }),
-      })
-      updateItem(key, { state: 'done', progress: 100 })
-      void qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1Files' }] })
-      await onToggle(uploaded.id, true)
+      let id = alreadyUploaded
+      if (!id) {
+        const uploaded = await uploadFile({
+          file,
+          courseId: courseId ?? undefined,
+          folderId,
+          onProgress: (progress) => updateItem(key, { progress }),
+        })
+        id = uploaded.id
+        updateItem(key, { progress: 100, uploadedId: id })
+        void qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1Files' }] })
+      }
+      updateItem(key, { state: (await onToggle(id, true)) ? 'done' : 'failed' })
     } catch {
       updateItem(key, { state: 'failed' })
     }
@@ -343,7 +356,7 @@ export function FilePicker({
               <QueueRow
                 key={item.key}
                 item={item}
-                onRetry={() => void runUpload(item.key, item.file)}
+                onRetry={() => void runUpload(item.key, item.file, item.uploadedId)}
                 onRemove={() => setQueue((q) => q.filter((i) => i.key !== item.key))}
               />
             ))}
@@ -450,9 +463,25 @@ export function FilePicker({
               Ingen filer hedder sådan. Tjek stavningen, eller upload filen.
             </p>
           )}
-          {!isSearching && !browse.isLoading && !files.length && !folders.length && (
-            <p className="p-4 text-gray-700">Her er ingen filer endnu. Upload den første.</p>
+          {browseFailed && (
+            <div className="p-4 text-red-800" role="alert">
+              <p>Filerne kunne ikke hentes.</p>
+              <button
+                type="button"
+                onClick={() => void browse.refetch()}
+                className="mt-2 h-11 px-4 rounded-lg border border-red-300 font-semibold hover:bg-red-50"
+              >
+                Prøv igen
+              </button>
+            </div>
           )}
+          {!isSearching &&
+            !browse.isLoading &&
+            !browseFailed &&
+            !files.length &&
+            !folders.length && (
+              <p className="p-4 text-gray-700">Her er ingen filer endnu. Upload den første.</p>
+            )}
         </section>
       </div>
 

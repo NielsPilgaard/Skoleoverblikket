@@ -159,6 +159,41 @@ test('file picker uploads and ticks a file, and a too big file only stops itself
   }
 })
 
+test('a file that uploads but does not attach says so, and "Prøv igen" does not upload it twice', async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+  test.skip(!(await openClassWithLessons(page)), 'No class with lektioner this week.')
+
+  let uploads = 0
+  page.on('request', (r) => {
+    if (r.method() === 'PUT' && !r.url().includes('/api/')) uploads++
+  })
+  await page.route('**/week-plan/slots/*/files', (route) =>
+    route.request().method() === 'POST' ? route.abort() : route.continue()
+  )
+
+  await page.locator('[data-testid^="weekplan-slot-"]').first().click()
+  await page.getByTestId('lesson-files').click()
+  await page.getByTestId('file-picker-input').setInputFiles({
+    name: `e2e-attach-${Date.now()}.txt`,
+    mimeType: 'text/plain',
+    buffer: Buffer.from('hej'),
+  })
+  await expect(page.getByTestId('file-upload-failed')).toContainText('kom ikke med på lektionen', {
+    timeout: 30_000,
+  })
+  await expect(page.getByTestId('file-upload-done')).toBeHidden()
+
+  await page.unroute('**/week-plan/slots/*/files')
+  await page.getByTestId('file-upload-retry').click()
+  await expect(page.getByTestId('file-upload-done')).toBeVisible({ timeout: 15_000 })
+  expect(uploads).toBe(1)
+
+  await page.getByTestId('file-picker-done').click()
+  await page.getByTestId('lesson-close').click()
+})
+
 test('the lesson dialog works with only the keyboard', async ({ page }) => {
   test.setTimeout(120_000)
   test.skip(!(await openClassWithLessons(page)), 'No class with lektioner this week.')

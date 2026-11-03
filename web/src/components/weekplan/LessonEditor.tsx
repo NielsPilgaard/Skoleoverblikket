@@ -243,8 +243,16 @@ export function LessonEditor({
     void saveNow()
   }
 
+  /** Saves until nothing is left, also what was typed while an earlier save was on its way. */
+  async function saveAll(): Promise<boolean> {
+    do {
+      if (!(await saveNow())) return false
+    } while (JSON.stringify(latest.current) !== lastSaved.current)
+    return true
+  }
+
   async function handleClose() {
-    if (await saveNow()) onClose()
+    if (await saveAll()) onClose()
   }
 
   const addFile = useMutation({
@@ -282,19 +290,21 @@ export function LessonEditor({
     },
   })
 
-  async function handleFileToggle(fileId: string, checked: boolean) {
+  async function handleFileToggle(fileId: string, checked: boolean): Promise<boolean> {
     setFileError(false)
     if (!(await saveNow({ force: true }))) {
       setFileError(true)
-      return
+      return false
     }
     const link = slot.files.find((f) => f.schoolFileId === fileId)
     const path = { classId, slotId: slotId.current }
     try {
       if (checked && !link) await addFile.mutateAsync({ path, body: { schoolFileId: fileId } })
       if (!checked && link) await removeFile.mutateAsync({ path: { ...path, fileId: link.id } })
+      return true
     } catch {
       setFileError(true)
+      return false
     }
   }
 
@@ -306,7 +316,7 @@ export function LessonEditor({
   const next = ordered[ordered.findIndex((s) => s.schemaSlotId === slot.schemaSlotId) + 1]
 
   async function goToNext() {
-    if (next && (await saveNow())) onGoToLesson(next.schemaSlotId)
+    if (next && (await saveAll())) onGoToLesson(next.schemaSlotId)
   }
 
   const dayIndex = WEEKDAY_KEYS.indexOf(slot.weekday as never)

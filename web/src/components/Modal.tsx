@@ -20,7 +20,7 @@ const sizeClass = {
 }
 
 const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]'
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), iframe, [tabindex="0"]'
 
 // A closing dialog hands focus back a moment later. If a new dialog opens first, as when "Næste" in
 // the lesson editor replaces the dialog, or in StrictMode's re-run, it cancels that and takes over.

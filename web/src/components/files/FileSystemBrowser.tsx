@@ -875,7 +875,8 @@ export function FileSystemBrowser({
         pinFirst={(e) => e.kind === 'folder'}
         // Remount per folder, so a search in one folder doesn't filter the next.
         key={currentFolderId ?? 'root'}
-        items={entries}
+        // No data means the request failed: the banner above says so, not "Mappen er tom".
+        items={data ? entries : undefined}
         isLoading={isLoading}
         caption={headerTitle}
         testId="file-list"

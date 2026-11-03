@@ -52,8 +52,12 @@ function isChanged(s: ParentWeekPlanSlot): boolean {
 
 function changeText(s: ParentWeekPlanSlot): string {
   const substitute = substituteNames(s)
-  if (substitute) return `Vikar i ${s.courseName.toLowerCase()}: ${substitute}`
-  return `${s.courseName} i stedet for ${s.originalCourseName?.toLowerCase()}`
+  return [
+    s.originalCourseName && `${s.courseName} i stedet for ${s.originalCourseName.toLowerCase()}`,
+    substitute && `Vikar i ${s.courseName.toLowerCase()}: ${substitute}`,
+  ]
+    .filter(Boolean)
+    .join('. ')
 }
 
 function initials(name: string): string {
@@ -88,7 +92,7 @@ function GeneralCard({
   useLayoutEffect(() => {
     const el = textRef.current
     if (el && !open) setOverflows(el.scrollHeight > el.clientHeight + 1)
-  }, [open])
+  }, [open, notes])
 
   return (
     <section

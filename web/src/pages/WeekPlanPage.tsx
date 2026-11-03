@@ -195,7 +195,14 @@ function NotesEditor({
             pendingSaveRef.current = false
             if (isCurrentEdit(normalized)) {
               qc.setQueryData(weekPlanQueryKey, (old: WeekPlanDto | undefined) =>
-                old ? { ...old, notes: result.notes ?? null } : old
+                old
+                  ? {
+                      ...old,
+                      notes: result.notes ?? null,
+                      notesUpdatedBy: result.notesUpdatedBy ?? null,
+                      notesUpdatedAt: result.notesUpdatedAt ?? null,
+                    }
+                  : old
               )
               setSaveStatus('saved')
             }
