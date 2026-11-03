@@ -93,6 +93,7 @@ export function ListToolbar({
           <Select
             label="Sortér"
             hideLabel
+            testId="list-sort"
             options={sorts}
             value={sort}
             onChange={onSort}

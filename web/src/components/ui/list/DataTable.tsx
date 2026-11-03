@@ -158,6 +158,7 @@ export function DataTable<T>({
                         <button
                           type="button"
                           onClick={() => list.toggleSort(c.key)}
+                          data-testid={`list-sort-${c.key}`}
                           className={`flex items-center gap-1 w-full px-4 py-3 uppercase tracking-wide hover:bg-gray-100 ${
                             c.align === 'right' ? 'justify-end' : ''
                           }`}

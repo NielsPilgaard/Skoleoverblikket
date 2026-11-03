@@ -186,6 +186,7 @@ function UploadModal({
             ref={inputRef}
             type="file"
             accept="*/*"
+            data-testid="upload-file-input"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null
@@ -246,6 +247,7 @@ function UploadModal({
             if (selectedFile) mutation.mutate({ file: selectedFile })
           }}
           disabled={!selectedFile || isPending}
+          data-testid="upload-file-submit"
           className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isPending ? (progress !== null ? `${progress}%…` : 'Forbereder…') : 'Upload'}
@@ -349,135 +351,128 @@ function FilePreviewModal({ fileName, contentType, url, onClose }: FilePreviewMo
   const activeSheetRows = sheetData?.[activeSheet]?.rows ?? null
 
   return (
-    <button
-      type="button"
-      tabIndex={-1}
-      aria-label="Luk"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={onClose}
+    <Modal
+      isOpen
+      onClose={onClose}
+      backdropClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      contentClassName="bg-white rounded-2xl shadow-xl w-[95vw] h-[92vh] flex flex-col"
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="bg-white rounded-2xl shadow-xl w-[95vw] h-[92vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4 shrink-0">
-          <span className="font-medium text-gray-900 truncate">{fileName}</span>
-          <button
-            onClick={onClose}
-            className="shrink-0 p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-            title="Luk"
-          >
-            <CloseIcon />
-          </button>
-        </div>
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {isImage && (
-            <div className="flex-1 overflow-auto flex items-center justify-center p-4 min-h-0">
-              <img
-                src={url}
-                alt={fileName}
-                className="max-h-full max-w-full object-contain mx-auto"
-              />
-            </div>
-          )}
-          {isText && (
-            <div className="flex-1 overflow-auto p-6 min-h-0">
-              {textContent === null ? (
-                <p className="text-sm text-gray-400">Indlæser…</p>
-              ) : (
-                <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono">
-                  {textContent}
-                </pre>
-              )}
-            </div>
-          )}
-          {(isExcel || isCsv) && (
-            <div className="flex-1 flex flex-col min-h-0">
-              {loadError ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <p className="text-sm text-red-500">{loadError}</p>
-                </div>
-              ) : sheetData === null ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <p className="text-sm text-gray-400">Indlæser…</p>
-                </div>
-              ) : (
-                <>
-                  {sheetData.length > 1 && (
-                    <div className="flex gap-1 px-4 pt-3 pb-0 shrink-0 border-b border-gray-100 overflow-x-auto">
-                      {sheetData.map((sheet, i) => (
-                        <button
-                          key={sheet.name}
-                          onClick={() => setActiveSheet(i)}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-t-md whitespace-nowrap transition-colors ${
-                            i === activeSheet
-                              ? 'bg-white border border-b-white border-gray-200 text-gray-900 -mb-px'
-                              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                          }`}
-                        >
-                          {sheet.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex-1 overflow-auto">
-                    <table className="text-xs border-collapse w-full">
-                      <tbody>
-                        {(activeSheetRows ?? []).map((row, ri) => (
-                          <tr key={ri} className={ri === 0 ? 'bg-gray-50' : 'hover:bg-gray-50/50'}>
-                            {row.map((cell, ci) => {
-                              const Tag = ri === 0 ? 'th' : 'td'
-                              return (
-                                <Tag
-                                  key={ci}
-                                  className="border border-gray-200 px-2 py-1 text-left text-gray-800 whitespace-nowrap max-w-[240px] overflow-hidden text-ellipsis"
-                                >
-                                  {String(cell)}
-                                </Tag>
-                              )
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-          {isDocx && (
-            <div className="flex-1 overflow-auto p-6 min-h-0">
-              {loadError ? (
-                <p className="text-sm text-red-500">{loadError}</p>
-              ) : docxHtml === null ? (
-                <p className="text-sm text-gray-400">Indlæser…</p>
-              ) : (
-                <iframe
-                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:sans-serif;font-size:14px;line-height:1.6;color:#1f2937;padding:0;margin:0}p{margin:0 0 0.75em}table{border-collapse:collapse;width:100%}td,th{border:1px solid #e5e7eb;padding:4px 8px}</style></head><body>${docxHtml}</body></html>`}
-                  className="flex-1 w-full h-full border-0"
-                  sandbox="allow-same-origin"
-                  title={fileName}
-                />
-              )}
-            </div>
-          )}
-          {!isImage && !isText && !isExcel && !isCsv && !isDocx && (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3">
-              <p className="text-gray-700 font-medium">{fileName}</p>
-              <p className="text-sm text-gray-400">{contentType || 'Ukendt filtype'}</p>
-              <button
-                onClick={handleDownload}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
-              >
-                Hent fil
-              </button>
-            </div>
-          )}
-        </div>
+      <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4 shrink-0">
+        <h2 className="font-medium text-gray-900 truncate">{fileName}</h2>
+        <button
+          onClick={onClose}
+          className="shrink-0 p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+          title="Luk"
+          aria-label="Luk"
+        >
+          <CloseIcon />
+        </button>
       </div>
-    </button>
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {isImage && (
+          <div className="flex-1 overflow-auto flex items-center justify-center p-4 min-h-0">
+            <img
+              src={url}
+              alt={fileName}
+              className="max-h-full max-w-full object-contain mx-auto"
+            />
+          </div>
+        )}
+        {isText && (
+          <div className="flex-1 overflow-auto p-6 min-h-0">
+            {textContent === null ? (
+              <p className="text-sm text-gray-400">Indlæser…</p>
+            ) : (
+              <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono">
+                {textContent}
+              </pre>
+            )}
+          </div>
+        )}
+        {(isExcel || isCsv) && (
+          <div className="flex-1 flex flex-col min-h-0">
+            {loadError ? (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-sm text-red-500">{loadError}</p>
+              </div>
+            ) : sheetData === null ? (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-sm text-gray-400">Indlæser…</p>
+              </div>
+            ) : (
+              <>
+                {sheetData.length > 1 && (
+                  <div className="flex gap-1 px-4 pt-3 pb-0 shrink-0 border-b border-gray-100 overflow-x-auto">
+                    {sheetData.map((sheet, i) => (
+                      <button
+                        key={sheet.name}
+                        onClick={() => setActiveSheet(i)}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-t-md whitespace-nowrap transition-colors ${
+                          i === activeSheet
+                            ? 'bg-white border border-b-white border-gray-200 text-gray-900 -mb-px'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {sheet.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex-1 overflow-auto">
+                  <table className="text-xs border-collapse w-full">
+                    <tbody>
+                      {(activeSheetRows ?? []).map((row, ri) => (
+                        <tr key={ri} className={ri === 0 ? 'bg-gray-50' : 'hover:bg-gray-50/50'}>
+                          {row.map((cell, ci) => {
+                            const Tag = ri === 0 ? 'th' : 'td'
+                            return (
+                              <Tag
+                                key={ci}
+                                className="border border-gray-200 px-2 py-1 text-left text-gray-800 whitespace-nowrap max-w-[240px] overflow-hidden text-ellipsis"
+                              >
+                                {String(cell)}
+                              </Tag>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        {isDocx && (
+          <div className="flex-1 overflow-auto p-6 min-h-0">
+            {loadError ? (
+              <p className="text-sm text-red-500">{loadError}</p>
+            ) : docxHtml === null ? (
+              <p className="text-sm text-gray-400">Indlæser…</p>
+            ) : (
+              <iframe
+                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:sans-serif;font-size:14px;line-height:1.6;color:#1f2937;padding:0;margin:0}p{margin:0 0 0.75em}table{border-collapse:collapse;width:100%}td,th{border:1px solid #e5e7eb;padding:4px 8px}</style></head><body>${docxHtml}</body></html>`}
+                className="flex-1 w-full h-full border-0"
+                sandbox="allow-same-origin"
+                title={fileName}
+              />
+            )}
+          </div>
+        )}
+        {!isImage && !isText && !isExcel && !isCsv && !isDocx && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3">
+            <p className="text-gray-700 font-medium">{fileName}</p>
+            <p className="text-sm text-gray-400">{contentType || 'Ukendt filtype'}</p>
+            <button
+              onClick={handleDownload}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
+            >
+              Hent fil
+            </button>
+          </div>
+        )}
+      </div>
+    </Modal>
   )
 }
 
@@ -544,6 +539,7 @@ function CreateFolderModal({
         <input
           autoFocus
           type="text"
+          data-testid="folder-name-input"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
@@ -580,6 +576,7 @@ function CreateFolderModal({
         <button
           onClick={submit}
           disabled={mutation.isPending}
+          data-testid="folder-create-submit"
           className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {mutation.isPending ? 'Opretter…' : 'Opret'}
@@ -817,7 +814,7 @@ export function FileSystemBrowser({
             {isAdmin && (
               <button
                 onClick={() => setShowCreateFolder(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-2 min-h-11 sm:min-h-0 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
                 data-testid="create-folder-btn"
               >
                 <FolderIcon size={16} />
@@ -826,7 +823,8 @@ export function FileSystemBrowser({
             )}
             <button
               onClick={() => setShowUpload(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
+              data-testid="upload-file-btn"
+              className="flex items-center gap-2 min-h-11 sm:min-h-0 px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
             >
               <UploadIcon size={16} />
               Upload fil
@@ -947,7 +945,7 @@ export function FileSystemBrowser({
                     <button
                       type="button"
                       onClick={() => openPreview(e.file)}
-                      className="block text-left font-semibold text-gray-900 hover:text-brand-700 break-words"
+                      className="block min-h-11 md:min-h-0 text-left font-semibold text-gray-900 hover:text-brand-700 break-words"
                     >
                       {e.file.fileName}
                     </button>

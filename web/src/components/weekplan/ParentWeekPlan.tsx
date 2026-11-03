@@ -363,14 +363,17 @@ export function ParentWeekPlan({
                     aria-selected={i === selected}
                     aria-controls="weekplan-day-panel"
                     tabIndex={i === selected ? 0 : -1}
-                    aria-label={WEEKDAY_LABELS[i]}
                     onClick={() => setSelected(i)}
                     onKeyDown={handleTabKey}
                     data-testid={`weekplan-day-toggle-${day}`}
                     className="relative h-16 rounded-lg flex flex-col items-center justify-center text-gray-800 hover:bg-gray-50 aria-selected:bg-brand-600 aria-selected:text-white aria-selected:hover:bg-brand-600"
                   >
-                    <span className="text-xs font-semibold">
+                    <span aria-hidden="true" className="text-xs font-semibold">
                       {relativeLabel(i) ?? SHORT_WEEKDAYS[i]}
+                    </span>
+                    <span className="sr-only">
+                      {relativeLabel(i) ? `${relativeLabel(i)}, ` : ''}
+                      {WEEKDAY_LABELS[i]}
                     </span>
                     <span className="font-bold leading-tight">{dateOf(i)?.getDate()}</span>
                     <span className="absolute bottom-1.5 flex gap-1">

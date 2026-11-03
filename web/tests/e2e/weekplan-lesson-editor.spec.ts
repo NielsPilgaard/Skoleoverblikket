@@ -159,6 +159,70 @@ test('file picker uploads and ticks a file, and a too big file only stops itself
   }
 })
 
+test('the lesson dialog works with only the keyboard', async ({ page }) => {
+  test.setTimeout(120_000)
+  test.skip(!(await openClassWithLessons(page)), 'No class with lektioner this week.')
+  const slot = page.locator('[data-testid^="weekplan-slot-"]').first()
+  const dialog = page.getByRole('dialog')
+  const description = page.getByTestId('lesson-description')
+
+  await slot.focus()
+  await page.keyboard.press('Enter')
+  await expect(description).toBeFocused()
+  await expect(dialog).toHaveAttribute('aria-labelledby', /.+/)
+
+  // Tab goes round inside the dialog, and never on to the page behind it.
+  for (let i = 0; i < 25; i++) {
+    await page.keyboard.press('Tab')
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[role=dialog]'))).toBe(true)
+  }
+
+  // The file picker is a step in the dialog: focus moves in, and Escape goes one step back.
+  await page.getByTestId('lesson-files').focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByTestId('file-picker')).toBeVisible()
+  expect(await page.evaluate(() => !!document.activeElement?.closest('[role=dialog]'))).toBe(true)
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('file-picker')).toBeHidden()
+  await expect(description).toBeFocused()
+
+  // "Næste" replaces the dialog. Focus must land in the next lesson, not on the page behind it.
+  await page.getByTestId('lesson-next').focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('dialog').getByTestId('lesson-save-status')).toBeVisible()
+  await page.waitForTimeout(100)
+  await expect(description).toBeFocused()
+
+  // Escape from the text field saves what was typed, and focus returns to the lesson it opened from.
+  const text = `Tastatur ${Date.now()}`
+  await description.fill(text)
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden({ timeout: 10_000 })
+  await expect(slot).toBeFocused()
+  await expect(page.getByTestId('weekplan-grid')).toContainText(text)
+})
+
+test('the ugeplan week dropdown opens the chosen week, and the list stays put', async ({ page }) => {
+  test.setTimeout(60_000)
+  test.skip(!(await openClassWithLessons(page)), 'No class with lektioner this week.')
+  const week = page.getByTestId('week-jump')
+
+  const first = await week.locator('option').first().getAttribute('value')
+  const count = await week.locator('option').count()
+  expect(count).toBeGreaterThanOrEqual(52)
+
+  const [isoYear, isoWeek] = first!.split('-')
+  const loaded = page.waitForResponse(
+    (r) => r.url().includes(`isoYear=${isoYear}&isoWeek=${isoWeek}`) && r.status() === 200
+  )
+  await week.selectOption(first!)
+  await loaded
+  await expect(week).toHaveValue(first!)
+  // The first week of the school year can start in July. It must not flip the list to last year.
+  await expect(week.locator('option').first()).toHaveAttribute('value', first!)
+  await expect(week.locator('option')).toHaveCount(count)
+})
+
 test('week and year dropdowns jump without stepping', async ({ page }) => {
   test.setTimeout(60_000)
   await page.goto('/sfo')
@@ -200,6 +264,7 @@ test.describe('parent view opens on the right day', () => {
     test.skip(!(await tab.isVisible()), 'This week is a holiday week.')
     await expect(tab).toHaveAttribute('aria-selected', 'true')
     await expect(tab).toContainText('I dag')
+    await expect(tab).toHaveAccessibleName(/^I dag, Tirsdag \d+/)
   })
 
   test('from 15:00 it is the next school day', async ({ page }) => {
@@ -208,6 +273,7 @@ test.describe('parent view opens on the right day', () => {
     test.skip(!(await tab.isVisible()), 'This week is a holiday week.')
     await expect(tab).toHaveAttribute('aria-selected', 'true')
     await expect(tab).toContainText('I morgen')
+    await expect(tab).toHaveAccessibleName(/^I morgen, Onsdag \d+/)
     await expect(page.getByTestId('weekplan-day-toggle-Tuesday')).toHaveAttribute(
       'aria-selected',
       'false'

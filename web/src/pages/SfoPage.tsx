@@ -310,7 +310,7 @@ export default function SfoPage() {
           <Link
             to={`/udskriv/sfo?isoYear=${isoYear}&isoWeek=${isoWeek}`}
             target="_blank"
-            className="flex items-center gap-2 p-2 sm:px-3 sm:py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center min-h-11 min-w-11 justify-center sm:min-h-0 sm:min-w-0 gap-2 p-2 sm:px-3 sm:py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             title="Udskriv"
           >
             <svg
@@ -332,7 +332,7 @@ export default function SfoPage() {
           <button
             onClick={openCreate}
             aria-label="Ny vagt"
-            className="flex items-center gap-1.5 sm:gap-2 p-2 sm:px-3 sm:py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
+            className="flex items-center min-h-11 min-w-11 justify-center sm:min-h-0 sm:min-w-0 gap-1.5 sm:gap-2 p-2 sm:px-3 sm:py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
           >
             <svg
               width="15"
@@ -667,6 +667,7 @@ function CellModal({
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Escape') {
+      e.preventDefault()
       if (staffOpen) {
         setStaffOpen(false)
         setStaffQuery('')

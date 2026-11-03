@@ -2,6 +2,7 @@ export function FileIcon({ contentType }: { contentType: string }) {
   if (contentType.startsWith('image/')) {
     return (
       <svg
+        aria-hidden="true"
         width="16"
         height="16"
         viewBox="0 0 24 24"
@@ -20,6 +21,7 @@ export function FileIcon({ contentType }: { contentType: string }) {
   if (contentType.startsWith('video/')) {
     return (
       <svg
+        aria-hidden="true"
         width="16"
         height="16"
         viewBox="0 0 24 24"
@@ -37,6 +39,7 @@ export function FileIcon({ contentType }: { contentType: string }) {
   if (contentType.startsWith('audio/')) {
     return (
       <svg
+        aria-hidden="true"
         width="16"
         height="16"
         viewBox="0 0 24 24"
@@ -55,6 +58,7 @@ export function FileIcon({ contentType }: { contentType: string }) {
   if (contentType.includes('pdf')) {
     return (
       <svg
+        aria-hidden="true"
         width="16"
         height="16"
         viewBox="0 0 24 24"
@@ -73,6 +77,7 @@ export function FileIcon({ contentType }: { contentType: string }) {
   }
   return (
     <svg
+      aria-hidden="true"
       width="16"
       height="16"
       viewBox="0 0 24 24"
@@ -90,7 +95,14 @@ export function FileIcon({ contentType }: { contentType: string }) {
 
 export function FolderIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      stroke="none"
+    >
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
     </svg>
   )
@@ -99,6 +111,7 @@ export function FolderIcon({ size = 16 }: { size?: number }) {
 export function ChevronIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="14"
       height="14"
       viewBox="0 0 24 24"
@@ -116,6 +129,7 @@ export function ChevronIcon() {
 export function UploadIcon({ size = 16 }: { size?: number }) {
   return (
     <svg
+      aria-hidden="true"
       width={size}
       height={size}
       viewBox="0 0 24 24"
@@ -133,6 +147,7 @@ export function UploadIcon({ size = 16 }: { size?: number }) {
 export function CloseIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="16"
       height="16"
       viewBox="0 0 24 24"
