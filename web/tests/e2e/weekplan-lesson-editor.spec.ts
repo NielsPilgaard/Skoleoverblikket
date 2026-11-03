@@ -181,8 +181,9 @@ test('a file that uploads but does not attach says so, and "Prøv igen" does not
 
   await page.locator('[data-testid^="weekplan-slot-"]').first().click()
   await page.getByTestId('lesson-files').click()
+  const name = `e2e-attach-${Date.now()}.txt`
   await page.getByTestId('file-picker-input').setInputFiles({
-    name: `e2e-attach-${Date.now()}.txt`,
+    name,
     mimeType: 'text/plain',
     buffer: Buffer.from('hej'),
   })
@@ -202,6 +203,66 @@ test('a file that uploads but does not attach says so, and "Prøv igen" does not
   await page.getByTestId('file-upload-retry').click()
   await expect(page.getByTestId('file-upload-done')).toBeVisible({ timeout: 15_000 })
   expect(uploads).toBe(1)
+
+  // A tick that is still saving holds the picker the same way.
+  let releaseTick = () => {}
+  const heldTick = new Promise<void>((resolve) => {
+    releaseTick = resolve
+  })
+  await page.route('**/week-plan/slots/*/files/*', async (route) => {
+    if (route.request().method() !== 'DELETE') return route.continue()
+    await heldTick
+    return route.abort()
+  })
+  await page.getByTestId('file-picker-search').fill(name)
+  const row = page.locator('[data-testid^="file-row-"]').first()
+  await expect(row.getByRole('checkbox')).toBeChecked({ timeout: 15_000 })
+  await row.click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('file-picker')).toBeVisible()
+  releaseTick()
+  await expect(page.getByTestId('file-picker-error')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByTestId('file-picker')).toBeVisible()
+  await page.unroute('**/week-plan/slots/*/files/*')
+
+  await page.getByTestId('file-picker-done').click()
+  await page.getByTestId('lesson-close').click()
+})
+
+test('an upload that stalls fails with "Prøv igen" instead of locking the picker', async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+  await page.clock.install()
+  test.skip(!(await openClassWithLessons(page)), 'No class with lektioner this week.')
+
+  const isUpload = (r: { method: () => string; url: () => string }) =>
+    r.method() === 'PUT' && !r.url().includes('/api/')
+  // The upload never gets an answer, like a connection that silently hangs.
+  await page.route('**/*', (route) => {
+    if (!isUpload(route.request())) return route.continue()
+  })
+
+  await page.locator('[data-testid^="weekplan-slot-"]').first().click()
+  await page.getByTestId('lesson-files').click()
+  const started = page.waitForRequest(isUpload)
+  await page.getByTestId('file-picker-input').setInputFiles({
+    name: `e2e-stall-${Date.now()}.txt`,
+    mimeType: 'text/plain',
+    buffer: Buffer.from('hej'),
+  })
+  await started
+  await expect(page.getByTestId('file-picker-done')).toBeDisabled()
+
+  await page.clock.fastForward(61_000)
+  await expect(page.getByTestId('file-upload-failed')).toContainText('Forbindelsen blev afbrudt', {
+    timeout: 15_000,
+  })
+  await expect(page.getByTestId('file-picker-done')).toBeEnabled()
+
+  await page.unroute('**/*')
+  await page.getByTestId('file-upload-retry').click()
+  await expect(page.getByTestId('file-upload-done')).toBeVisible({ timeout: 30_000 })
 
   await page.getByTestId('file-picker-done').click()
   await page.getByTestId('lesson-close').click()

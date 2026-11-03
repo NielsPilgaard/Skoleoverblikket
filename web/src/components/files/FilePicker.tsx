@@ -352,7 +352,11 @@ export function FilePicker({
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         {error && (
-          <p className="mx-4 mt-3 p-3 rounded-lg bg-red-50 text-red-800" role="alert">
+          <p
+            data-testid="file-picker-error"
+            className="mx-4 mt-3 p-3 rounded-lg bg-red-50 text-red-800"
+            role="alert"
+          >
             {error}
           </p>
         )}

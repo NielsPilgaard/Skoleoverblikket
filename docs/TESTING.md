@@ -68,7 +68,10 @@ For user flows that span frontend + backend and where a broken UI is a broken pr
 
 **Location**: `web/tests/e2e/`
 
-**Run against**: real frontend + real API, using the Aspire dev stack with a seeded test database. No mocking, with one exception: `deploy.spec.ts` stubs the maintenance container's 503 + `X-Maintenance` answer with `page.route`, because that container runs only in production. It tests how the web app waits out a deploy, not the API.
+**Run against**: real frontend + real API, using the Aspire dev stack with a seeded test database. No mocking, with two exceptions, both with `page.route`:
+
+- `deploy.spec.ts` stubs the maintenance container's 503 + `X-Maintenance` answer, because that container runs only in production. It tests how the web app waits out a deploy, not the API.
+- `weekplan-lesson-editor.spec.ts` aborts, delays or holds single requests to act as a dropped or hanging connection, which the real API can't produce on demand. It never fakes a response, and it checks that the teacher's text and files aren't silently lost.
 
 **How to run:**
 

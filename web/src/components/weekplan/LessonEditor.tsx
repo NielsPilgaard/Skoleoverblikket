@@ -148,6 +148,7 @@ export function LessonEditor({
   const [step, setStep] = useState<Step>('lesson')
   const [fileError, setFileError] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const pendingToggles = useRef<Promise<boolean>[]>([])
 
   // Latest typed values, saved values and slot id live in refs: saves run after renders have moved on.
   const latest = useRef(opened)
@@ -298,7 +299,15 @@ export function LessonEditor({
     },
   })
 
-  async function handleFileToggle(fileId: string, checked: boolean): Promise<boolean> {
+  function handleFileToggle(fileId: string, checked: boolean): Promise<boolean> {
+    const toggle = saveFileToggle(fileId, checked).finally(() => {
+      pendingToggles.current = pendingToggles.current.filter((t) => t !== toggle)
+    })
+    pendingToggles.current.push(toggle)
+    return toggle
+  }
+
+  async function saveFileToggle(fileId: string, checked: boolean): Promise<boolean> {
     setFileError(false)
     if (!(await saveNow({ force: true }))) {
       setFileError(true)
@@ -354,9 +363,11 @@ export function LessonEditor({
   }
 
   if (step === 'files') {
-    // A running upload shows its progress and any failure in the picker, so it can't close yet.
-    const closePicker = () => {
-      if (!uploading) setStep('lesson')
+    // A running upload or tick shows any failure in the picker, so it can't close before they end.
+    const closePicker = async () => {
+      if (uploading) return
+      const results = await Promise.all(pendingToggles.current)
+      if (results.every(Boolean)) setStep('lesson')
     }
     return (
       <Modal {...modalProps} onClose={closePicker}>
