@@ -482,7 +482,7 @@ export default function ParentsPage() {
           },
           {
             value: 'pending',
-            label: 'Ikke logget ind først',
+            label: 'Ingen konto først',
             compare: (a, b) =>
               Number(!!a.hasAccount) - Number(!!b.hasAccount) || a.name.localeCompare(b.name, 'da'),
           },

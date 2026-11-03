@@ -41,11 +41,19 @@ function byName(a: StaffDto, b: StaffDto) {
 }
 
 /** Login state for the list: no badge once the person has logged in. */
+/**
+ * The login is created when the invitation is sent, so a login alone doesn't mean the person has
+ * logged in. An invitation not yet accepted says they haven't.
+ */
+function hasLoggedIn(s: StaffDto, invite: InvitationDto | undefined): boolean {
+  return !!s.keycloakSubject && (!invite || invite.status === 'Accepted')
+}
+
 function loginStatus(
   s: StaffDto,
   invite: InvitationDto | undefined
 ): { text: string; badge?: Badge } {
-  if (s.keycloakSubject) return { text: 'Aktiv' }
+  if (hasLoggedIn(s, invite)) return { text: 'Aktiv' }
   if (!invite) return { text: 'Ikke inviteret', badge: { label: 'Ikke inviteret', tone: 'gray' } }
   if (invite.status === 'Expired')
     return { text: 'Invitationen er udløbet', badge: { label: 'Invitation udløbet', tone: 'red' } }
@@ -377,10 +385,11 @@ export default function StaffPage() {
   const invitationsQuery = useQuery(getApiV1StaffInvitationsOptions())
   const staff = staffQuery.data
   const allInvitations = invitationsQuery.data
-  // Login status comes from the invitations, so the list waits for both: without them everyone
-  // would look not invited and offer "Send invitation".
-  const isLoading = staffQuery.isLoading || invitationsQuery.isLoading
+  const isLoading = staffQuery.isLoading
   const isError = staffQuery.isError
+  // Login status comes from the invitations. Until they're here it is unknown: without them everyone
+  // would look not invited and offer "Send invitation".
+  const invitationsUnknown = !allInvitations
   const invitationsFailed = invitationsQuery.isError && !allInvitations
   const refetch = () => void staffQuery.refetch()
 
@@ -504,7 +513,8 @@ export default function StaffPage() {
             value: 'inactive',
             label: 'Ikke logget ind først',
             compare: (a, b) =>
-              Number(!!a.keycloakSubject) - Number(!!b.keycloakSubject) || byName(a, b),
+              Number(hasLoggedIn(a, getLatestInvite(a.id ?? ''))) -
+                Number(hasLoggedIn(b, getLatestInvite(b.id ?? ''))) || byName(a, b),
           },
         ]}
         empty={
@@ -517,14 +527,17 @@ export default function StaffPage() {
           const invite = getLatestInvite(s.id ?? '')
           const isSelf =
             s.keycloakSubject != null && s.keycloakSubject === currentUserKeycloakSubject
-          const status =
-            invitationsFailed && !s.keycloakSubject
-              ? { text: 'Ukendt, invitationer kunne ikke hentes', badge: undefined }
-              : loginStatus(s, invite)
+          const status = invitationsUnknown
+            ? {
+                text: invitationsFailed ? 'Ukendt, invitationer kunne ikke hentes' : 'Henter …',
+                badge: undefined,
+              }
+            : loginStatus(s, invite)
           const actions: RowAction[] = []
-          if (!s.keycloakSubject && !isSelf && !invitationsFailed) {
+          if (!invitationsUnknown && !hasLoggedIn(s, invite) && !isSelf) {
             actions.push({
               label: invite ? 'Send invitation igen' : 'Send invitation',
+              testId: `staff-invite-${s.id}`,
               onClick: () => setInvitingStaff(s),
             })
           }
@@ -544,6 +557,7 @@ export default function StaffPage() {
           )
           return {
             key: s.id ?? s.name,
+            testId: `staff-row-${s.id}`,
             name: s.name,
             subtitle: [roleLabel(s.role ?? 'Teacher'), s.isAdmin ? 'Administrator' : null]
               .filter(Boolean)
