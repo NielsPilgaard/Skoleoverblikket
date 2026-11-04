@@ -323,8 +323,8 @@ function GroupComposeModal({
 
       {step === 'audience' && (
         <div>
-          <p className="text-sm font-medium text-gray-700 mb-3">Modtagere</p>
-          <div className="space-y-2 mb-4">
+          <fieldset className="space-y-2 mb-4">
+            <legend className="text-sm font-medium text-gray-700 mb-3">Modtagere</legend>
             {isAdmin && (
               <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                 <input
@@ -351,6 +351,7 @@ function GroupComposeModal({
             </label>
             {audience === 'ClassParents' && classOptions.length > 0 && (
               <select
+                aria-label="Klasse"
                 value={classId}
                 onChange={(e) => handleClassChange(e.target.value)}
                 className="ml-8 w-[calc(100%-2rem)] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -401,6 +402,7 @@ function GroupComposeModal({
                 </label>
                 {audience === 'StaffByRole' && (
                   <select
+                    aria-label="Rolle"
                     value={staffRole}
                     onChange={(e) => handleRoleChange(e.target.value as StaffRole)}
                     className="ml-8 w-[calc(100%-2rem)] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -412,7 +414,7 @@ function GroupComposeModal({
                 )}
               </>
             )}
-          </div>
+          </fieldset>
 
           <div className="mb-5 text-sm text-gray-500">
             {previewLoading && 'Henter modtagere…'}
