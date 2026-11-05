@@ -25,23 +25,18 @@ Test behavior, not implementation. A test should break when product behavior bre
 
 The primary and highest-value test layer. Spin up the full ASP.NET Core pipeline against a real PostgreSQL instance via [Testcontainers for .NET](https://dotnet.testcontainers.org/). Test HTTP in → HTTP out.
 
-**Framework**: [tUnit](https://tunit.dev/) (not xUnit). tUnit is built on `Microsoft.Testing.Platform` with async-first design and source-generated test discovery. It is greenfield-friendly and .NET 8+ only — both apply here. It is still pre-v1.0 (currently ~0.25.x); APIs are mostly stable but breaking changes before v1.0 are possible.
+**Framework**: [tUnit](https://tunit.dev/) (not xUnit), with `TUnit.AspNetCore`. tUnit is built on `Microsoft.Testing.Platform` with async-first design and source-generated test discovery. The version is pinned in the test project's `.csproj`.
 
-**Why tUnit over xUnit here:**
+**How isolation works:**
 
-- `tUnit.AspNetCore` provides per-test isolation via `WebApplicationTest<TFactory, TProgram>` — each test gets its own isolated server instance, eliminating the shared-state flakiness that plagues xUnit `IClassFixture` setups
-- Tests run in parallel by default with `[DependsOn]` and `[ParallelLimiter]` for fine-grained control
-- Async-first: setup/teardown hooks are natively async, assertions are awaitable
+- One `ApiFactory` (a `TestWebApplicationFactory<Program>`) per test session, shared via `[ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]`. It starts the PostgreSQL, Silo (S3) and stripe-mock containers once.
+- Each test isolates itself by creating its own school with a fresh `Guid` tenant id (`TestDataBuilder.CreateSchoolAsync`) and sending it in the `X-Test-TenantId` header. `TestAuthHandler` reads `X-Test-TenantId`, `X-Test-Roles` and `X-Test-Subject`, so each `HttpClient` carries its own identity.
+- Tests run in parallel by default. Because the database is shared, never assert on data outside your own tenant (e.g. global row counts). A test that must touch every school (retention jobs, notices to all schools) gets `[NotInParallel(nameof(MyTests))]`.
+- Emails sent during the session land in `factory.Emails`; filter by an address unique to your test.
 
 **Critical footgun**: tUnit assertions do not execute until awaited. `Assert.That(x).IsEqualTo(1)` without `await` silently passes. Always `await Assert.That(...)`.
 
-**Snapshot testing**: use [Verify.TUnit](https://github.com/VerifyTests/Verify) for stable, happy-path API responses where catching unintended contract drift matters (e.g. the schema assignment response shape, the staff list payload). Verify auto-sanitizes GUIDs and timestamps to deterministic placeholders. `.verified.txt` files are committed and reviewed in PRs like code — a snapshot diff is a contract change.
-
-Do **not** use Verify for:
-
-- Error/ProblemDetails responses (dynamic traceIds, correlationIds make sanitization noisy — assert manually)
-- Any response that changes legitimately on every feature iteration
-- Snapshots over ~50 lines (nobody reviews them carefully enough to be useful)
+**No snapshot testing.** Assert on the fields that matter explicitly; there is no Verify package or `.verified.txt` files.
 
 **Why this layer catches what matters most:**
 
@@ -53,18 +48,19 @@ Do **not** use Verify for:
 
 **Location**: `api/tests/Skoleoverblikket.Api.IntegrationTests/`
 
-**Example scope**: one test class per feature area (`SchemaBuilderTests`, `ConflictDetectionTests`, `StaffInvitationTests`), not one per controller or service.
+**Example scope**: one test class per feature area (`ConflictDetectionTests`, `StaffInvitationTests`, `VacationRegistrationTests`), not one per controller or service.
 
 ### 2. Playwright e2e tests (critical flows only)
 
 For user flows that span frontend + backend and where a broken UI is a broken product. Target the flows a non-technical user would hit and not know how to recover from.
 
-**Covered flows:**
+**Covered flows** (one spec per flow in `web/tests/e2e/`), among others:
 
-- Schema creation and lesson assignment
-- Staff login and schedule view
-- Printable schema generation
-- School setup wizard
+- Signup, login, password reset and the school setup wizard
+- Staff invitation, board member invitation and "Vis som" role switching
+- Schedule views (each lesson shows once, under the right weekday)
+- Fravær and vikardækning
+- Files, calendar, links, Klassechat, CSV import and the admin dashboard
 
 **Location**: `web/tests/e2e/`
 
@@ -100,7 +96,7 @@ These rules are what keep tests from becoming a maintenance burden:
 2. **No testing private or internal methods** — only test via public HTTP endpoints (API) or rendered UI (Playwright).
 3. **Playwright selectors must use `data-testid` attributes** — never CSS classes or DOM structure. Tailwind class names change; `data-testid` values are stable contracts.
 4. **One test file per feature flow**, not per class — `schema-builder.test.ts`, not `SchemaController.Tests.cs`.
-5. **Arrange test data via the API**, not by inserting directly into the DB — this keeps tests resilient to schema changes.
+5. **Arrange test data via the API** where an endpoint exists — this keeps tests resilient to schema changes. For data the API can't create, `TestDataBuilder` resolves the owning feature service from `factory.Services` and calls its create method, never `db.Add(new Entity { ... })` (see [AGENTS.md](../AGENTS.md#encapsulation-thin-controllers-feature-services)).
 
 ---
 
