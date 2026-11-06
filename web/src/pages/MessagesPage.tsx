@@ -23,6 +23,7 @@ import type {
 import { Modal } from '../components/Modal'
 import { useAuth } from '../auth/useAuth'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { Select, RadioCards } from '../components/ui/select'
 
 type RecipientType = 'Parent' | 'Staff'
 
@@ -323,98 +324,44 @@ function GroupComposeModal({
 
       {step === 'audience' && (
         <div>
-          <fieldset className="space-y-2 mb-4">
-            <legend className="text-sm font-medium text-gray-700 mb-3">Modtagere</legend>
-            {isAdmin && (
-              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                <input
-                  type="radio"
-                  name="audience"
-                  value="AllParents"
-                  checked={audience === 'AllParents'}
-                  onChange={() => handleAudienceChange('AllParents')}
-                  className="text-brand-600 focus:ring-brand-500"
-                />
-                <span className="text-sm text-gray-800">Alle forældre</span>
-              </label>
-            )}
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-              <input
-                type="radio"
-                name="audience"
-                value="ClassParents"
-                checked={audience === 'ClassParents'}
-                onChange={() => handleAudienceChange('ClassParents')}
-                className="text-brand-600 focus:ring-brand-500"
-              />
-              <span className="text-sm text-gray-800">Forældre i en klasse</span>
-            </label>
+          <div className="space-y-2 mb-4">
+            <RadioCards
+              label="Modtagere"
+              value={audience}
+              onChange={handleAudienceChange}
+              options={[
+                ...(isAdmin ? [{ value: 'AllParents' as const, label: 'Alle forældre' }] : []),
+                { value: 'ClassParents' as const, label: 'Forældre i en klasse' },
+                ...(isAdmin ? [{ value: 'SfoParents' as const, label: 'SFO-forældre' }] : []),
+                ...(!isParent
+                  ? [
+                      { value: 'AllStaff' as const, label: 'Alt personale' },
+                      { value: 'StaffByRole' as const, label: 'Personale (rolle)' },
+                    ]
+                  : []),
+              ]}
+            />
             {audience === 'ClassParents' && classOptions.length > 0 && (
-              <select
-                aria-label="Klasse"
+              <Select
+                label="Klasse"
+                options={classOptions.map((c) => ({ value: c.id, label: c.name }))}
                 value={classId}
-                onChange={(e) => handleClassChange(e.target.value)}
-                className="ml-8 w-[calc(100%-2rem)] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              >
-                {classOptions.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={handleClassChange}
+              />
             )}
-            {isAdmin && (
-              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                <input
-                  type="radio"
-                  name="audience"
-                  value="SfoParents"
-                  checked={audience === 'SfoParents'}
-                  onChange={() => handleAudienceChange('SfoParents')}
-                  className="text-brand-600 focus:ring-brand-500"
-                />
-                <span className="text-sm text-gray-800">SFO-forældre</span>
-              </label>
+            {audience === 'StaffByRole' && !isParent && (
+              <Select
+                label="Rolle"
+                options={[
+                  { value: 'Teacher', label: 'Lærere' },
+                  { value: 'Aide', label: 'Pædagoger' },
+                  { value: 'Substitute', label: 'Vikarer' },
+                ]}
+                value={staffRole}
+                onChange={(value) => handleRoleChange(value as StaffRole)}
+              />
             )}
-            {!isParent && (
-              <>
-                <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="audience"
-                    value="AllStaff"
-                    checked={audience === 'AllStaff'}
-                    onChange={() => handleAudienceChange('AllStaff')}
-                    className="text-brand-600 focus:ring-brand-500"
-                  />
-                  <span className="text-sm text-gray-800">Alt personale</span>
-                </label>
-                <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="audience"
-                    value="StaffByRole"
-                    checked={audience === 'StaffByRole'}
-                    onChange={() => handleAudienceChange('StaffByRole')}
-                    className="text-brand-600 focus:ring-brand-500"
-                  />
-                  <span className="text-sm text-gray-800">Personale (rolle)</span>
-                </label>
-                {audience === 'StaffByRole' && (
-                  <select
-                    aria-label="Rolle"
-                    value={staffRole}
-                    onChange={(e) => handleRoleChange(e.target.value as StaffRole)}
-                    className="ml-8 w-[calc(100%-2rem)] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  >
-                    <option value="Teacher">Lærere</option>
-                    <option value="Aide">Pædagoger</option>
-                    <option value="Substitute">Vikarer</option>
-                  </select>
-                )}
-              </>
-            )}
-          </fieldset>
+          </div>
 
           <div className="mb-5 text-sm text-gray-500">
             {previewLoading && 'Henter modtagere…'}

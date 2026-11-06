@@ -17,6 +17,7 @@ import { ExternalLinkIcon, ExternalLinkRow, linkHost } from '../components/Links
 import { Modal } from '../components/Modal'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { problemDetail } from '../lib/problem'
+import { RadioCards } from '../components/ui/select'
 
 const inputClass =
   'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent'
@@ -161,34 +162,20 @@ function LinkModal({ initial, onClose }: { initial?: ExternalLinkAdminDto; onClo
         </fieldset>
 
         {parents && (
-          <fieldset>
-            <legend className="block text-sm font-medium text-gray-700 mb-2">
-              Hvilke forældre?
-            </legend>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="radio"
-                  name="link-classes"
-                  data-testid="link-classes-all"
-                  checked={!restrict}
-                  onChange={() => setRestrict(false)}
-                  className="w-4 h-4 border-gray-300 text-brand-600 focus:ring-brand-500"
-                />
-                Hele skolen
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="radio"
-                  name="link-classes"
-                  data-testid="link-classes-some"
-                  checked={restrict}
-                  onChange={() => setRestrict(true)}
-                  className="w-4 h-4 border-gray-300 text-brand-600 focus:ring-brand-500"
-                />
-                Kun forældre i bestemte klasser
-              </label>
-            </div>
+          <div>
+            <RadioCards
+              label="Hvilke forældre?"
+              value={restrict ? 'some' : 'all'}
+              onChange={(value) => setRestrict(value === 'some')}
+              options={[
+                { value: 'all', label: 'Hele skolen', testId: 'link-classes-all' },
+                {
+                  value: 'some',
+                  label: 'Kun forældre i bestemte klasser',
+                  testId: 'link-classes-some',
+                },
+              ]}
+            />
             {restrict && (
               <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {classes?.map((c) => (
@@ -209,7 +196,7 @@ function LinkModal({ initial, onClose }: { initial?: ExternalLinkAdminDto; onClo
               </div>
             )}
             {noClasses && <p className="mt-2 text-sm text-amber-700">Vælg mindst én klasse.</p>}
-          </fieldset>
+          </div>
         )}
 
         {error && (

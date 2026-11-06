@@ -1,5 +1,6 @@
 import { useAuth } from '../auth/useAuth'
 import type { SchoolRole } from '../auth/actingAs'
+import { SegmentedControl } from './ui/select'
 
 const labels: Record<SchoolRole, string> = {
   staff: 'Medarbejder',
@@ -25,32 +26,20 @@ export default function RoleSwitcher() {
 
   return (
     <div data-testid="role-switcher" className="px-3 py-2">
-      <p className="text-xs font-medium text-brand-300 mb-1.5">Vis som</p>
-      <div className="flex flex-col gap-1">
-        {schoolRoles.map(({ role, active }) => {
-          const current = role === actingAs
-          return (
-            <button
-              key={role}
-              type="button"
-              data-testid={`role-switcher-${role}`}
-              aria-pressed={current}
-              disabled={current || !active}
-              onClick={() => switchRole(role)}
-              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                current
-                  ? 'bg-brand-700 text-white font-medium'
-                  : active
-                    ? 'text-brand-200 hover:bg-brand-800 hover:text-white'
-                    : 'text-brand-400 cursor-not-allowed'
-              }`}
-            >
-              {labels[role]}
-              {!active && <span className="block text-xs text-brand-400">{moduleOff[role]}</span>}
-            </button>
-          )
-        })}
-      </div>
+      <SegmentedControl
+        label="Vis som"
+        vertical
+        onDark
+        value={actingAs}
+        onChange={switchRole}
+        options={schoolRoles.map(({ role, active }) => ({
+          value: role,
+          label: labels[role],
+          description: active ? undefined : moduleOff[role],
+          disabled: !active,
+          testId: `role-switcher-${role}`,
+        }))}
+      />
     </div>
   )
 }

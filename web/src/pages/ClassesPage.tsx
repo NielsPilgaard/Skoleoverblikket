@@ -27,6 +27,7 @@ import { DatePicker } from '../components/DatePicker'
 import { detectGradeLevel, GRADE_LEVEL_LABELS } from '../utils/gradeLevel'
 import { useAuth } from '../auth/useAuth'
 import { useSubscription } from '../hooks/useSubscription'
+import { Select } from '../components/ui/select'
 
 interface CopySchemaModalProps {
   classId: string
@@ -85,19 +86,15 @@ function CopySchemaModal({
     <Modal isOpen onClose={onClose} title="Kopiér skema">
       <div className="px-6 py-5 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Kopiér til klasse</label>
-          <select
+          <Select
+            label="Kopiér til klasse"
+            options={(allClasses ?? []).map((c) => ({
+              value: c.id,
+              label: c.id === classId ? `${c.name} (samme klasse)` : c.name,
+            }))}
             value={targetClassId}
-            onChange={(e) => setTargetClassId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
-          >
-            {allClasses?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {c.id === classId ? ' (samme klasse)' : ''}
-              </option>
-            ))}
-          </select>
+            onChange={setTargetClassId}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Navn på kopi *</label>
@@ -202,19 +199,18 @@ function ClassModal({ initial, onClose, onSaved }: ClassModalProps) {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Klassetrin</label>
-          <select
-            value={gradeLevel ?? ''}
-            onChange={(e) => setGradeLevel(e.target.value === '' ? null : Number(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
-          >
-            <option value="">— ukendt —</option>
-            {Object.entries(GRADE_LEVEL_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <Select
+            label="Klassetrin"
+            options={[
+              { value: '', label: '— ukendt —' },
+              ...Object.entries(GRADE_LEVEL_LABELS).map(([val, label]) => ({
+                value: val,
+                label,
+              })),
+            ]}
+            value={gradeLevel === null ? '' : String(gradeLevel)}
+            onChange={(value) => setGradeLevel(value === '' ? null : Number(value))}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Beskrivelse</label>
@@ -555,18 +551,17 @@ function ClassPermissionsTab({ classId }: { classId: string }) {
             Tilføj medarbejder
           </p>
           <div className="flex flex-wrap gap-2">
-            <select
+            <Select
+              label="Medarbejder"
+              hideLabel
+              options={[
+                { value: '', label: 'Vælg medarbejder…' },
+                ...ungrantedStaff.map((s) => ({ value: s.id, label: s.name })),
+              ]}
               value={selectedStaffId}
-              onChange={(e) => setSelectedStaffId(e.target.value)}
-              className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
-            >
-              <option value="">Vælg medarbejder…</option>
-              {ungrantedStaff.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedStaffId}
+              className="flex-1 min-w-0"
+            />
             <button
               data-testid="grant-permission-btn"
               disabled={!selectedStaffId || grantMutation.isPending}
@@ -938,7 +933,7 @@ export default function ClassesPage() {
         {isAdmin && (
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
+            className="flex items-center min-h-11 min-w-11 justify-center sm:min-h-0 sm:min-w-0 gap-2 px-3 py-2 sm:px-4 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
           >
             <svg
               width="16"

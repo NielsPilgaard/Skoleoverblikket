@@ -17,6 +17,8 @@ import {
 import type { StaffDto, StaffRole, InvitationDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 import keycloak from '../auth/keycloak'
+import { type Badge, PersonList, type RowAction } from '../components/ui/list'
+import { Select } from '../components/ui/select'
 
 const ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
   { value: 'Teacher', label: 'Lærer' },
@@ -24,14 +26,42 @@ const ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
   { value: 'Substitute', label: 'Vikar' },
 ]
 
+const ROLE_PLURAL: Record<StaffRole, string> = {
+  Teacher: 'Lærere',
+  Aide: 'Pædagoger',
+  Substitute: 'Vikarer',
+}
+
 function roleLabel(role: StaffRole): string {
   return ROLE_OPTIONS.find((r) => r.value === role)?.label ?? role
 }
 
-function roleBadge(role: StaffRole): string {
-  if (role === 'Teacher') return 'bg-blue-100 text-blue-700'
-  if (role === 'Aide') return 'bg-teal-100 text-teal-700'
-  return 'bg-gray-100 text-gray-600'
+function byName(a: StaffDto, b: StaffDto) {
+  return a.name.localeCompare(b.name, 'da')
+}
+
+/** Login state for the list: no badge once the person has logged in. */
+/**
+ * The login is created when the invitation is sent, so a login alone doesn't mean the person has
+ * logged in. An invitation not yet accepted says they haven't.
+ */
+function hasLoggedIn(s: StaffDto, invite: InvitationDto | undefined): boolean {
+  return !!s.keycloakSubject && (!invite || invite.status === 'Accepted')
+}
+
+function loginStatus(
+  s: StaffDto,
+  invite: InvitationDto | undefined
+): { text: string; badge?: Badge } {
+  if (hasLoggedIn(s, invite)) return { text: 'Aktiv' }
+  if (!invite) return { text: 'Ikke inviteret', badge: { label: 'Ikke inviteret', tone: 'gray' } }
+  if (invite.status === 'Expired')
+    return { text: 'Invitationen er udløbet', badge: { label: 'Invitation udløbet', tone: 'red' } }
+  const sent = invite.createdAt ? ` ${new Date(invite.createdAt).toLocaleDateString('da-DK')}` : ''
+  return {
+    text: `Inviteret${sent}, ikke logget ind endnu`,
+    badge: { label: 'Inviteret', tone: 'amber' },
+  }
 }
 
 type InviteStatus = 'Pending' | 'Accepted' | 'Expired'
@@ -149,18 +179,12 @@ function StaffModal({ initial, onClose, onSaved, currentUserKeycloakSubject }: S
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Rolle *</label>
-          <select
+          <Select
+            label="Rolle"
+            options={ROLE_OPTIONS.map((r) => ({ value: r.value, label: r.label }))}
             value={role}
-            onChange={(e) => setRole(e.target.value as StaffRole)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
-          >
-            {ROLE_OPTIONS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => setRole(value as StaffRole)}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
@@ -357,9 +381,17 @@ export default function StaffPage() {
   const currentUserKeycloakSubject = (keycloak.tokenParsed as Record<string, string> | undefined)
     ?.sub
 
-  const { data: staff, isLoading, isError, refetch } = useQuery(getApiV1StaffOptions())
-
-  const { data: allInvitations } = useQuery(getApiV1StaffInvitationsOptions())
+  const staffQuery = useQuery(getApiV1StaffOptions())
+  const invitationsQuery = useQuery(getApiV1StaffInvitationsOptions())
+  const staff = staffQuery.data
+  const allInvitations = invitationsQuery.data
+  const isLoading = staffQuery.isLoading
+  const isError = staffQuery.isError
+  // Login status comes from the invitations. Until they're here it is unknown: without them everyone
+  // would look not invited and offer "Send invitation".
+  const invitationsUnknown = !allInvitations
+  const invitationsFailed = invitationsQuery.isError && !allInvitations
+  const refetch = () => void staffQuery.refetch()
 
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
@@ -409,7 +441,7 @@ export default function StaffPage() {
         <button
           onClick={() => setShowCreate(true)}
           aria-label="Opret medarbejder"
-          className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
+          className="flex items-center min-h-11 min-w-11 justify-center sm:min-h-0 sm:min-w-0 gap-2 px-3 py-2 sm:px-4 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
         >
           <svg
             width="16"
@@ -438,186 +470,108 @@ export default function StaffPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Navn
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Rolle
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">
-                  E-mail
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">
-                  Invitation
-                </th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Handlinger
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {isLoading &&
-                Array.from({ length: 4 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="px-5 py-3">
-                      <div className="h-4 w-28 bg-gray-200 rounded" />
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="h-5 w-16 bg-gray-100 rounded-full" />
-                    </td>
-                    <td className="px-5 py-3 hidden sm:table-cell">
-                      <div className="h-4 w-36 bg-gray-100 rounded" />
-                    </td>
-                    <td className="px-5 py-3 hidden lg:table-cell">
-                      <div className="h-4 w-20 bg-gray-100 rounded-full" />
-                    </td>
-                    <td className="px-5 py-3" />
-                  </tr>
-                ))}
-              {!isLoading && staff?.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center">
-                    <p className="text-gray-400 font-medium">Ingen medarbejdere oprettet endnu</p>
-                    <p className="text-gray-400 text-xs mt-1">
-                      Opret din første medarbejder for at komme i gang
-                    </p>
-                  </td>
-                </tr>
-              )}
-              {staff?.map((s) => {
-                const invite = getLatestInvite(s.id ?? '')
-                const isSelf =
-                  s.keycloakSubject != null && s.keycloakSubject === currentUserKeycloakSubject
-                return (
-                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3 font-medium text-gray-900">
-                      <div className="flex items-center gap-2">
-                        {s.name}
-                        {s.isAdmin && (
-                          <span title="Administrator" className="text-brand-600">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
-                            </svg>
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${roleBadge(s.role ?? 'Teacher')}`}
-                      >
-                        {roleLabel(s.role ?? 'Teacher')}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-gray-500 hidden sm:table-cell">
-                      {s.email ?? '—'}
-                    </td>
-                    <td className="px-5 py-3 hidden lg:table-cell">
-                      {invite ? (
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${inviteStatusBadge((invite.status ?? 'Pending') as InviteStatus)}`}
-                        >
-                          {inviteStatusLabel((invite.status ?? 'Pending') as InviteStatus)}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400">Ikke inviteret</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {!isSelf && !s.keycloakSubject && (
-                          <button
-                            onClick={() => setInvitingStaff(s)}
-                            className="p-1.5 text-gray-400 hover:text-brand-600 rounded-md hover:bg-brand-50 transition-colors"
-                            title="Send invitation"
-                          >
-                            <svg
-                              width="15"
-                              height="15"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                              <polyline points="22,6 12,13 2,6" />
-                            </svg>
-                          </button>
-                        )}
-                        <button
-                          onClick={() => navigate(`/medarbejdere/${s.id}/skema`)}
-                          className="p-1.5 text-gray-400 hover:text-brand-600 rounded-md hover:bg-brand-50 transition-colors"
-                          title="Se skema"
-                        >
-                          <svg
-                            width="15"
-                            height="15"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                            <line x1="16" y1="2" x2="16" y2="6" />
-                            <line x1="8" y1="2" x2="8" y2="6" />
-                            <line x1="3" y1="10" x2="21" y2="10" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => setEditingStaff(s)}
-                          className="p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-                          title="Rediger"
-                        >
-                          <svg
-                            width="15"
-                            height="15"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (isSelf) return
-                            if (confirm(`Slet "${s.name}"?`))
-                              deleteMutation.mutate({ path: { id: s.id ?? '' } })
-                          }}
-                          disabled={isSelf}
-                          title={isSelf ? 'Du kan ikke slette dig selv' : 'Slet'}
-                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-400 disabled:hover:bg-transparent"
-                        >
-                          <svg
-                            width="15"
-                            height="15"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                            <path d="M10 11v6M14 11v6" />
-                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+      {invitationsFailed && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between gap-3">
+          <p className="text-amber-900 text-sm font-medium">
+            Kunne ikke hente invitationer, så vi kan ikke vise hvem der er inviteret.
+          </p>
+          <button
+            onClick={() => void invitationsQuery.refetch()}
+            className="h-11 px-3 text-sm font-semibold bg-amber-100 text-amber-900 rounded-lg shrink-0"
+          >
+            Prøv igen
+          </button>
         </div>
-      </div>
+      )}
+
+      <PersonList
+        items={staff}
+        isLoading={isLoading}
+        testId="staff-list"
+        noun={{ one: 'medarbejder', other: 'medarbejdere' }}
+        searchText={(s) => `${s.name} ${s.email ?? ''} ${s.phone ?? ''}`}
+        searchPlaceholder="Søg efter navn eller e-mail"
+        filterLabel="Filtrer efter rolle"
+        filters={[
+          { value: '', label: 'Alle' },
+          ...ROLE_OPTIONS.map((r) => ({
+            value: r.value,
+            label: ROLE_PLURAL[r.value],
+            match: (s: StaffDto) => s.role === r.value,
+          })),
+        ]}
+        sorts={[
+          { value: 'name', label: 'Navn A–Å', compare: byName },
+          {
+            value: 'role',
+            label: 'Rolle',
+            compare: (a, b) =>
+              roleLabel(a.role ?? 'Teacher').localeCompare(roleLabel(b.role ?? 'Teacher'), 'da') ||
+              byName(a, b),
+          },
+          {
+            value: 'inactive',
+            label: 'Ikke logget ind først',
+            compare: (a, b) =>
+              Number(hasLoggedIn(a, getLatestInvite(a.id ?? ''))) -
+                Number(hasLoggedIn(b, getLatestInvite(b.id ?? ''))) || byName(a, b),
+          },
+        ]}
+        empty={
+          <>
+            <p className="font-semibold text-gray-700">Ingen medarbejdere oprettet endnu</p>
+            <p className="text-sm mt-1">Opret din første medarbejder for at komme i gang</p>
+          </>
+        }
+        toPerson={(s) => {
+          const invite = getLatestInvite(s.id ?? '')
+          const isSelf =
+            s.keycloakSubject != null && s.keycloakSubject === currentUserKeycloakSubject
+          const status = invitationsUnknown
+            ? {
+                text: invitationsFailed ? 'Ukendt, invitationer kunne ikke hentes' : 'Henter …',
+                badge: undefined,
+              }
+            : loginStatus(s, invite)
+          const actions: RowAction[] = []
+          if (!invitationsUnknown && !hasLoggedIn(s, invite) && !isSelf) {
+            actions.push({
+              label: invite ? 'Send invitation igen' : 'Send invitation',
+              testId: `staff-invite-${s.id}`,
+              onClick: () => setInvitingStaff(s),
+            })
+          }
+          actions.push(
+            { label: 'Rediger', onClick: () => setEditingStaff(s) },
+            { label: 'Se skema', onClick: () => navigate(`/medarbejdere/${s.id}/skema`) },
+            {
+              label: 'Slet',
+              variant: 'danger',
+              disabled: isSelf,
+              disabledReason: isSelf ? 'Du kan ikke slette dig selv.' : undefined,
+              onClick: () => {
+                if (confirm(`Slet "${s.name}"?`))
+                  deleteMutation.mutate({ path: { id: s.id ?? '' } })
+              },
+            }
+          )
+          return {
+            key: s.id ?? s.name,
+            testId: `staff-row-${s.id}`,
+            name: s.name,
+            subtitle: [roleLabel(s.role ?? 'Teacher'), s.isAdmin ? 'Administrator' : null]
+              .filter(Boolean)
+              .join(' · '),
+            badge: status.badge,
+            details: [
+              { label: 'E-mail', value: s.email ?? '—' },
+              { label: 'Telefon', value: s.phone ?? '—' },
+              { label: 'Login', value: status.text },
+            ],
+            actions,
+          }
+        }}
+      />
 
       {showCreate && (
         <StaffModal

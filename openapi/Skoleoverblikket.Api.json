@@ -3959,6 +3959,49 @@
         ]
       }
     },
+    "/api/v1/files/recent": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeekPlanService_RecentFileDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeekPlanService_RecentFileDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeekPlanService_RecentFileDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/files/presign": {
       "post": {
         "tags": [
@@ -14581,6 +14624,7 @@
       "ParentMeController_ParentStudentDto": {
         "required": [
           "classId",
+          "isEnrolledInSfo",
           "studentId",
           "studentName"
         ],
@@ -14596,6 +14640,9 @@
           "classId": {
             "type": "string",
             "format": "uuid"
+          },
+          "isEnrolledInSfo": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -17403,6 +17450,15 @@
           "notes": {
             "type": "string",
             "nullable": true
+          },
+          "notesUpdatedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "notesUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -17506,6 +17562,15 @@
           },
           "notes": {
             "type": "string",
+            "nullable": true
+          },
+          "notesUpdatedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "notesUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
@@ -17629,6 +17694,41 @@
           },
           "url": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WeekPlanService_RecentFileDto": {
+        "required": [
+          "contentType",
+          "fileName",
+          "id",
+          "lastUsedAt",
+          "sizeBytes"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "courseName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false

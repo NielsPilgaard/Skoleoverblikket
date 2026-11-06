@@ -12,6 +12,7 @@ import type { AffectedLessonDto } from '../api/generated/types.gen'
 import { StaffAbsenceForm } from '../components/absence/StaffAbsenceForm'
 import { capitalizeFirst, formatDateTimeRange, formatLongDate } from '../lib/absence'
 import { problemDetail } from '../lib/problem'
+import { Select } from '../components/ui/select'
 
 const ROLE_LABEL = { Teacher: 'Lærer', Aide: 'Pædagog', Substitute: 'Vikar' } as const
 
@@ -176,24 +177,25 @@ export default function SubstituteCoverDetailPage() {
                     </button>
                   </div>
                 ) : (
-                  <select
-                    value=""
-                    onChange={(e) => e.target.value && setSubstitute(l, e.target.value)}
+                  <Select
+                    label="Vælg vikar"
+                    hideLabel
+                    options={[
+                      {
+                        value: '',
+                        label: (l.candidates ?? []).length === 0 ? 'Ingen ledige' : 'Vælg vikar',
+                      },
+                      ...(l.candidates ?? []).map((c) => ({
+                        value: c.id,
+                        label: c.role === 'Substitute' ? `${c.name} (vikar)` : c.name,
+                      })),
+                    ]}
+                    value={''}
                     disabled={assign.isPending}
-                    aria-label="Vælg vikar"
-                    data-testid={`cover-candidates-${l.schemaSlotId}-${l.date}`}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm max-w-full"
-                  >
-                    <option value="">
-                      {(l.candidates ?? []).length === 0 ? 'Ingen ledige' : 'Vælg vikar'}
-                    </option>
-                    {(l.candidates ?? []).map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                        {c.role === 'Substitute' ? ' (vikar)' : ''}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(value) => value && setSubstitute(l, value)}
+                    testId={`cover-candidates-${l.schemaSlotId}-${l.date}`}
+                    className="max-w-full"
+                  />
                 )}
               </li>
             ))}

@@ -9,6 +9,9 @@ public static class ClaimsPrincipalExtensions
 	public static string? GetKeycloakSubject(this ClaimsPrincipal user) =>
 		user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub");
 
+	public static string? GetDisplayName(this ClaimsPrincipal user) =>
+		user.FindFirstValue("name") ?? user.FindFirstValue("preferred_username");
+
 	public static string? GetEmail(this ClaimsPrincipal user) =>
 		user.FindFirstValue("email");
 }

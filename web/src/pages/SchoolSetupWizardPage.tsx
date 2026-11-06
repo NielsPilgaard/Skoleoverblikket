@@ -15,6 +15,7 @@ import {
   getApiV1SchoolsOnboardingStatusQueryKey,
 } from '../api/generated/@tanstack/react-query.gen'
 import type { OnboardingStatusDto } from '../api/client'
+import { Select } from '../components/ui/select'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -573,20 +574,23 @@ function StepCreateClasses({ onNext, onSkip }: { onNext: () => void; onSkip: () 
                   }
                 }}
               />
-              <select
-                value={item.gradeLevel ?? ''}
-                onChange={(e) =>
-                  updateGradeLevel(i, e.target.value === '' ? null : Number(e.target.value))
+              <Select
+                label="Klassetrin"
+                hideLabel
+                options={[
+                  { value: '', label: '— klassetrin —' },
+                  ...Object.entries(GRADE_LEVEL_LABELS).map(([val, label]) => ({
+                    value: val,
+                    label,
+                  })),
+                ]}
+                value={
+                  item.gradeLevel === null || item.gradeLevel === undefined
+                    ? ''
+                    : String(item.gradeLevel)
                 }
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
-              >
-                <option value="">— klassetrin —</option>
-                {Object.entries(GRADE_LEVEL_LABELS).map(([val, label]) => (
-                  <option key={val} value={val}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => updateGradeLevel(i, value === '' ? null : Number(value))}
+              />
             </div>
             {items.length > 1 && (
               <button

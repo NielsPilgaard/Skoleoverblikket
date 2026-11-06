@@ -10,6 +10,7 @@ import type {
 import { buildSlotGrid, buildTimeAxis } from '../../lib/timeAxis'
 import { WEEKDAYS } from '../../lib/weekdays'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { Select } from '../../components/ui/select'
 
 function ClassScheduleGrid({ classId, className }: { classId: string; className: string }) {
   const {
@@ -119,18 +120,14 @@ export default function ParentSchemaPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-xl font-semibold text-gray-900">Skema</h1>
         {students.length > 1 && (
-          <select
+          <Select
+            label="Barn"
+            hideLabel
+            options={students.map((s) => ({ value: s.studentId, label: s.studentName }))}
             value={selectedStudent?.studentId ?? ''}
-            onChange={(e) => setSelectedStudentId(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            data-testid="child-picker"
-          >
-            {students.map((s) => (
-              <option key={s.studentId} value={s.studentId}>
-                {s.studentName}
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedStudentId}
+            testId="child-picker"
+          />
         )}
       </div>
       {students.length === 0 ? (

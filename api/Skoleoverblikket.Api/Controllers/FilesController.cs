@@ -16,7 +16,8 @@ namespace Skoleoverblikket.Api.Controllers;
 public sealed class FilesController(
 	AppDbContext db,
 	ITenantContext tenant,
-	FileUploadService uploads) : ControllerBase
+	FileUploadService uploads,
+	WeekPlanService weekPlans) : ControllerBase
 {
 	public record FileDto(
 		Guid Id,
@@ -117,6 +118,15 @@ public sealed class FilesController(
 	}
 
 	public record FilesResponseDto(List<FileDto> Files, List<FolderDto> Folders);
+
+	/// <summary>The files the caller most recently attached to a lektion, for the file picker.</summary>
+	[HttpGet("recent")]
+	public async Task<ActionResult<List<WeekPlanService.RecentFileDto>>> GetRecent(CancellationToken cancellationToken)
+	{
+		const int take = 3;
+		var subject = User.GetKeycloakSubject();
+		return subject is null ? [] : await weekPlans.GetRecentlyAttachedFilesAsync(subject, take, cancellationToken);
+	}
 
 	public record PresignRequest(
 		[Required] string FileName,

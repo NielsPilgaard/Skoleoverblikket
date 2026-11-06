@@ -58,6 +58,13 @@ test.describe.serial('Staff invitation flow', () => {
     }, staff.id)
     expect(inviteResult.ok, `Send invitation failed: ${inviteResult.status}`).toBeTruthy()
 
+    // The login exists from here on, but nobody has used it: the list must say invited, and offer a resend.
+    await page.goto('/medarbejdere')
+    const row = page.getByTestId(`staff-row-${staff.id}`)
+    await expect(row).toContainText('Inviteret', { timeout: 15_000 })
+    await row.locator('button').first().click()
+    await expect(page.getByTestId(`staff-invite-${staff.id}`)).toBeVisible()
+
     // --- Step 4: extract invitation link from Mailpit ---
     // Retry a few times in case email delivery is slightly delayed
     let invitationUrl: string | undefined
@@ -118,5 +125,13 @@ test.describe.serial('Staff invitation flow', () => {
       apiErrors,
       `Got 403 errors on staff schedule page:\n${apiErrors.map((e) => e.url).join('\n')}`
     ).toHaveLength(0)
+
+    // Accepted: now they are active, and there is nothing left to resend.
+    await page.reload()
+    await expect(row).toBeVisible({ timeout: 15_000 })
+    await expect(row).not.toContainText('Inviteret')
+    await row.locator('button').first().click()
+    await expect(row).toContainText('Aktiv')
+    await expect(page.getByTestId(`staff-invite-${staff.id}`)).toBeHidden()
   })
 })
