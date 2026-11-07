@@ -40,7 +40,7 @@
     </PackageReference>
     <!-- Above Swashbuckle's 2.7.5: the build-time spec generator in Microsoft.Extensions.ApiDescription.Server 10.0.14 is built
          against Microsoft.OpenApi 2.12.2 and fails to load an older one. Stay on 2.x until Swashbuckle depends on 3.x. -->
-    <PackageReference Include="Microsoft.OpenApi" Version="3.11.0" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.13.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageReference Include="Refit.HttpClientFactory" Version="16.4.0" />
     <PackageReference Include="Stripe.net" Version="47.4.0" />
