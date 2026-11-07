@@ -17,10 +17,11 @@ RUN mkdir /prod && for f in /realms/*.json; do \
     # Fail the build if a secret or password is still there.
     && jq -s -e '[.[] | .. | objects | select(has("secret") or has("credentials"))] | length == 0' /prod/*.json > /dev/null
 
-# Pinned to a digest: the 26.8 tag moved on 2026-11-05/06 to a build whose admin API rejects the
-# skoleoverblikket-admin service account's token (401), which broke signup and invitations.
-# This is the last digest that passed e2e. Move it forward only when e2e passes on the new one.
-FROM quay.io/keycloak/keycloak:26.8@sha256:3f3c5f8e03c614774b4bd9173b88391fefa4153bfc010d8012d59ad825377332
+# Pinned by digest so a moved tag cannot change Keycloak under us: 26.8 moved to 26.8.2 on 2026-11-05,
+# whose admin API audience check broke signup and invitations until the realm gave the
+# skoleoverblikket-admin client the kc-admin-api scope. Dependabot proposes new digests as PRs, so e2e
+# runs against a new Keycloak before it ships. Keep the Aspire AppHost on the same digest.
+FROM quay.io/keycloak/keycloak:26.8.2@sha256:3879c623248408de29a5303178b5816c77e8dfef3890c361f8c0bbeaa979ba3b
 
 COPY --from=realm /prod/ /opt/keycloak/data/import/
 COPY themes/ /opt/keycloak/themes/
