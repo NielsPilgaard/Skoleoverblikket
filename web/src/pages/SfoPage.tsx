@@ -485,10 +485,10 @@ export default function SfoPage() {
                 <div key={slotKey} className="contents">
                   {/* Row label */}
                   <div className="bg-gray-50 border-b border-r border-gray-200 p-1.5 sm:p-3 flex flex-col justify-center overflow-hidden">
-                    <span className="text-[10px] sm:text-xs text-gray-500 font-mono leading-tight whitespace-nowrap">
+                    <span className="text-[10px] sm:text-xs text-gray-500 font-mono leading-tight sm:leading-4 whitespace-nowrap">
                       {slotMeta.startTime}
                     </span>
-                    <span className="text-[10px] sm:text-xs text-gray-400 font-mono leading-tight whitespace-nowrap">
+                    <span className="text-[10px] sm:text-xs text-gray-400 font-mono leading-tight sm:leading-4 whitespace-nowrap">
                       – {slotMeta.endTime}
                     </span>
                     {slotMeta.label && (
