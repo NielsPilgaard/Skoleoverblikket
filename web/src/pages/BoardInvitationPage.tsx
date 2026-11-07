@@ -110,15 +110,15 @@ export default function BoardInvitationPage() {
       <Helmet>
         <meta name="robots" content="noindex,nofollow" />
       </Helmet>
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-6">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xs border border-gray-200 p-8 space-y-6">
         <div className="flex justify-center">
           <Logo variant="light" size={40} />
         </div>
 
         {loading ? (
           <div className="animate-pulse space-y-3">
-            <div className="h-5 bg-gray-200 rounded w-3/4 mx-auto" />
-            <div className="h-4 bg-gray-100 rounded w-1/2 mx-auto" />
+            <div className="h-5 bg-gray-200 rounded-sm w-3/4 mx-auto" />
+            <div className="h-4 bg-gray-100 rounded-sm w-1/2 mx-auto" />
           </div>
         ) : error ? (
           <div className="text-center">
@@ -190,7 +190,7 @@ export default function BoardInvitationPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     data-testid="board-invitation-password"
-                    className="w-full px-3 py-2 pr-16 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="w-full px-3 py-2 pr-16 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
                   />
                   <button
                     type="button"

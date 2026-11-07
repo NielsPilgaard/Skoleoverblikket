@@ -71,7 +71,7 @@ function RoomModal({ initial, onClose, onSaved }: RoomModalProps) {
               }
             }}
             placeholder="fx Lokale 12"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -89,7 +89,7 @@ function RoomModal({ initial, onClose, onSaved }: RoomModalProps) {
             type="number"
             min="1"
             placeholder="fx 30"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -104,7 +104,7 @@ function RoomModal({ initial, onClose, onSaved }: RoomModalProps) {
               }
             }}
             placeholder="fx Musikundervisning"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         {isError && <p className="text-sm text-red-600">Der opstod en fejl. Prøv igen.</p>}
@@ -210,13 +210,13 @@ export default function RoomsPage() {
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
                     <td className="px-5 py-3">
-                      <div className="h-4 w-24 bg-gray-200 rounded" />
+                      <div className="h-4 w-24 bg-gray-200 rounded-sm" />
                     </td>
                     <td className="px-5 py-3 hidden sm:table-cell">
-                      <div className="h-4 w-12 bg-gray-100 rounded" />
+                      <div className="h-4 w-12 bg-gray-100 rounded-sm" />
                     </td>
                     <td className="px-5 py-3 hidden md:table-cell">
-                      <div className="h-4 w-40 bg-gray-100 rounded" />
+                      <div className="h-4 w-40 bg-gray-100 rounded-sm" />
                     </td>
                     <td className="px-5 py-3" />
                   </tr>
