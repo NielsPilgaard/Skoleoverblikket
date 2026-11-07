@@ -17,7 +17,10 @@ RUN mkdir /prod && for f in /realms/*.json; do \
     # Fail the build if a secret or password is still there.
     && jq -s -e '[.[] | .. | objects | select(has("secret") or has("credentials"))] | length == 0' /prod/*.json > /dev/null
 
-FROM quay.io/keycloak/keycloak:26.8
+# Pinned to a digest: the 26.8 tag moved on 2026-11-05/06 to a build whose admin API rejects the
+# skoleoverblikket-admin service account's token (401), which broke signup and invitations.
+# This is the last digest that passed e2e. Move it forward only when e2e passes on the new one.
+FROM quay.io/keycloak/keycloak:26.8@sha256:3f3c5f8e03c614774b4bd9173b88391fefa4153bfc010d8012d59ad825377332
 
 COPY --from=realm /prod/ /opt/keycloak/data/import/
 COPY themes/ /opt/keycloak/themes/
