@@ -23,7 +23,7 @@
   <ItemGroup>
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.Uris" Version="9.0.0" />
-    <PackageReference Include="AWSSDK.S3" Version="4.0.104.8" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.104.11" />
     <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="Elmah.Io.AspNetCore" Version="5.3.88" />
     <PackageReference Include="Elmah.Io.Extensions.Logging" Version="5.4.75" />

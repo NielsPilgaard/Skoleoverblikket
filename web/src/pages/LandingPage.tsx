@@ -67,7 +67,7 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="py-24 px-6 text-center bg-gradient-to-b from-brand-50 to-white">
         <div className="max-w-3xl mx-auto">
-          <h1 className="font-display text-5xl sm:text-6xl font-semibold text-brand-900 leading-tight">
+          <h1 className="font-display text-5xl sm:text-6xl font-semibold text-brand-900 leading-tight sm:leading-none">
             Spar tid på det kedelige — brug den på børnene
           </h1>
           <p className="mt-6 text-lg text-gray-600 max-w-xl mx-auto">

@@ -62,7 +62,7 @@ export function FilePicker({ selectedFileIds, onToggle, disabled = false }: File
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Søg efter filnavn eller fag…"
-        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
       />
 
       {showEmptyState && (
@@ -111,7 +111,7 @@ export function FilePicker({ selectedFileIds, onToggle, disabled = false }: File
       {isLoading ? (
         <div className="space-y-1 border border-gray-200 rounded-lg p-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="animate-pulse h-8 bg-gray-100 rounded" />
+            <div key={i} className="animate-pulse h-8 bg-gray-100 rounded-sm" />
           ))}
         </div>
       ) : (
@@ -151,7 +151,7 @@ export function FilePicker({ selectedFileIds, onToggle, disabled = false }: File
                       checked={isChecked}
                       disabled={disabled}
                       onChange={(e) => onToggle(f.id!, e.target.checked)}
-                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-500 shrink-0"
+                      className="rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500 shrink-0"
                     />
                     <span className="text-gray-400 shrink-0">
                       <FileIcon contentType={f.contentType ?? ''} />

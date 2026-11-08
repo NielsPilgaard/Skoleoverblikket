@@ -41,7 +41,7 @@ function FlagBadge({ flag }: { flag: AbsenceFlag }) {
   const critical = flag === 'FifteenPercent'
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs font-medium ${
         critical ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-900'
       }`}
     >
@@ -56,7 +56,7 @@ function Legend() {
     <div className="flex flex-wrap gap-4 text-xs text-gray-600">
       {CHART_CATEGORY_ORDER.map((c) => (
         <span key={c} className="inline-flex items-center gap-1.5">
-          <span className={`w-2.5 h-2.5 rounded-sm ${CATEGORY_FILL[c]}`} aria-hidden />
+          <span className={`w-2.5 h-2.5 rounded-xs ${CATEGORY_FILL[c]}`} aria-hidden />
           {CATEGORY_LABEL[c]}
         </span>
       ))}
@@ -108,7 +108,7 @@ function WeeklyAbsenceChart({ weeks }: { weeks: WeekAbsenceDto[] }) {
                   </p>
                   {CHART_CATEGORY_ORDER.map((c) => (
                     <p key={c} className="flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-sm ${CATEGORY_FILL[c]}`} aria-hidden />
+                      <span className={`w-2 h-2 rounded-xs ${CATEGORY_FILL[c]}`} aria-hidden />
                       {CATEGORY_LABEL[c]}: {formatDays(weekValue(w, c))}
                     </p>
                   ))}
@@ -251,7 +251,7 @@ export function AbsenceStatsTab({ isAdmin }: { isAdmin: boolean }) {
             {CHART_CATEGORY_ORDER.map((c) => (
               <div key={c} className="bg-white border border-gray-200 rounded-xl p-4">
                 <p className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span className={`w-2.5 h-2.5 rounded-sm ${CATEGORY_FILL[c]}`} aria-hidden />
+                  <span className={`w-2.5 h-2.5 rounded-xs ${CATEGORY_FILL[c]}`} aria-hidden />
                   {CATEGORY_LABEL[c]}
                 </p>
                 <p className="text-2xl font-semibold text-gray-900 mt-1">

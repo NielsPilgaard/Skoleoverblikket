@@ -37,7 +37,7 @@ Every page builds its own buttons, dialogs and states, so the same thing looks a
 
 Round 1 is published at <https://claude.ai/artifact/Jw7yR1mhfDjXt1FEgo5x1s> (private to Niels, slug `9139d15e-b6c3-4f85-9732-47f801a8da0e`). Read its HTML with the artifacts `read_artifact` tool and reuse the scaffold (head, icon sprite, switcher script) rather than rebuilding it.
 
-- **One self-contained HTML page.** Tailwind Play CDN (`cdn.tailwindcss.com?plugins=container-queries`) with the `brand` colors and the Lato/Playfair Display fonts from [tailwind.config.js](../../web/tailwind.config.js). Danish UI text and realistic data (Hanne Jensen, Thomas Nielsen, 3.A, uge 45).
+- **One self-contained HTML page.** Tailwind Play CDN (`cdn.tailwindcss.com?plugins=container-queries`) with the `brand` colors and the Lato/Playfair Display fonts from [index.css](../../web/src/index.css). Danish UI text and realistic data (Hanne Jensen, Thomas Nielsen, 3.A, uge 45).
 - **Variant switcher** in each section: numbered tabs, ‹ › buttons, ←/→ keys, a "Vis alle" toggle, and a `#id` per variant (round 1 used `t`, `v`, `u`, `l`, `f`; pick unused prefixes).
 - **Telefon / Computer toggle.** Each variant renders in a `.frame` with `@container`; use container variants (`@2xl:`) where the app would use `sm:`/`md:`.
 - **Per variant:** number, name, "Bedst til" line, an interactive mockup, 2–3 pros (+) and 1 con (–). Recommended variants get a green "Anbefalet" badge.
