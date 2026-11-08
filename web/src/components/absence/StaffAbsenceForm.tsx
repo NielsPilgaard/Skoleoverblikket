@@ -129,7 +129,7 @@ export function StaffAbsenceForm({
               checked={partial}
               onChange={(e) => setPartial(e.target.checked)}
               data-testid={`${testIdPrefix}-partial`}
-              className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              className="w-4 h-4 rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500"
             />
             Kun en del af dagen
           </label>
@@ -193,7 +193,7 @@ export function StaffAbsenceForm({
           maxLength={500}
           placeholder={reasonPlaceholder}
           data-testid={`${testIdPrefix}-reason`}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
         />
         <p className="text-xs text-gray-500 mt-1">Skriv ikke diagnoser.</p>
       </div>
