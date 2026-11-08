@@ -66,7 +66,7 @@ function ClassScheduleGrid({ classId, className }: { classId: string; className:
                       {daySlots.map((s, idx) => (
                         <div
                           key={`${s.schemaId ?? ''}-${s.startTime ?? ''}-${idx}`}
-                          className="rounded-sm px-2 py-1 mb-0.5 text-xs"
+                          className="rounded px-2 py-1 mb-0.5 text-xs"
                           style={{
                             backgroundColor: s.courseColor ? `${s.courseColor}22` : '#f3f4f6',
                             borderLeft: `3px solid ${s.courseColor ?? '#9ca3af'}`,
@@ -122,7 +122,7 @@ export default function ParentSchemaPage() {
           <select
             value={selectedStudent?.studentId ?? ''}
             onChange={(e) => setSelectedStudentId(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             data-testid="child-picker"
           >
             {students.map((s) => (

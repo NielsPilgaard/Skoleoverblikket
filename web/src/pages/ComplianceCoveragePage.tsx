@@ -252,7 +252,7 @@ function LiveCoverageTab() {
       {isLoading ? (
         <div className="animate-pulse space-y-2">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-10 bg-gray-100 rounded-sm" />
+            <div key={i} className="h-10 bg-gray-100 rounded" />
           ))}
         </div>
       ) : isError ? (
@@ -284,7 +284,7 @@ function LiveCoverageTab() {
               placeholder="f.eks. Før tilsynsbesøg"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
 
@@ -331,7 +331,7 @@ function SnapshotDetail({ id, onBack }: { id: string; onBack: () => void }) {
       {isLoading ? (
         <div className="animate-pulse space-y-2">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-10 bg-gray-100 rounded-sm" />
+            <div key={i} className="h-10 bg-gray-100 rounded" />
           ))}
         </div>
       ) : isError || !data ? (

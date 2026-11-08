@@ -154,7 +154,7 @@ export default function ClassRolloverPage() {
   if (isLoading) {
     return (
       <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
-        <div className="h-8 w-48 bg-gray-200 rounded-sm animate-pulse" />
+        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
         <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />
       </div>
     )
@@ -246,7 +246,7 @@ export default function ClassRolloverPage() {
                         value={row.newName}
                         onChange={(e) => updateRow(row.classId, 'newName', e.target.value)}
                         disabled={row.archive}
-                        className={`w-full px-2.5 py-1.5 border rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 ${
+                        className={`w-full px-2.5 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 ${
                           isConflict ? 'border-red-400 bg-red-50' : 'border-gray-300'
                         }`}
                         data-testid={`rename-input-${row.currentName}`}
@@ -260,7 +260,7 @@ export default function ClassRolloverPage() {
                         type="checkbox"
                         checked={row.archive}
                         onChange={(e) => updateRow(row.classId, 'archive', e.target.checked)}
-                        className="h-4 w-4 text-brand-600 rounded-sm border-gray-300 focus:ring-brand-500"
+                        className="h-4 w-4 text-brand-600 rounded border-gray-300 focus:ring-brand-500"
                         data-testid={`archive-checkbox-${row.currentName}`}
                       />
                     </div>
@@ -281,7 +281,7 @@ export default function ClassRolloverPage() {
                         value={nc.name}
                         onChange={(e) => updateNewClass(nc.id, e.target.value)}
                         placeholder="f.eks. 0.a"
-                        className={`w-full px-2.5 py-1.5 border rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent ${
+                        className={`w-full px-2.5 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent ${
                           isConflict ? 'border-red-400 bg-red-50' : 'border-gray-300'
                         }`}
                       />

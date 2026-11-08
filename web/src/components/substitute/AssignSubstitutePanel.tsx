@@ -106,7 +106,7 @@ export function AssignSubstitutePanel({
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm flex-col bg-white shadow-xl focus:outline-hidden"
+        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm flex-col bg-white shadow-xl focus:outline-none"
         role="dialog"
         aria-modal="true"
         aria-label="Tildel vikar"

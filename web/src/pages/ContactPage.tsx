@@ -15,7 +15,7 @@ export default function ContactPage() {
       <main className="flex-1 py-20 px-6">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-12">
-            <h1 className="font-display text-4xl sm:text-5xl font-semibold text-brand-900 leading-tight sm:leading-none mb-4">
+            <h1 className="font-display text-4xl sm:text-5xl font-semibold text-brand-900 leading-tight mb-4">
               Kontakt
             </h1>
             <p className="text-lg text-gray-600">

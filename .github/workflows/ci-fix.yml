@@ -70,14 +70,14 @@ jobs:
             echo "CI_LOG_EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v5
         if: steps.check.outputs.skip != 'true'
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
 
       - name: Setup Node.js 24
         if: steps.check.outputs.skip != 'true'
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v5
         with:
           node-version: "24"
           cache: "npm"

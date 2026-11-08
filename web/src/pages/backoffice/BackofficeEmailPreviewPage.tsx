@@ -98,7 +98,7 @@ export default function BackofficeEmailPreviewPage() {
             <select
               value={type}
               onChange={(e) => setType(e.target.value as EmailType)}
-              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               {EMAIL_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -115,7 +115,7 @@ export default function BackofficeEmailPreviewPage() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-44 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           )}
@@ -127,7 +127,7 @@ export default function BackofficeEmailPreviewPage() {
                 type="text"
                 value={school}
                 onChange={(e) => setSchool(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-44 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           )}
@@ -138,7 +138,7 @@ export default function BackofficeEmailPreviewPage() {
                 type="checkbox"
                 checked={existingAccount}
                 onChange={(e) => setExistingAccount(e.target.checked)}
-                className="rounded-sm"
+                className="rounded"
               />
               Har allerede en konto
             </label>
@@ -151,7 +151,7 @@ export default function BackofficeEmailPreviewPage() {
                 type="text"
                 value={change}
                 onChange={(e) => setChange(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-full focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           )}
@@ -163,7 +163,7 @@ export default function BackofficeEmailPreviewPage() {
                 type="text"
                 value={notificationBody}
                 onChange={(e) => setNotificationBody(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-full focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           )}

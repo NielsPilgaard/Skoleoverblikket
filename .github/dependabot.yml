@@ -20,10 +20,6 @@ updates:
       # Billing may move off Stripe (tasks/62-stripe-to-alunta.md); don't chase Stripe.net majors meanwhile.
       - dependency-name: Stripe.net
         update-types: ["version-update:semver-major"]
-      # Swashbuckle is built against Microsoft.OpenApi 2.x; 3.x breaks spec generation at build time.
-      # Drop this once Swashbuckle depends on 3.x.
-      - dependency-name: Microsoft.OpenApi
-        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /web

@@ -89,7 +89,7 @@ function CopySchemaModal({
           <select
             value={targetClassId}
             onChange={(e) => setTargetClassId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
           >
             {allClasses?.map((c) => (
               <option key={c.id} value={c.id}>
@@ -110,7 +110,7 @@ function CopySchemaModal({
                 handleSave()
               }
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         {mutation.isError && <p className="text-sm text-red-600">Der opstod en fejl. Prøv igen.</p>}
@@ -198,7 +198,7 @@ function ClassModal({ initial, onClose, onSaved }: ClassModalProps) {
               }
             }}
             placeholder="fx 5.a"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -206,7 +206,7 @@ function ClassModal({ initial, onClose, onSaved }: ClassModalProps) {
           <select
             value={gradeLevel ?? ''}
             onChange={(e) => setGradeLevel(e.target.value === '' ? null : Number(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
           >
             <option value="">— ukendt —</option>
             {Object.entries(GRADE_LEVEL_LABELS).map(([val, label]) => (
@@ -228,7 +228,7 @@ function ClassModal({ initial, onClose, onSaved }: ClassModalProps) {
               }
             }}
             placeholder="Valgfri beskrivelse"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         {isError && <p className="text-sm text-red-600">Der opstod en fejl. Prøv igen.</p>}
@@ -361,7 +361,7 @@ function SchemaModal({ classId, onClose, onSaved }: SchemaModalProps) {
               }
             }}
             placeholder="fx Efterår 2025"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -558,7 +558,7 @@ function ClassPermissionsTab({ classId }: { classId: string }) {
             <select
               value={selectedStaffId}
               onChange={(e) => setSelectedStaffId(e.target.value)}
-              className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+              className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
             >
               <option value="">Vælg medarbejder…</option>
               {ungrantedStaff.map((s) => (
@@ -974,8 +974,8 @@ export default function ClassesPage() {
         {isLoading &&
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="px-5 py-4 animate-pulse flex justify-between">
-              <div className="h-5 w-20 bg-gray-200 rounded-sm" />
-              <div className="h-5 w-32 bg-gray-100 rounded-sm" />
+              <div className="h-5 w-20 bg-gray-200 rounded" />
+              <div className="h-5 w-32 bg-gray-100 rounded" />
             </div>
           ))}
 

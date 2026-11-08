@@ -222,7 +222,7 @@ function EntryModal({ initial, defaultDate, onClose, onSaved }: EntryModalProps)
             id="calendar-entry-type"
             value={type}
             onChange={(e) => setType(e.target.value as EntryType)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           >
             {Object.keys(TYPE_LABELS).map((t) => (
               <option key={t} value={t}>
@@ -243,7 +243,7 @@ function EntryModal({ initial, defaultDate, onClose, onSaved }: EntryModalProps)
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="fx Efterårsferie"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -288,7 +288,7 @@ function EntryModal({ initial, defaultDate, onClose, onSaved }: EntryModalProps)
             id="calendar-entry-recurrence"
             value={recurrenceRule}
             onChange={(e) => setRecurrenceRule(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           >
             <option value="">Ingen gentagelse</option>
             <option value="FREQ=WEEKLY">Ugentlig</option>
@@ -439,7 +439,7 @@ export default function CalendarPage() {
           <select
             value={schoolStartYear}
             onChange={(e) => setSchoolStartYear(Number(e.target.value))}
-            className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+            className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             {yearOptions.map((y) => (
               <option key={y} value={y}>

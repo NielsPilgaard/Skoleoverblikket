@@ -119,20 +119,7 @@ docker exec -it <keycloak container> /opt/keycloak/bin/kcadm.sh update events/co
 docker exec -it <keycloak container> /opt/keycloak/bin/kcadm.sh update realms/Skoleoverblikket -s attributes.adminEventsExpiration=7776000
 ```
 
-Check the result under Realm settings → Events in the admin console.
-
-Admin API scope for the service account (Keycloak 26.8.2). Since 26.8.2 the admin REST API rejects tokens without the `kc-admin-api` scope with 401, and the upgrade adds that scope only to Keycloak's own clients. Until `skoleoverblikket-admin` has it, school signup and every invitation fail with 502. Do this right after the first deploy that runs 26.8.2, because the scope only exists once Keycloak has migrated. In the admin console: Clients → `skoleoverblikket-admin` → Client scopes → Add client scope → `kc-admin-api` → Add as Default. Or with `kcadm.sh`:
-
-```bash
-KC="docker exec -i <keycloak container> /opt/keycloak/bin/kcadm.sh"
-CID=$($KC get clients -r Skoleoverblikket -q clientId=skoleoverblikket-admin --fields id --format csv --noquotes)
-SID=$($KC get client-scopes -r Skoleoverblikket --fields id,name --format csv --noquotes | grep ',kc-admin-api$' | cut -d, -f1)
-$KC update clients/$CID/default-client-scopes/$SID -r Skoleoverblikket
-```
-
-Check it by inviting a staff member: the invitation is sent instead of failing.
-
-Add a step here for each later realm change.
+Check the result under Realm settings → Events in the admin console. Add a step here for each later realm change.
 
 ---
 

@@ -101,7 +101,7 @@ function NotifyStaffPicker({ studentId, selectedIds, onChange }: NotifyStaffPick
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Søg personale…"
-        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
       />
       <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
         {relevant.length > 0 && (
@@ -118,7 +118,7 @@ function NotifyStaffPicker({ studentId, selectedIds, onChange }: NotifyStaffPick
                   type="checkbox"
                   checked={selectedIds.includes(o.id)}
                   onChange={() => toggle(o.id)}
-                  className="rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500 h-4 w-4 shrink-0"
+                  className="rounded border-gray-300 text-brand-600 focus:ring-brand-500 h-4 w-4 shrink-0"
                 />
                 <span className="text-sm text-gray-900">{o.name}</span>
               </label>
@@ -137,7 +137,7 @@ function NotifyStaffPicker({ studentId, selectedIds, onChange }: NotifyStaffPick
                   type="checkbox"
                   checked={selectedIds.includes(o.id)}
                   onChange={() => toggle(o.id)}
-                  className="rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500 h-4 w-4 shrink-0"
+                  className="rounded border-gray-300 text-brand-600 focus:ring-brand-500 h-4 w-4 shrink-0"
                 />
                 <span className="text-sm text-gray-900">{o.name}</span>
               </label>
@@ -403,7 +403,7 @@ export default function ParentContactBookPage() {
             <div className="px-4 py-3 bg-white border-b border-gray-200 flex items-center gap-3">
               <button
                 onClick={() => setShowMobileMessages(false)}
-                className="lg:hidden p-1 rounded-sm text-gray-500 hover:text-gray-700"
+                className="lg:hidden p-1 rounded text-gray-500 hover:text-gray-700"
                 aria-label="Tilbage"
               >
                 <svg
@@ -472,7 +472,7 @@ export default function ParentContactBookPage() {
                   onChange={(e) => setMessageBody(e.target.value)}
                   rows={3}
                   placeholder="Skriv en besked…"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                       e.preventDefault()
@@ -504,7 +504,7 @@ export default function ParentContactBookPage() {
                 onChange={(e) => setNewMessageBody(e.target.value)}
                 rows={3}
                 placeholder="Skriv din første besked til læreren…"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
               />
               {validStudents.length === 1 && (
                 <details className="group text-left">

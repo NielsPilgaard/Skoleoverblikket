@@ -1,5 +1,5 @@
 import './App.css'
-import { lazy, type ReactElement, Suspense } from 'react'
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import ScrollToTop from './components/ScrollToTop'
@@ -127,13 +127,13 @@ function HomeRedirect() {
   return <LandingPage />
 }
 
-function AdminRoute({ children }: { children: ReactElement }) {
+function AdminRoute({ children }: { children: JSX.Element }) {
   const { isAdmin } = useAuth()
   if (!isAdmin) return <Navigate to="/mig/oversigt" replace />
   return <>{children}</>
 }
 
-function ParentRoute({ children }: { children: ReactElement }) {
+function ParentRoute({ children }: { children: JSX.Element }) {
   const { isParent } = useAuth()
   // Route through HomeRedirect — the caller may be staff or admin, and each
   // resolves to a different landing page.
@@ -141,13 +141,13 @@ function ParentRoute({ children }: { children: ReactElement }) {
   return <>{children}</>
 }
 
-function SuperAdminRoute({ children }: { children: ReactElement }) {
+function SuperAdminRoute({ children }: { children: JSX.Element }) {
   const { isSuperAdmin } = useAuth()
   if (!isSuperAdmin) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
-function BoardRoute({ children }: { children: ReactElement }) {
+function BoardRoute({ children }: { children: JSX.Element }) {
   const { isBoard } = useAuth()
   // Route through HomeRedirect — see ParentRoute.
   if (!isBoard) return <Navigate to="/" replace />
@@ -155,7 +155,7 @@ function BoardRoute({ children }: { children: ReactElement }) {
 }
 
 /** Staff-only (Teacher/Aide/Vikar) — admins, parents, board members and default-mode super admins land elsewhere. */
-function StaffRoute({ children }: { children: ReactElement }) {
+function StaffRoute({ children }: { children: JSX.Element }) {
   const { isAdmin, isParent, isBoard, isSuperAdmin, viewAs } = useAuth()
   if (isAdmin || isParent || isBoard || (isSuperAdmin && viewAs === 'default')) {
     return <Navigate to="/" replace />

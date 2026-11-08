@@ -168,12 +168,12 @@ function normaliseStarBullet(el: HTMLTextAreaElement) {
 const toolbarBtn =
   'inline-flex items-center justify-center w-8 h-8 border border-gray-300 bg-white text-gray-700 ' +
   'hover:bg-gray-100 hover:text-gray-900 active:bg-gray-200 transition-colors text-sm leading-none ' +
-  'focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:z-10 disabled:opacity-50 ' +
+  'focus:outline-none focus:ring-2 focus:ring-brand-500 focus:z-10 disabled:opacity-50 ' +
   'first:rounded-l-md last:rounded-r-md -ml-px first:ml-0'
 
 const previewToggleBtn =
   'inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 transition-colors ' +
-  'focus:outline-hidden focus:ring-2 focus:ring-brand-500 rounded-sm px-1 py-0.5'
+  'focus:outline-none focus:ring-2 focus:ring-brand-500 rounded px-1 py-0.5'
 
 export function MarkdownTextarea({
   value,

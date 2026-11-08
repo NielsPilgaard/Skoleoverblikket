@@ -113,7 +113,7 @@ export default function ParentProfilePage() {
             id="parent-profile-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -129,7 +129,7 @@ export default function ParentProfilePage() {
             onChange={(e) => setPhone(e.target.value)}
             type="tel"
             placeholder="+45 12 34 56 78"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
           {phone.trim() !== '' && !phoneValid && (
             <p className="text-xs text-red-600 mt-1">{PHONE_ERROR_MESSAGE}</p>
@@ -147,7 +147,7 @@ export default function ParentProfilePage() {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="Vejnavn og nummer"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div className="flex gap-3">
@@ -163,7 +163,7 @@ export default function ParentProfilePage() {
               value={postalCode}
               onChange={(e) => setPostalCode(e.target.value)}
               placeholder="0000"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
             {postalCode.trim() !== '' && !postalCodeValid && (
               <p className="text-xs text-red-600 mt-1">{POSTAL_CODE_ERROR_MESSAGE}</p>
@@ -181,7 +181,7 @@ export default function ParentProfilePage() {
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="By"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -190,7 +190,7 @@ export default function ParentProfilePage() {
             type="checkbox"
             checked={shareContactInfo}
             onChange={(e) => setShareContactInfo(e.target.checked)}
-            className="mt-0.5 rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500"
+            className="mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
           />
           <span className="text-sm text-gray-700">
             Del mine kontaktoplysninger med andre forældre i mit barns klasse

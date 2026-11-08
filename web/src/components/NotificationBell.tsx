@@ -161,7 +161,7 @@ export default function NotificationBell({ variant = 'light' }: NotificationBell
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`relative p-1.5 rounded-sm transition-colors ${
+        className={`relative p-1.5 rounded transition-colors ${
           variant === 'dark'
             ? 'text-brand-100 hover:text-white hover:bg-brand-800'
             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'

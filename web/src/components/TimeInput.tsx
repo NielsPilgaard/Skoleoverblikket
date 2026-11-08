@@ -24,7 +24,7 @@ export function TimeInput({ value, onChange, label, className = '' }: TimeInputP
           const hh = String(Math.max(0, Math.min(23, Number(e.target.value)))).padStart(2, '0')
           onChange(`${hh}:${m}`)
         }}
-        className="w-14 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+        className="w-14 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
       />
       <span className="text-gray-400 font-medium select-none" aria-hidden="true">
         :
@@ -41,7 +41,7 @@ export function TimeInput({ value, onChange, label, className = '' }: TimeInputP
           const mm = String(Math.max(0, Math.min(59, Number(e.target.value)))).padStart(2, '0')
           onChange(`${h}:${mm}`)
         }}
-        className="w-14 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+        className="w-14 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
       />
     </div>
   )

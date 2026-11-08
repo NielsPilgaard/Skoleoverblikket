@@ -273,7 +273,7 @@ function InvitationStep({
         placeholder="Søg på navn eller e-mail…"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
-        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-hidden focus:border-brand-400"
+        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-brand-400"
       />
 
       <div className="border border-gray-200 rounded-lg overflow-hidden">
