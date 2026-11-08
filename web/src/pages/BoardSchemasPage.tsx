@@ -17,7 +17,7 @@ export default function BoardSchemasPage() {
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
-              <div className="h-4 w-32 bg-gray-200 rounded-sm" />
+              <div className="h-4 w-32 bg-gray-200 rounded" />
             </div>
           ))}
         </div>

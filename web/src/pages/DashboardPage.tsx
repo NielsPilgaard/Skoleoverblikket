@@ -338,8 +338,8 @@ function roleLabel(role: StaffRole): string {
 function SkeletonCard() {
   return (
     <div className="bg-white rounded-xl border border-gray-200 px-6 py-5 animate-pulse">
-      <div className="h-4 w-24 bg-gray-200 rounded-sm mb-3" />
-      <div className="h-8 w-16 bg-gray-200 rounded-sm" />
+      <div className="h-4 w-24 bg-gray-200 rounded mb-3" />
+      <div className="h-8 w-16 bg-gray-200 rounded" />
     </div>
   )
 }
@@ -348,13 +348,13 @@ function SkeletonTable({ rows = 4 }: { rows?: number }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
       <div className="px-5 py-4 border-b border-gray-100">
-        <div className="h-5 w-40 bg-gray-200 rounded-sm" />
+        <div className="h-5 w-40 bg-gray-200 rounded" />
       </div>
       <div className="divide-y divide-gray-100">
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="px-5 py-3 flex justify-between">
-            <div className="h-4 w-32 bg-gray-100 rounded-sm" />
-            <div className="h-4 w-12 bg-gray-100 rounded-sm" />
+            <div className="h-4 w-32 bg-gray-100 rounded" />
+            <div className="h-4 w-12 bg-gray-100 rounded" />
           </div>
         ))}
       </div>

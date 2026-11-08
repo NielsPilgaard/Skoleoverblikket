@@ -26,9 +26,7 @@ export function CategoryBadge({
   const leave = record.category === 'ExtraordinaryLeave' && record.leaveStatus
   const colors = leave ? LEAVE_STATUS_BADGE[record.leaveStatus!] : CATEGORY_BADGE[record.category]
   return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${colors}`}
-    >
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colors}`}>
       {CATEGORY_LABEL[record.category]}
       {record.halfDay ? ' · halv dag' : ''}
       {leave ? ` · ${LEAVE_STATUS_LABEL[record.leaveStatus!].toLowerCase()}` : ''}
@@ -62,7 +60,7 @@ export function AbsenceRegisterTab() {
   })
 
   const selectClass =
-    'px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500'
+    'px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500'
 
   return (
     <div>
@@ -142,7 +140,7 @@ export function AbsenceRegisterTab() {
                     }
                     aria-label="Kategori"
                     data-testid={`absence-category-${r.id}`}
-                    className={`px-2 py-1 rounded-sm text-xs font-medium border-0 ${CATEGORY_BADGE[r.category]}`}
+                    className={`px-2 py-1 rounded text-xs font-medium border-0 ${CATEGORY_BADGE[r.category]}`}
                   >
                     <option value="Unauthorized">{CATEGORY_LABEL.Unauthorized}</option>
                     <option value="Illness">{CATEGORY_LABEL.Illness}</option>

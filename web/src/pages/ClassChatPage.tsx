@@ -342,7 +342,7 @@ export default function ClassChatPage() {
             <div className="px-4 py-3 bg-white border-b border-gray-200 flex items-center gap-3">
               <button
                 onClick={() => setShowMobileMessages(false)}
-                className="lg:hidden p-1 rounded-sm text-gray-500 hover:text-gray-700"
+                className="lg:hidden p-1 rounded text-gray-500 hover:text-gray-700"
                 aria-label="Tilbage"
               >
                 <svg
@@ -407,7 +407,7 @@ export default function ClassChatPage() {
                         {message.senderName}
                       </span>
                       {message.senderType === 'Staff' && (
-                        <span className="text-xs px-1.5 py-0.5 rounded-sm bg-brand-50 text-brand-700">
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-brand-50 text-brand-700">
                           Skolen
                         </span>
                       )}
@@ -488,7 +488,7 @@ export default function ClassChatPage() {
                   {pending.map((attachment) => (
                     <span
                       key={attachment.id}
-                      className="inline-flex items-center gap-2 px-2 py-1 bg-gray-100 rounded-sm text-xs text-gray-700"
+                      className="inline-flex items-center gap-2 px-2 py-1 bg-gray-100 rounded text-xs text-gray-700"
                     >
                       <span className="truncate max-w-[12rem]">{attachment.fileName}</span>
                       <span className="text-gray-400">{formatFileSize(attachment.sizeBytes)}</span>
@@ -548,7 +548,7 @@ export default function ClassChatPage() {
                   rows={2}
                   placeholder="Skriv en besked til klassen…"
                   data-testid="klassechat-composer"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                       e.preventDefault()

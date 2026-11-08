@@ -48,7 +48,7 @@ function ModuleInactiveScreen({ moduleName }: { moduleName: string }) {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div
         data-testid="module-inactive-screen"
-        className="max-w-md w-full bg-white rounded-2xl shadow-xs border border-gray-200 p-8 space-y-4 text-center"
+        className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-8 space-y-4 text-center"
       >
         <div className="flex justify-center">
           <Logo variant="light" size={40} />
@@ -87,7 +87,7 @@ export default function Layout() {
         <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-1.5 rounded-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+            className="p-1.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100"
           >
             <svg
               width="20"

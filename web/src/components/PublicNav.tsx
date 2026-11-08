@@ -6,7 +6,7 @@ import Logo from './Logo'
  */
 export default function PublicNav() {
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-xs">
+    <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-4">
         <div className="flex items-center gap-8 min-w-0">
           <a href="/" className="flex items-center gap-2 min-w-0">

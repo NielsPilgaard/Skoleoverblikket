@@ -352,7 +352,7 @@ function EditSlotModal({
             placeholder="Hvad skal der ske i denne lektion?"
             maxLength={8000}
             aria-label="Beskrivelse"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
 
@@ -365,7 +365,7 @@ function EditSlotModal({
             placeholder="Opgaver til næste gang..."
             maxLength={8000}
             aria-label="Lektier"
-            className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-blue-50/40"
+            className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-blue-50/40"
           />
         </div>
 
@@ -420,7 +420,7 @@ function EditSlotModal({
           <select
             value={overrideCourseId}
             onChange={(e) => setOverrideCourseId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
           >
             <option value="">Intet fagbytte (brug skemaets fag)</option>
             {courses
@@ -585,7 +585,7 @@ function NotesEditor({
         aria-label="Generelt for ugen"
         data-testid="notes-editor"
         saveStatus={saveStatus}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
       />
     </div>
   )
@@ -732,7 +732,7 @@ export default function WeekPlanPage() {
           <button
             onClick={prevWeek}
             aria-label="Forrige uge"
-            className="text-sm text-gray-600 hover:text-gray-900 px-2 py-1 rounded-sm hover:bg-gray-100 transition-colors"
+            className="text-sm text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
           >
             ←
           </button>
@@ -744,7 +744,7 @@ export default function WeekPlanPage() {
               setIsoYear(y)
               setIsoWeek(w)
             }}
-            className="text-sm font-semibold text-gray-900 px-2 py-1 border border-gray-200 rounded-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+            className="text-sm font-semibold text-gray-900 px-2 py-1 border border-gray-200 rounded bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             {getSchoolYearWeeks(isoYear, isoWeek).map(({ isoYear: y, isoWeek: w, label }) => (
               <option key={`${y}-${w}`} value={`${y}-${w}`}>
@@ -755,7 +755,7 @@ export default function WeekPlanPage() {
           <button
             onClick={nextWeek}
             aria-label="Næste uge"
-            className="text-sm text-gray-600 hover:text-gray-900 px-2 py-1 rounded-sm hover:bg-gray-100 transition-colors"
+            className="text-sm text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
           >
             →
           </button>
@@ -905,7 +905,7 @@ export default function WeekPlanPage() {
                       >
                         {/* Course badge */}
                         <span
-                          className={`inline-block px-1.5 py-0.5 rounded-sm text-xs font-medium border ${colorClass}`}
+                          className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium border ${colorClass}`}
                         >
                           {slot.originalCourseName ? (
                             <>

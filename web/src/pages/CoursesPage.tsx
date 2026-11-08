@@ -83,7 +83,7 @@ function CourseModal({ initial, onClose, onSaved }: CourseModalProps) {
               }
             }}
             placeholder="fx Matematik"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -98,7 +98,7 @@ function CourseModal({ initial, onClose, onSaved }: CourseModalProps) {
               }
             }}
             placeholder="Valgfri beskrivelse"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -106,7 +106,7 @@ function CourseModal({ initial, onClose, onSaved }: CourseModalProps) {
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value as SubjectCategory | '')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
           >
             <option value="">— Ingen kategori —</option>
             {ALL_SUBJECT_CATEGORIES.map((c) => (
@@ -246,13 +246,13 @@ export default function CoursesPage() {
               Array.from({ length: 4 }).map((_, i) => (
                 <tr key={i} className="animate-pulse">
                   <td className="px-5 py-3">
-                    <div className="h-4 w-24 bg-gray-200 rounded-sm" />
+                    <div className="h-4 w-24 bg-gray-200 rounded" />
                   </td>
                   <td className="px-5 py-3 hidden md:table-cell">
-                    <div className="h-4 w-32 bg-gray-100 rounded-sm" />
+                    <div className="h-4 w-32 bg-gray-100 rounded" />
                   </td>
                   <td className="px-5 py-3 hidden sm:table-cell">
-                    <div className="h-4 w-40 bg-gray-100 rounded-sm" />
+                    <div className="h-4 w-40 bg-gray-100 rounded" />
                   </td>
                   <td className="px-5 py-3" />
                 </tr>

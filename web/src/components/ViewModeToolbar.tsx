@@ -33,7 +33,7 @@ export default function ViewModeToolbar() {
   }
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-gray-900/95 backdrop-blur-sm text-white text-xs rounded-full px-3 py-1.5 shadow-lg border border-white/10">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-gray-900/95 backdrop-blur text-white text-xs rounded-full px-3 py-1.5 shadow-lg border border-white/10">
       <span className="text-gray-400 mr-1.5 select-none">Vis som:</span>
       {modes.map((m) => (
         <button

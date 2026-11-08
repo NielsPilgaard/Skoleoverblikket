@@ -18,8 +18,8 @@ export default function BoardDashboardPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
-              <div className="h-4 w-20 bg-gray-200 rounded-sm mb-3" />
-              <div className="h-8 w-12 bg-gray-100 rounded-sm" />
+              <div className="h-4 w-20 bg-gray-200 rounded mb-3" />
+              <div className="h-8 w-12 bg-gray-100 rounded" />
             </div>
           ))}
         </div>

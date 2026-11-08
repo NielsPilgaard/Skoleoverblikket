@@ -136,7 +136,7 @@ function SelectField({
           }
         }}
         data-testid={testId}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
       >
         <option value="">{emptyLabel}</option>
         {options.map((o) => (
@@ -937,7 +937,7 @@ export default function SchemaBuilderPage() {
             </svg>
           </Link>
           {isLoading ? (
-            <div className="h-5 w-36 bg-gray-200 rounded-sm animate-pulse" />
+            <div className="h-5 w-36 bg-gray-200 rounded animate-pulse" />
           ) : (
             <>
               {editingName ? (
@@ -948,7 +948,7 @@ export default function SchemaBuilderPage() {
                     onChange={(e) => setNameValue(e.target.value)}
                     onKeyDown={(e) => e.key === 'Escape' && setEditingName(false)}
                     onBlur={() => !renameMutation.isPending && setEditingName(false)}
-                    className="font-display text-base font-semibold text-gray-900 border-b border-brand-400 bg-transparent outline-hidden w-48 truncate"
+                    className="font-display text-base font-semibold text-gray-900 border-b border-brand-400 bg-transparent outline-none w-48 truncate"
                   />
                   <button
                     type="submit"
@@ -1202,7 +1202,7 @@ export default function SchemaBuilderPage() {
                 <div className="animate-pulse">
                   <div className="grid grid-cols-6 gap-2 mb-2">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="h-8 bg-gray-200 rounded-sm" />
+                      <div key={i} className="h-8 bg-gray-200 rounded" />
                     ))}
                   </div>
                   {Array.from({ length: 6 }).map((_, r) => (

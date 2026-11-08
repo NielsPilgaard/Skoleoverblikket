@@ -146,7 +146,7 @@ export default function CoursesSidebar({
           <button
             type="button"
             onClick={onToggle}
-            className="lg:hidden p-1 text-gray-400 hover:text-gray-600 rounded-sm"
+            className="lg:hidden p-1 text-gray-400 hover:text-gray-600 rounded"
           >
             <svg
               width="16"
@@ -181,7 +181,7 @@ export default function CoursesSidebar({
               placeholder="Søg fag..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full pl-8 pr-3 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
           </div>
         </div>

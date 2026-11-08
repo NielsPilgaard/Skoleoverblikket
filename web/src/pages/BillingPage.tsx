@@ -51,9 +51,9 @@ function formatDay(day: string): string {
 function SkeletonStatusCard() {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
-      <div className="h-5 w-48 bg-gray-200 rounded-sm mb-3" />
-      <div className="h-4 w-64 bg-gray-100 rounded-sm mb-2" />
-      <div className="h-4 w-40 bg-gray-100 rounded-sm mb-5" />
+      <div className="h-5 w-48 bg-gray-200 rounded mb-3" />
+      <div className="h-4 w-64 bg-gray-100 rounded mb-2" />
+      <div className="h-4 w-40 bg-gray-100 rounded mb-5" />
       <div className="h-9 w-44 bg-gray-200 rounded-lg" />
     </div>
   )
@@ -380,7 +380,7 @@ function StatusCard({
     return (
       <div className="bg-brand-50 border border-brand-200 rounded-xl p-6">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 shrink-0 w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center">
+          <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center">
             <svg
               width="16"
               height="16"
@@ -430,7 +430,7 @@ function StatusCard({
         )}
         <div className="bg-green-50 border border-green-200 rounded-xl p-6">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 shrink-0 w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+            <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
               <svg
                 width="16"
                 height="16"
@@ -502,7 +502,7 @@ function StatusCard({
         className="bg-brand-50 border border-brand-200 rounded-xl p-6"
       >
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 shrink-0 w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center">
+          <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center">
             <svg
               width="16"
               height="16"
@@ -537,7 +537,7 @@ function StatusCard({
     return (
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 shrink-0 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+          <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
             <svg
               width="16"
               height="16"
@@ -575,7 +575,7 @@ function StatusCard({
   return (
     <div className="bg-red-50 border border-red-200 rounded-xl p-6">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+        <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
           <svg
             width="16"
             height="16"
@@ -806,7 +806,7 @@ function IntervalToggle({
           onClick={() => onChange(interval)}
           className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
             selected === interval
-              ? 'bg-white text-gray-900 shadow-xs'
+              ? 'bg-white text-gray-900 shadow-sm'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >

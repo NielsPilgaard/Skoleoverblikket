@@ -425,7 +425,7 @@ export default function InvitationAcceptPage() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Valgfrit"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
             <div>
@@ -440,7 +440,7 @@ export default function InvitationAcceptPage() {
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Valgfrit"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
             <div className="flex gap-3">
@@ -460,7 +460,7 @@ export default function InvitationAcceptPage() {
                   onChange={(e) => setPostalCode(e.target.value)}
                   placeholder="Valgfrit"
                   maxLength={10}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
               <div className="flex-1">
@@ -475,7 +475,7 @@ export default function InvitationAcceptPage() {
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Valgfrit"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
             </div>
@@ -486,7 +486,7 @@ export default function InvitationAcceptPage() {
                 type="checkbox"
                 checked={shareContactInfo}
                 onChange={(e) => setShareContactInfo(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500"
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
               />
               <span className="text-sm text-gray-700">
                 Tillad andre forældre at se mine kontaktoplysninger
@@ -584,7 +584,7 @@ export default function InvitationAcceptPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       data-testid="invitation-password"
-                      className="w-full px-3 py-2 pr-16 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+                      className="w-full px-3 py-2 pr-16 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                     <button
                       type="button"

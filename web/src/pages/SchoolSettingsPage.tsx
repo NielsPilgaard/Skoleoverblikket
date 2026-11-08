@@ -83,7 +83,7 @@ export default function SchoolSettingsPage() {
   if (isLoading) {
     return (
       <div className="p-6 lg:p-8 max-w-2xl mx-auto space-y-6">
-        <div className="h-8 w-48 bg-gray-200 rounded-sm animate-pulse" />
+        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
         <div className="h-40 bg-gray-100 rounded-xl animate-pulse" />
       </div>
     )
@@ -116,7 +116,7 @@ export default function SchoolSettingsPage() {
                     })
                 }
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
           </div>
           <div>
@@ -135,7 +135,7 @@ export default function SchoolSettingsPage() {
                 }
               }}
               placeholder="kontakt@skolen.dk"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
           </div>
           <div>
@@ -154,7 +154,7 @@ export default function SchoolSettingsPage() {
                 }
               }}
               placeholder="+45 12 34 56 78"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
           </div>
           {saveError && <p className="text-sm text-red-600">{saveError}</p>}
@@ -185,7 +185,7 @@ export default function SchoolSettingsPage() {
             <img
               src={data.logoUrl}
               alt="Skolelogo"
-              className="h-16 w-auto object-contain rounded-sm border border-gray-100"
+              className="h-16 w-auto object-contain rounded border border-gray-100"
             />
           )}
           <p className="text-sm text-gray-500">PNG, JPG eller WebP · maks. 2 MB</p>
@@ -396,7 +396,7 @@ function SkoledagCard() {
                         aria-label={`Pause ${i + 1}, varighed (min)`}
                         onFocus={(e) => e.target.select()}
                         onChange={(e) => updateBreak(i, 'durationMinutes', Number(e.target.value))}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                       />
                     </div>
                   </div>

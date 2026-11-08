@@ -217,7 +217,7 @@ function UploadModal({
               value={editedName}
               onChange={(e) => setEditedName(e.target.value)}
               disabled={isPending}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
             />
           </div>
         )}
@@ -231,7 +231,7 @@ function UploadModal({
               value={courseId}
               onChange={(e) => setCourseId(e.target.value)}
               disabled={isPending}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
             >
               <option value="">Intet fag</option>
               {courses?.map((c) => (
@@ -563,7 +563,7 @@ function CreateFolderModal({
           }}
           placeholder="F.eks. Matematik, Uge 10…"
           disabled={mutation.isPending}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
         />
         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
         {variant === 'staff' && (
@@ -575,7 +575,7 @@ function CreateFolderModal({
               value={courseId}
               onChange={(e) => setCourseId(e.target.value)}
               disabled={mutation.isPending}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
             >
               <option value="">Intet fag</option>
               {courses?.map((c) => (
@@ -652,7 +652,7 @@ function InlineRename({ variant, folder, onDone }: InlineRenameProps) {
         if (e.key === 'Escape') onDone()
       }}
       disabled={mutation.isPending}
-      className="px-2 py-0.5 border border-brand-400 rounded-sm text-sm font-medium text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-brand-500 w-40 disabled:opacity-50"
+      className="px-2 py-0.5 border border-brand-400 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 w-40 disabled:opacity-50"
       onClick={(e) => e.stopPropagation()}
     />
   )
@@ -837,7 +837,7 @@ export function FileSystemBrowser({
           <select
             value={filterCourseId}
             onChange={(e) => setFilterCourseId(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           >
             <option value="">Alle fag</option>
             {courses?.map((c) => (
@@ -897,18 +897,18 @@ export function FileSystemBrowser({
               Array.from({ length: 4 }).map((_, i) => (
                 <tr key={i} className="animate-pulse">
                   <td className="px-5 py-3">
-                    <div className="h-4 w-40 bg-gray-200 rounded-sm" />
+                    <div className="h-4 w-40 bg-gray-200 rounded" />
                   </td>
                   {variant === 'staff' && (
                     <td className="px-5 py-3 hidden md:table-cell">
-                      <div className="h-4 w-24 bg-gray-100 rounded-sm" />
+                      <div className="h-4 w-24 bg-gray-100 rounded" />
                     </td>
                   )}
                   <td className="px-5 py-3 hidden sm:table-cell">
-                    <div className="h-4 w-20 bg-gray-100 rounded-sm" />
+                    <div className="h-4 w-20 bg-gray-100 rounded" />
                   </td>
                   <td className="px-5 py-3 hidden lg:table-cell">
-                    <div className="h-4 w-24 bg-gray-100 rounded-sm" />
+                    <div className="h-4 w-24 bg-gray-100 rounded" />
                   </td>
                   <td className="px-5 py-3" />
                 </tr>

@@ -180,7 +180,7 @@ export default function BackofficeTenantDetailPage() {
                   <span className="text-sm font-medium text-gray-900">{moduleLabels[mod]}</span>
                   {item && (
                     <span
-                      className={`text-xs px-1.5 py-0.5 rounded-sm font-medium ${
+                      className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                         item.isAdminOverride
                           ? 'bg-purple-100 text-purple-700'
                           : 'bg-indigo-100 text-indigo-700'

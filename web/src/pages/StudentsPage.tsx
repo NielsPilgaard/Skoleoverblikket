@@ -69,7 +69,7 @@ function StudentModal({ initial, classes, onClose }: StudentModalProps) {
               }
             }}
             placeholder="Elevens fulde navn"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -78,7 +78,7 @@ function StudentModal({ initial, classes, onClose }: StudentModalProps) {
               type="checkbox"
               checked={isEnrolledInSfo}
               onChange={(e) => setIsEnrolledInSfo(e.target.checked)}
-              className="rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500"
+              className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
             />
             <span className="font-medium text-gray-700">Indmeldt i SFO</span>
           </label>
@@ -88,7 +88,7 @@ function StudentModal({ initial, classes, onClose }: StudentModalProps) {
           <select
             value={classId}
             onChange={(e) => setClassId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
           >
             {classes.map((c) => (
               <option key={c.id} value={c.id}>
@@ -188,7 +188,7 @@ export default function StudentsPage() {
           <select
             value={filterClassId}
             onChange={(e) => setFilterClassId(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 bg-white"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
           >
             <option value="">Alle klasser</option>
             {classes.map((c) => (
@@ -233,7 +233,7 @@ export default function StudentsPage() {
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
                     <td className="px-5 py-3">
-                      <div className="h-4 w-32 bg-gray-200 rounded-sm" />
+                      <div className="h-4 w-32 bg-gray-200 rounded" />
                     </td>
                     <td className="px-5 py-3">
                       <div className="h-5 w-16 bg-gray-100 rounded-full" />

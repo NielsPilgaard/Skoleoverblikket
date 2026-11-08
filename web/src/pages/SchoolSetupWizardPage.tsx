@@ -200,7 +200,7 @@ function StepTimeSlots({ onNext, onSkip }: { onNext: () => void; onSkip: () => v
                     aria-label={`Pause ${i + 1}, varighed (min)`}
                     onChange={(e) => updateBreak(i, 'durationMinutes', Number(e.target.value))}
                     onFocus={(e) => e.target.select()}
-                    className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -397,7 +397,7 @@ function StepCreateItems({
               value={val}
               onChange={(e) => updateRow(i, e.target.value)}
               placeholder={placeholder}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -565,7 +565,7 @@ function StepCreateClasses({ onNext, onSkip }: { onNext: () => void; onSkip: () 
                 value={item.name}
                 onChange={(e) => updateName(i, e.target.value)}
                 placeholder="fx 1.a"
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
@@ -578,7 +578,7 @@ function StepCreateClasses({ onNext, onSkip }: { onNext: () => void; onSkip: () 
                 onChange={(e) =>
                   updateGradeLevel(i, e.target.value === '' ? null : Number(e.target.value))
                 }
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
               >
                 <option value="">— klassetrin —</option>
                 {Object.entries(GRADE_LEVEL_LABELS).map(([val, label]) => (
@@ -787,7 +787,7 @@ function StepInviteStaff({ onNext, onSkip }: { onNext: () => void; onSkip: () =>
               {entries.length > 1 && (
                 <button
                   onClick={() => removeRow(i)}
-                  className="p-1 text-gray-400 hover:text-red-500 rounded-sm hover:bg-red-50 transition-colors"
+                  className="p-1 text-gray-400 hover:text-red-500 rounded hover:bg-red-50 transition-colors"
                 >
                   <svg
                     width="13"
@@ -810,7 +810,7 @@ function StepInviteStaff({ onNext, onSkip }: { onNext: () => void; onSkip: () =>
                   value={entry.name}
                   onChange={(e) => updateEntry(i, 'name', e.target.value)}
                   placeholder="Anne Jensen"
-                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 />
               </div>
               <div>
@@ -820,7 +820,7 @@ function StepInviteStaff({ onNext, onSkip }: { onNext: () => void; onSkip: () =>
                   value={entry.email}
                   onChange={(e) => updateEntry(i, 'email', e.target.value)}
                   placeholder="anne@skole.dk"
-                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 />
               </div>
             </div>

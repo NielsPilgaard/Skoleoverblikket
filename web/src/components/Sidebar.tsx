@@ -1084,7 +1084,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               <img
                 src={school.logoUrl}
                 alt=""
-                className="h-7 w-7 rounded-sm object-contain shrink-0 bg-white/10"
+                className="h-7 w-7 rounded object-contain shrink-0 bg-white/10"
               />
             ) : (
               <Logo variant="dark" size={28} />
@@ -1103,7 +1103,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           </div>
           <button
             onClick={onClose}
-            className="lg:hidden p-1 rounded-sm text-brand-300 hover:text-white shrink-0"
+            className="lg:hidden p-1 rounded text-brand-300 hover:text-white shrink-0"
           >
             <svg
               width="18"

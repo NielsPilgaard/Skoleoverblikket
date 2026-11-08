@@ -17,7 +17,7 @@ export default function DemoPage() {
       <main className="flex-1 py-20 px-6">
         <div className="max-w-xl mx-auto">
           <div className="text-center mb-10">
-            <h1 className="font-display text-4xl sm:text-5xl font-semibold text-brand-900 leading-tight sm:leading-none mb-4">
+            <h1 className="font-display text-4xl sm:text-5xl font-semibold text-brand-900 leading-tight mb-4">
               Book en gratis demo
             </h1>
             <p className="text-lg text-gray-600">
@@ -101,7 +101,7 @@ function DemoForm() {
             type="text"
             required
             placeholder="Hanne Nielsen"
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -114,7 +114,7 @@ function DemoForm() {
             type="text"
             required
             placeholder="Haslev Friskole"
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
       </div>
@@ -129,7 +129,7 @@ function DemoForm() {
             type="email"
             required
             placeholder="hanne@haslev-friskole.dk"
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -141,7 +141,7 @@ function DemoForm() {
             name="telefon"
             type="tel"
             placeholder="12 34 56 78"
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
       </div>
@@ -154,7 +154,7 @@ function DemoForm() {
           name="besked"
           rows={3}
           placeholder="Fortæl os gerne lidt om jeres situation..."
-          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
         />
       </div>
       {error && <p className="text-sm text-red-600 text-center">{error}</p>}

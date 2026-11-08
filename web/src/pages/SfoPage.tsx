@@ -131,7 +131,7 @@ function SfoNotesEditor({
           aria-label="Generelt for ugen"
           data-testid="sfo-notes-editor"
           saveStatus={saveStatus}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
         />
       </div>
     </div>
@@ -302,7 +302,7 @@ export default function SfoPage() {
     return (
       <div className="flex flex-col h-full">
         <div className="shrink-0 sticky top-0 z-10 bg-white border-b border-gray-200 px-4 lg:px-6 py-3">
-          <div className="h-6 w-48 bg-gray-200 rounded-sm animate-pulse" />
+          <div className="h-6 w-48 bg-gray-200 rounded animate-pulse" />
         </div>
         <div className="flex-1 p-6">
           <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />
@@ -485,10 +485,10 @@ export default function SfoPage() {
                 <div key={slotKey} className="contents">
                   {/* Row label */}
                   <div className="bg-gray-50 border-b border-r border-gray-200 p-1.5 sm:p-3 flex flex-col justify-center overflow-hidden">
-                    <span className="text-[10px] sm:text-xs text-gray-500 font-mono leading-tight sm:leading-4 whitespace-nowrap">
+                    <span className="text-[10px] sm:text-xs text-gray-500 font-mono leading-tight whitespace-nowrap">
                       {slotMeta.startTime}
                     </span>
-                    <span className="text-[10px] sm:text-xs text-gray-400 font-mono leading-tight sm:leading-4 whitespace-nowrap">
+                    <span className="text-[10px] sm:text-xs text-gray-400 font-mono leading-tight whitespace-nowrap">
                       – {slotMeta.endTime}
                     </span>
                     {slotMeta.label && (
@@ -613,7 +613,7 @@ export default function SfoPage() {
                 type="checkbox"
                 checked={allDays}
                 onChange={(e) => setAllDays(e.target.checked)}
-                className="w-4 h-4 rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500"
+                className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
               />
               <span className="text-sm font-medium text-gray-700">Alle 5 dage</span>
             </label>
@@ -625,7 +625,7 @@ export default function SfoPage() {
               <select
                 value={form.dayOfWeek}
                 onChange={(e) => setForm((f) => ({ ...f, dayOfWeek: Number(e.target.value) }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
                 {[1, 2, 3, 4, 5].map((d) => (
                   <option key={d} value={d}>
@@ -661,7 +661,7 @@ export default function SfoPage() {
               value={form.label}
               onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
               placeholder="f.eks. Morgenvagt"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
 
@@ -698,7 +698,7 @@ function TimeSelect({ value, onChange }: { value: string; onChange: (v: string) 
       <select
         value={h}
         onChange={(e) => onChange(`${e.target.value}:${m}`)}
-        className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+        className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
       >
         {HOURS.map((hour) => (
           <option key={hour} value={hour}>
@@ -710,7 +710,7 @@ function TimeSelect({ value, onChange }: { value: string; onChange: (v: string) 
       <select
         value={m}
         onChange={(e) => onChange(`${h}:${e.target.value}`)}
-        className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+        className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
       >
         {MINUTES.map((min) => (
           <option key={min} value={min}>
@@ -805,7 +805,7 @@ function CellModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded-sm transition-colors shrink-0"
+            className="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors shrink-0"
           >
             <svg
               width="16"
@@ -877,7 +877,7 @@ function CellModal({
                   }}
                   onFocus={() => setStaffOpen(true)}
                   placeholder="Tilføj medarbejder…"
-                  className="flex-1 text-sm outline-hidden placeholder-gray-400 bg-transparent"
+                  className="flex-1 text-sm outline-none placeholder-gray-400 bg-transparent"
                 />
               </div>
               {staffOpen && filteredUnassigned.length > 0 && (
@@ -922,7 +922,7 @@ function CellModal({
             rows={4}
             maxLength={8000}
             aria-label="Aktivitet denne uge"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
           <p className="text-xs text-gray-400 mt-1">Ctrl+S for at gemme</p>
         </div>

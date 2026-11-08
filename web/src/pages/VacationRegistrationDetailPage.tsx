@@ -151,7 +151,7 @@ export default function VacationRegistrationDetailPage() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span
-                className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${window_.isOpen ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}
+                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${window_.isOpen ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}
               >
                 {window_.isOpen ? 'Åben' : 'Lukket'}
               </span>
@@ -177,7 +177,7 @@ export default function VacationRegistrationDetailPage() {
               required
               value={form.title}
               onChange={(e) => setForm((f) => f && { ...f, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
           <div className="flex gap-3">
@@ -188,7 +188,7 @@ export default function VacationRegistrationDetailPage() {
                 required
                 value={form.careStartDate}
                 onChange={(e) => setForm((f) => f && { ...f, careStartDate: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
             <div className="flex-1">
@@ -198,7 +198,7 @@ export default function VacationRegistrationDetailPage() {
                 required
                 value={form.careEndDate}
                 onChange={(e) => setForm((f) => f && { ...f, careEndDate: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
           </div>
@@ -211,7 +211,7 @@ export default function VacationRegistrationDetailPage() {
               required
               value={form.registrationDeadline}
               onChange={(e) => setForm((f) => f && { ...f, registrationDeadline: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
@@ -281,7 +281,7 @@ export default function VacationRegistrationDetailPage() {
                 {(e.selectedDates ?? []).map((d) => (
                   <span
                     key={d}
-                    className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs bg-brand-50 text-brand-700 border border-brand-100"
+                    className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-brand-50 text-brand-700 border border-brand-100"
                   >
                     {window_.granularity === 'Days' ? formatIsoDate(d) : formatWeekLabel(d)}
                   </span>
