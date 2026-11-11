@@ -150,7 +150,7 @@ export default function SignupPage() {
               required
               autoFocus
               data-testid="signup-name"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
             {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name}</p>}
           </div>
@@ -165,7 +165,7 @@ export default function SignupPage() {
                 placeholder="Anne"
                 required
                 data-testid="signup-first-name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
               {errors.adminFirstName && (
                 <p className="mt-1 text-xs text-red-600">{errors.adminFirstName}</p>
@@ -179,7 +179,7 @@ export default function SignupPage() {
                 placeholder="Jensen"
                 required
                 data-testid="signup-last-name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
               {errors.adminLastName && (
                 <p className="mt-1 text-xs text-red-600">{errors.adminLastName}</p>
@@ -197,7 +197,7 @@ export default function SignupPage() {
               placeholder="anne@vores-friskole.dk"
               required
               data-testid="signup-email"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
             {errors.adminEmail && (
               <p className="mt-1 text-xs text-red-600" data-testid="signup-email-error">
@@ -218,7 +218,7 @@ export default function SignupPage() {
                 required
                 minLength={8}
                 data-testid="signup-password"
-                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
               <button
                 type="button"
@@ -266,7 +266,7 @@ export default function SignupPage() {
                 checked={acceptDpa}
                 onChange={(e) => setAcceptDpa(e.target.checked)}
                 data-testid="signup-accept-dpa"
-                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                className="mt-0.5 h-4 w-4 rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500"
               />
               <span>
                 Jeg accepterer{' '}

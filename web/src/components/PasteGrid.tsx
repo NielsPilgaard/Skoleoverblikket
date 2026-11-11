@@ -125,7 +125,7 @@ export default function PasteGrid({ columns, rows, onChange, minRows = 10 }: Pas
                       }}
                       onChange={(e) => updateCell(rowIdx, col.key, e.target.value)}
                       onPaste={(e) => handlePaste(e, rowIdx, colIdx)}
-                      className={`w-full px-2 py-1.5 text-sm bg-transparent border border-transparent rounded focus:outline-none focus:border-brand-400 focus:bg-white transition-colors ${
+                      className={`w-full px-2 py-1.5 text-sm bg-transparent border border-transparent rounded-sm focus:outline-hidden focus:border-brand-400 focus:bg-white transition-colors ${
                         showError && col.required && !row[col.key]?.trim()
                           ? 'border-red-300 bg-red-50'
                           : ''

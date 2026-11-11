@@ -214,7 +214,7 @@ export default function AttendancePage() {
               disabled={saving}
               data-testid={`attendance-checkpoint-${cp}`}
               className={`h-11 rounded-lg text-sm font-medium transition-colors ${
-                checkpoint === cp ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'
+                checkpoint === cp ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600'
               }`}
             >
               {cp === 'StartOfDay' ? 'Morgen' : 'Dagens slutning'}

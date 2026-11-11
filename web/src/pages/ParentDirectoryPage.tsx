@@ -60,7 +60,7 @@ export default function ParentDirectoryPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Søg efter navn…"
-          className="w-full max-w-sm px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="w-full max-w-sm px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
         />
       </div>
 

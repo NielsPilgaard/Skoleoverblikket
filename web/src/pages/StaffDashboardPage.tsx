@@ -70,13 +70,13 @@ function SkeletonList() {
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
       <div className="px-5 py-4 border-b border-gray-100">
-        <div className="h-5 w-40 bg-gray-200 rounded" />
+        <div className="h-5 w-40 bg-gray-200 rounded-sm" />
       </div>
       <div className="divide-y divide-gray-100">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="px-5 py-3 flex gap-4">
-            <div className="h-4 w-20 bg-gray-100 rounded" />
-            <div className="h-4 flex-1 bg-gray-100 rounded" />
+            <div className="h-4 w-20 bg-gray-100 rounded-sm" />
+            <div className="h-4 flex-1 bg-gray-100 rounded-sm" />
           </div>
         ))}
       </div>
