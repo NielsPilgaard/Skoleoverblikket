@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 
 COPY api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj api/Skoleoverblikket.Api/
@@ -13,7 +13,7 @@ RUN dotnet publish api/Skoleoverblikket.Api/Skoleoverblikket.Api.csproj \
     --output /app/publish \
     -p:CI=true # Set CI=true to disable OpenAPI generation during publish, since it modifies source files
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/publish .

@@ -5,7 +5,7 @@
 # PG_MAJOR must match infrastructure/postgres: a physical restore needs the same major.
 ARG PG_MAJOR=17
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 COPY Directory.Build.props ./
 COPY infrastructure/backup-agent/Skoleoverblikket.BackupAgent.csproj infrastructure/backup-agent/
