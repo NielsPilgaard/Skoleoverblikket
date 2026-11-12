@@ -23,18 +23,18 @@
   <ItemGroup>
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.Uris" Version="9.0.0" />
-    <PackageReference Include="AWSSDK.S3" Version="4.0.104.11" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.104.12" />
     <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="Elmah.Io.AspNetCore" Version="5.3.88" />
     <PackageReference Include="Elmah.Io.Extensions.Logging" Version="5.4.75" />
-    <PackageReference Include="MailKit" Version="4.18.2" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
+    <PackageReference Include="MailKit" Version="5.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.15" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.14">
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.15">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -46,7 +46,7 @@
     <PackageReference Include="Stripe.net" Version="47.4.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.3.1" />
     <!-- Security fix pin (CVE-2026-84008), above MimeKit's 10.0.0. Drop once MailKit depends on 10.0.13+. -->
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
     <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.9.0" />
   </ItemGroup>
 
