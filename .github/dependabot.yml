@@ -46,6 +46,13 @@ updates:
     groups:
       docker:
         patterns: ["*"]
+    ignore:
+      # A new .NET major needs the projects retargeted (TargetFramework, packages) in the same PR;
+      # the image bump alone ships a net10.0 app on a runtime that won't start it.
+      - dependency-name: dotnet/sdk
+        update-types: ["version-update:semver-major"]
+      - dependency-name: dotnet/aspnet
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
