@@ -379,8 +379,8 @@ function DeleteSchoolCard({ tenant }: { tenant: TenantDetailDto }) {
       <h2 className="text-base font-semibold text-red-700">Slet skolen</h2>
       <p className="mt-1 text-sm text-gray-600">
         Sletter skolen med det samme: skemaer, klasser, medarbejdere, elever, forældre, beskeder,
-        fravær, filer og alle logins. Det kan ikke fortrydes. En backup kan bringe skolen tilbage i
-        14 dage.
+        fravær, filer og alle logins. Det kan ikke fortrydes. En backup kan gendanne skolens data og
+        logins i 14 dage. Uploadede filer er ikke med i backuppen og kan ikke gendannes.
       </p>
 
       {blockedReason ? (
