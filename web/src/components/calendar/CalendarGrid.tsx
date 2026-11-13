@@ -195,7 +195,7 @@ function DayPopover({
             </span>
             <span className="text-xs text-gray-800 flex-1 truncate">{entry.title}</span>
             {isAdmin && (
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => {
                     onEdit?.(entry)
@@ -290,7 +290,7 @@ export function CalendarGrid({
     const idx = months.findIndex(
       ({ year, month }) => `${year}-${String(month).padStart(2, '0')}` >= nowMonthStr
     )
-    return idx >= 0 ? idx : 0
+    return Math.max(idx, 0)
   }
 
   const [carouselIndex, setCarouselIndex] = useState(() => findCurrentMonthIndex(schoolYearMonths))
@@ -345,7 +345,7 @@ export function CalendarGrid({
     const weeks = buildMonthGrid(year, month)
     const dayCellClass = large
       ? 'w-full text-base text-center py-2.5 h-11 rounded-lg select-none font-medium'
-      : 'w-full text-sm text-center py-1 h-8 rounded select-none'
+      : 'w-full text-sm text-center py-1 h-8 rounded-sm select-none'
     const headerClass = large ? 'text-sm text-center pb-2' : 'text-xs text-center pb-1'
     const weekNumClass = large
       ? 'text-xs text-gray-400 text-right pr-2 leading-none flex items-center justify-end'
@@ -391,7 +391,7 @@ export function CalendarGrid({
                   return (
                     <div
                       key={`${wi}-${di}`}
-                      className={`${large ? 'h-11' : 'h-8'} ${di >= 5 ? 'bg-gray-100 rounded' : ''}`}
+                      className={`${large ? 'h-11' : 'h-8'} ${di >= 5 ? 'bg-gray-100 rounded-sm' : ''}`}
                     />
                   )
                 }
@@ -520,7 +520,7 @@ export function CalendarGrid({
                       }
                     }}
                     tabIndex={0}
-                    className="hover:bg-gray-50 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500"
+                    className="hover:bg-gray-50 transition-colors cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-brand-500"
                   >
                     <td className="px-5 py-3">
                       <span

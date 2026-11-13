@@ -99,12 +99,12 @@ function AdminToggle({
         disabled={disabled}
         title={disabled ? disabledTooltip : undefined}
         onClick={() => !disabled && onChange(!value)}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 ${
+        className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 ${
           disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
         } ${value ? 'bg-brand-600' : 'bg-gray-200'}`}
       >
         <span
-          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ${
             value ? 'translate-x-5' : 'translate-x-0'
           }`}
         />
@@ -175,7 +175,7 @@ function StaffModal({ initial, onClose, onSaved, currentUserKeycloakSubject }: S
               }
             }}
             placeholder="Fuldt navn"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -199,7 +199,7 @@ function StaffModal({ initial, onClose, onSaved, currentUserKeycloakSubject }: S
             }}
             type="email"
             placeholder="navn@skole.dk"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -215,7 +215,7 @@ function StaffModal({ initial, onClose, onSaved, currentUserKeycloakSubject }: S
             }}
             type="tel"
             placeholder="+45 12 34 56 78"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <AdminToggle

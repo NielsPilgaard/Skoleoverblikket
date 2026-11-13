@@ -1084,7 +1084,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               <img
                 src={school.logoUrl}
                 alt=""
-                className="h-7 w-7 rounded object-contain shrink-0 bg-white/10"
+                className="h-7 w-7 rounded-sm object-contain shrink-0 bg-white/10"
               />
             ) : (
               <Logo variant="dark" size={28} />
@@ -1104,7 +1104,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           <button
             onClick={onClose}
             aria-label="Luk menu"
-            className="lg:hidden w-11 h-11 -mr-2 flex items-center justify-center rounded text-brand-300 hover:text-white shrink-0"
+            className="lg:hidden w-11 h-11 -mr-2 flex items-center justify-center rounded-sm text-brand-300 hover:text-white shrink-0"
           >
             <svg
               width="18"

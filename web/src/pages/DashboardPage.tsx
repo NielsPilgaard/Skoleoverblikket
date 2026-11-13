@@ -339,8 +339,8 @@ function roleLabel(role: StaffRole): string {
 function SkeletonCard() {
   return (
     <div className="bg-white rounded-xl border border-gray-200 px-6 py-5 animate-pulse">
-      <div className="h-4 w-24 bg-gray-200 rounded mb-3" />
-      <div className="h-8 w-16 bg-gray-200 rounded" />
+      <div className="h-4 w-24 bg-gray-200 rounded-sm mb-3" />
+      <div className="h-8 w-16 bg-gray-200 rounded-sm" />
     </div>
   )
 }

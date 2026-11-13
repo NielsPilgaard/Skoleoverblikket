@@ -181,7 +181,7 @@ export default function ParentAbsencePage() {
               onChange={(e) => setReason(e.target.value)}
               maxLength={500}
               data-testid="parent-absence-reason"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
             />
             <p className="text-xs text-gray-500 mt-1">
               {kind === 'ExtraordinaryLeave'

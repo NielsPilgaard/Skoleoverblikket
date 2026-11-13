@@ -64,7 +64,7 @@ export default function ViewModeToolbar() {
         onClick={toggleCollapsed}
         aria-expanded={false}
         data-testid="view-mode-toolbar-expand"
-        className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 bg-gray-900/95 backdrop-blur text-white text-xs rounded-full px-3 py-2 shadow-lg border border-white/10 hover:bg-gray-800 transition-colors"
+        className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 bg-gray-900/95 backdrop-blur-sm text-white text-xs rounded-full px-3 py-2 shadow-lg border border-white/10 hover:bg-gray-800 transition-colors"
       >
         <span className="text-gray-400">Vis som:</span>
         {modes.find((m) => m.value === viewAs)?.label}
@@ -86,7 +86,7 @@ export default function ViewModeToolbar() {
   }
 
   return (
-    <div className="fixed bottom-4 inset-x-0 mx-auto w-fit max-w-[calc(100vw-2rem)] z-50 flex flex-wrap items-center justify-center gap-1 bg-gray-900/95 backdrop-blur text-white text-xs rounded-2xl px-3 py-1.5 shadow-lg border border-white/10">
+    <div className="fixed bottom-4 inset-x-0 mx-auto w-fit max-w-[calc(100vw-2rem)] z-50 flex flex-wrap items-center justify-center gap-1 bg-gray-900/95 backdrop-blur-sm text-white text-xs rounded-2xl px-3 py-1.5 shadow-lg border border-white/10">
       <span className="text-gray-400 mr-1.5 select-none">Vis som:</span>
       {modes.map((m) => (
         <button

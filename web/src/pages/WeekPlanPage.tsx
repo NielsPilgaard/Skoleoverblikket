@@ -231,7 +231,7 @@ function NotesEditor({
         aria-label="Generelt for ugen"
         data-testid="notes-editor"
         saveStatus={saveStatus}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
       />
     </div>
   )
@@ -493,7 +493,7 @@ export default function WeekPlanPage() {
                       >
                         {/* Course badge */}
                         <span
-                          className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium border ${colorClass}`}
+                          className={`inline-block px-1.5 py-0.5 rounded-sm text-xs font-medium border ${colorClass}`}
                         >
                           {slot.originalCourseName ? (
                             <>

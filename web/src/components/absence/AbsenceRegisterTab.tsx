@@ -27,7 +27,9 @@ export function CategoryBadge({
   const leave = record.category === 'ExtraordinaryLeave' && record.leaveStatus
   const colors = leave ? LEAVE_STATUS_BADGE[record.leaveStatus!] : CATEGORY_BADGE[record.category]
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colors}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${colors}`}
+    >
       {CATEGORY_LABEL[record.category]}
       {record.halfDay ? ' · halv dag' : ''}
       {leave ? ` · ${LEAVE_STATUS_LABEL[record.leaveStatus!].toLowerCase()}` : ''}

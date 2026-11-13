@@ -126,7 +126,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
-        className={`focus:outline-none ${
+        className={`focus:outline-hidden ${
           contentClassName ?? `bg-white rounded-2xl shadow-xl w-full ${sizeClass[size]}`
         }`}
         onClick={(e) => e.stopPropagation()}

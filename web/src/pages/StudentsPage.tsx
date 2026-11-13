@@ -71,7 +71,7 @@ function StudentModal({ initial, classes, onClose }: StudentModalProps) {
               }
             }}
             placeholder="Elevens fulde navn"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -80,7 +80,7 @@ function StudentModal({ initial, classes, onClose }: StudentModalProps) {
               type="checkbox"
               checked={isEnrolledInSfo}
               onChange={(e) => setIsEnrolledInSfo(e.target.checked)}
-              className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              className="rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500"
             />
             <span className="font-medium text-gray-700">Indmeldt i SFO</span>
           </label>

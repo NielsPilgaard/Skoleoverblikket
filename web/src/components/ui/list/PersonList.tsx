@@ -94,8 +94,8 @@ export function PersonList<T>({
           <li key={i} className="flex items-center gap-3 px-4 min-h-[64px] animate-pulse">
             <span className="w-10 h-10 rounded-full bg-gray-200" />
             <span className="flex-1 space-y-2">
-              <span className="block h-4 w-32 bg-gray-200 rounded" />
-              <span className="block h-3 w-24 bg-gray-100 rounded" />
+              <span className="block h-4 w-32 bg-gray-200 rounded-sm" />
+              <span className="block h-3 w-24 bg-gray-100 rounded-sm" />
             </span>
           </li>
         ))}

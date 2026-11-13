@@ -85,7 +85,7 @@ function CourseModal({ initial, onClose, onSaved }: CourseModalProps) {
               }
             }}
             placeholder="fx Matematik"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -100,7 +100,7 @@ function CourseModal({ initial, onClose, onSaved }: CourseModalProps) {
               }
             }}
             placeholder="Valgfri beskrivelse"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>

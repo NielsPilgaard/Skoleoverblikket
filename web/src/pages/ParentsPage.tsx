@@ -94,7 +94,7 @@ function InviteModal({ students, onClose }: InviteModalProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Forælder navn"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
             </div>
             <div>
@@ -104,7 +104,7 @@ function InviteModal({ students, onClose }: InviteModalProps) {
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 placeholder="forældrene@eksempel.dk"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
             </div>
             <div>
@@ -124,7 +124,7 @@ function InviteModal({ students, onClose }: InviteModalProps) {
                       type="checkbox"
                       checked={selectedStudents.includes(s.id ?? '')}
                       onChange={() => toggleStudent(s.id ?? '')}
-                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                      className="rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500"
                     />
                     <span className="text-sm text-gray-900">{s.name}</span>
                     <span className="ml-auto text-xs text-gray-400">{s.className}</span>
@@ -216,7 +216,7 @@ function EditContactModal({ parent, onClose }: EditContactModalProps) {
             id="parent-edit-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -232,7 +232,7 @@ function EditContactModal({ parent, onClose }: EditContactModalProps) {
             onChange={(e) => setPhone(e.target.value)}
             type="tel"
             placeholder="+45 12 34 56 78"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
           {phone.trim() !== '' && !phoneValid && (
             <p className="text-xs text-red-600 mt-1">{PHONE_ERROR_MESSAGE}</p>
@@ -250,7 +250,7 @@ function EditContactModal({ parent, onClose }: EditContactModalProps) {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="Vejnavn og nummer"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div className="flex gap-3">
@@ -266,7 +266,7 @@ function EditContactModal({ parent, onClose }: EditContactModalProps) {
               value={postalCode}
               onChange={(e) => setPostalCode(e.target.value)}
               placeholder="0000"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
             {postalCode.trim() !== '' && !postalCodeValid && (
               <p className="text-xs text-red-600 mt-1">{POSTAL_CODE_ERROR_MESSAGE}</p>
@@ -284,7 +284,7 @@ function EditContactModal({ parent, onClose }: EditContactModalProps) {
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="By"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
           </div>
         </div>

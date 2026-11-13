@@ -303,7 +303,7 @@ function GroupComposeModal({
           type="button"
           aria-label="Luk"
           onClick={onClose}
-          className="p-1 rounded text-gray-400 hover:text-gray-600 transition-colors"
+          className="p-1 rounded-sm text-gray-400 hover:text-gray-600 transition-colors"
         >
           <svg
             aria-hidden="true"
@@ -406,7 +406,7 @@ function GroupComposeModal({
               onChange={(e) => setSubject(e.target.value)}
               maxLength={200}
               placeholder="Emne"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
             />
           </div>
           <div className="mb-5">
@@ -420,7 +420,7 @@ function GroupComposeModal({
               rows={6}
               maxLength={10000}
               placeholder="Skriv din besked her…"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
             />
           </div>
           <div className="flex justify-end gap-3">
@@ -883,7 +883,7 @@ export default function MessagesPage() {
                 value={directorySearch}
                 onChange={(e) => handleDirectorySearch(e.target.value)}
                 placeholder="Søg…"
-                className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-md text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
               />
             </div>
           </div>
@@ -1029,7 +1029,7 @@ export default function MessagesPage() {
                     <div className="flex items-center justify-between mb-0.5">
                       <div className="flex items-center gap-1.5 min-w-0">
                         {msg.isGroup && (
-                          <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-brand-100 text-brand-700">
+                          <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-sm text-xs font-medium bg-brand-100 text-brand-700">
                             Gruppe
                           </span>
                         )}
@@ -1170,7 +1170,7 @@ export default function MessagesPage() {
                               ) : (
                                 <>
                                   <div className="flex items-center gap-1.5">
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-brand-100 text-brand-700">
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-xs font-medium bg-brand-100 text-brand-700">
                                       Gruppe
                                     </span>
                                     <p className="text-sm font-medium text-gray-900">
@@ -1307,7 +1307,7 @@ export default function MessagesPage() {
               setComposeOpen(false)
               setInReplyToId(null)
             }}
-            className="p-1 rounded text-gray-400 hover:text-gray-600 transition-colors"
+            className="p-1 rounded-sm text-gray-400 hover:text-gray-600 transition-colors"
           >
             <svg
               aria-hidden="true"
@@ -1372,7 +1372,7 @@ export default function MessagesPage() {
                 value={recipientSearch}
                 onChange={(e) => handleRecipientSearchChange(e.target.value)}
                 placeholder="Søg efter navn (min. 2 tegn)…"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
                 onFocus={() => {
                   if (recipientResults.length > 0) setShowDropdown(true)
                 }}
@@ -1422,7 +1422,7 @@ export default function MessagesPage() {
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="Emne"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
           />
         </div>
 
@@ -1436,7 +1436,7 @@ export default function MessagesPage() {
             onChange={(e) => setBody(e.target.value)}
             rows={6}
             placeholder="Skriv din besked her…"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
           />
         </div>
 

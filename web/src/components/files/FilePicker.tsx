@@ -314,7 +314,7 @@ export function FilePicker({
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Søg efter filnavn eller fag"
             data-testid="file-picker-search"
-            className="w-full h-11 pl-10 pr-3 rounded-lg border border-gray-300 text-base placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full h-11 pl-10 pr-3 rounded-lg border border-gray-300 text-base placeholder:text-gray-500 focus:outline-hidden focus:ring-2 focus:ring-brand-500"
           />
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">

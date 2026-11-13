@@ -480,7 +480,7 @@ export function LessonEditor({
               onBlur={() => void saveNow()}
               maxLength={8000}
               data-testid="lesson-description"
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-base focus:outline-hidden focus:ring-2 focus:ring-brand-500"
             />
           </div>
           <div>
@@ -496,7 +496,7 @@ export function LessonEditor({
               maxLength={8000}
               placeholder="Fx: Læs s. 41–48"
               data-testid="lesson-lektier"
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-base placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-base placeholder:text-gray-500 focus:outline-hidden focus:ring-2 focus:ring-brand-500"
             />
           </div>
           {changedSinceOpened && (

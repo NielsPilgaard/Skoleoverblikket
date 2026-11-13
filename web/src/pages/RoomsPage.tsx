@@ -72,7 +72,7 @@ function RoomModal({ initial, onClose, onSaved }: RoomModalProps) {
               }
             }}
             placeholder="fx Lokale 12"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -90,7 +90,7 @@ function RoomModal({ initial, onClose, onSaved }: RoomModalProps) {
             type="number"
             min="1"
             placeholder="fx 30"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -105,7 +105,7 @@ function RoomModal({ initial, onClose, onSaved }: RoomModalProps) {
               }
             }}
             placeholder="fx Musikundervisning"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         {isError && <p className="text-sm text-red-600">Der opstod en fejl. Prøv igen.</p>}

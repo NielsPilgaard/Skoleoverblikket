@@ -67,7 +67,7 @@ function ClassScheduleGrid({ classId, className }: { classId: string; className:
                       {daySlots.map((s, idx) => (
                         <div
                           key={`${s.schemaId ?? ''}-${s.startTime ?? ''}-${idx}`}
-                          className="rounded px-2 py-1 mb-0.5 text-xs"
+                          className="rounded-sm px-2 py-1 mb-0.5 text-xs"
                           style={{
                             backgroundColor: s.courseColor ? `${s.courseColor}22` : '#f3f4f6',
                             borderLeft: `3px solid ${s.courseColor ?? '#9ca3af'}`,

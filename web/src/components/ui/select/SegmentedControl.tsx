@@ -39,7 +39,7 @@ export function SegmentedControl<T extends string>({
   const name = useId()
   const optionClass = onDark
     ? 'text-brand-200 hover:text-white has-[:checked]:bg-brand-700 has-[:checked]:text-white has-[:focus-visible]:ring-white'
-    : 'text-gray-700 has-[:checked]:bg-white has-[:checked]:text-gray-900 has-[:checked]:shadow-sm has-[:focus-visible]:ring-brand-500'
+    : 'text-gray-700 has-[:checked]:bg-white has-[:checked]:text-gray-900 has-[:checked]:shadow-xs has-[:focus-visible]:ring-brand-500'
   return (
     <fieldset className={`min-w-0 ${className}`}>
       <legend

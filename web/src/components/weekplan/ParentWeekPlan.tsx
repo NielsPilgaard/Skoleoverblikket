@@ -230,7 +230,7 @@ function LessonRow({ slot }: { slot: ParentWeekPlanSlot }) {
         <p className="font-semibold text-gray-900">
           {slot.courseName}
           {slot.originalCourseName && (
-            <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 text-xs font-bold">
+            <span className="ml-1 px-1.5 py-0.5 rounded-sm bg-amber-200 text-amber-950 text-xs font-bold">
               Ændret
             </span>
           )}

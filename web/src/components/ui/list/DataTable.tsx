@@ -81,7 +81,7 @@ export function DataTable<T>({
       >
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="px-4 py-4 animate-pulse">
-            <div className="h-4 w-40 bg-gray-200 rounded" />
+            <div className="h-4 w-40 bg-gray-200 rounded-sm" />
           </div>
         ))}
       </div>

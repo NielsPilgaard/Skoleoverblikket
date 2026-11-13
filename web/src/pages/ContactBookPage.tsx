@@ -241,7 +241,7 @@ export default function ContactBookPage() {
               onChange={(e) => setComposeBody(e.target.value)}
               rows={3}
               placeholder="Skriv din første besked…"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                   e.preventDefault()
@@ -326,7 +326,7 @@ export default function ContactBookPage() {
             <div className="px-4 py-3 bg-white border-b border-gray-200 flex items-center gap-3">
               <button
                 onClick={() => setShowMobileMessages(false)}
-                className="lg:hidden p-1 rounded text-gray-500 hover:text-gray-700"
+                className="lg:hidden p-1 rounded-sm text-gray-500 hover:text-gray-700"
                 aria-label="Tilbage"
               >
                 <svg
@@ -380,7 +380,7 @@ export default function ContactBookPage() {
                   onChange={(e) => setMessageBody(e.target.value)}
                   rows={3}
                   placeholder="Skriv en besked…"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                       e.preventDefault()

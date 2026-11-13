@@ -212,7 +212,7 @@ function UploadModal({
               value={editedName}
               onChange={(e) => setEditedName(e.target.value)}
               disabled={isPending}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
             />
           </div>
         )}
@@ -547,7 +547,7 @@ function CreateFolderModal({
           }}
           placeholder="F.eks. Matematik, Uge 10…"
           disabled={mutation.isPending}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
         />
         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
         {variant === 'staff' && (
@@ -632,7 +632,7 @@ function InlineRename({ variant, folder, onDone }: InlineRenameProps) {
       }}
       disabled={mutation.isPending}
       aria-label="Nyt navn til mappen"
-      className="h-11 px-3 border border-brand-400 rounded-lg text-base font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 w-full max-w-xs disabled:opacity-50"
+      className="h-11 px-3 border border-brand-400 rounded-lg text-base font-medium text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-brand-500 w-full max-w-xs disabled:opacity-50"
       onClick={(e) => e.stopPropagation()}
     />
   )

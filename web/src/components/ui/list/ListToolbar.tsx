@@ -55,7 +55,7 @@ export function ListToolbar({
             onChange={(e) => onSearch(e.target.value)}
             placeholder={searchPlaceholder}
             data-testid="list-search"
-            className="w-full h-11 pl-10 pr-3 rounded-lg border border-gray-300 bg-white text-base placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full h-11 pl-10 pr-3 rounded-lg border border-gray-300 bg-white text-base placeholder:text-gray-500 focus:outline-hidden focus:ring-2 focus:ring-brand-500"
           />
         </label>
       )}

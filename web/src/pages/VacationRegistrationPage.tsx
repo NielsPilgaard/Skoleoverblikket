@@ -24,11 +24,11 @@ function GranularityBadge({
   granularity: VacationRegistrationGranularity | undefined
 }) {
   return granularity === 'Days' ? (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-purple-100 text-purple-800">
       Dage
     </span>
   ) : (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-blue-100 text-blue-800">
       Uger
     </span>
   )
@@ -36,11 +36,11 @@ function GranularityBadge({
 
 function OpenBadge({ isOpen }: { isOpen: boolean | undefined }) {
   return isOpen ? (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-green-100 text-green-800">
       Åben
     </span>
   ) : (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-gray-100 text-gray-600">
       Lukket
     </span>
   )
@@ -225,7 +225,7 @@ export default function VacationRegistrationPage() {
               placeholder="f.eks. Sommerferie 2026"
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
             />
           </div>
 
