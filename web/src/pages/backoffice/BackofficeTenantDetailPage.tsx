@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   deleteApiV1AdminTenantsBySchoolIdFreeAccessMutation,
   deleteApiV1AdminTenantsBySchoolIdModulesByModuleMutation,
   getApiV1AdminTenantsBySchoolIdOptions,
   getApiV1AdminTenantsBySchoolIdQueryKey,
+  getApiV1AdminTenantsQueryKey,
+  postApiV1AdminTenantsBySchoolIdDeletionMutation,
   postApiV1AdminTenantsBySchoolIdModulesMutation,
   putApiV1AdminTenantsBySchoolIdFreeAccessMutation,
 } from '../../api/generated/@tanstack/react-query.gen'
@@ -212,6 +214,8 @@ export default function BackofficeTenantDetailPage() {
           })}
         </div>
       </div>
+
+      <DeleteSchoolCard tenant={tenant} />
     </div>
   )
 }
@@ -325,6 +329,104 @@ function FreeAccessCard({ tenant, onChanged }: { tenant: TenantDetailDto; onChan
 
       {error && (
         <p className="mt-3 text-sm text-red-600">{problemDetail(error) ?? 'Det lykkedes ikke.'}</p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Deletes the school and all its data now. The API refuses unless the typed name matches, Stripe
+ * no longer bills the school, free access is revoked and the superadmin has no login there.
+ */
+function DeleteSchoolCard({ tenant }: { tenant: TenantDetailDto }) {
+  const qc = useQueryClient()
+  const navigate = useNavigate()
+  const [typedName, setTypedName] = useState('')
+  const [understood, setUnderstood] = useState(false)
+  const remove = useMutation({
+    ...postApiV1AdminTenantsBySchoolIdDeletionMutation(),
+    onSuccess: async () => {
+      qc.removeQueries({
+        queryKey: getApiV1AdminTenantsBySchoolIdQueryKey({ path: { schoolId: tenant.id } }),
+      })
+      await qc.invalidateQueries({ queryKey: getApiV1AdminTenantsQueryKey() })
+      navigate('/backoffice/tenants')
+    },
+  })
+
+  const today = danishDate.format(new Date())
+  const hasFreeAccess =
+    tenant.freeAccessGrantedAt != null &&
+    (tenant.freeAccessLastDay == null || tenant.freeAccessLastDay >= today)
+  const stripeBills = !(
+    tenant.subscriptionStatus === 'Canceled' ||
+    (tenant.subscriptionStatus === 'Trialing' && tenant.stripeSubscriptionId == null)
+  )
+  const blockedReason = stripeBills
+    ? 'Skolen har et abonnement i Stripe. Opsig det i Stripe først.'
+    : hasFreeAccess
+      ? 'Skolen har gratis adgang. Fjern den først.'
+      : null
+  const nameMatches = typedName.trim() === tenant.name.trim()
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault()
+    remove.mutate({ path: { schoolId: tenant.id }, body: { confirmSchoolName: typedName } })
+  }
+
+  return (
+    <div data-testid="delete-school-card" className="bg-white border border-red-200 rounded-xl p-5">
+      <h2 className="text-base font-semibold text-red-700">Slet skolen</h2>
+      <p className="mt-1 text-sm text-gray-600">
+        Sletter skolen med det samme: skemaer, klasser, medarbejdere, elever, forældre, beskeder,
+        fravær, filer og alle logins. Det kan ikke fortrydes. En backup kan gendanne skolens data og
+        logins i 14 dage. Uploadede filer er ikke med i backuppen og kan ikke gendannes.
+      </p>
+
+      {blockedReason ? (
+        <p data-testid="delete-school-blocked" className="mt-3 text-sm text-gray-500">
+          {blockedReason}
+        </p>
+      ) : (
+        <form onSubmit={submit} className="mt-4 space-y-3">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">
+              Skriv <span className="font-semibold">{tenant.name}</span> for at bekræfte
+            </span>
+            <input
+              type="text"
+              value={typedName}
+              onChange={(e) => setTypedName(e.target.value)}
+              autoComplete="off"
+              data-testid="delete-school-name"
+              className="mt-1 block w-full max-w-sm px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </label>
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={understood}
+              onChange={(e) => setUnderstood(e.target.checked)}
+              data-testid="delete-school-understood"
+              className="mt-0.5"
+            />
+            Jeg forstår, at alle skolens data slettes permanent.
+          </label>
+          <button
+            type="submit"
+            disabled={!nameMatches || !understood || remove.isPending}
+            data-testid="delete-school-submit"
+            className="text-sm px-3 py-2 rounded-lg font-medium bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+          >
+            {remove.isPending ? 'Sletter…' : 'Slet skolen permanent'}
+          </button>
+        </form>
+      )}
+
+      {remove.error && (
+        <p className="mt-3 text-sm text-red-600">
+          {problemDetail(remove.error) ?? 'Det lykkedes ikke.'}
+        </p>
       )}
     </div>
   )
