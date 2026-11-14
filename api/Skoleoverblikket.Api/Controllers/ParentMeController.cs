@@ -26,7 +26,7 @@ public sealed class ParentMeController(AppDbContext db, IObjectStorage storage) 
 		IReadOnlyList<ParentClassDto> Classes,
 		IReadOnlyList<ParentStudentDto> Students);
 	public record ParentClassDto(Guid ClassId, string ClassName);
-	public record ParentStudentDto(Guid StudentId, string StudentName, Guid ClassId);
+	public record ParentStudentDto(Guid StudentId, string StudentName, Guid ClassId, bool IsEnrolledInSfo);
 
 	[HttpGet]
 	public async Task<ActionResult<ParentMeDto>> GetMe(CancellationToken cancellationToken)
@@ -54,7 +54,7 @@ public sealed class ParentMeController(AppDbContext db, IObjectStorage storage) 
 			.ToList();
 
 		var students = parent.Students
-			.Select(s => new ParentStudentDto(s.Id, s.Name, s.ClassId))
+			.Select(s => new ParentStudentDto(s.Id, s.Name, s.ClassId, s.IsEnrolledInSfo))
 			.ToList();
 
 		return Ok(new ParentMeDto(

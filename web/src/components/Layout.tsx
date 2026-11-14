@@ -87,7 +87,8 @@ export default function Layout() {
         <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-1.5 rounded-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+            aria-label="Åbn menu"
+            className="w-11 h-11 -ml-2 flex items-center justify-center rounded-sm text-gray-600 hover:text-gray-700 hover:bg-gray-100"
           >
             <svg
               width="20"

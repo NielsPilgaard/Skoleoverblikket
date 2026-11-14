@@ -9,6 +9,7 @@ import {
   postApiV1ContactThreadsByThreadIdRead,
   postApiV1ContactThreadsByThreadIdMessages,
 } from '../api/generated/sdk.gen'
+import { Select } from '../components/ui/select'
 
 interface ContactThreadDto {
   id: string
@@ -219,19 +220,19 @@ export default function ContactBookPage() {
         {showCompose && (
           <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
             <p className="text-xs font-medium text-gray-700">Ny samtale</p>
-            <select
+            <Select
+              label="Elev"
+              hideLabel
+              options={[
+                { value: '', label: 'Vælg elev…' },
+                ...students.map((s) => ({
+                  value: s.id,
+                  label: `${s.name ?? 'Ukendt elev'}${s.className ? ` (${s.className})` : ''}`,
+                })),
+              ]}
               value={composeStudentId}
-              onChange={(e) => setComposeStudentId(e.target.value)}
-              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 bg-white"
-            >
-              <option value="">Vælg elev…</option>
-              {students.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name ?? 'Ukendt elev'}
-                  {s.className ? ` (${s.className})` : ''}
-                </option>
-              ))}
-            </select>
+              onChange={setComposeStudentId}
+            />
             {students.length === 0 && !studentsLoading && studentsError && (
               <p className="text-xs text-red-600">Kunne ikke indlæse elever. Prøv igen.</p>
             )}

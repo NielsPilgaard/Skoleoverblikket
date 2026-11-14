@@ -9,10 +9,31 @@ description: >-
   with autosave and "Næste lektion", and a one-list file picker with
   suggestions and an upload queue. The published mockup page is the visual
   spec. Round 2 picks (task 65) get their own build task.
-status: 'Ready'
+status: 'In progress'
 ---
 
 # Shared UI components, round 1
+
+## Status (2026-11-02)
+
+**All five parts are built on one branch:** PR [#89](https://github.com/NielsPilgaard/Skoleoverblikket/pull/89), `feature/shared-ui-lists`. Niels asked for one branch instead of one PR per part. Not merged yet.
+
+- **Part 1:** [web/src/components/ui/list/](../web/src/components/ui/list/) has `PersonList`, `DataTable`, `ListToolbar`, `useListControls` and `parts.tsx`. `DataTable` renders one layout at a time ([useMediaQuery](../web/src/hooks/useMediaQuery.ts)), because a CSS-hidden copy would give every `data-testid` two matches. Filters: 2–5 options are chips, more than 5 a `Select`, a lone "Alle" renders nothing.
+- **Part 2:** [web/src/components/ui/select/](../web/src/components/ui/select/) has `Select`, `SegmentedControl`, `RadioCards` and `WeekStepper`; [useWeekNavigation](../web/src/hooks/useWeekNavigation.ts) holds the week state. Every `<select>` moved. `RecentSelect`, `ComboBox`, `MultiSelect` and `PersonPicker` are not built: no page in parts 3–5 needed them.
+- **Part 3:** [ParentWeekPlan](../web/src/components/weekplan/ParentWeekPlan.tsx), also used by the staff preview. The API now stores who wrote "Generelt for ugen" and when (`NotesUpdatedBy`, `NotesUpdatedAt`), and `ParentStudentDto` has `IsEnrolledInSfo`.
+- **Part 4:** [LessonEditor](../web/src/components/weekplan/LessonEditor.tsx).
+- **Part 5:** [FilePicker](../web/src/components/files/FilePicker.tsx). "Senest brugt af dig" needed data: `WeekPlanSlotFile` now stores `AttachedBySubject` and `AttachedAt`, and `GET /api/v1/files/recent` reads them, so the section fills up from new attachments only. The real upload limit is 500 MB, not the mockup's 25 MB.
+- **No "Husk" box** (Niels, 2026-11-02). Nothing stores "husk", and the editor stays at two fields. Folder rows also skip the file count, which the API doesn't return.
+- **Left as they are:**
+  - `ParentContactBookPage`: a message inbox, not a list of people.
+  - `ImportPage` invite table: a checkbox picker, a future `MultiSelect`.
+  - Timetable and print grids: CalendarGrid, PrintSchemaPage, SfoPrintPage, WeekPlanPrintPage, MySchedulePage, StaffSchedulePage, RoomSchedulePage, ParentSchemaPage.
+  - `PasteGrid` (an input grid) and `ComplianceCoveragePage` (UVM-timetal).
+  - The per-student button in `AttendancePage` keeps `aria-pressed`: it's a toggle per child, not a group of options.
+- **Kept beside the stepper** (Niels, 2026-11-02): the week dropdown on Ugeplan and the week and year dropdowns on SFO, through `WeekStepper`'s `jumps` prop. Removed: the dots on the phone calendar.
+- **Folders stay on top** in the Filer list, whatever the sort and direction (Niels, 2026-11-02): `pinFirst` in the list controls.
+- **Checked (2026-11-03):** real key presses through every part, axe and tap sizes on laptop Chromium, 375 px Chromium and iPhone WebKit, and the accessibility tree. **Still not done:** a real phone, and a real screen reader (NVDA, VoiceOver).
+- **After merge:** delete the `pr-assets/shared-ui-lists` branch, which only holds the PR's screenshots.
 
 ## TL;DR
 
@@ -65,12 +86,12 @@ No swipe chips (V4). Switching child uses `SegmentedControl`; switching class us
 
 ### 3. Parent ugeplan (U-A)
 
-[ParentWeekPlanPage.tsx](../web/src/pages/parent/ParentWeekPlanPage.tsx) and [WeekPlanList.tsx](../web/src/components/weekplan/WeekPlanList.tsx).
+[ParentWeekPlanPage.tsx](../web/src/pages/parent/ParentWeekPlanPage.tsx) and `WeekPlanList.tsx`.
 
 - Top: `WeekStepper` (week number, class and dates).
 - **"Generelt for ugen"** card next: teacher avatar and name, when it was written, text clamped to 3 lines with "Læs hele" / "Vis mindre". Hidden when the teacher wrote nothing. Data: the week plan notes that `NotesEditor` in [WeekPlanPage.tsx](../web/src/pages/WeekPlanPage.tsx) writes.
 - Day tabs Man–Fre (`role="tablist"`). The selected day is chosen automatically: today until 15:00, then the next school day; Saturday and Sunday select Monday of the next week. The preselected tab says "I dag" or "I morgen" instead of the weekday. Dots under the date for lektier (sky) and changes (amber), with a legend.
-- Selected day: a brand-colored summary card (date, school hours, "derefter SFO" when relevant) with three boxes: what's different today (vikar, changed subject), lektier, husk. Then the lesson list: time, subject, description, lektier box, vikar line, "Ændret" badge with the old subject struck through, file links (44 px).
+- Selected day: a brand-colored summary card (date, school hours, "derefter SFO" when relevant) with two boxes: what's different today (vikar, changed subject) and lektier. Then the lesson list: time, subject, description, lektier box, vikar line, "Ændret" badge with the old subject struck through, file links (44 px).
 - Times in `gray-700`, not `gray-400`.
 - Several children: a `SegmentedControl` above the week stepper (instead of today's stacked classes). A merged family view (round 1 U9) is out of scope.
 

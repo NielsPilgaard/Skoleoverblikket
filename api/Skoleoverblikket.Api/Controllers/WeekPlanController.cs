@@ -55,7 +55,9 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 		IReadOnlyList<HolidayDayDto> HolidayDays,
 		IReadOnlyList<BreakTimeSlotDto> BreakSlots,
 		IReadOnlyList<WeekPlanSlotDto> Slots,
-		string? Notes);
+		string? Notes,
+		string? NotesUpdatedBy,
+		DateTimeOffset? NotesUpdatedAt);
 
 	public record UpsertWeekPlanSlotRequest(
 		Guid SchemaSlotId,
@@ -67,7 +69,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 
 	public record UpdateNotesRequest([StringLength(8000)] string? Notes);
 
-	public record NotesDto(string? Notes);
+	public record NotesDto(string? Notes, string? NotesUpdatedBy, DateTimeOffset? NotesUpdatedAt);
 
 	[HttpGet]
 	[Authorize(Roles = $"{Roles.Staff},{Roles.Parent}")]
@@ -140,7 +142,8 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 
 			return Ok(new WeekPlanDto(
 				weekPlanNoSchema?.Id ?? Guid.Empty, classId, isoYear.Value, isoWeek.Value,
-				weekStart, weekEnd, isHolidayWeek, holidayTitle, holidayDays, [], [], weekPlanNoSchema?.Notes));
+				weekStart, weekEnd, isHolidayWeek, holidayTitle, holidayDays, [], [],
+				weekPlanNoSchema?.Notes, weekPlanNoSchema?.NotesUpdatedBy, weekPlanNoSchema?.NotesUpdatedAt));
 		}
 
 		var schemaSlots = await db.SchemaSlots
@@ -220,7 +223,9 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			HolidayDays: holidayDays,
 			BreakSlots: breakSlots,
 			Slots: slotDtos,
-			Notes: weekPlan?.Notes));
+			Notes: weekPlan?.Notes,
+			NotesUpdatedBy: weekPlan?.NotesUpdatedBy,
+			NotesUpdatedAt: weekPlan?.NotesUpdatedAt));
 	}
 
 	[HttpPut("slots")]
@@ -358,12 +363,10 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			return Forbid();
 		}
 
-		var weekPlan = await weekPlans.GetOrCreateWeekPlanAsync(classId, isoYear.Value, isoWeek.Value, cancellationToken);
+		var weekPlan = await weekPlans.UpdateNotesAsync(
+			classId, isoYear.Value, isoWeek.Value, req.Notes, User.GetKeycloakSubject(), User.GetDisplayName(), cancellationToken);
 
-		weekPlan.Notes = req.Notes;
-		await db.SaveChangesAsync(cancellationToken);
-
-		return Ok(new NotesDto(weekPlan.Notes));
+		return Ok(new NotesDto(weekPlan.Notes, weekPlan.NotesUpdatedBy, weekPlan.NotesUpdatedAt));
 	}
 
 	[HttpPost("slots/{slotId:guid}/files")]
@@ -388,34 +391,16 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			return Forbid();
 		}
 
-		var fileExists = await db.SchoolFiles.AnyAsync(f => f.Id == req.SchoolFileId, cancellationToken);
-		if (!fileExists)
+		var result = await weekPlans.AddFileToSlotAsync(slotId, req.SchoolFileId, User.GetKeycloakSubject(), cancellationToken);
+		return result.Outcome switch
 		{
-			return Problem("SchoolFileId findes ikke under denne lejer", statusCode: 400);
-		}
-
-		var link = new WeekPlanSlotFile
-		{
-			Id = Guid.NewGuid(),
-			TenantId = tenant.TenantId,
-			WeekPlanSlotId = slotId,
-			SchoolFileId = req.SchoolFileId,
+			WeekPlanService.AddSlotFileOutcome.FileNotFound =>
+				Problem("SchoolFileId findes ikke under denne lejer", statusCode: 400),
+			WeekPlanService.AddSlotFileOutcome.AlreadyAttached =>
+				Problem("Filen er allerede tilknyttet denne lektion", statusCode: 409),
+			_ => CreatedAtAction(nameof(AddFile), new { classId, slotId },
+				new WeekPlanSlotFileDto(result.Link!.Id, result.Link.SchoolFileId, result.File!.FileName, result.File.Url)),
 		};
-		db.WeekPlanSlotFiles.Add(link);
-
-		try
-		{
-			await db.SaveChangesAsync(cancellationToken);
-		}
-		catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("unique") == true ||
-											ex.InnerException?.Message.Contains("duplicate") == true)
-		{
-			return Problem("Filen er allerede tilknyttet denne lektion", statusCode: 409);
-		}
-
-		var schoolFile = await db.SchoolFiles.AsNoTracking().FirstAsync(f => f.Id == req.SchoolFileId, cancellationToken);
-		return CreatedAtAction(nameof(AddFile), new { classId, slotId },
-			new WeekPlanSlotFileDto(link.Id, link.SchoolFileId, schoolFile.FileName, schoolFile.Url));
 	}
 
 	private static bool IsFullWeekCovered(IEnumerable<CalendarEntry> holidays, DateOnly weekStart, DateOnly weekEnd)

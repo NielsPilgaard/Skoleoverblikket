@@ -1,3 +1,7 @@
+// FileUploadService.MaxFileSizeBytes in the API.
+export const MAX_UPLOAD_BYTES = 500 * 1024 * 1024
+export const MAX_UPLOAD_LABEL = '500 MB'
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`

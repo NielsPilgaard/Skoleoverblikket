@@ -15,6 +15,7 @@ import {
 import type { ParentSummaryDto, StudentDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { useSubscription } from '../hooks/useSubscription'
+import { PersonList } from '../components/ui/list'
 import {
   isValidPhone,
   isValidPostalCode,
@@ -422,7 +423,7 @@ export default function ParentsPage() {
           disabled={!hasParentModule}
           aria-label="Inviter forældrene"
           title={!hasParentModule ? 'Kræver forældremodulet — aktivér under Abonnement' : undefined}
-          className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center min-h-11 min-w-11 justify-center sm:min-h-0 sm:min-w-0 gap-2 px-3 py-2 sm:px-4 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <svg
             width="16"
@@ -458,159 +459,84 @@ export default function ParentsPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Navn
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">
-                  Telefon
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Elever
-                </th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Handlinger
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {isLoading &&
-                Array.from({ length: 4 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="px-5 py-3">
-                      <div className="h-4 w-28 bg-gray-200 rounded-sm" />
-                    </td>
-                    <td className="px-5 py-3 hidden md:table-cell">
-                      <div className="h-4 w-24 bg-gray-100 rounded-sm" />
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="h-4 w-20 bg-gray-100 rounded-sm" />
-                    </td>
-                    <td className="px-5 py-3" />
-                  </tr>
-                ))}
-              {!isLoading && (parents ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-5 py-12 text-center">
-                    <p className="text-gray-400 font-medium">Ingen forældre inviteret endnu</p>
-                    <p className="text-gray-400 text-xs mt-1">
-                      Inviter den første forældrene for at give adgang til klasseskemaet
-                    </p>
-                  </td>
-                </tr>
-              )}
-              {(parents ?? []).map((p: ParentSummaryDto) => (
-                <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3 font-medium text-gray-900">{p.name}</td>
-                  <td className="px-5 py-3 text-gray-500 hidden md:table-cell">{p.phone ?? '—'}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {(p.students ?? []).map((s) => (
-                        <span
-                          key={s.id}
-                          className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"
-                        >
-                          {s.name}
-                        </span>
-                      ))}
-                      {(p.students ?? []).length === 0 && (
-                        <span className="text-xs text-gray-400">—</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => setDetailsTarget({ id: p.id!, name: p.name })}
-                        className="p-1.5 text-gray-400 hover:text-brand-600 rounded-md hover:bg-brand-50 transition-colors"
-                        title="Detaljer"
-                      >
-                        <svg
-                          width="15"
-                          height="15"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <circle cx="12" cy="12" r="10" />
-                          <line x1="12" y1="16" x2="12" y2="12" />
-                          <line x1="12" y1="8" x2="12.01" y2="8" />
-                        </svg>
-                      </button>
-                      {!p.hasAccount && hasParentModule && (
-                        <button
-                          onClick={() => resendMutation.mutate({ path: { parentId: p.id! } })}
-                          disabled={resendMutation.isPending}
-                          className="p-1.5 text-gray-400 hover:text-brand-600 rounded-md hover:bg-brand-50 transition-colors"
-                          title="Gensend invitation"
-                        >
-                          <svg
-                            width="15"
-                            height="15"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                            <polyline points="22,6 12,13 2,6" />
-                          </svg>
-                        </button>
-                      )}
-                      {hasParentModule && (
-                        <button
-                          onClick={() => setEditingParent(p)}
-                          className="p-1.5 text-gray-400 hover:text-brand-600 rounded-md hover:bg-brand-50 transition-colors"
-                          title="Rediger kontaktoplysninger"
-                        >
-                          <svg
-                            width="15"
-                            height="15"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                          </svg>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          if (confirm(`Slet "${p.name}"? Adgangen fjernes.`))
-                            deleteMutation.mutate({ path: { id: p.id! } })
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                        title="Slet"
-                      >
-                        <svg
-                          width="15"
-                          height="15"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                          <path d="M10 11v6M14 11v6" />
-                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <PersonList
+        items={parents}
+        isLoading={isLoading}
+        testId="parent-list"
+        noun={{ one: 'forælder', other: 'forældre' }}
+        searchText={(p) =>
+          `${p.name} ${p.phone ?? ''} ${(p.students ?? []).map((s) => s.name).join(' ')}`
+        }
+        searchPlaceholder="Søg efter forælder eller barn"
+        filterLabel="Filtrer efter login"
+        filters={[
+          { value: '', label: 'Alle' },
+          { value: 'active', label: 'Har konto', match: (p) => !!p.hasAccount },
+          { value: 'pending', label: 'Ingen konto', match: (p) => !p.hasAccount },
+        ]}
+        sorts={[
+          {
+            value: 'name',
+            label: 'Navn A–Å',
+            compare: (a, b) => a.name.localeCompare(b.name, 'da'),
+          },
+          {
+            value: 'pending',
+            label: 'Ingen konto først',
+            compare: (a, b) =>
+              Number(!!a.hasAccount) - Number(!!b.hasAccount) || a.name.localeCompare(b.name, 'da'),
+          },
+        ]}
+        empty={
+          <>
+            <p className="font-semibold text-gray-700">Ingen forældre inviteret endnu</p>
+            <p className="text-sm mt-1">
+              Inviter den første forælder for at give adgang til klasseskemaet
+            </p>
+          </>
+        }
+        toPerson={(p: ParentSummaryDto) => {
+          const children = (p.students ?? []).map((s) => s.name).join(', ')
+          return {
+            key: p.id ?? p.name,
+            name: p.name,
+            subtitle: children ? `Forælder til ${children}` : 'Ingen børn tilknyttet',
+            // Not "Inviteret": the list doesn't know whether the invitation has expired.
+            badge: p.hasAccount ? undefined : { label: 'Ingen konto', tone: 'amber' },
+            details: [
+              { label: 'Telefon', value: p.phone ?? '—' },
+              { label: 'Børn', value: children || '—' },
+              { label: 'Konto', value: p.hasAccount ? 'Oprettet' : 'Ikke oprettet endnu' },
+            ],
+            actions: [
+              ...(!p.hasAccount && hasParentModule
+                ? [
+                    {
+                      label: 'Send invitation igen',
+                      disabled: resendMutation.isPending,
+                      onClick: () => resendMutation.mutate({ path: { parentId: p.id! } }),
+                    },
+                  ]
+                : []),
+              ...(hasParentModule
+                ? [{ label: 'Rediger kontaktoplysninger', onClick: () => setEditingParent(p) }]
+                : []),
+              {
+                label: 'E-mail og meforælder',
+                onClick: () => setDetailsTarget({ id: p.id!, name: p.name }),
+              },
+              {
+                label: 'Slet',
+                variant: 'danger' as const,
+                onClick: () => {
+                  if (confirm(`Slet "${p.name}"? Adgangen fjernes.`))
+                    deleteMutation.mutate({ path: { id: p.id! } })
+                },
+              },
+            ],
+          }
+        }}
+      />
 
       {showInvite && students && (
         <InviteModal students={students} onClose={() => setShowInvite(false)} />

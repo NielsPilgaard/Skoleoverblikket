@@ -7,6 +7,8 @@ using Skoleoverblikket.Api.Controllers;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using Skoleoverblikket.Api.Models;
+using Skoleoverblikket.Api.Services;
+using TUnit.Assertions.Enums;
 
 namespace Skoleoverblikket.Api.IntegrationTests;
 
@@ -201,6 +203,61 @@ public sealed class WeekPlanTests(ApiFactory factory)
 		putResponse.EnsureSuccessStatusCode();
 		var slotDto = await putResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
 		return slotDto!.Id;
+	}
+
+	[Test]
+	public async Task UpdateNotes_RecordsAuthorAndTime_AndClearingRemovesThem()
+	{
+		var (classId, _) = await SetupClassWithSlotAsync("3.n");
+		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Thomas Nielsen", keycloakSubject: "notes-author");
+		_client.DefaultRequestHeaders.Add("X-Test-Subject", "notes-author");
+		var url = $"/api/v1/classes/{classId}/week-plan/notes?isoYear={TestYear}&isoWeek={TestWeek}";
+
+		var put = await _client.PutAsJsonAsync(url, new WeekPlanController.UpdateNotesRequest("Tur fredag"));
+		await Assert.That(put.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+		var plan = await _client.GetFromJsonAsync<WeekPlanController.WeekPlanDto>(
+			$"/api/v1/classes/{classId}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}", JsonOpts);
+		await Assert.That(plan!.Notes).IsEqualTo("Tur fredag");
+		await Assert.That(plan.NotesUpdatedBy).IsEqualTo("Thomas Nielsen");
+		await Assert.That(plan.NotesUpdatedAt).IsNotNull();
+
+		await _client.PutAsJsonAsync(url, new WeekPlanController.UpdateNotesRequest(null));
+		var cleared = await _client.GetFromJsonAsync<WeekPlanController.WeekPlanDto>(
+			$"/api/v1/classes/{classId}/week-plan?isoYear={TestYear}&isoWeek={TestWeek}", JsonOpts);
+		await Assert.That(cleared!.NotesUpdatedBy).IsNull();
+		await Assert.That(cleared.NotesUpdatedAt).IsNull();
+	}
+
+	[Test]
+	public async Task RecentFiles_AreTheCallersOwnAttachments_NewestFirstAndOnce()
+	{
+		var (classId, schemaSlotId) = await SetupClassWithSlotAsync("3.r");
+		var slotId = await UpsertWeekPlanSlotAndGetId(classId, schemaSlotId);
+		var older = await TestDataBuilder.CreateSchoolFileAsync(_factory.Services, _tenantId, "aeldre.pdf");
+		var newer = await TestDataBuilder.CreateSchoolFileAsync(_factory.Services, _tenantId, "nyere.pdf");
+		var filesUrl = $"/api/v1/classes/{classId}/week-plan/slots/{slotId}/files";
+
+		_client.DefaultRequestHeaders.Add("X-Test-Subject", "recent-user");
+		await _client.PostAsJsonAsync(filesUrl, new WeekPlanController.AddFileToSlotRequest(older.Id));
+		await _client.PostAsJsonAsync(filesUrl, new WeekPlanController.AddFileToSlotRequest(newer.Id));
+
+		var mine = await _client.GetFromJsonAsync<List<WeekPlanService.RecentFileDto>>("/api/v1/files/recent", JsonOpts);
+		await Assert.That(mine!.Select(f => f.FileName)).IsEquivalentTo(["nyere.pdf", "aeldre.pdf"], CollectionOrdering.Matching);
+
+		var someoneElse = _factory.CreateClient();
+		someoneElse.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		someoneElse.DefaultRequestHeaders.Add("X-Test-Subject", "other-user");
+		var theirs = await someoneElse.GetFromJsonAsync<List<WeekPlanService.RecentFileDto>>("/api/v1/files/recent", JsonOpts);
+		await Assert.That(theirs!).IsEmpty();
+
+		var otherTenant = _factory.CreateClient();
+		var otherTenantId = Guid.NewGuid();
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, otherTenantId);
+		otherTenant.DefaultRequestHeaders.Add("X-Test-TenantId", otherTenantId.ToString());
+		otherTenant.DefaultRequestHeaders.Add("X-Test-Subject", "recent-user");
+		var acrossTenants = await otherTenant.GetFromJsonAsync<List<WeekPlanService.RecentFileDto>>("/api/v1/files/recent", JsonOpts);
+		await Assert.That(acrossTenants!).IsEmpty();
 	}
 
 	[Test]

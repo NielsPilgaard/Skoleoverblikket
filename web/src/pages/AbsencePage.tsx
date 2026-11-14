@@ -10,6 +10,7 @@ import { AbsenceRegisterTab } from '../components/absence/AbsenceRegisterTab'
 import { LeaveRequestsTab } from '../components/absence/LeaveRequestsTab'
 import { AbsenceStatsTab } from '../components/absence/AbsenceStatsTab'
 import { saveBlob, schoolYearLabel, schoolYearStart, todayIso } from '../lib/absence'
+import { Select } from '../components/ui/select'
 
 type Tab = 'fremmoede' | 'register' | 'fri' | 'statistik'
 
@@ -48,18 +49,17 @@ function RetentionNote({ isAdmin }: { isAdmin: boolean }) {
       </p>
       {isAdmin && (
         <div className="flex items-center gap-2">
-          <select
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            className="px-2 py-1 border border-gray-300 rounded-lg text-xs text-gray-700"
-            aria-label="Skoleår"
-          >
-            {[current, current - 1].map((y) => (
-              <option key={y} value={y}>
-                {schoolYearLabel(y)}
-              </option>
-            ))}
-          </select>
+          <Select
+            label="Skoleår"
+            hideLabel
+            options={[current, current - 1].map((y) => ({
+              value: String(y),
+              label: schoolYearLabel(y),
+            }))}
+            value={String(year)}
+            onChange={(value) => setYear(Number(value))}
+            className="w-36"
+          />
           <button
             type="button"
             onClick={download}

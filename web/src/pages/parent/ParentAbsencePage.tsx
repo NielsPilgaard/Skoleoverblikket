@@ -18,6 +18,7 @@ import {
   weekdayFrom,
 } from '../../lib/absence'
 import { problemDetail } from '../../lib/problem'
+import { Select, SegmentedControl } from '../../components/ui/select'
 
 type Kind = Extract<AbsenceCategory, 'Illness' | 'ExtraordinaryLeave'>
 
@@ -105,32 +106,23 @@ export default function ParentAbsencePage() {
           onSubmit={handleSubmit}
           className="bg-white border border-gray-200 rounded-xl p-5 mb-6 space-y-4"
         >
-          <div className="grid grid-cols-2 gap-2">
-            {(
-              [
-                ['Illness', 'Syg'],
-                ['ExtraordinaryLeave', 'Fri'],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={kind === value}
-                onClick={() => {
-                  setKind(value)
-                  if (value === 'ExtraordinaryLeave' && date < today) handleDateChange(today)
-                }}
-                data-testid={`parent-absence-kind-${value}`}
-                className={`h-12 rounded-lg border text-sm font-medium ${
-                  kind === value
-                    ? 'border-brand-600 bg-brand-50 text-brand-800'
-                    : 'border-gray-300 text-gray-700'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            label="Hvad drejer det sig om?"
+            hideLabel
+            value={kind}
+            onChange={(value) => {
+              setKind(value)
+              if (value === 'ExtraordinaryLeave' && date < today) handleDateChange(today)
+            }}
+            options={[
+              { value: 'Illness', label: 'Syg', testId: 'parent-absence-kind-Illness' },
+              {
+                value: 'ExtraordinaryLeave',
+                label: 'Fri',
+                testId: 'parent-absence-kind-ExtraordinaryLeave',
+              },
+            ]}
+          />
           {kind === 'ExtraordinaryLeave' && (
             <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
               Skolens leder skal godkende fri. Søg i god tid, før den første dag.
@@ -138,24 +130,18 @@ export default function ParentAbsencePage() {
           )}
 
           <div>
-            <label htmlFor="absence-child" className="block text-sm font-medium text-gray-700 mb-1">
-              Barn
-            </label>
-            <select
+            <Select
+              label="Barn"
+              options={[
+                { value: '', label: 'Vælg barn' },
+                ...children.map((s) => ({ value: s.studentId, label: s.studentName })),
+              ]}
               id="absence-child"
               value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
               required
-              data-testid="parent-absence-child"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
-            >
-              <option value="">Vælg barn</option>
-              {children.map((s) => (
-                <option key={s.studentId} value={s.studentId}>
-                  {s.studentName}
-                </option>
-              ))}
-            </select>
+              onChange={setStudentId}
+              testId="parent-absence-child"
+            />
           </div>
           <div className="flex gap-3">
             <div className="flex-1">

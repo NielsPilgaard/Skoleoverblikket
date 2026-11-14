@@ -20,7 +20,8 @@ import {
 } from '../api/generated/@tanstack/react-query.gen'
 import type { SfoShiftDto, SfoWeekPlanShiftDto, SfoWeekPlanDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
-import { getISOWeek, getISOWeekYear, getISOWeeksInYear } from '../utils/isoWeek'
+import { useWeekNavigation } from '../hooks/useWeekNavigation'
+import { Select, WeekStepper } from '../components/ui/select'
 
 const DAY_NAMES = ['', 'Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag']
 const DAY_NAMES_SHORT = ['', 'Man', 'Tir', 'Ons', 'Tor', 'Fre']
@@ -151,9 +152,7 @@ export default function SfoPage() {
   const [allDays, setAllDays] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
-  const [isoYear, setIsoYear] = useState(() => getISOWeekYear(new Date()))
-  const [isoWeek, setIsoWeek] = useState(() => getISOWeek(new Date()))
-  const [showYearPicker, setShowYearPicker] = useState(false)
+  const { isoYear, isoWeek, stepper, weekJump, yearJump } = useWeekNavigation()
   const [selectedCell, setSelectedCell] = useState<{
     shift: SfoShiftDto
     weekShift: SfoWeekPlanShiftDto | undefined
@@ -173,24 +172,6 @@ export default function SfoPage() {
       setSelectedCell(null)
     },
   })
-
-  function prevWeek() {
-    if (isoWeek === 1) {
-      setIsoYear((y) => y - 1)
-      setIsoWeek(getISOWeeksInYear(isoYear - 1))
-    } else setIsoWeek((w) => w - 1)
-  }
-  function nextWeek() {
-    const weeksInYear = getISOWeeksInYear(isoYear)
-    if (isoWeek === weeksInYear) {
-      setIsoYear((y) => y + 1)
-      setIsoWeek(1)
-    } else setIsoWeek((w) => w + 1)
-  }
-  function goToThisWeek() {
-    setIsoYear(getISOWeekYear(new Date()))
-    setIsoWeek(getISOWeek(new Date()))
-  }
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getApiV1SfoShiftsQueryKey() })
 
@@ -314,98 +295,22 @@ export default function SfoPage() {
   return (
     <div>
       {/* Top bar */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-3 sm:px-4 lg:px-8 py-3 flex items-center justify-between gap-1 sm:gap-2">
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-3 sm:px-4 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-2">
         <h1 className="font-display text-sm sm:text-base font-semibold text-gray-900 shrink-0 truncate">
           SFO Ugeplan
         </h1>
 
-        {/* Week navigator */}
-        <div className="flex items-center gap-0 sm:gap-1 shrink-0">
-          <button
-            onClick={prevWeek}
-            className="p-1 sm:p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
-            title="Forrige uge"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={goToThisWeek}
-              className="px-1.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold text-gray-900 hover:bg-gray-100 rounded-md transition-colors tabular-nums whitespace-nowrap"
-              title="Gå til denne uge"
-            >
-              Uge {isoWeek}
-            </button>
-            <div className="relative">
-              <button
-                onClick={() => setShowYearPicker((p) => !p)}
-                className="px-1 sm:px-2 py-1.5 text-xs sm:text-sm font-semibold text-brand-600 hover:bg-brand-50 rounded-md transition-colors tabular-nums"
-                title="Skift år"
-              >
-                {isoYear}
-              </button>
-              {showYearPicker && (
-                <>
-                  <button
-                    type="button"
-                    tabIndex={-1}
-                    aria-label="Luk årvælger"
-                    className="fixed inset-0 z-20"
-                    onClick={() => setShowYearPicker(false)}
-                  />
-                  <div className="absolute left-1/2 -translate-x-1/2 top-9 z-30 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[90px]">
-                    {[-2, -1, 0, 1, 2].map((offset) => {
-                      const y = getISOWeekYear(new Date()) + offset
-                      return (
-                        <button
-                          key={y}
-                          onClick={() => {
-                            setIsoYear(y)
-                            setShowYearPicker(false)
-                          }}
-                          className={`w-full px-4 py-2 text-sm text-center hover:bg-gray-50 transition-colors tabular-nums ${y === isoYear ? 'font-semibold text-brand-600' : 'text-gray-700'}`}
-                        >
-                          {y}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-          <button
-            onClick={nextWeek}
-            className="p-1 sm:p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
-            title="Næste uge"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        </div>
+        <WeekStepper
+          {...stepper}
+          jumps={[weekJump, yearJump]}
+          className="flex-1 min-w-48 max-w-sm mx-auto order-last sm:order-none basis-full sm:basis-auto"
+        />
 
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <Link
             to={`/udskriv/sfo?isoYear=${isoYear}&isoWeek=${isoWeek}`}
             target="_blank"
-            className="flex items-center gap-2 p-2 sm:px-3 sm:py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center min-h-11 min-w-11 justify-center sm:min-h-0 sm:min-w-0 gap-2 p-2 sm:px-3 sm:py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             title="Udskriv"
           >
             <svg
@@ -427,7 +332,7 @@ export default function SfoPage() {
           <button
             onClick={openCreate}
             aria-label="Ny vagt"
-            className="flex items-center gap-1.5 sm:gap-2 p-2 sm:px-3 sm:py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
+            className="flex items-center min-h-11 min-w-11 justify-center sm:min-h-0 sm:min-w-0 gap-1.5 sm:gap-2 p-2 sm:px-3 sm:py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
           >
             <svg
               width="15"
@@ -485,10 +390,10 @@ export default function SfoPage() {
                 <div key={slotKey} className="contents">
                   {/* Row label */}
                   <div className="bg-gray-50 border-b border-r border-gray-200 p-1.5 sm:p-3 flex flex-col justify-center overflow-hidden">
-                    <span className="text-[10px] sm:text-xs text-gray-500 font-mono leading-tight sm:leading-4 whitespace-nowrap">
+                    <span className="text-[10px] sm:text-xs text-gray-500 font-mono leading-tight whitespace-nowrap">
                       {slotMeta.startTime}
                     </span>
-                    <span className="text-[10px] sm:text-xs text-gray-400 font-mono leading-tight sm:leading-4 whitespace-nowrap">
+                    <span className="text-[10px] sm:text-xs text-gray-400 font-mono leading-tight whitespace-nowrap">
                       – {slotMeta.endTime}
                     </span>
                     {slotMeta.label && (
@@ -621,18 +526,12 @@ export default function SfoPage() {
 
           {!allDays && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ugedag</label>
-              <select
-                value={form.dayOfWeek}
-                onChange={(e) => setForm((f) => ({ ...f, dayOfWeek: Number(e.target.value) }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
-              >
-                {[1, 2, 3, 4, 5].map((d) => (
-                  <option key={d} value={d}>
-                    {DAY_NAMES[d]}
-                  </option>
-                ))}
-              </select>
+              <Select
+                label="Ugedag"
+                options={[1, 2, 3, 4, 5].map((d) => ({ value: String(d), label: DAY_NAMES[d] }))}
+                value={String(form.dayOfWeek)}
+                onChange={(value) => setForm((f) => ({ ...f, dayOfWeek: Number(value) }))}
+              />
             </div>
           )}
 
@@ -695,29 +594,23 @@ function TimeSelect({ value, onChange }: { value: string; onChange: (v: string) 
   const [h, m] = value.split(':')
   return (
     <div className="flex items-center gap-1">
-      <select
+      <Select
+        label="Time"
+        hideLabel
+        options={HOURS.map((hour) => ({ value: hour, label: hour }))}
         value={h}
-        onChange={(e) => onChange(`${e.target.value}:${m}`)}
-        className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
-      >
-        {HOURS.map((hour) => (
-          <option key={hour} value={hour}>
-            {hour}
-          </option>
-        ))}
-      </select>
+        onChange={(value) => onChange(`${value}:${m}`)}
+        className="flex-1"
+      />
       <span className="text-gray-400 font-medium">:</span>
-      <select
+      <Select
+        label="Minut"
+        hideLabel
+        options={MINUTES.map((min) => ({ value: min, label: min }))}
         value={m}
-        onChange={(e) => onChange(`${h}:${e.target.value}`)}
-        className="flex-1 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
-      >
-        {MINUTES.map((min) => (
-          <option key={min} value={min}>
-            {min}
-          </option>
-        ))}
-      </select>
+        onChange={(value) => onChange(`${h}:${value}`)}
+        className="flex-1"
+      />
     </div>
   )
 }
@@ -774,6 +667,7 @@ function CellModal({
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Escape') {
+      e.preventDefault()
       if (staffOpen) {
         setStaffOpen(false)
         setStaffQuery('')

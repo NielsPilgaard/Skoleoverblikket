@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import type { CalendarEntryDto } from '../../api/client'
 import { capitalizeFirst } from '../../lib/absence'
 import { getISOWeek } from '../../utils/isoWeek'
+import { WeekStepper } from '../ui/select'
 
 export const TYPE_LABELS: Record<string, string> = {
   Ferie: 'Ferie',
@@ -456,53 +457,24 @@ export function CalendarGrid({
         <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           {renderMonthCard(currentCarouselMonth.year, currentCarouselMonth.month, true)}
         </div>
-        {/* Pagination: arrow ← dots → arrow */}
-        <div className="flex items-center justify-center gap-3 mt-4">
-          <button
-            onClick={() => setCarouselIndex((i) => Math.max(i - 1, 0))}
-            disabled={carouselIndex === 0}
-            className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            aria-label="Forrige måned"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <div className="flex items-center gap-1.5">
-            {schoolYearMonths.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCarouselIndex(i)}
-                aria-label={`Gå til måned ${i + 1}`}
-                className={`rounded-full transition-all ${i === carouselIndex ? 'w-4 h-2 bg-brand-600' : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'}`}
-              />
-            ))}
-          </div>
-          <button
-            onClick={() => setCarouselIndex((i) => Math.min(i + 1, schoolYearMonths.length - 1))}
-            disabled={carouselIndex === schoolYearMonths.length - 1}
-            className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            aria-label="Næste måned"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        </div>
+        <WeekStepper
+          className="mt-4"
+          main={capitalizeFirst(
+            new Date(currentCarouselMonth.year, currentCarouselMonth.month - 1).toLocaleDateString(
+              'da-DK',
+              {
+                month: 'long',
+                year: 'numeric',
+              }
+            )
+          )}
+          onPrev={() => setCarouselIndex((i) => Math.max(i - 1, 0))}
+          onNext={() => setCarouselIndex((i) => Math.min(i + 1, schoolYearMonths.length - 1))}
+          prevLabel="Forrige måned"
+          nextLabel="Næste måned"
+          prevDisabled={carouselIndex === 0}
+          nextDisabled={carouselIndex === schoolYearMonths.length - 1}
+        />
       </div>
 
       {/* Desktop grid — visible from lg */}

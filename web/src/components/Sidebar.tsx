@@ -1103,7 +1103,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           </div>
           <button
             onClick={onClose}
-            className="lg:hidden p-1 rounded-sm text-brand-300 hover:text-white shrink-0"
+            aria-label="Luk menu"
+            className="lg:hidden w-11 h-11 -mr-2 flex items-center justify-center rounded-sm text-brand-300 hover:text-white shrink-0"
           >
             <svg
               width="18"

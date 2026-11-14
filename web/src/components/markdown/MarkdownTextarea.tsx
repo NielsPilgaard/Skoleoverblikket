@@ -24,6 +24,7 @@ function writePreviewHidden(hidden: boolean) {
 }
 
 interface MarkdownTextareaProps {
+  id?: string
   value: string
   onChange: (value: string) => void
   onBlur?: React.FocusEventHandler<HTMLTextAreaElement>
@@ -166,16 +167,17 @@ function normaliseStarBullet(el: HTMLTextAreaElement) {
 // A real toolbar button: bordered, square, clear pressed/hover states. Grouped
 // with negative margins so B/I/• read as one segmented control.
 const toolbarBtn =
-  'inline-flex items-center justify-center w-8 h-8 border border-gray-300 bg-white text-gray-700 ' +
+  'inline-flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 border border-gray-300 bg-white text-gray-700 ' +
   'hover:bg-gray-100 hover:text-gray-900 active:bg-gray-200 transition-colors text-sm leading-none ' +
   'focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:z-10 disabled:opacity-50 ' +
   'first:rounded-l-md last:rounded-r-md -ml-px first:ml-0'
 
 const previewToggleBtn =
-  'inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 transition-colors ' +
+  'inline-flex items-center gap-1 min-h-11 sm:min-h-0 text-xs text-gray-700 hover:text-gray-900 transition-colors ' +
   'focus:outline-hidden focus:ring-2 focus:ring-brand-500 rounded-sm px-1 py-0.5'
 
 export function MarkdownTextarea({
+  id,
   value,
   onChange,
   onBlur,
@@ -325,6 +327,7 @@ export function MarkdownTextarea({
         </button>
       </div>
       <textarea
+        id={id}
         ref={ref}
         value={value}
         onChange={handleInput}
@@ -344,7 +347,7 @@ export function MarkdownTextarea({
           className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
           data-testid={dataTestid ? `${dataTestid}-preview` : undefined}
         >
-          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400 mb-1">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-600 mb-1">
             Forhåndsvisning
           </p>
           {value.trim() ? (
@@ -352,7 +355,7 @@ export function MarkdownTextarea({
               <Markdown>{value}</Markdown>
             </div>
           ) : (
-            <p className="text-sm italic text-gray-400">Ingenting endnu</p>
+            <p className="text-sm italic text-gray-600">Ingenting endnu</p>
           )}
         </div>
       )}
