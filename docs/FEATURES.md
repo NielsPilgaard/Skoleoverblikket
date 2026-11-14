@@ -16,7 +16,7 @@ Built features beyond the core schema planner, with the controllers and services
 - Beskeder (`MessagesController`) — flat inbox for all tenant users with consent rules
 - Notifications (`NotificationsController`) — in-app + email, per-type opt-out via `NotificationPreference`
 - Calendar with recurrence (`CalendarController`) — school calendar events with recurrence and excluded dates
-- Class permissions (`ClassPermissionsController`) — per-class edit grants (superadmin vs. restricted mode)
+- Class permissions (`ClassPermissionsController`, `ClassPermissionService`) — per-class edit grants (superadmin vs. restricted mode)
 - File explorer (`FilesController`) — upload files, link to courses, browse by course, OVHCloud object storage
 - Bestyrelse / board module (`BoardMembersController`, `BoardInvitationsController`, `BoardFilesController`) — board member invitations and a board-only file space, separate from staff/parent files
 - Stå mål med / compliance publishing (`ComplianceCoverageController`) — lets friskoler publish teaching goals and plans per course/grade to satisfy Friskoleloven §1a public-disclosure requirements

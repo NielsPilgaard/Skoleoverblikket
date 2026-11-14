@@ -7,6 +7,7 @@ using Skoleoverblikket.Api.Controllers;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Models;
 using Skoleoverblikket.Api.Services;
+using Skoleoverblikket.Api.Tenancy;
 
 namespace Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 
@@ -93,10 +94,14 @@ public sealed class AbsenceTestKit(ApiFactory factory)
 
 	public async Task RestrictClassToAsync(Guid classId, Guid staffId)
 	{
-		using var scope = Factory.Services.CreateScope();
-		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-		db.ClassPermissions.Add(new ClassPermission { Id = Guid.NewGuid(), TenantId = TenantId, ClassId = classId, StaffId = staffId });
-		await db.SaveChangesAsync();
+		await using var scope = Factory.Services.CreateAsyncScope();
+		scope.ServiceProvider.GetRequiredService<HttpTenantContext>().UseBackgroundTenant(TenantId);
+		var (result, _) = await scope.ServiceProvider.GetRequiredService<ClassPermissionService>()
+			.GrantAsync(classId, staffId, CancellationToken.None);
+		if (result != ClassPermissionService.GrantResult.Granted)
+		{
+			throw new InvalidOperationException($"Could not restrict class {classId} to staff {staffId}: {result}");
+		}
 	}
 
 	// ── Dates ────────────────────────────────────────────────────────────────────
