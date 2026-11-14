@@ -24,6 +24,13 @@ updates:
       # Drop this once Swashbuckle depends on 3.x.
       - dependency-name: Microsoft.OpenApi
         update-types: ["version-update:semver-major"]
+      # Stay on the .NET 10 (LTS) release train; a .NET 11 package on the .NET 10 shared framework mixes versions.
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /web

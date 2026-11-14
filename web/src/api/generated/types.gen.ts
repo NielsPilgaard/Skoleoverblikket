@@ -1509,6 +1509,10 @@ export type SuperAdminFreeAccessControllerGrantFreeAccessRequest = {
     lastDay?: string | null;
 };
 
+export type SuperAdminSchoolDeletionControllerDeleteSchoolRequest = {
+    confirmSchoolName: string;
+};
+
 export type TenantCreatedDto = {
     id: string;
     name: string;
@@ -5393,6 +5397,24 @@ export type PutApiV1AdminTenantsBySchoolIdFreeAccessResponses = {
 };
 
 export type PutApiV1AdminTenantsBySchoolIdFreeAccessResponse = PutApiV1AdminTenantsBySchoolIdFreeAccessResponses[keyof PutApiV1AdminTenantsBySchoolIdFreeAccessResponses];
+
+export type PostApiV1AdminTenantsBySchoolIdDeletionData = {
+    body?: SuperAdminSchoolDeletionControllerDeleteSchoolRequest;
+    path: {
+        schoolId: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/tenants/{schoolId}/deletion';
+};
+
+export type PostApiV1AdminTenantsBySchoolIdDeletionResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type PostApiV1AdminTenantsBySchoolIdDeletionResponse = PostApiV1AdminTenantsBySchoolIdDeletionResponses[keyof PostApiV1AdminTenantsBySchoolIdDeletionResponses];
 
 export type PostApiV1AdminSubProcessorNoticeData = {
     body?: SubProcessorNoticeRequest;

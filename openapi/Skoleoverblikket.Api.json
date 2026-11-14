@@ -9605,6 +9605,53 @@
         ]
       }
     },
+    "/api/v1/admin/tenants/{schoolId}/deletion": {
+      "post": {
+        "tags": [
+          "SuperAdminSchoolDeletion"
+        ],
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuperAdminSchoolDeletionController_DeleteSchoolRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuperAdminSchoolDeletionController_DeleteSchoolRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuperAdminSchoolDeletionController_DeleteSchoolRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/admin/sub-processor-notice": {
       "post": {
         "tags": [
@@ -16712,6 +16759,18 @@
         },
         "additionalProperties": false
       },
+      "SuperAdminSchoolDeletionController_DeleteSchoolRequest": {
+        "required": [
+          "confirmSchoolName"
+        ],
+        "type": "object",
+        "properties": {
+          "confirmSchoolName": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "TenantCreatedDto": {
         "required": [
           "accessToken",
@@ -17883,6 +17942,9 @@
     },
     {
       "name": "SuperAdminFreeAccess"
+    },
+    {
+      "name": "SuperAdminSchoolDeletion"
     },
     {
       "name": "SuperAdminSubProcessorNotice"
