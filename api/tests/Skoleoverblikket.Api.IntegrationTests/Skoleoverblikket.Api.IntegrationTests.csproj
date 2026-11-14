@@ -21,8 +21,8 @@
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.15" />
 
-    <!-- Npgsql 10.0.1 depends on EFCore.Relational 10.0.4, but the API uses 10.0.5.
-         Pin Relational to 10.0.5 so both assemblies agree at runtime. -->
+    <!-- Npgsql 10.0.3 depends on EFCore.Relational 10.0.4, but the API uses EF Core 10.0.15.
+         Pin Relational to the API's EF Core version so both assemblies agree at runtime. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.15" />
   </ItemGroup>
 
