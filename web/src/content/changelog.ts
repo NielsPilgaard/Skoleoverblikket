@@ -12,6 +12,17 @@ interface ChangelogEntry {
  */
 export const changelog: ChangelogEntry[] = [
   {
+    date: '2026-11-16',
+    title: 'Forældrenes skema viser de rigtige dage',
+    changes: [
+      'Forældrenes skema viser nu hver lektion under den rigtige ugedag, så fx mandagens lektioner ikke længere står under tirsdag, og fredagens lektioner kommer med.',
+      'Lektioner, der starter samtidig men slutter på forskellige tidspunkter, vises nu kun én gang i skemaerne, også når skemaet printes.',
+      'Kalenderbegivenheder, der gentages hver måned, bliver nu på den rigtige dato, også efter korte måneder som februar.',
+      'Hvis Klassechatten ikke kan hentes, en besked ikke kan slettes, eller en fil ikke kan gemmes på en lektion i ugeplanen, får du nu en besked om det i stedet for en tom side.',
+      'Links ligger nu under "Filer & Eksport" i menuen, så det kan foldes sammen ligesom resten af menuen.',
+    ],
+  },
+  {
     date: '2026-10-26',
     title: 'Lærer og forælder med samme login',
     changes: [
