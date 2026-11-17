@@ -74,6 +74,7 @@ export function WeekStepper({
                 <Select
                   key={jump.label}
                   hideLabel
+                  disabled={disabled}
                   {...jump}
                   className={jump.className ?? 'flex-1 min-w-0'}
                 />
