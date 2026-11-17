@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Modal } from '../components/Modal'
 import ModuleInactiveNotice from '../components/ModuleInactiveNotice'
+import { PersonList } from '../components/ui/list'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getApiV1BoardMembersOptions,
@@ -127,91 +128,65 @@ export default function BoardMembersPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-        {isLoading ? (
-          <div className="px-5 py-4 animate-pulse space-y-3">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-10 bg-gray-100 rounded-sm" />
-            ))}
-          </div>
-        ) : isError ? (
-          <div className="px-5 py-8 text-center text-sm text-red-600">
-            {error instanceof Error ? error.message : 'Kunne ikke hente bestyrelsesmedlemmer'}
-          </div>
-        ) : !members || members.length === 0 ? (
-          <div className="px-5 py-12 flex flex-col items-center gap-4 text-center">
-            <p className="text-gray-400 font-medium">Ingen bestyrelsesmedlemmer endnu</p>
-            {inviteButton}
-          </div>
-        ) : (
-          members.map((member) => (
-            <div
-              key={member.id}
-              data-testid="board-member-row"
-              className="px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{member.name}</p>
-                <p className="text-xs text-gray-500 truncate">{member.email}</p>
-              </div>
-              <div className="flex items-center gap-4">
-                {member.hasAccount ? (
-                  <span className="shrink-0 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">
-                    Konto oprettet
-                  </span>
-                ) : (
-                  <span className="shrink-0 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-500">
-                    Afventer
-                  </span>
-                )}
-                <label className="shrink-0 flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    data-testid="board-member-teacher-access"
-                    checked={member.canAccessTeacherData}
-                    disabled={!hasBoardModule || toggleMutation.isPending}
-                    onChange={(e) =>
-                      toggleMutation.mutate({
-                        path: { id: member.id! },
-                        body: { canAccessTeacherData: e.target.checked },
-                      })
-                    }
-                    className="rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500 disabled:opacity-50"
-                  />
-                  Læreradgang
-                </label>
-                <button
-                  type="button"
-                  data-testid="board-member-remove"
-                  onClick={() => {
-                    if (confirm(`Fjern "${member.name}" fra bestyrelsen? Adgangen fjernes.`))
-                      deleteMutation.mutate({ path: { id: member.id! } })
-                  }}
-                  disabled={deleteMutation.isPending}
-                  className="shrink-0 ml-auto sm:ml-0 p-1.5 text-gray-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-colors disabled:opacity-50"
-                  title="Fjern bestyrelsesmedlem"
-                  aria-label="Fjern bestyrelsesmedlem"
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                    <path d="M10 11v6" />
-                    <path d="M14 11v6" />
-                    <path d="M9 6V4h6v2" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      {isError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+          {error instanceof Error ? error.message : 'Kunne ikke hente bestyrelsesmedlemmer'}
+        </div>
+      )}
+
+      <PersonList
+        items={members}
+        isLoading={isLoading}
+        testId="board-member-list"
+        noun={{ one: 'bestyrelsesmedlem', other: 'bestyrelsesmedlemmer' }}
+        empty={
+          <>
+            <p className="font-semibold text-gray-700">Ingen bestyrelsesmedlemmer endnu</p>
+            <p className="text-sm mt-1">Inviter det første bestyrelsesmedlem for at give adgang</p>
+          </>
+        }
+        toPerson={(member) => ({
+          key: member.id ?? member.email,
+          name: member.name,
+          subtitle: member.email,
+          testId: 'board-member-row',
+          badge: member.hasAccount ? undefined : { label: 'Afventer', tone: 'amber' },
+          details: [
+            { label: 'Konto', value: member.hasAccount ? 'Oprettet' : 'Afventer' },
+            { label: 'Læreradgang', value: member.canAccessTeacherData ? 'Ja' : 'Nej' },
+          ],
+          content: (
+            <label className="mt-3 flex items-center gap-3 min-h-11 text-sm text-gray-800 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                data-testid="board-member-teacher-access"
+                checked={member.canAccessTeacherData}
+                disabled={!hasBoardModule || toggleMutation.isPending}
+                onChange={(e) =>
+                  toggleMutation.mutate({
+                    path: { id: member.id! },
+                    body: { canAccessTeacherData: e.target.checked },
+                  })
+                }
+                className="w-5 h-5 rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500 disabled:opacity-50"
+              />
+              Læreradgang: kan se skemaer og medarbejdere
+            </label>
+          ),
+          actions: [
+            {
+              label: 'Fjern fra bestyrelsen',
+              variant: 'danger',
+              testId: 'board-member-remove',
+              disabled: deleteMutation.isPending,
+              onClick: () => {
+                if (confirm(`Fjern "${member.name}" fra bestyrelsen? Adgangen fjernes.`))
+                  deleteMutation.mutate({ path: { id: member.id! } })
+              },
+            },
+          ],
+        })}
+      />
 
       <Modal
         isOpen={showInviteModal}
