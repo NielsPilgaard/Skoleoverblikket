@@ -81,13 +81,15 @@ public sealed class WeekPlanService(AppDbContext db, ITenantContext tenant)
 	/// re-saving doesn't tell parents the note is new. The author is the staff member's name, since
 	/// that's who parents know, or the login's own name for someone who isn't staff.
 	/// </summary>
-	public async Task<WeekPlan> UpdateNotesAsync(
+	public record NotesDto(string? Notes, string? NotesUpdatedBy, DateTimeOffset? NotesUpdatedAt);
+
+	public async Task<NotesDto> UpdateNotesAsync(
 		Guid classId, int isoYear, int isoWeek, string? notes, string? subject, string? loginName, CancellationToken cancellationToken)
 	{
 		var weekPlan = await GetOrCreateWeekPlanAsync(classId, isoYear, isoWeek, cancellationToken);
 		if (weekPlan.Notes == notes)
 		{
-			return weekPlan;
+			return new NotesDto(weekPlan.Notes, weekPlan.NotesUpdatedBy, weekPlan.NotesUpdatedAt);
 		}
 
 		var staffName = subject is null
@@ -103,7 +105,7 @@ public sealed class WeekPlanService(AppDbContext db, ITenantContext tenant)
 		// Write the author even when unchanged, so a concurrent save can't pair our text with its author.
 		db.Entry(weekPlan).Property(w => w.NotesUpdatedBy).IsModified = true;
 		await db.SaveChangesAsync(cancellationToken);
-		return weekPlan;
+		return new NotesDto(weekPlan.Notes, weekPlan.NotesUpdatedBy, weekPlan.NotesUpdatedAt);
 	}
 
 	public enum AddSlotFileOutcome
@@ -114,7 +116,9 @@ public sealed class WeekPlanService(AppDbContext db, ITenantContext tenant)
 		AlreadyAttached,
 	}
 
-	public record AddSlotFileResult(AddSlotFileOutcome Outcome, WeekPlanSlotFile? Link, SchoolFile? File);
+	public record WeekPlanSlotFileDto(Guid Id, Guid SchoolFileId, string FileName, string Url);
+
+	public record AddSlotFileResult(AddSlotFileOutcome Outcome, WeekPlanSlotFileDto? File);
 
 	/// <summary>Attaches a school file to a lektion, remembering who did it for "Senest brugt af dig".</summary>
 	public async Task<AddSlotFileResult> AddFileToSlotAsync(
@@ -123,13 +127,13 @@ public sealed class WeekPlanService(AppDbContext db, ITenantContext tenant)
 		// The query filter scopes this to the tenant; the foreign key alone would accept another school's slot.
 		if (!await db.WeekPlanSlots.AnyAsync(s => s.Id == slotId, cancellationToken))
 		{
-			return new AddSlotFileResult(AddSlotFileOutcome.SlotNotFound, null, null);
+			return new AddSlotFileResult(AddSlotFileOutcome.SlotNotFound, null);
 		}
 
 		var file = await db.SchoolFiles.AsNoTracking().FirstOrDefaultAsync(f => f.Id == schoolFileId, cancellationToken);
 		if (file is null)
 		{
-			return new AddSlotFileResult(AddSlotFileOutcome.FileNotFound, null, null);
+			return new AddSlotFileResult(AddSlotFileOutcome.FileNotFound, null);
 		}
 
 		var link = new WeekPlanSlotFile
@@ -149,10 +153,11 @@ public sealed class WeekPlanService(AppDbContext db, ITenantContext tenant)
 		catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("unique") == true ||
 											ex.InnerException?.Message.Contains("duplicate") == true)
 		{
-			return new AddSlotFileResult(AddSlotFileOutcome.AlreadyAttached, null, null);
+			return new AddSlotFileResult(AddSlotFileOutcome.AlreadyAttached, null);
 		}
 
-		return new AddSlotFileResult(AddSlotFileOutcome.Added, link, file);
+		return new AddSlotFileResult(
+			AddSlotFileOutcome.Added, new WeekPlanSlotFileDto(link.Id, link.SchoolFileId, file.FileName, file.Url));
 	}
 
 	public record RecentFileDto(

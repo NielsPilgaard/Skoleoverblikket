@@ -8,6 +8,7 @@ using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Models;
 using Skoleoverblikket.Api.Services;
 using Skoleoverblikket.Api.Tenancy;
+using static Skoleoverblikket.Api.Services.WeekPlanService;
 
 namespace Skoleoverblikket.Api.Controllers;
 
@@ -16,8 +17,6 @@ namespace Skoleoverblikket.Api.Controllers;
 [Authorize]
 public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, IAuthorizationService authz, WeekPlanService weekPlans) : ControllerBase
 {
-	public record WeekPlanSlotFileDto(Guid Id, Guid SchoolFileId, string FileName, string Url);
-
 	public record WeekPlanSlotDto(
 		Guid Id,
 		Guid SchemaSlotId,
@@ -68,8 +67,6 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 	public record AddFileToSlotRequest(Guid SchoolFileId);
 
 	public record UpdateNotesRequest([StringLength(8000)] string? Notes);
-
-	public record NotesDto(string? Notes, string? NotesUpdatedBy, DateTimeOffset? NotesUpdatedAt);
 
 	[HttpGet]
 	[Authorize(Roles = $"{Roles.Staff},{Roles.Parent}")]
@@ -363,10 +360,10 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 			return Forbid();
 		}
 
-		var weekPlan = await weekPlans.UpdateNotesAsync(
+		var notes = await weekPlans.UpdateNotesAsync(
 			classId, isoYear.Value, isoWeek.Value, req.Notes, User.GetKeycloakSubject(), User.GetDisplayName(), cancellationToken);
 
-		return Ok(new NotesDto(weekPlan.Notes, weekPlan.NotesUpdatedBy, weekPlan.NotesUpdatedAt));
+		return Ok(notes);
 	}
 
 	[HttpPost("slots/{slotId:guid}/files")]
@@ -399,8 +396,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 				Problem("SchoolFileId findes ikke under denne lejer", statusCode: 400),
 			WeekPlanService.AddSlotFileOutcome.AlreadyAttached =>
 				Problem("Filen er allerede tilknyttet denne lektion", statusCode: 409),
-			_ => CreatedAtAction(nameof(AddFile), new { classId, slotId },
-				new WeekPlanSlotFileDto(result.Link!.Id, result.Link.SchoolFileId, result.File!.FileName, result.File.Url)),
+			_ => CreatedAtAction(nameof(AddFile), new { classId, slotId }, result.File),
 		};
 	}
 

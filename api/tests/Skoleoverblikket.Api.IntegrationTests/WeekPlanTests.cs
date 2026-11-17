@@ -273,7 +273,7 @@ public sealed class WeekPlanTests(ApiFactory factory)
 			new WeekPlanController.AddFileToSlotRequest(file.Id));
 
 		await Assert.That(addResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
-		var fileDto = await addResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotFileDto>();
+		var fileDto = await addResponse.Content.ReadFromJsonAsync<WeekPlanService.WeekPlanSlotFileDto>();
 		await Assert.That(fileDto!.FileName).IsEqualTo("opgave.pdf");
 
 		// Verify it appears in GET
