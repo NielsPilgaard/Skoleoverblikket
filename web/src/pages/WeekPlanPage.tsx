@@ -618,7 +618,10 @@ export default function WeekPlanPage() {
         <LessonEditor
           key={`${classId}-${schemaId}-${isoYear}-${isoWeek}-${editingSlot.schemaSlotId}`}
           slot={editingSlot}
-          slots={weekPlanData.slots}
+          // Holiday-day lessons can't be opened in the grid, so "Næste" skips them too.
+          slots={weekPlanData.slots.filter(
+            (s) => !(weekPlanData.holidayDays ?? []).some((h) => h.weekday === s.weekday)
+          )}
           classId={classId}
           className={className}
           isoYear={isoYear}
