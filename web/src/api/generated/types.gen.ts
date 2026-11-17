@@ -1015,6 +1015,7 @@ export type ParentsControllerParentSummaryDto = {
     city?: string | null;
     students?: Array<ParentsControllerStudentRefDto>;
     hasAccount: boolean;
+    hasPendingInvitation: boolean;
     createdAt: string;
     adresseBeskyttet: boolean;
 };
@@ -1698,12 +1699,6 @@ export type WeekPlanControllerHolidayDayDto = {
     title: string;
 };
 
-export type WeekPlanControllerNotesDto = {
-    notes?: string | null;
-    notesUpdatedBy?: string | null;
-    notesUpdatedAt?: string | null;
-};
-
 export type WeekPlanControllerUpdateNotesRequest = {
     notes?: string | null;
 };
@@ -1746,7 +1741,7 @@ export type WeekPlanControllerWeekPlanSlotDto = {
     originalCourseName?: string | null;
     description?: string | null;
     lektier?: string | null;
-    files?: Array<WeekPlanControllerWeekPlanSlotFileDto>;
+    files?: Array<WeekPlanServiceWeekPlanSlotFileDto>;
     substituteTeacherId?: string | null;
     substituteTeacherName?: string | null;
     substituteAideId?: string | null;
@@ -1754,11 +1749,10 @@ export type WeekPlanControllerWeekPlanSlotDto = {
     weekPlanId: string;
 };
 
-export type WeekPlanControllerWeekPlanSlotFileDto = {
-    id: string;
-    schoolFileId: string;
-    fileName: string;
-    url: string;
+export type WeekPlanServiceNotesDto = {
+    notes?: string | null;
+    notesUpdatedBy?: string | null;
+    notesUpdatedAt?: string | null;
 };
 
 export type WeekPlanServiceRecentFileDto = {
@@ -1768,6 +1762,13 @@ export type WeekPlanServiceRecentFileDto = {
     sizeBytes: number;
     courseName?: string | null;
     lastUsedAt: string;
+};
+
+export type WeekPlanServiceWeekPlanSlotFileDto = {
+    id: string;
+    schoolFileId: string;
+    fileName: string;
+    url: string;
 };
 
 export type GetApiV1AbsenceData = {
@@ -5827,7 +5828,7 @@ export type PutApiV1ClassesByClassIdWeekPlanNotesResponses = {
     /**
      * OK
      */
-    200: WeekPlanControllerNotesDto;
+    200: WeekPlanServiceNotesDto;
 };
 
 export type PutApiV1ClassesByClassIdWeekPlanNotesResponse = PutApiV1ClassesByClassIdWeekPlanNotesResponses[keyof PutApiV1ClassesByClassIdWeekPlanNotesResponses];
@@ -5846,7 +5847,7 @@ export type PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesResponses = {
     /**
      * OK
      */
-    200: WeekPlanControllerWeekPlanSlotFileDto;
+    200: WeekPlanServiceWeekPlanSlotFileDto;
 };
 
 export type PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesResponse = PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesResponses[keyof PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesResponses];

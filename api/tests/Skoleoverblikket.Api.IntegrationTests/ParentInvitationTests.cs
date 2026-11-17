@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Skoleoverblikket.Api.Controllers;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using Skoleoverblikket.Api.Models;
@@ -136,6 +137,32 @@ public sealed class ParentInvitationTests(ApiFactory factory)
 		var updatedParent = await db.Parents.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == parent.Id);
 		await Assert.That(updatedParent).IsNotNull();
 		await Assert.That(updatedParent!.KeycloakSubject).IsEqualTo(acceptingSubject);
+	}
+
+	[Test]
+	public async Task ParentList_ShowsPendingInvitationUntilAccepted()
+	{
+		// Inviting creates the login, so only this flag tells the list to keep offering a resend.
+		var (parent, invitation) = await SeedInvitationAsync("Lone Testforælder");
+
+		async Task<bool> IsPendingAsync()
+		{
+			var list = await _adminClient.GetFromJsonAsync<List<ParentsController.ParentSummaryDto>>(
+				"/api/v1/parents", JsonOpts);
+			return list!.Single(p => p.Id == parent.Id).HasPendingInvitation;
+		}
+
+		await Assert.That(await IsPendingAsync()).IsTrue();
+
+		using var parentClient = _factory.CreateClient();
+		parentClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		parentClient.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
+		parentClient.DefaultRequestHeaders.Add("X-Test-Subject", "lone-subject");
+		var accepted = await parentClient.PostAsync(
+			$"/api/v1/parent-invitations/accept?token={invitation.Token}", content: null);
+		await Assert.That(accepted.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+		await Assert.That(await IsPendingAsync()).IsFalse();
 	}
 
 	[Test]

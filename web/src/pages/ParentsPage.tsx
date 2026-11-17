@@ -506,7 +506,8 @@ export default function ParentsPage() {
               />
             ),
             actions: [
-              ...(!p.hasAccount && hasParentModule
+              // Inviting creates the login, so a pending invitation counts even with an account.
+              ...((!p.hasAccount || p.hasPendingInvitation) && hasParentModule
                 ? [
                     {
                       label: 'Send invitation igen',

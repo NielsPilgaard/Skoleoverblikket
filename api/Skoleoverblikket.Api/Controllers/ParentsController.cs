@@ -19,7 +19,7 @@ public sealed class ParentsController(
 	ParentInvitationService invitationService,
 	ILogger<ParentsController> logger) : ControllerBase
 {
-	public record ParentSummaryDto(Guid Id, string Name, string Email, string? Phone, string? Address, string? PostalCode, string? City, IReadOnlyList<StudentRefDto> Students, bool HasAccount, DateTimeOffset CreatedAt, bool AdresseBeskyttet);
+	public record ParentSummaryDto(Guid Id, string Name, string Email, string? Phone, string? Address, string? PostalCode, string? City, IReadOnlyList<StudentRefDto> Students, bool HasAccount, bool HasPendingInvitation, DateTimeOffset CreatedAt, bool AdresseBeskyttet);
 	public record ParentDto(Guid Id, string Name, string Email, string? Phone, string? Address, string? PostalCode, string? City, IReadOnlyList<StudentRefDto> Students, bool HasAccount, DateTimeOffset CreatedAt, bool AdresseBeskyttet, CoParentDto? CoParent);
 	public record StudentRefDto(Guid Id, string Name, Guid ClassId, string ClassName);
 	public record CoParentDto(Guid Id, string Name);
@@ -36,8 +36,9 @@ public sealed class ParentsController(
 			.Include(p => p.Students).ThenInclude(s => s.Class)
 			.OrderBy(p => p.Name)
 			.ToListAsync(cancellationToken);
+		var pending = await invitationService.GetPendingParentIdsAsync(cancellationToken);
 
-		return Ok(parents.Select(ToSummaryDto).ToList());
+		return Ok(parents.Select(p => ToSummaryDto(p, pending.Contains(p.Id))).ToList());
 	}
 
 	[HttpGet("{id:guid}")]
@@ -207,7 +208,7 @@ public sealed class ParentsController(
 		return NoContent();
 	}
 
-	private static ParentSummaryDto ToSummaryDto(Parent p) => new(
+	private static ParentSummaryDto ToSummaryDto(Parent p, bool hasPendingInvitation) => new(
 		p.Id,
 		p.Name,
 		p.Email,
@@ -217,6 +218,7 @@ public sealed class ParentsController(
 		p.City,
 		p.Students.Select(s => new StudentRefDto(s.Id, s.Name, s.ClassId, s.Class?.Name ?? string.Empty)).ToList(),
 		p.KeycloakSubject is not null,
+		hasPendingInvitation,
 		p.CreatedAt,
 		p.AdresseBeskyttet);
 

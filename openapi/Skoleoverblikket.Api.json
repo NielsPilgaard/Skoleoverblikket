@@ -10878,17 +10878,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_NotesDto"
+                  "$ref": "#/components/schemas/WeekPlanService_NotesDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_NotesDto"
+                  "$ref": "#/components/schemas/WeekPlanService_NotesDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_NotesDto"
+                  "$ref": "#/components/schemas/WeekPlanService_NotesDto"
                 }
               }
             }
@@ -10951,17 +10951,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_WeekPlanSlotFileDto"
+                  "$ref": "#/components/schemas/WeekPlanService_WeekPlanSlotFileDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_WeekPlanSlotFileDto"
+                  "$ref": "#/components/schemas/WeekPlanService_WeekPlanSlotFileDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_WeekPlanSlotFileDto"
+                  "$ref": "#/components/schemas/WeekPlanService_WeekPlanSlotFileDto"
                 }
               }
             }
@@ -14843,6 +14843,7 @@
           "createdAt",
           "email",
           "hasAccount",
+          "hasPendingInvitation",
           "id",
           "name"
         ],
@@ -14881,6 +14882,9 @@
             }
           },
           "hasAccount": {
+            "type": "boolean"
+          },
+          "hasPendingInvitation": {
             "type": "boolean"
           },
           "createdAt": {
@@ -17507,25 +17511,6 @@
         },
         "additionalProperties": false
       },
-      "WeekPlanController_NotesDto": {
-        "type": "object",
-        "properties": {
-          "notes": {
-            "type": "string",
-            "nullable": true
-          },
-          "notesUpdatedBy": {
-            "type": "string",
-            "nullable": true
-          },
-          "notesUpdatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
       "WeekPlanController_UpdateNotesRequest": {
         "type": "object",
         "properties": {
@@ -17707,7 +17692,7 @@
           "files": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/WeekPlanController_WeekPlanSlotFileDto"
+              "$ref": "#/components/schemas/WeekPlanService_WeekPlanSlotFileDto"
             }
           },
           "substituteTeacherId": {
@@ -17735,28 +17720,21 @@
         },
         "additionalProperties": false
       },
-      "WeekPlanController_WeekPlanSlotFileDto": {
-        "required": [
-          "fileName",
-          "id",
-          "schoolFileId",
-          "url"
-        ],
+      "WeekPlanService_NotesDto": {
         "type": "object",
         "properties": {
-          "id": {
+          "notes": {
             "type": "string",
-            "format": "uuid"
+            "nullable": true
           },
-          "schoolFileId": {
+          "notesUpdatedBy": {
             "type": "string",
-            "format": "uuid"
+            "nullable": true
           },
-          "fileName": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
+          "notesUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -17792,6 +17770,32 @@
           "lastUsedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WeekPlanService_WeekPlanSlotFileDto": {
+        "required": [
+          "fileName",
+          "id",
+          "schoolFileId",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "schoolFileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
           }
         },
         "additionalProperties": false
