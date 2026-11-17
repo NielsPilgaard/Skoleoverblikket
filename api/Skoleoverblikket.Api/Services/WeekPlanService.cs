@@ -102,8 +102,9 @@ public sealed class WeekPlanService(AppDbContext db, ITenantContext tenant)
 		weekPlan.Notes = notes;
 		weekPlan.NotesUpdatedBy = notes is null ? null : staffName ?? loginName;
 		weekPlan.NotesUpdatedAt = notes is null ? null : DateTimeOffset.UtcNow;
-		// Write the author even when unchanged, so a concurrent save can't pair our text with its author.
+		// Write author and time even when unchanged, so a concurrent save can't pair our text with its own.
 		db.Entry(weekPlan).Property(w => w.NotesUpdatedBy).IsModified = true;
+		db.Entry(weekPlan).Property(w => w.NotesUpdatedAt).IsModified = true;
 		await db.SaveChangesAsync(cancellationToken);
 		return new NotesDto(weekPlan.Notes, weekPlan.NotesUpdatedBy, weekPlan.NotesUpdatedAt);
 	}
