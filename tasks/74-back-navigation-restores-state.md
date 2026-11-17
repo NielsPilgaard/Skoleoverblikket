@@ -53,7 +53,9 @@ The test for URL vs entry: would Hanne paste this link to a colleague and expect
 
 URL param names are Danish, like the existing `fane`, `dato` and `trin`: `uge` (`2026-W49`), `aar`, `fra`/`til`, `kvartal`, `klasse`, `mappe`, `soeg`, `traad`, `besked`, `version`. Default values are left out of the URL, so the sidebar link and the default view are the same URL. One table of names in the hook's JSDoc.
 
-### Part 1 pieces (`web/src/lib/navigation/`)
+### Part 1 pieces
+
+All in `web/src/lib/navigation/`.
 
 | Piece | Spec |
 |---|---|
@@ -78,7 +80,7 @@ Not using React Router's `<ScrollRestoration>`: it needs the data router (`creat
 
 ### 1. Hooks, `BackLink`, scroll restoration
 
-Everything in [Part 1 pieces](#part-1-pieces-weblibnavigation), the `gcTime` change, the `AGENTS.md` bullet and the ADR. Fixes the scroll bug on every page at once, since `Layout` owns `<main>`. Moves no page yet, except `ClassesPage` as the first user, so the hooks are tested on a real page: `expandedClass` to `useEntryState` (or keep `localStorage`, see Q3), and the skema and ugeplan links stay plain navigations.
+Everything in [Part 1 pieces](#part-1-pieces), the `gcTime` change, the `AGENTS.md` bullet and the ADR. Fixes the scroll bug on every page at once, since `Layout` owns `<main>`. Moves no page yet, except `ClassesPage` as the first user, so the hooks are tested on a real page: `expandedClass` to `useEntryState` (or keep `localStorage`, see Q3), and the skema and ugeplan links stay plain navigations.
 
 `navigation.spec.ts` (one file for the flow, `data-testid` only):
 
