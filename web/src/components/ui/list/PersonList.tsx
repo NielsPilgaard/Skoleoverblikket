@@ -111,7 +111,7 @@ export function PersonList<T>({
 
   // Back on the page: put the row the user left from where they can see it.
   useEffect(() => {
-    if (!restoring.current || !items) return
+    if (!restoring.current || !items || isLoading) return
     restoring.current = false
     const last = open[open.length - 1]
     if (last) focusRow(last, 'instant')

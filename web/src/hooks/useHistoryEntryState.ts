@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { type SetStateAction, useCallback, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
 // The router calls every page load's first entry "default"; tell loads apart.
@@ -13,10 +13,23 @@ export function useHistoryEntryState<T>(name: string | undefined, initial: T) {
   const { key, pathname } = useLocation()
   const entry = key === 'default' ? firstEntryKey : key
   const storageKey = name ? `history-entry:${entry}:${pathname}:${name}` : undefined
-  const [value, setValue] = useState<T>(
-    () => (storageKey ? read<T>(storageKey) : undefined) ?? initial
-  )
+  const load = () => (storageKey ? read<T>(storageKey) : undefined) ?? initial
+  const [state, setState] = useState(() => ({ key: storageKey, value: load() }))
+  // A new history entry while mounted (e.g. the menu link to this page): load that entry's state.
+  let current = state
+  if (state.key !== storageKey) {
+    current = { key: storageKey, value: load() }
+    setState(current)
+  }
+  const value = current.value
   const initialJson = JSON.stringify(initial)
+
+  const setValue = useCallback((action: SetStateAction<T>) => {
+    setState((prev) => ({
+      key: prev.key,
+      value: typeof action === 'function' ? (action as (prev: T) => T)(prev.value) : action,
+    }))
+  }, [])
 
   useEffect(() => {
     if (!storageKey) return
