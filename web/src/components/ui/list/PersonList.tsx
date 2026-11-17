@@ -1,5 +1,6 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import type React from 'react'
+import { useHistoryEntryState } from '../../../hooks/useHistoryEntryState'
 import { ChevronDownIcon } from '../icons'
 import { ListToolbar } from './ListToolbar'
 import {
@@ -74,29 +75,38 @@ export function PersonList<T>({
   testId,
   ...controls
 }: PersonListProps<T>) {
-  const list = useListControls(items ?? [], controls)
-  const [open, setOpen] = useState<Set<string>>(new Set())
+  // Search, filter, sort and open rows survive a trip to e.g. "Se skema" and back.
+  const stateKey = testId ?? 'person-list'
+  const list = useListControls(items ?? [], controls, stateKey)
+  /** Most recently opened last. */
+  const [open, setOpen] = useHistoryEntryState<string[]>(`${stateKey}:open`, [])
   const baseId = useId()
+  const restoring = useRef(open.length > 0)
 
   function toggle(key: string) {
-    setOpen((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
+    setOpen((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
+  }
+
+  function focusRow(key: string, behavior: ScrollBehavior) {
+    const row = document.getElementById(`${baseId}-${key}-row`)
+    row?.scrollIntoView({ behavior, block: 'center' })
+    row?.focus({ preventScroll: true })
   }
 
   function openPerson(key: string) {
     // A search or filter may hide the row; clear them so it can be shown.
     if (!list.visible.some((item) => toPerson(item).key === key)) list.clear()
-    setOpen((prev) => new Set(prev).add(key))
-    requestAnimationFrame(() => {
-      const row = document.getElementById(`${baseId}-${key}-row`)
-      row?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      row?.focus({ preventScroll: true })
-    })
+    setOpen((prev) => [...prev.filter((k) => k !== key), key])
+    requestAnimationFrame(() => focusRow(key, 'smooth'))
   }
+
+  // Back on the page: put the row the user left from where they can see it.
+  useEffect(() => {
+    if (!restoring.current || !items) return
+    restoring.current = false
+    const last = open[open.length - 1]
+    if (last) focusRow(last, 'instant')
+  })
 
   if (isLoading) {
     return (
@@ -130,7 +140,7 @@ export function PersonList<T>({
         <ul className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
           {list.visible.map((item) => {
             const p = toPerson(item)
-            const isOpen = open.has(p.key)
+            const isOpen = open.includes(p.key)
             const panelId = `${baseId}-${p.key}`
             return (
               <li key={p.key} data-testid={p.testId}>

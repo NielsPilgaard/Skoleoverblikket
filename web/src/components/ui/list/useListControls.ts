@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useHistoryEntryState } from '../../../hooks/useHistoryEntryState'
 import type { ListToolbarProps } from './ListToolbar'
 
 export interface ListFilter<T> {
@@ -32,13 +33,23 @@ export interface ListControls<T> {
 
 const norm = (s: string) => s.toLocaleLowerCase('da')
 
-/** Search, filter chips and sort shared by PersonList and DataTable. */
-export function useListControls<T>(items: T[], controls: ListControls<T>) {
+/**
+ * Search, filter chips and sort shared by PersonList and DataTable.
+ * With a `stateKey` they come back when the user returns with the back button.
+ */
+export function useListControls<T>(items: T[], controls: ListControls<T>, stateKey?: string) {
   const { searchText, filters, sorts, pinFirst } = controls
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState(filters?.[0]?.value ?? '')
-  const [sort, setSort] = useState(controls.defaultSort?.value ?? sorts?.[0]?.value ?? '')
-  const [descending, setDescending] = useState(controls.defaultSort?.descending ?? false)
+  const at = (name: string) => stateKey && `${stateKey}:${name}`
+  const [search, setSearch] = useHistoryEntryState(at('search'), '')
+  const [filter, setFilter] = useHistoryEntryState(at('filter'), filters?.[0]?.value ?? '')
+  const [sort, setSort] = useHistoryEntryState(
+    at('sort'),
+    controls.defaultSort?.value ?? sorts?.[0]?.value ?? ''
+  )
+  const [descending, setDescending] = useHistoryEntryState(
+    at('descending'),
+    controls.defaultSort?.descending ?? false
+  )
 
   const visible = useMemo(() => {
     const q = norm(search.trim())
