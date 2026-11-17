@@ -41,13 +41,14 @@ status: 'Active'
 | 13 | [41 Uncovered lesson tracking](41-uncovered-lesson-tracking.md) | S | Agent | — (task 38 shipped) | Small read-only count next to the Stå mål med coverage view. Pairs naturally with 20 Fase 3. |
 | 14 | [67 Shared UI components, round 1](67-shared-ui-components-round-1.md) | L | Agent | — (picks made 2026-10-31) | Builds Niels's round 1 picks as shared components and moves pages onto them: person list and data table with search/filter/sort, the select family, the parent ugeplan with today preselected and "Generelt for ugen" on top, the lesson editor with autosave and "Næste lektion", and a one-list file picker with upload status. Five parts, one PR each. Teachers and parents use these screens every day. |
 | 15 | [73 Shared UI components, round 2](73-shared-ui-components-round-2.md) | L | Agent | 67 (PR #89 merged) | Builds Niels's round 2 picks (2026-11-02): one dialog, delete in tiers, save messages, states, buttons, fields, badges, tabs, week list with holidays, page header. Also stops one-click deletion of a subject that removes its lessons in every class. Trash for files needs Niels's migration label. |
-| 16 | [50 Parent dashboard](50-parent-dashboard.md) | M | Agent | Grill first (43 done) | Stub with open questions. Reuses the Links card from 43. |
-| 17 | [46 Feedback AI triage](feedback/46-feedback-ai-triage.md) | M | Niels + agent | 45, model eval | Only pays off once 45 produces real report volume. |
-| 18 | [47 Feedback AI fix PRs](feedback/47-feedback-ai-fix-prs.md) | M | Agent | 44, 46 | Last link in the feedback chain. Auto-merge ships disabled. |
-| 19 | [21 AI schema suggestions](21-ai-suggestions-for-schema.md) | M | Agent | Shared LLM client (25 or 46) | Nice to have. Hanne builds a schema once a year, and 25 covers the switching case. |
-| 20 | [59 Microsoft and Google login](59-microsoft-google-login.md) | M | Niels + agent | Ask schools which accounts staff use | Free replacement for UNI•Login (07, parked over STIL fees). One password fewer for staff. Niels checks with schools first. |
-| 21 | [62 Move billing from Stripe to Alunta](62-stripe-to-alunta.md) | L | Niels + agent | Niels decides D1, D3, D4 (D2 settled), ADR superseding stripe-checkout-billing | Feasible and EU-hosted (investigated 2026-10-26, Alunta answers 2026-10-27). Adds invoice, EAN, Betalingsservice and MobilePay payment. Move up if a school asks to pay by invoice or EAN. |
-| 22 | [72 One dev Postgres per worktree](72-dev-postgres-per-worktree.md) | S | Agent | None | Aspire stacks in different worktrees run separate Postgres servers on the same data volume, which can corrupt dev data. Dev only, but every parallel agent session risks it. |
+| 16 | [74 Back navigation that restores the page](74-back-navigation-restores-state.md) | L | Agent | PR #89; one PR, part 5 waits for 73 part 2 and Niels's Q4 | Going back resets the week, tab, folder, open accordions and scroll, and scroll doesn't even reset on a new page. One rule (back is browser back, with the parent route as fallback), page state in the URL or the history entry, then every page moved over. Every user hits it many times a day, most on phones. |
+| 17 | [50 Parent dashboard](50-parent-dashboard.md) | M | Agent | Grill first (43 done) | Stub with open questions. Reuses the Links card from 43. |
+| 18 | [46 Feedback AI triage](feedback/46-feedback-ai-triage.md) | M | Niels + agent | 45, model eval | Only pays off once 45 produces real report volume. |
+| 19 | [47 Feedback AI fix PRs](feedback/47-feedback-ai-fix-prs.md) | M | Agent | 44, 46 | Last link in the feedback chain. Auto-merge ships disabled. |
+| 20 | [21 AI schema suggestions](21-ai-suggestions-for-schema.md) | M | Agent | Shared LLM client (25 or 46) | Nice to have. Hanne builds a schema once a year, and 25 covers the switching case. |
+| 21 | [59 Microsoft and Google login](59-microsoft-google-login.md) | M | Niels + agent | Ask schools which accounts staff use | Free replacement for UNI•Login (07, parked over STIL fees). One password fewer for staff. Niels checks with schools first. |
+| 22 | [62 Move billing from Stripe to Alunta](62-stripe-to-alunta.md) | L | Niels + agent | Niels decides D1, D3, D4 (D2 settled), ADR superseding stripe-checkout-billing | Feasible and EU-hosted (investigated 2026-10-26, Alunta answers 2026-10-27). Adds invoice, EAN, Betalingsservice and MobilePay payment. Move up if a school asks to pay by invoice or EAN. |
+| 23 | [72 One dev Postgres per worktree](72-dev-postgres-per-worktree.md) | S | Agent | None | Aspire stacks in different worktrees run separate Postgres servers on the same data volume, which can corrupt dev data. Dev only, but every parallel agent session risks it. |
 
 ## Held-back dependency upgrades
 
@@ -55,9 +56,9 @@ Dependabot PRs too risky to merge as-is. Do them when there's time to watch the 
 
 | # | Task | Size | Owner | Replaces | Why held back |
 |---|---|---|---|---|---|
-| 1 | [69 Keycloak 26.8](69-keycloak-26-8.md) | S | Niels | #72 | Code is in the `chore/dependency-upgrades` PR. Back up the Keycloak database before merging: the first start migrates it one way. Then log in on prod as staff and parent. |
-| 2 | [70 GitHub Actions majors](70-github-actions-majors.md) | S | Niels | #80 | Ready on local branch `chore/actions-majors`. Pushing needs a token with the `workflow` scope. Watch the first `main` run through publish, deploy and Staging, then dispatch changelog and nightly once. |
-| 3 | [68 TypeScript 7](68-typescript-6-and-7.md) | S | Agent | #78 | TS 6 is in the `chore/dependency-upgrades` PR. TS 7 is blocked until openapi-ts stops using the JS compiler API. |
+| 2 | [69 Keycloak 26.8](69-keycloak-26-8.md) | S | Niels | #72 | Code is in the `chore/dependency-upgrades` PR. Back up the Keycloak database before merging: the first start migrates it one way. Then log in on prod as staff and parent. |
+| 3 | [70 GitHub Actions majors](70-github-actions-majors.md) | S | Niels | #80 | Ready on local branch `chore/actions-majors`. Pushing needs a token with the `workflow` scope. Watch the first `main` run through publish, deploy and Staging, then dispatch changelog and nightly once. |
+| 4 | [68 TypeScript 7](68-typescript-6-and-7.md) | S | Agent | #78 | TS 6 is in the `chore/dependency-upgrades` PR. TS 7 is blocked until openapi-ts stops using the JS compiler API. |
 
 ## Folkeskole track (blocked on STIL / Aula)
 
