@@ -2,8 +2,11 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Skoleoverblikket.Api.Auth;
 using Skoleoverblikket.Api.Controllers;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
@@ -13,7 +16,7 @@ namespace Skoleoverblikket.Api.IntegrationTests;
 
 /// <summary>
 /// Integration tests for ParentInvitationsController at /api/v1/parent-invitations.
-/// Covers the token preview and accept flow without touching Keycloak or email sending.
+/// Covers the token preview and accept flow. Only the pending-invitation test invites, via <see cref="FakeKeycloak"/>.
 /// Resend is excluded because it calls ParentInvitationService.CreateAndSendAsync.
 /// </summary>
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
@@ -143,26 +146,46 @@ public sealed class ParentInvitationTests(ApiFactory factory)
 	public async Task ParentList_ShowsPendingInvitationUntilAccepted()
 	{
 		// Inviting creates the login, so only this flag tells the list to keep offering a resend.
-		var (parent, invitation) = await SeedInvitationAsync("Lone Testforælder");
-
-		async Task<bool> IsPendingAsync()
+		var keycloak = new FakeKeycloak();
+		await using var app = _factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
 		{
-			var list = await _adminClient.GetFromJsonAsync<List<ParentsController.ParentSummaryDto>>(
+			services.RemoveAll<IKeycloakAdminApi>();
+			services.RemoveAll<IKeycloakTokenApi>();
+			services.AddSingleton<IKeycloakAdminApi>(keycloak);
+			services.AddSingleton<IKeycloakTokenApi>(keycloak);
+		}));
+		using var admin = app.CreateClient();
+		admin.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		admin.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
+		admin.DefaultRequestHeaders.Add("X-Test-Subject", "admin-subject");
+
+		var email = $"lone-{Guid.NewGuid():N}@test.dk";
+		var invite = await admin.PostAsJsonAsync("/api/v1/parents/invite",
+			new ParentsController.InviteParentRequest("Lone Testforælder", email, []));
+		await Assert.That(invite.StatusCode).IsEqualTo(HttpStatusCode.Created);
+		var parent = await invite.Content.ReadFromJsonAsync<ParentsController.ParentDto>(JsonOpts);
+		var token = _factory.Emails.LastInvitationToken(email, "parent-invitation");
+
+		async Task<ParentsController.ParentSummaryDto> SummaryAsync()
+		{
+			var list = await admin.GetFromJsonAsync<List<ParentsController.ParentSummaryDto>>(
 				"/api/v1/parents", JsonOpts);
-			return list!.Single(p => p.Id == parent.Id).HasPendingInvitation;
+			return list!.Single(p => p.Id == parent!.Id);
 		}
 
-		await Assert.That(await IsPendingAsync()).IsTrue();
+		var before = await SummaryAsync();
+		await Assert.That(before.HasAccount).IsTrue();
+		await Assert.That(before.HasPendingInvitation).IsTrue();
 
-		using var parentClient = _factory.CreateClient();
+		using var parentClient = app.CreateClient();
 		parentClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
 		parentClient.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
-		parentClient.DefaultRequestHeaders.Add("X-Test-Subject", "lone-subject");
+		parentClient.DefaultRequestHeaders.Add("X-Test-Subject", keycloak.SubjectFor(email));
 		var accepted = await parentClient.PostAsync(
-			$"/api/v1/parent-invitations/accept?token={invitation.Token}", content: null);
+			$"/api/v1/parent-invitations/accept?token={token}", content: null);
 		await Assert.That(accepted.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
 
-		await Assert.That(await IsPendingAsync()).IsFalse();
+		await Assert.That((await SummaryAsync()).HasPendingInvitation).IsFalse();
 	}
 
 	[Test]
