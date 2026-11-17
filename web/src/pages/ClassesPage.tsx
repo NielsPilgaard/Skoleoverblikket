@@ -882,6 +882,7 @@ export default function ClassesPage() {
   const [expandedClass, setExpandedClass] = useState<string | null>(() => {
     return localStorage.getItem('classes-expanded') ?? null
   })
+  const [closingClass, setClosingClass] = useState<string | null>(null)
   const [newSchemaForClass, setNewSchemaForClass] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
@@ -914,6 +915,8 @@ export default function ClassesPage() {
   })
 
   const toggleExpand = (id: string) => {
+    // Keep the panel being closed mounted until its slide-up finishes.
+    setClosingClass(expandedClass)
     setExpandedClass((prev) => {
       const next = prev === id ? null : id
       if (next) localStorage.setItem('classes-expanded', next)
@@ -982,14 +985,12 @@ export default function ClassesPage() {
 
         {classes?.map((cls) => (
           <div key={cls.id}>
-            <div
-              className="flex items-center justify-between px-5 py-4"
-              data-testid={`class-row-${cls.id}`}
-            >
+            <div className="flex items-center pr-5" data-testid={`class-row-${cls.id}`}>
               <button
                 onClick={() => toggleExpand(cls.id!)}
                 data-testid={`class-expand-${cls.id}`}
-                className="flex items-center gap-3 min-w-0 text-left group"
+                aria-expanded={expandedClass === cls.id}
+                className="flex-1 flex items-center gap-3 min-w-0 px-5 py-4 text-left group cursor-pointer"
               >
                 <svg
                   width="16"
@@ -1078,13 +1079,23 @@ export default function ClassesPage() {
                 </div>
               )}
             </div>
-            {expandedClass === cls.id && (
-              <ExpandedClassPanel
-                classId={cls.id}
-                autoOpenCreate={newSchemaForClass === cls.id}
-                onAutoOpenHandled={() => setNewSchemaForClass(null)}
-              />
-            )}
+            <div
+              inert={expandedClass !== cls.id}
+              onTransitionEnd={(e) => {
+                if (e.target === e.currentTarget && expandedClass !== cls.id) setClosingClass(null)
+              }}
+              className={`grid transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none ${expandedClass === cls.id ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+            >
+              <div className="overflow-hidden">
+                {(expandedClass === cls.id || closingClass === cls.id) && (
+                  <ExpandedClassPanel
+                    classId={cls.id!}
+                    autoOpenCreate={newSchemaForClass === cls.id}
+                    onAutoOpenHandled={() => setNewSchemaForClass(null)}
+                  />
+                )}
+              </div>
+            </div>
           </div>
         ))}
       </div>
