@@ -31,7 +31,7 @@ postgres.AddDatabase("keycloak-db", databaseName: "keycloak");
 // Keycloak (raw container — no first-party Aspire hosting package)
 // Same version and digest as infrastructure/keycloak/Dockerfile; see the comment there.
 var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.8.2")
-                      .WithImageSHA256("723b1d6e254c0fc96d5cffec860c7e0744d6a3277822b865bb538cf891575e41")
+                      .WithImageSHA256("c68e286cacd87b942ac1939a0a1481461109d6acd3a57dc496969a319a76bbf0")
                       .WithLifetime(ContainerLifetime.Persistent)
                       .WithHttpEndpoint(port: 8080, targetPort: 8080, name: "http")
                       .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
