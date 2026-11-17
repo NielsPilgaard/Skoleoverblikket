@@ -8313,6 +8313,70 @@
         ]
       }
     },
+    "/api/v1/staff-absences/{id}/substitute/all": {
+      "put": {
+        "tags": [
+          "StaffAbsence"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignAllSubstituteRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignAllSubstituteRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignAllSubstituteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignAllSubstituteResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignAllSubstituteResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignAllSubstituteResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/staff-invitations": {
       "get": {
         "tags": [
@@ -11307,6 +11371,37 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignAllSubstituteRequest": {
+        "required": [
+          "staffId"
+        ],
+        "type": "object",
+        "properties": {
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignAllSubstituteResponse": {
+        "required": [
+          "assigned",
+          "stillUncovered"
+        ],
+        "type": "object",
+        "properties": {
+          "assigned": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stillUncovered": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

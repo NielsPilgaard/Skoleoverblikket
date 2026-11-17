@@ -207,9 +207,10 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 	/// Assigns (or with a null <paramref name="staffId"/> removes) the vikar for one seat of one
 	/// lektion on one date. The availability re-check and the write run under a PostgreSQL advisory
 	/// lock on the candidate, so two admins cannot book the same person into overlapping lektioner.
+	/// With <paramref name="notify"/> false the caller notifies the vikar itself, e.g. once for many lektioner.
 	/// </summary>
 	public async Task<AssignLessonResult> AssignForLessonAsync(
-		DateOnly date, Guid schemaSlotId, SubstituteSeat seat, Guid? staffId, CancellationToken cancellationToken)
+		DateOnly date, Guid schemaSlotId, SubstituteSeat seat, Guid? staffId, bool notify, CancellationToken cancellationToken)
 	{
 		var lesson = await db.SchemaSlots
 			.AsNoTracking()
@@ -261,12 +262,36 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 		await db.SaveChangesAsync(cancellationToken);
 		await transaction.CommitAsync(cancellationToken);
 
-		if (staffId.HasValue && staffId != previous)
+		if (notify && staffId.HasValue && staffId != previous)
 		{
 			await NotifyAssignedAsync(staffId.Value, schemaSlotId, date, cancellationToken);
 		}
 
 		return AssignLessonResult.Assigned;
+	}
+
+	/// <summary>One notification for a vikar booked into several lektioner at once, instead of one per lektion.</summary>
+	public async Task NotifyAssignedManyAsync(
+		Guid staffId, IReadOnlyList<(DateOnly Date, Guid SchemaSlotId)> lessons, CancellationToken cancellationToken)
+	{
+		if (lessons.Count <= 1)
+		{
+			foreach (var (date, schemaSlotId) in lessons)
+			{
+				await NotifyAssignedAsync(staffId, schemaSlotId, date, cancellationToken);
+			}
+
+			return;
+		}
+
+		var first = lessons.Min(l => l.Date);
+		var last = lessons.Max(l => l.Date);
+		var when = first == last
+			? first.ToString("dddd d. MMMM", Danish)
+			: $"{first.ToString("d. MMMM", Danish)}–{last.ToString("d. MMMM", Danish)}";
+		var body = $"Du er vikar i {lessons.Count} lektioner {when}";
+		await notifications.CreateAsync(
+			staffId, RecipientType.Staff, NotificationType.SubstituteAssigned, lessons[0].SchemaSlotId, body, cancellationToken);
 	}
 
 	/// <summary>Current vikar per (date, lektion) for the given ISO weeks — keyed by week plan.</summary>

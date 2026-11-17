@@ -82,6 +82,21 @@ public sealed class StaffAbsenceController(StaffAbsenceService staffAbsences) : 
 			_ => Problem("Vikaren er lige blevet optaget i samme tidsrum. Vælg en anden.", statusCode: 409),
 		};
 
+	/// <summary>Puts one vikar on every lektion still without one, skipping those they are busy for.</summary>
+	[HttpPut("{id:guid}/substitute/all")]
+	[Authorize(Roles = Roles.Admin)]
+	public async Task<ActionResult<AssignAllSubstituteResponse>> AssignSubstituteToAll(
+		Guid id, [FromBody] AssignAllSubstituteRequest req, CancellationToken cancellationToken)
+	{
+		var (result, response) = await staffAbsences.AssignSubstituteToAllAsync(id, req.StaffId, cancellationToken);
+		return result switch
+		{
+			AbsenceSubstituteAllResult.Assigned => response!,
+			AbsenceSubstituteAllResult.NotFound => NotFound(),
+			_ => Problem("Vikaren findes ikke", statusCode: 400),
+		};
+	}
+
 	/// <summary>Changes dates, times or reason. Admins can edit any absence; staff their own until it starts.</summary>
 	[HttpPut("{id:guid}")]
 	public async Task<IActionResult> Update(

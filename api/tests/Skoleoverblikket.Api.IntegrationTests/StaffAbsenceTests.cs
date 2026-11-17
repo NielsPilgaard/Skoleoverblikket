@@ -191,6 +191,37 @@ public sealed class StaffAbsenceTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task AssignToAll_SkipsBusyAndCoveredLessons()
+	{
+		var absent = await TestDataBuilder.CreateStaffAsync(factory.Services, _kit.TenantId, "Syg Hele Dagen");
+		var busyFirst = await TestDataBuilder.CreateStaffAsync(factory.Services, _kit.TenantId, "Optaget Første");
+		var vikar = await TestDataBuilder.CreateStaffAsync(factory.Services, _kit.TenantId, "Dagsvikar", StaffRole.Substitute);
+		var (_, slots) = await TeachesOnMondayAsync(absent, "9.a", _first, _second);
+		await TeachesOnMondayAsync(busyFirst, "9.b", _first);
+		var id = await ReportAsync(_admin, absent.Id, _monday);
+
+		var partial = await _admin.PutAsJsonAsync($"/api/v1/staff-absences/{id}/substitute/all",
+			new AssignAllSubstituteRequest(busyFirst.Id), JsonOpts);
+		await Assert.That(partial.StatusCode).IsEqualTo(HttpStatusCode.OK);
+		var partialResult = (await partial.Content.ReadFromJsonAsync<AssignAllSubstituteResponse>(JsonOpts))!;
+		await Assert.That(partialResult).IsEqualTo(new AssignAllSubstituteResponse(1, 1));
+
+		// Only the still-uncovered lektion gets the new vikar; existing cover is kept.
+		var rest = await _admin.PutAsJsonAsync($"/api/v1/staff-absences/{id}/substitute/all",
+			new AssignAllSubstituteRequest(vikar.Id), JsonOpts);
+		await Assert.That((await rest.Content.ReadFromJsonAsync<AssignAllSubstituteResponse>(JsonOpts))!)
+			.IsEqualTo(new AssignAllSubstituteResponse(1, 0));
+
+		var lessons = (await DetailAsync(id)).Lessons;
+		await Assert.That(lessons.Single(l => l.SchemaSlotId == slots[0].Id).SubstituteId).IsEqualTo(vikar.Id);
+		await Assert.That(lessons.Single(l => l.SchemaSlotId == slots[1].Id).SubstituteId).IsEqualTo(busyFirst.Id);
+
+		var unknown = await _admin.PutAsJsonAsync($"/api/v1/staff-absences/{id}/substitute/all",
+			new AssignAllSubstituteRequest(Guid.NewGuid()), JsonOpts);
+		await Assert.That(unknown.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+	}
+
+	[Test]
 	public async Task AssignVikar_AlreadyCoveringSameTime_Returns409()
 	{
 		var (_, absentA) = await _kit.TeacherAsync("busy-absent-a", "Syg A");
@@ -394,6 +425,9 @@ public sealed class StaffAbsenceTests(ApiFactory factory)
 		await Assert.That((await teacherClient.GetAsync("/api/v1/staff-absences")).StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
 		await Assert.That((await teacherClient.GetAsync($"/api/v1/staff-absences/{colleagueAbsence}")).StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
 		await Assert.That((await teacherClient.DeleteAsync($"/api/v1/staff-absences/{colleagueAbsence}")).StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+		var coverAll = await teacherClient.PutAsJsonAsync($"/api/v1/staff-absences/{colleagueAbsence}/substitute/all",
+			new AssignAllSubstituteRequest(teacher.Id), JsonOpts);
+		await Assert.That(coverAll.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
 
 		var own = await ReportAsync(teacherClient, null, _monday);
 		await Assert.That((await teacherClient.DeleteAsync($"/api/v1/staff-absences/{own}")).StatusCode).IsEqualTo(HttpStatusCode.NoContent);
