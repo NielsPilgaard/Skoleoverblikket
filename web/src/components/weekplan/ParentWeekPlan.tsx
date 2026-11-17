@@ -91,7 +91,13 @@ function GeneralCard({
 
   useLayoutEffect(() => {
     const el = textRef.current
-    if (el && !open) setOverflows(el.scrollHeight > el.clientHeight + 1)
+    if (!el || open) return
+    const measure = () => setOverflows(el.scrollHeight > el.clientHeight + 1)
+    measure()
+    // Turning the phone or resizing the window changes where the text wraps.
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [open, notes])
 
   return (
