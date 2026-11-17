@@ -167,6 +167,7 @@ function StaffModal({ initial, onClose, onSaved, currentUserKeycloakSubject }: S
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Navn *</label>
           <input
+            data-testid="staff-form-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
@@ -190,6 +191,7 @@ function StaffModal({ initial, onClose, onSaved, currentUserKeycloakSubject }: S
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
           <input
+            data-testid="staff-form-email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => {
@@ -241,6 +243,7 @@ function StaffModal({ initial, onClose, onSaved, currentUserKeycloakSubject }: S
         </button>
         <button
           type="button"
+          data-testid="staff-form-save"
           onClick={handleSave}
           disabled={!name.trim() || isPending}
           className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -344,7 +347,10 @@ function InviteModal({ staff, onClose, sendOnOpen }: InviteModalProps) {
         )}
 
         {sent && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+          <div
+            data-testid="staff-invite-sent"
+            className="bg-green-50 border border-green-200 rounded-lg p-3"
+          >
             <p className="text-sm text-green-800">
               Invitation sendt! Medarbejderen modtager en e-mail inden for kort tid.
             </p>
@@ -452,6 +458,7 @@ export default function StaffPage() {
           <p className="mt-1 text-sm text-gray-500">Lærere, pædagoger og vikarer</p>
         </div>
         <button
+          data-testid="staff-create"
           onClick={() => setShowCreate(true)}
           aria-label="Opret medarbejder"
           className="flex items-center min-h-11 min-w-11 justify-center sm:min-h-0 sm:min-w-0 gap-2 px-3 py-2 sm:px-4 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"

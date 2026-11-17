@@ -134,4 +134,31 @@ test.describe.serial('Staff invitation flow', () => {
     await expect(row).toContainText('Har logget ind')
     await expect(page.getByTestId(`staff-invite-${staff.id}`)).toBeHidden()
   })
+
+  test('creating staff with an email sends one invitation without another click', async ({ page, request }) => {
+    const staffEmail = uniqueStaffEmail()
+    let inviteRequests = 0
+    page.on('request', (req) => {
+      if (req.method() === 'POST' && req.url().includes('/api/v1/staff-invitations/invite/')) inviteRequests++
+    })
+
+    await loginAsAdmin(page)
+    await page.goto('/medarbejdere')
+    await page.getByTestId('staff-create').click()
+    await page.getByTestId('staff-form-name').fill('Auto Inviteret')
+    await page.getByTestId('staff-form-email').fill(staffEmail)
+    await page.getByTestId('staff-form-save').click()
+
+    await expect(page.getByTestId('staff-invite-sent')).toBeVisible({ timeout: 15_000 })
+
+    async function mailsToStaff() {
+      const res = await request.get(`${MAILPIT_API}/search?query=${encodeURIComponent(`to:${staffEmail}`)}`)
+      return ((await res.json()) as { messages?: unknown[] }).messages?.length ?? 0
+    }
+    await expect.poll(mailsToStaff, { timeout: 10_000 }).toBe(1)
+    // Give a duplicate send time to show up before asserting there was none.
+    await page.waitForTimeout(1_000)
+    expect(inviteRequests).toBe(1)
+    expect(await mailsToStaff()).toBe(1)
+  })
 })
