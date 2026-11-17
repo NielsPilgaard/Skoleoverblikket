@@ -131,7 +131,7 @@ test.describe.serial('Staff invitation flow', () => {
     await expect(row).toBeVisible({ timeout: 15_000 })
     await expect(row).not.toContainText('Inviteret')
     await row.getByTestId('person-row-toggle').click()
-    await expect(row).toContainText('Aktiv')
+    await expect(row).toContainText('Har logget ind')
     await expect(page.getByTestId(`staff-invite-${staff.id}`)).toBeHidden()
   })
 })

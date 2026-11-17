@@ -54,7 +54,7 @@ function loginStatus(
   s: StaffDto,
   invite: InvitationDto | undefined
 ): { text: string; badge?: Badge } {
-  if (hasLoggedIn(s, invite)) return { text: 'Aktiv' }
+  if (hasLoggedIn(s, invite)) return { text: 'Har logget ind' }
   if (!invite) return { text: 'Ikke inviteret', badge: { label: 'Ikke inviteret', tone: 'gray' } }
   if (invite.status === 'Expired')
     return { text: 'Invitationen er udløbet', badge: { label: 'Invitation udløbet', tone: 'red' } }
