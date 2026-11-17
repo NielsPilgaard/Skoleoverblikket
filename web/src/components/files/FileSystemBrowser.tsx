@@ -925,16 +925,8 @@ export function FileSystemBrowser({
                       onDone={() => setRenamingFolderId(null)}
                     />
                   ) : (
-                    <button
-                      type="button"
-                      onClick={(ev) => {
-                        ev.stopPropagation()
-                        navigateInto(e.folder)
-                      }}
-                      className="min-h-[44px] text-left font-semibold text-gray-900 hover:text-brand-700 break-words"
-                    >
-                      {e.folder.name}
-                    </button>
+                    // DataTable wraps the clickable row's title in a button.
+                    <span className="flex items-center min-h-11">{e.folder.name}</span>
                   )}
                 </span>
               ) : (

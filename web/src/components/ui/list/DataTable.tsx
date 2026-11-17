@@ -95,6 +95,23 @@ export function DataTable<T>({
   const [titleCol, ...restCols] = columns
   const clickHandler = (row: T) =>
     onRowClick && (isRowClickable?.(row) ?? true) ? () => onRowClick(row) : undefined
+  // The row's onClick is a bigger mouse target; this button is what keyboards and screen readers use.
+  const titleCell = (row: T) => {
+    const onClick = clickHandler(row)
+    if (!onClick) return titleCol.cell(row)
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onClick()
+        }}
+        className="text-left font-semibold text-gray-900 hover:text-brand-700 break-words"
+      >
+        {titleCol.cell(row)}
+      </button>
+    )
+  }
 
   return (
     <div className="space-y-2" data-testid={testId}>
@@ -117,7 +134,7 @@ export function DataTable<T>({
               onClick={clickHandler(row)}
               className={`bg-white rounded-xl border border-gray-200 p-4 ${clickHandler(row) ? 'cursor-pointer' : ''}`}
             >
-              <div className="font-semibold text-gray-900">{titleCol.cell(row)}</div>
+              <div className="font-semibold text-gray-900">{titleCell(row)}</div>
               {restCols.length > 0 && (
                 <dl className="mt-2 grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1 text-sm">
                   {restCols.map((c) => (
@@ -200,7 +217,7 @@ export function DataTable<T>({
                         i === 0 ? 'font-semibold text-gray-900' : 'text-gray-700'
                       }`}
                     >
-                      {c.cell(row)}
+                      {i === 0 ? titleCell(row) : c.cell(row)}
                     </td>
                   ))}
                   {actions && (
