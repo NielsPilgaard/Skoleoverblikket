@@ -52,6 +52,8 @@ interface QueueItem {
   file: File
   progress: number
   state: 'uploading' | 'done' | 'failed' | 'tooBig'
+  /** The folder open when the file was added, so a retry after browsing elsewhere goes there too. */
+  folderId?: string
   /** Set once the file is uploaded, so "Prøv igen" only retries what failed. */
   uploadedId?: string
 }
@@ -60,11 +62,13 @@ function FileRow({
   file,
   secondLine,
   checked,
+  busy,
   onToggle,
 }: {
   file: PickerFile
   secondLine: string
   checked: boolean
+  busy: boolean
   onToggle: (checked: boolean) => void
 }) {
   return (
@@ -83,6 +87,7 @@ function FileRow({
         <input
           type="checkbox"
           checked={checked}
+          disabled={busy}
           onChange={(e) => onToggle(e.target.checked)}
           className="w-6 h-6 shrink-0 accent-brand-600"
         />
@@ -196,6 +201,21 @@ export function FilePicker({
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [dragging, setDragging] = useState(false)
   const nextKey = useRef(0)
+  // A file's checkbox is locked while its change saves, so a late add can't undo a later untick.
+  const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(new Set())
+
+  async function toggleFile(id: string, checked: boolean): Promise<boolean> {
+    setBusyIds((s) => new Set(s).add(id))
+    try {
+      return await onToggle(id, checked)
+    } finally {
+      setBusyIds((s) => {
+        const rest = new Set(s)
+        rest.delete(id)
+        return rest
+      })
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 200)
@@ -234,7 +254,12 @@ export function FilePicker({
   const updateItem = (key: number, patch: Partial<QueueItem>) =>
     setQueue((q) => q.map((i) => (i.key === key ? { ...i, ...patch } : i)))
 
-  async function runUpload(key: number, file: File, alreadyUploaded?: string) {
+  async function runUpload(
+    key: number,
+    file: File,
+    destination: string | undefined,
+    alreadyUploaded?: string
+  ) {
     updateItem(key, { state: 'uploading', progress: alreadyUploaded ? 100 : 0 })
     try {
       let id = alreadyUploaded
@@ -242,14 +267,14 @@ export function FilePicker({
         const uploaded = await uploadFile({
           file,
           courseId: courseId ?? undefined,
-          folderId,
+          folderId: destination,
           onProgress: (progress) => updateItem(key, { progress }),
         })
         id = uploaded.id
         updateItem(key, { progress: 100, uploadedId: id })
         void qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1Files' }] })
       }
-      updateItem(key, { state: (await onToggle(id, true)) ? 'done' : 'failed' })
+      updateItem(key, { state: (await toggleFile(id, true)) ? 'done' : 'failed' })
     } catch {
       updateItem(key, { state: 'failed' })
     }
@@ -259,8 +284,11 @@ export function FilePicker({
     for (const file of Array.from(list ?? [])) {
       const key = nextKey.current++
       const tooBig = file.size > MAX_UPLOAD_BYTES
-      setQueue((q) => [...q, { key, file, progress: 0, state: tooBig ? 'tooBig' : 'uploading' }])
-      if (!tooBig) void runUpload(key, file)
+      setQueue((q) => [
+        ...q,
+        { key, file, folderId, progress: 0, state: tooBig ? 'tooBig' : 'uploading' },
+      ])
+      if (!tooBig) void runUpload(key, file, folderId)
     }
   }
 
@@ -366,7 +394,7 @@ export function FilePicker({
               <QueueRow
                 key={item.key}
                 item={item}
-                onRetry={() => void runUpload(item.key, item.file, item.uploadedId)}
+                onRetry={() => void runUpload(item.key, item.file, item.folderId, item.uploadedId)}
                 onRemove={() => setQueue((q) => q.filter((i) => i.key !== item.key))}
               />
             ))}
@@ -385,7 +413,8 @@ export function FilePicker({
                   file={f}
                   secondLine={`${f.courseName ?? ''} · lagt op ${formatDate(f.uploadedAt ?? '')}`}
                   checked={isChecked(f.id)}
-                  onToggle={(checked) => void onToggle(f.id ?? '', checked)}
+                  busy={busyIds.has(f.id ?? '')}
+                  onToggle={(checked) => void toggleFile(f.id ?? '', checked)}
                 />
               ))}
             </ul>
@@ -406,7 +435,8 @@ export function FilePicker({
                     .filter(Boolean)
                     .join(' · ')}
                   checked={isChecked(f.id)}
-                  onToggle={(checked) => void onToggle(f.id ?? '', checked)}
+                  busy={busyIds.has(f.id ?? '')}
+                  onToggle={(checked) => void toggleFile(f.id ?? '', checked)}
                 />
               ))}
             </ul>
@@ -464,7 +494,8 @@ export function FilePicker({
                   .filter(Boolean)
                   .join(' · ')}
                 checked={isChecked(f.id)}
-                onToggle={(checked) => void onToggle(f.id ?? '', checked)}
+                busy={busyIds.has(f.id ?? '')}
+                onToggle={(checked) => void toggleFile(f.id ?? '', checked)}
               />
             ))}
           </ul>
