@@ -14841,6 +14841,7 @@
         "required": [
           "adresseBeskyttet",
           "createdAt",
+          "email",
           "hasAccount",
           "id",
           "name"
@@ -14852,6 +14853,9 @@
             "format": "uuid"
           },
           "name": {
+            "type": "string"
+          },
+          "email": {
             "type": "string"
           },
           "phone": {

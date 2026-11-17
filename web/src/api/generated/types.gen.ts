@@ -1008,6 +1008,7 @@ export type ParentsControllerParentDto = {
 export type ParentsControllerParentSummaryDto = {
     id: string;
     name: string;
+    email: string;
     phone?: string | null;
     address?: string | null;
     postalCode?: string | null;

@@ -19,7 +19,7 @@ public sealed class ParentsController(
 	ParentInvitationService invitationService,
 	ILogger<ParentsController> logger) : ControllerBase
 {
-	public record ParentSummaryDto(Guid Id, string Name, string? Phone, string? Address, string? PostalCode, string? City, IReadOnlyList<StudentRefDto> Students, bool HasAccount, DateTimeOffset CreatedAt, bool AdresseBeskyttet);
+	public record ParentSummaryDto(Guid Id, string Name, string Email, string? Phone, string? Address, string? PostalCode, string? City, IReadOnlyList<StudentRefDto> Students, bool HasAccount, DateTimeOffset CreatedAt, bool AdresseBeskyttet);
 	public record ParentDto(Guid Id, string Name, string Email, string? Phone, string? Address, string? PostalCode, string? City, IReadOnlyList<StudentRefDto> Students, bool HasAccount, DateTimeOffset CreatedAt, bool AdresseBeskyttet, CoParentDto? CoParent);
 	public record StudentRefDto(Guid Id, string Name, Guid ClassId, string ClassName);
 	public record CoParentDto(Guid Id, string Name);
@@ -210,6 +210,7 @@ public sealed class ParentsController(
 	private static ParentSummaryDto ToSummaryDto(Parent p) => new(
 		p.Id,
 		p.Name,
+		p.Email,
 		p.Phone,
 		p.Address,
 		p.PostalCode,

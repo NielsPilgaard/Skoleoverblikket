@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getApiV1ParentsOptions,
   getApiV1ParentsQueryKey,
-  getApiV1ParentsByIdOptions,
   postApiV1ParentsInviteMutation,
   deleteApiV1ParentsByIdMutation,
   postApiV1ParentInvitationsByParentIdResendMutation,
@@ -16,6 +15,7 @@ import type { ParentSummaryDto, StudentDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { useSubscription } from '../hooks/useSubscription'
 import { PersonList } from '../components/ui/list'
+import { MailIcon, PhoneIcon, UsersIcon } from '../components/ui/icons'
 import {
   isValidPhone,
   isValidPostalCode,
@@ -313,79 +313,56 @@ function EditContactModal({ parent, onClose }: EditContactModalProps) {
   )
 }
 
-interface DetailsModalProps {
-  parentId: string
-  parentName: string
-  onOpenCoParent: (id: string, name: string) => void
-  onClose: () => void
+/** Other parents who share at least one child with `p`. */
+function otherParents(p: ParentSummaryDto, all: ParentSummaryDto[]): ParentSummaryDto[] {
+  const childIds = new Set((p.students ?? []).map((s) => s.id))
+  return all.filter((o) => o.id !== p.id && (o.students ?? []).some((s) => childIds.has(s.id)))
 }
 
-function DetailsModal({ parentId, parentName, onOpenCoParent, onClose }: DetailsModalProps) {
-  const {
-    data: detail,
-    isLoading,
-    isError,
-  } = useQuery(getApiV1ParentsByIdOptions({ path: { id: parentId } }))
-
+function ParentContact({
+  parent,
+  others,
+  openPerson,
+}: {
+  parent: ParentSummaryDto
+  others: ParentSummaryDto[]
+  openPerson: (key: string) => void
+}) {
+  const line = 'flex items-center gap-2'
+  const icon = 'w-4 h-4 shrink-0 text-gray-500'
   return (
-    <Modal isOpen onClose={onClose} title={`Detaljer — ${parentName}`}>
-      <div className="px-6 py-5 space-y-4">
-        {isLoading && <p className="text-sm text-gray-400">Indlæser...</p>}
-        {isError && <p className="text-sm text-red-600">Kunne ikke hente detaljer.</p>}
-        {detail && (
-          <>
-            <div>
-              <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                Konto
-              </span>
-              {detail.hasAccount ? (
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                  Aktiv
-                </span>
-              ) : (
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                  Afventer
-                </span>
-              )}
-            </div>
-            <div>
-              <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                E-mail
-              </span>
-              <a
-                href={`mailto:${detail.email}`}
-                className="text-sm text-brand-600 hover:underline break-all"
-              >
-                {detail.email}
-              </a>
-            </div>
-            {detail.coParent && (
-              <div>
-                <span className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                  Meforælder
-                </span>
+    <div className="space-y-1.5 text-sm">
+      <a href={`mailto:${parent.email}`} className={`${line} text-brand-600 hover:underline`}>
+        <MailIcon className={icon} />
+        <span className="min-w-0 break-all">{parent.email}</span>
+      </a>
+      {parent.phone && (
+        <a href={`tel:${parent.phone}`} className={`${line} text-brand-600 hover:underline`}>
+          <PhoneIcon className={icon} />
+          {parent.phone}
+        </a>
+      )}
+      {others.length > 0 && (
+        <p className={`${line} text-gray-600`}>
+          <UsersIcon className={icon} />
+          <span>
+            Deler børn med{' '}
+            {others.map((o, i) => (
+              <span key={o.id}>
+                {i > 0 && ', '}
                 <button
                   type="button"
-                  onClick={() => onOpenCoParent(detail.coParent!.id!, detail.coParent!.name!)}
-                  className="text-sm text-brand-600 hover:underline"
+                  onClick={() => openPerson(o.id!)}
+                  className="text-brand-600 hover:underline"
                 >
-                  {detail.coParent.name}
+                  {o.name}
                 </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-      <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
-        >
-          Luk
-        </button>
-      </div>
-    </Modal>
+              </span>
+            ))}
+          </span>
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -394,7 +371,7 @@ export default function ParentsPage() {
   const qc = useQueryClient()
   const [showInvite, setShowInvite] = useState(false)
   const [editingParent, setEditingParent] = useState<ParentSummaryDto | null>(null)
-  const [detailsTarget, setDetailsTarget] = useState<{ id: string; name: string } | null>(null)
+  const [resendResult, setResendResult] = useState<{ ok: boolean; text: string } | null>(null)
   const { hasParentModule, isSuccess: modulesLoaded } = useSubscription()
 
   const { data: parents, isLoading, isError, refetch } = useQuery(getApiV1ParentsOptions())
@@ -407,6 +384,9 @@ export default function ParentsPage() {
 
   const resendMutation = useMutation({
     mutationFn: postApiV1ParentInvitationsByParentIdResendMutation().mutationFn,
+    onMutate: () => setResendResult(null),
+    onError: () =>
+      setResendResult({ ok: false, text: 'Invitationen kunne ikke sendes. Prøv igen.' }),
   })
 
   return (
@@ -459,6 +439,20 @@ export default function ParentsPage() {
         </div>
       )}
 
+      {resendResult && (
+        <div
+          role={resendResult.ok ? 'status' : 'alert'}
+          data-testid="parent-resend-result"
+          className={`rounded-xl border px-5 py-4 text-sm ${
+            resendResult.ok
+              ? 'border-green-200 bg-green-50 text-green-800'
+              : 'border-red-200 bg-red-50 text-red-700'
+          }`}
+        >
+          {resendResult.text}
+        </div>
+      )}
+
       <PersonList
         items={parents}
         isLoading={isLoading}
@@ -503,28 +497,37 @@ export default function ParentsPage() {
             subtitle: children ? `Forælder til ${children}` : 'Ingen børn tilknyttet',
             // Not "Inviteret": the list doesn't know whether the invitation has expired.
             badge: p.hasAccount ? undefined : { label: 'Ingen konto', tone: 'amber' },
-            details: [
-              { label: 'Telefon', value: p.phone ?? '—' },
-              { label: 'Børn', value: children || '—' },
-              { label: 'Konto', value: p.hasAccount ? 'Oprettet' : 'Ikke oprettet endnu' },
-            ],
+            // Children and account status are already in the subtitle and badge.
+            content: (openPerson) => (
+              <ParentContact
+                parent={p}
+                others={otherParents(p, parents ?? [])}
+                openPerson={openPerson}
+              />
+            ),
             actions: [
               ...(!p.hasAccount && hasParentModule
                 ? [
                     {
                       label: 'Send invitation igen',
                       disabled: resendMutation.isPending,
-                      onClick: () => resendMutation.mutate({ path: { parentId: p.id! } }),
+                      onClick: () =>
+                        resendMutation.mutate(
+                          { path: { parentId: p.id! } },
+                          {
+                            onSuccess: () =>
+                              setResendResult({
+                                ok: true,
+                                text: `Invitationen er sendt igen til ${p.name}.`,
+                              }),
+                          }
+                        ),
                     },
                   ]
                 : []),
               ...(hasParentModule
                 ? [{ label: 'Rediger kontaktoplysninger', onClick: () => setEditingParent(p) }]
                 : []),
-              {
-                label: 'E-mail og meforælder',
-                onClick: () => setDetailsTarget({ id: p.id!, name: p.name }),
-              },
               {
                 label: 'Slet',
                 variant: 'danger' as const,
@@ -543,14 +546,6 @@ export default function ParentsPage() {
       )}
       {editingParent && (
         <EditContactModal parent={editingParent} onClose={() => setEditingParent(null)} />
-      )}
-      {detailsTarget && (
-        <DetailsModal
-          parentId={detailsTarget.id}
-          parentName={detailsTarget.name}
-          onOpenCoParent={(id, name) => setDetailsTarget({ id, name })}
-          onClose={() => setDetailsTarget(null)}
-        />
       )}
     </div>
   )
