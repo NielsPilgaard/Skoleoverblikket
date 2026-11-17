@@ -616,7 +616,7 @@ export default function WeekPlanPage() {
       {/* Lesson editor */}
       {editingSlot && classId && weekPlanData && !substituteSchemaSlotId && (
         <LessonEditor
-          key={editingSlot.schemaSlotId}
+          key={`${classId}-${schemaId}-${isoYear}-${isoWeek}-${editingSlot.schemaSlotId}`}
           slot={editingSlot}
           slots={weekPlanData.slots}
           classId={classId}
