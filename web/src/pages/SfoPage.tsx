@@ -683,6 +683,7 @@ function CellModal({
     <Modal
       isOpen
       onClose={onClose}
+      onKeyDown={handleKeyDown}
       contentClassName="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 flex flex-col max-h-[90dvh]"
     >
       {/* Header */}
@@ -811,7 +812,6 @@ function CellModal({
           <MarkdownTextarea
             value={text}
             onChange={setText}
-            onKeyDown={handleKeyDown}
             placeholder="Beskriv aktiviteter for denne vagt…"
             rows={4}
             maxLength={8000}
