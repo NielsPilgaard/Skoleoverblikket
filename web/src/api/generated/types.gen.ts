@@ -80,6 +80,15 @@ export type AssignAbsenceSubstituteRequest = {
     staffId?: string | null;
 };
 
+export type AssignAllSubstituteRequest = {
+    staffId: string;
+};
+
+export type AssignAllSubstituteResponse = {
+    assigned: number;
+    stillUncovered: number;
+};
+
 export type AssignSubstituteRequest = {
     substituteTeacherId?: string | null;
     substituteAideId?: string | null;
@@ -4893,6 +4902,24 @@ export type PutApiV1StaffAbsencesByIdSubstituteResponses = {
      */
     200: unknown;
 };
+
+export type PutApiV1StaffAbsencesByIdSubstituteAllData = {
+    body?: AssignAllSubstituteRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/staff-absences/{id}/substitute/all';
+};
+
+export type PutApiV1StaffAbsencesByIdSubstituteAllResponses = {
+    /**
+     * OK
+     */
+    200: AssignAllSubstituteResponse;
+};
+
+export type PutApiV1StaffAbsencesByIdSubstituteAllResponse = PutApiV1StaffAbsencesByIdSubstituteAllResponses[keyof PutApiV1StaffAbsencesByIdSubstituteAllResponses];
 
 export type GetApiV1StaffInvitationsData = {
     body?: never;

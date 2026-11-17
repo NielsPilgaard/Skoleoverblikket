@@ -6,15 +6,35 @@ import {
   deleteApiV1StaffAbsencesByIdMutation,
   getApiV1StaffAbsencesByIdOptions,
   putApiV1StaffAbsencesByIdMutation,
+  putApiV1StaffAbsencesByIdSubstituteAllMutation,
   putApiV1StaffAbsencesByIdSubstituteMutation,
 } from '../api/generated/@tanstack/react-query.gen'
-import type { AffectedLessonDto } from '../api/generated/types.gen'
+import type { AffectedLessonDto, AvailableStaffDto } from '../api/generated/types.gen'
 import { StaffAbsenceForm } from '../components/absence/StaffAbsenceForm'
 import { capitalizeFirst, formatDateTimeRange, formatLongDate } from '../lib/absence'
 import { problemDetail } from '../lib/problem'
 import { Select } from '../components/ui/select'
 
 const ROLE_LABEL = { Teacher: 'Lærer', Aide: 'Pædagog', Substitute: 'Vikar' } as const
+
+/** Candidates for any uncovered lektion, most lektioner free first; ties keep the API's ranking. */
+function coverAllCandidates(uncovered: AffectedLessonDto[]) {
+  const byId = new Map<string, { staff: AvailableStaffDto; free: number }>()
+  for (const l of uncovered) {
+    for (const c of l.candidates ?? []) {
+      const entry = byId.get(c.id) ?? { staff: c, free: 0 }
+      entry.free++
+      byId.set(c.id, entry)
+    }
+  }
+  return [...byId.values()].sort((a, b) => b.free - a.free)
+}
+
+function coverAllResultText(assigned: number, stillUncovered: number) {
+  const done = `Vikaren er sat på ${assigned} ${assigned === 1 ? 'lektion' : 'lektioner'}.`
+  if (stillUncovered === 0) return done
+  return `${done} ${stillUncovered} ${stillUncovered === 1 ? 'lektion mangler' : 'lektioner mangler'} stadig vikar.`
+}
 
 /** Admin: one staff absence, every lektion it affects, and a vikar per lektion. */
 export default function SubstituteCoverDetailPage() {
@@ -24,9 +44,27 @@ export default function SubstituteCoverDetailPage() {
   const qc = useQueryClient()
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
+  const [coverAllId, setCoverAllId] = useState('')
+  const [coverAllResult, setCoverAllResult] = useState<string | null>(null)
 
   const options = getApiV1StaffAbsencesByIdOptions({ path: { id } })
   const { data, isLoading, isError } = useQuery(options)
+
+  const assignAll = useMutation({
+    ...putApiV1StaffAbsencesByIdSubstituteAllMutation(),
+    onSuccess: (res) => {
+      setError(null)
+      setCoverAllId('')
+      setCoverAllResult(coverAllResultText(res.assigned, res.stillUncovered))
+      qc.invalidateQueries({ queryKey: options.queryKey })
+      qc.invalidateQueries({ queryKey: [{ _id: 'getApiV1StaffAbsences' }] })
+    },
+    onError: (err) => {
+      setCoverAllResult(null)
+      setError(problemDetail(err) ?? 'Vikaren kunne ikke tildeles.')
+      qc.invalidateQueries({ queryKey: options.queryKey })
+    },
+  })
 
   const assign = useMutation({
     ...putApiV1StaffAbsencesByIdSubstituteMutation(),
@@ -78,6 +116,8 @@ export default function SubstituteCoverDetailPage() {
     acc[l.date] = [...(acc[l.date] ?? []), l]
     return acc
   }, {})
+  const uncovered = lessons.filter((l) => !l.substituteId)
+  const allCandidates = coverAllCandidates(uncovered)
 
   function setSubstitute(lesson: AffectedLessonDto, staffId: string | null) {
     assign.mutate({
@@ -132,6 +172,61 @@ export default function SubstituteCoverDetailPage() {
         <p className="text-sm text-red-600" data-testid="cover-error">
           {error}
         </p>
+      )}
+
+      {coverAllResult && (
+        <p className="text-sm text-green-800" data-testid="cover-all-result">
+          {coverAllResult}
+        </p>
+      )}
+
+      {uncovered.length >= 2 && (
+        <form
+          className="bg-brand-50 border border-brand-200 rounded-xl p-4 space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (coverAllId) assignAll.mutate({ path: { id }, body: { staffId: coverAllId } })
+          }}
+        >
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Samme vikar på alle lektioner</h2>
+            <p className="text-xs text-gray-600">
+              {uncovered.length} lektioner mangler vikar. Vælg én person, så sættes de på alle dem,
+              de er ledige til.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Select
+              label="Vikar til alle lektioner"
+              hideLabel
+              options={[
+                {
+                  value: '',
+                  label: allCandidates.length === 0 ? 'Ingen ledige' : 'Vælg vikar',
+                },
+                ...allCandidates.map(({ staff, free }) => ({
+                  value: staff.id,
+                  label: `${staff.name}${staff.role === 'Substitute' ? ' (vikar)' : ''}${
+                    free === uncovered.length ? '' : ` – ledig til ${free} af ${uncovered.length}`
+                  }`,
+                })),
+              ]}
+              value={coverAllId}
+              disabled={assignAll.isPending || allCandidates.length === 0}
+              onChange={setCoverAllId}
+              testId="cover-all-candidates"
+              className="max-w-full"
+            />
+            <button
+              type="submit"
+              disabled={!coverAllId || assignAll.isPending}
+              data-testid="cover-all-submit"
+              className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {assignAll.isPending ? 'Sætter på…' : 'Sæt på alle'}
+            </button>
+          </div>
+        </form>
       )}
 
       {lessons.length === 0 && (
