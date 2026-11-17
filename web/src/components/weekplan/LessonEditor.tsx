@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   deleteApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesByFileIdMutation,
@@ -148,6 +148,12 @@ export function LessonEditor({
   const [step, setStep] = useState<Step>('lesson')
   const [fileError, setFileError] = useState(false)
   const [uploading, setUploading] = useState(false)
+  // closePicker awaits, so it reads the ref to see an upload that started meanwhile.
+  const uploadingRef = useRef(false)
+  const handleUploadingChange = useCallback((value: boolean) => {
+    uploadingRef.current = value
+    setUploading(value)
+  }, [])
   const pendingToggles = useRef<Promise<boolean>[]>([])
 
   // Latest typed values, saved values and slot id live in refs: saves run after renders have moved on.
@@ -221,9 +227,12 @@ export function LessonEditor({
   const saveRef = useRef(saveNow)
   saveRef.current = saveNow
 
+  // Also retries a failed save: the editor can unmount without "Luk", e.g. on a route change.
   useEffect(
     () => () => {
-      if (timer.current) void saveRef.current()
+      if (timer.current || JSON.stringify(latest.current) !== lastSaved.current) {
+        void saveRef.current()
+      }
     },
     []
   )
@@ -366,8 +375,12 @@ export function LessonEditor({
     // A running upload or tick shows any failure in the picker, so it can't close before they end.
     const closePicker = async () => {
       if (uploading) return
-      const results = await Promise.all(pendingToggles.current)
-      if (results.every(Boolean)) setStep('lesson')
+      // Ticks made while waiting join the list, so wait until it is empty.
+      while (pendingToggles.current.length > 0) {
+        const results = await Promise.all(pendingToggles.current)
+        if (!results.every(Boolean)) return
+      }
+      if (!uploadingRef.current) setStep('lesson')
     }
     return (
       <Modal {...modalProps} onClose={closePicker}>
@@ -378,7 +391,7 @@ export function LessonEditor({
           selectedFileIds={slot.files.map((f) => f.schoolFileId)}
           onToggle={handleFileToggle}
           error={fileError ? 'Filen kunne ikke gemmes på lektionen. Prøv igen.' : undefined}
-          onUploadingChange={setUploading}
+          onUploadingChange={handleUploadingChange}
           onClose={closePicker}
         />
       </Modal>
