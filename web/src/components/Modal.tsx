@@ -29,12 +29,17 @@ let pendingReturn: { timer: ReturnType<typeof setTimeout>; target: HTMLElement |
 
 /** Tab from the last field goes to the first, and back. Otherwise it walks on to the page behind. */
 function keepTabInside(e: React.KeyboardEvent, dialog: HTMLElement) {
-  const items = [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
-    (el) =>
-      el.getClientRects().length > 0 &&
-      // Only the checked radio in a group is a tab stop.
-      !(el instanceof HTMLInputElement && el.type === 'radio' && !el.checked)
-  )
+  const radioGroups = new Set<string>()
+  const items = [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => {
+    if (el.tabIndex < 0 || el.getClientRects().length === 0) return false
+    if (!(el instanceof HTMLInputElement && el.type === 'radio') || el.checked) return true
+    // An unchecked radio is a tab stop only as the first of a group with nothing checked.
+    const group = el.name
+    if (!group) return true
+    if (radioGroups.has(group)) return false
+    radioGroups.add(group)
+    return !dialog.querySelector(`input[type="radio"][name="${CSS.escape(group)}"]:checked`)
+  })
   const first = items[0]
   const last = items[items.length - 1]
   const active = document.activeElement
