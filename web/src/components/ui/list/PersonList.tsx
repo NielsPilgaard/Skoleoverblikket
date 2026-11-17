@@ -20,8 +20,11 @@ export interface Person {
   /** Only when the person isn't simply active, e.g. "Inviteret". */
   badge?: Badge
   details?: { label: string; value: React.ReactNode }[]
-  /** Free-form fold-out content under the details, e.g. several contacts. */
-  content?: React.ReactNode
+  /**
+   * Free-form fold-out content under the details, e.g. several contacts.
+   * As a function it gets `openPerson(key)`, which unfolds another row and scrolls to it.
+   */
+  content?: React.ReactNode | ((openPerson: (key: string) => void) => React.ReactNode)
   /** Primary first. */
   actions?: RowAction[]
   testId?: string
@@ -84,6 +87,17 @@ export function PersonList<T>({
     })
   }
 
+  function openPerson(key: string) {
+    // A search or filter may hide the row; clear them so it can be shown.
+    if (!list.visible.some((item) => toPerson(item).key === key)) list.clear()
+    setOpen((prev) => new Set(prev).add(key))
+    requestAnimationFrame(() => {
+      const row = document.getElementById(`${baseId}-${key}-row`)
+      row?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      row?.focus({ preventScroll: true })
+    })
+  }
+
   if (isLoading) {
     return (
       <ul
@@ -121,6 +135,7 @@ export function PersonList<T>({
             return (
               <li key={p.key} data-testid={p.testId}>
                 <button
+                  id={`${panelId}-row`}
                   type="button"
                   aria-expanded={isOpen}
                   aria-controls={panelId}
@@ -153,7 +168,7 @@ export function PersonList<T>({
                       ))}
                     </dl>
                   )}
-                  {p.content}
+                  {typeof p.content === 'function' ? p.content(openPerson) : p.content}
                   <ActionButtons actions={p.actions ?? []} />
                 </div>
               </li>

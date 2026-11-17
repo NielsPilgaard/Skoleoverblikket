@@ -67,7 +67,8 @@ export function useListControls<T>(items: T[], controls: ListControls<T>) {
 
   function clear() {
     setSearch('')
-    setFilter(filters?.[0]?.value ?? '')
+    // The "Alle" chip, not the default: a restrictive default would leave the list empty.
+    setFilter(filters?.find((f) => !f.match)?.value ?? '')
   }
 
   /** Column header click: same column flips direction, a new column sorts ascending. */
