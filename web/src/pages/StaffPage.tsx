@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Modal } from '../components/Modal'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -254,9 +254,11 @@ function StaffModal({ initial, onClose, onSaved, currentUserKeycloakSubject }: S
 interface InviteModalProps {
   staff: StaffDto
   onClose: () => void
+  /** Send at once, for someone just created: inviting them is why they were added. */
+  sendOnOpen?: boolean
 }
 
-function InviteModal({ staff, onClose }: InviteModalProps) {
+function InviteModal({ staff, onClose, sendOnOpen }: InviteModalProps) {
   const qc = useQueryClient()
   const [sent, setSent] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -289,6 +291,15 @@ function InviteModal({ staff, onClose }: InviteModalProps) {
       setErrorMsg(msg)
     },
   })
+
+  // A ref, not deps, so StrictMode's double effect run can't send two emails.
+  const autoSent = useRef(false)
+  const { mutate: send } = sendMutation
+  useEffect(() => {
+    if (!sendOnOpen || !staff.email || autoSent.current) return
+    autoSent.current = true
+    send({ path: { staffId: staff.id! } })
+  }, [sendOnOpen, staff, send])
 
   return (
     <Modal isOpen onClose={onClose} title={`Invitér ${staff.name}`}>
@@ -377,6 +388,7 @@ export default function StaffPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [editingStaff, setEditingStaff] = useState<StaffDto | null>(null)
   const [invitingStaff, setInvitingStaff] = useState<StaffDto | null>(null)
+  const [sendInviteOnOpen, setSendInviteOnOpen] = useState(false)
 
   const currentUserKeycloakSubject = (keycloak.tokenParsed as Record<string, string> | undefined)
     ?.sub
@@ -409,7 +421,7 @@ export default function StaffPage() {
   })
 
   function getLatestInvite(staffId: string): InvitationDto | undefined {
-    return allInvitations?.filter((i) => i.staffId === staffId)[0]
+    return allInvitations?.find((i) => i.staffId === staffId)
   }
 
   return (
@@ -538,7 +550,10 @@ export default function StaffPage() {
             actions.push({
               label: invite ? 'Send invitation igen' : 'Send invitation',
               testId: `staff-invite-${s.id}`,
-              onClick: () => setInvitingStaff(s),
+              onClick: () => {
+                setInvitingStaff(s)
+                setSendInviteOnOpen(false)
+              },
             })
           }
           actions.push(
@@ -578,7 +593,10 @@ export default function StaffPage() {
           onClose={() => setShowCreate(false)}
           onSaved={(created) => {
             setShowCreate(false)
-            if (created?.email) setInvitingStaff(created)
+            if (created?.email) {
+              setInvitingStaff(created)
+              setSendInviteOnOpen(true)
+            }
           }}
           currentUserKeycloakSubject={currentUserKeycloakSubject}
         />
@@ -592,7 +610,11 @@ export default function StaffPage() {
         />
       )}
       {invitingStaff && (
-        <InviteModal staff={invitingStaff} onClose={() => setInvitingStaff(null)} />
+        <InviteModal
+          staff={invitingStaff}
+          sendOnOpen={sendInviteOnOpen}
+          onClose={() => setInvitingStaff(null)}
+        />
       )}
     </div>
   )
