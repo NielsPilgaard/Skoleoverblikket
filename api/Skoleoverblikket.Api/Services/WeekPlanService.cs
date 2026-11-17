@@ -100,6 +100,8 @@ public sealed class WeekPlanService(AppDbContext db, ITenantContext tenant)
 		weekPlan.Notes = notes;
 		weekPlan.NotesUpdatedBy = notes is null ? null : staffName ?? loginName;
 		weekPlan.NotesUpdatedAt = notes is null ? null : DateTimeOffset.UtcNow;
+		// Write the author even when unchanged, so a concurrent save can't pair our text with its author.
+		db.Entry(weekPlan).Property(w => w.NotesUpdatedBy).IsModified = true;
 		await db.SaveChangesAsync(cancellationToken);
 		return weekPlan;
 	}
@@ -107,6 +109,7 @@ public sealed class WeekPlanService(AppDbContext db, ITenantContext tenant)
 	public enum AddSlotFileOutcome
 	{
 		Added,
+		SlotNotFound,
 		FileNotFound,
 		AlreadyAttached,
 	}
@@ -117,6 +120,12 @@ public sealed class WeekPlanService(AppDbContext db, ITenantContext tenant)
 	public async Task<AddSlotFileResult> AddFileToSlotAsync(
 		Guid slotId, Guid schoolFileId, string? attachedBySubject, CancellationToken cancellationToken)
 	{
+		// The query filter scopes this to the tenant; the foreign key alone would accept another school's slot.
+		if (!await db.WeekPlanSlots.AnyAsync(s => s.Id == slotId, cancellationToken))
+		{
+			return new AddSlotFileResult(AddSlotFileOutcome.SlotNotFound, null, null);
+		}
+
 		var file = await db.SchoolFiles.AsNoTracking().FirstOrDefaultAsync(f => f.Id == schoolFileId, cancellationToken);
 		if (file is null)
 		{

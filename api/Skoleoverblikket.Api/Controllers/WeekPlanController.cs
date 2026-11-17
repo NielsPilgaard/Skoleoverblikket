@@ -394,6 +394,7 @@ public sealed class WeekPlanController(AppDbContext db, ITenantContext tenant, I
 		var result = await weekPlans.AddFileToSlotAsync(slotId, req.SchoolFileId, User.GetKeycloakSubject(), cancellationToken);
 		return result.Outcome switch
 		{
+			WeekPlanService.AddSlotFileOutcome.SlotNotFound => NotFound(),
 			WeekPlanService.AddSlotFileOutcome.FileNotFound =>
 				Problem("SchoolFileId findes ikke under denne lejer", statusCode: 400),
 			WeekPlanService.AddSlotFileOutcome.AlreadyAttached =>
