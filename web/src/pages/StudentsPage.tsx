@@ -13,6 +13,7 @@ import {
 import type { StudentDto, ClassDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { useSubscription } from '../hooks/useSubscription'
+import { ClockIcon, UsersIcon } from '../components/ui/icons'
 import { PersonList } from '../components/ui/list'
 import { Select } from '../components/ui/select'
 
@@ -229,8 +230,12 @@ export default function StudentsPage() {
           name: s.name,
           subtitle: [s.className, s.isEnrolledInSfo ? 'SFO' : null].filter(Boolean).join(' · '),
           details: [
-            { label: 'Klasse', value: s.className ?? '—' },
-            { label: 'SFO', value: s.isEnrolledInSfo ? 'Indmeldt' : 'Ikke indmeldt' },
+            { icon: UsersIcon, label: 'Klasse', value: s.className ?? 'Ingen klasse' },
+            {
+              icon: ClockIcon,
+              label: 'SFO',
+              value: s.isEnrolledInSfo ? 'Indmeldt i SFO' : 'Ikke indmeldt i SFO',
+            },
           ],
           actions: [
             ...(hasParentModule ? [{ label: 'Rediger', onClick: () => setEditingStudent(s) }] : []),

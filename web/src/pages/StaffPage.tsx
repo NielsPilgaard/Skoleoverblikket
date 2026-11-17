@@ -17,6 +17,7 @@ import {
 import type { StaffDto, StaffRole, InvitationDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 import keycloak from '../auth/keycloak'
+import { MailIcon, PhoneIcon, UserIcon } from '../components/ui/icons'
 import { type Badge, PersonList, type RowAction } from '../components/ui/list'
 import { Select } from '../components/ui/select'
 
@@ -579,9 +580,13 @@ export default function StaffPage() {
               .join(' · '),
             badge: status.badge,
             details: [
-              { label: 'E-mail', value: s.email ?? '—' },
-              { label: 'Telefon', value: s.phone ?? '—' },
-              { label: 'Login', value: status.text },
+              ...(s.email
+                ? [{ icon: MailIcon, label: 'E-mail', value: s.email, href: `mailto:${s.email}` }]
+                : []),
+              ...(s.phone
+                ? [{ icon: PhoneIcon, label: 'Telefon', value: s.phone, href: `tel:${s.phone}` }]
+                : []),
+              { icon: UserIcon, label: 'Login', value: status.text },
             ],
             actions,
           }

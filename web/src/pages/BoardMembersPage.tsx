@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Modal } from '../components/Modal'
 import ModuleInactiveNotice from '../components/ModuleInactiveNotice'
+import { MailIcon } from '../components/ui/icons'
 import { PersonList } from '../components/ui/list'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -148,15 +149,20 @@ export default function BoardMembersPage() {
         toPerson={(member) => ({
           key: member.id ?? member.email,
           name: member.name,
-          subtitle: member.email,
+          // Account status is in the badge.
+          subtitle: member.canAccessTeacherData ? 'Med læreradgang' : undefined,
           testId: 'board-member-row',
           badge: member.hasAccount ? undefined : { label: 'Afventer', tone: 'amber' },
           details: [
-            { label: 'Konto', value: member.hasAccount ? 'Oprettet' : 'Afventer' },
-            { label: 'Læreradgang', value: member.canAccessTeacherData ? 'Ja' : 'Nej' },
+            {
+              icon: MailIcon,
+              label: 'E-mail',
+              value: member.email,
+              href: `mailto:${member.email}`,
+            },
           ],
           content: (
-            <label className="mt-3 flex items-center gap-3 min-h-11 text-sm text-gray-800 cursor-pointer select-none">
+            <label className="mt-1 flex items-center gap-2 min-h-11 text-sm text-gray-800 cursor-pointer select-none">
               <input
                 type="checkbox"
                 data-testid="board-member-teacher-access"
