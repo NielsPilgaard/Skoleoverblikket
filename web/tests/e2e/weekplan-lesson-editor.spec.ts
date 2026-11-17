@@ -357,9 +357,15 @@ test.describe('parent view opens on the right day', () => {
     await page.goto('/klasser')
     await expect(page.getByRole('heading', { name: 'Klasser' })).toBeVisible({ timeout: 15_000 })
     const classes = await api<{ id: string }[]>(page, '/classes')
+    const { isoYear, isoWeek } = isoWeekOf(planningMonday())
+    const plan = await api<{ isHolidayWeek: boolean }>(
+      page,
+      `/classes/${classes[0].id}/week-plan?isoYear=${isoYear}&isoWeek=${isoWeek}`
+    )
     await page.goto(`/klasser/${classes[0].id}/ugeplan`)
     await page.getByTestId('parent-preview-toggle').click({ timeout: 15_000 })
     await expect(page.getByTestId('parent-preview')).toBeVisible()
+    return plan.isHolidayWeek
   }
 
   const tuesdayAt = (hour: number) => {
@@ -368,18 +374,18 @@ test.describe('parent view opens on the right day', () => {
   }
 
   test('before 15:00 it is today', async ({ page }) => {
-    await openPreview(page, tuesdayAt(14))
+    test.skip(await openPreview(page, tuesdayAt(14)), 'This week is a holiday week.')
     const tab = page.getByTestId('weekplan-day-toggle-Tuesday')
-    test.skip(!(await tab.isVisible()), 'This week is a holiday week.')
+    await expect(tab).toBeVisible()
     await expect(tab).toHaveAttribute('aria-selected', 'true')
     await expect(tab).toContainText('I dag')
     await expect(tab).toHaveAccessibleName(/^I dag, Tirsdag \d+/)
   })
 
   test('from 15:00 it is the next school day', async ({ page }) => {
-    await openPreview(page, tuesdayAt(16))
+    test.skip(await openPreview(page, tuesdayAt(16)), 'This week is a holiday week.')
     const tab = page.getByTestId('weekplan-day-toggle-Wednesday')
-    test.skip(!(await tab.isVisible()), 'This week is a holiday week.')
+    await expect(tab).toBeVisible()
     await expect(tab).toHaveAttribute('aria-selected', 'true')
     await expect(tab).toContainText('I morgen')
     await expect(tab).toHaveAccessibleName(/^I morgen, Onsdag \d+/)
