@@ -18,9 +18,9 @@ status: 'Ready'
 
 - **One rule: back means browser back.** The in-app back button, the browser button and the Android back gesture do the same thing, so the page you return to is the one you left. When there is no in-app page to go back to (link from an email, a new tab), the button goes to the page's parent route instead.
 - **State that should survive back lives in the history, not in `useState`.** Week, tab, filter, search, folder and selected thread go in the URL (`useUrlState`). Open accordions and "vis flere" go in the history entry (`useEntryState`). Scroll is saved per history entry and restored in `Layout`'s `<main>`.
-- Five parts, one PR each. Part 1 builds the hooks and `BackLink`; parts 2 to 4 move pages onto them; part 5 waits for Niels (Q4).
+- One PR, five parts done in order. Part 1 builds the hooks and `BackLink`; parts 2 to 4 move pages onto them; part 5 waits for Niels (Q4) and 73 part 2, and is left out if either isn't ready.
 - Size L. Owner: Agent. No API change.
-- **Start after PR [#89](https://github.com/NielsPilgaard/Skoleoverblikket/pull/89) ([task 67](67-shared-ui-components-round-1.md)) is merged**: it rewrites many of the same pages and adds `useWeekNavigation`. Part 1 alone can go first if #89 drags on. [Task 73](73-shared-ui-components-round-2.md) part 7's `PageHeader` renders this task's `BackLink` in its back slot, whichever lands first.
+- **Start after PR [#89](https://github.com/NielsPilgaard/Skoleoverblikket/pull/89) ([task 67](67-shared-ui-components-round-1.md)) is merged**: it rewrites many of the same pages and adds `useWeekNavigation`. [Task 73](73-shared-ui-components-round-2.md) part 7's `PageHeader` renders this task's `BackLink` in its back slot, whichever lands first.
 - Done when: the [migration checklist](#migration-checklist) greps come back clean, `navigation.spec.ts` passes, and the flows in [Done when](#done-when) work on a 375 px phone and a laptop.
 
 ## Why
@@ -59,13 +59,13 @@ All in `web/src/lib/navigation/`.
 
 | Piece | Spec |
 |---|---|
-| `NavigationTracker` | Mounted once inside `BrowserRouter` in `App.tsx`. Keeps a per-tab map in `sessionStorage`: `location.key → { prevKey, path, title }`. On PUSH, `prevKey` is the entry we came from; on REPLACE, the new key inherits the old entry's `prevKey`; on POP, nothing. Prune to the newest ~200 keys. The first entry of a tab has key `"default"` and never has a `prevKey`, which is what makes deep links fall back. Keys survive reload because React Router stores them in `history.state`. Wrap every `sessionStorage` call in try/catch; without storage, back falls back to the parent route. |
+| `NavigationTracker` | Mounted once inside `BrowserRouter` in `App.tsx`. Keeps a per-tab map in `sessionStorage`: `location.key → { prevKey, path, title }`. On PUSH, `prevKey` is the entry we came from; on REPLACE, the new key inherits the old entry's `prevKey`, and on a REPLACE that only changes params it also copies the old key's `useEntryState` values; on POP, nothing. Prune to the newest ~200 keys. The first entry of a tab has key `"default"` and never has a `prevKey`, which is what makes deep links fall back. Keys survive reload because React Router stores them in `history.state`. Wrap every `sessionStorage` call in try/catch; without storage, back falls back to the parent route. |
 | `usePageTitle` | Also writes the title into the current entry, so the back label can name the previous page. |
 | `useBack(fallback)` | Returns `{ label, href, goBack }`. If the current entry has a `prevKey`: `navigate(-1)` and the previous page's title. Otherwise `navigate(fallback.to, { replace: true })` and `fallback.label`. `fallback` is the parent route, required, so no page can strand the user. |
-| `BackLink` | `<a href={fallback.to}>` (middle-click and "open in new tab" still work), `onClick` calls `goBack`. Text "← {label}", "Tilbage" if the previous page has no title. 44 px target, `data-testid="back-link"`. Laptop and phone look the same; task 73's `PageHeader` decides placement. |
+| `BackLink` | `<a href={href}>` from `useBack`: the previous entry's path if there is one, else `fallback.to`, so middle-click and "open in new tab" open the page the label names. `onClick` calls `goBack`. Text "← {label}", "Tilbage" if the previous page has no title. 44 px target, `data-testid="back-link"`. Laptop and phone look the same; task 73's `PageHeader` decides placement. |
 | `useLeave(fallback)` | For leaving after delete or a finished flow: back if there's a previous entry, else `replace` to the fallback. Never pushes. |
 | `useUrlState(name, codec, default, { push? })` | Typed read/write of one search param. Keeps other params. Default value removes the param. `replace` unless `push`. Codecs for string, int, ISO week, ISO date, enum. Invalid values read as the default, so an old or hand-typed link never breaks the page. |
-| `useEntryState(id, default)` | Like `useState`, but stored in `sessionStorage` under `${location.key}:${id}`, JSON. A fresh visit (sidebar click, new key) starts at the default; back and reload restore. |
+| `useEntryState(id, default)` | Like `useState`, but stored in `sessionStorage` under `${location.key}:${id}`, JSON. A fresh visit (sidebar click, new key) starts at the default; back and reload restore. A param-only replace carries the values to the new key (see `NavigationTracker`), so on `SfoPage` changing the week keeps `allDays` open, like the scroll rule below. |
 | Scroll restoration | `useScrollRestoration(ref, id)`; `Layout` uses it on `<main>` (add `data-testid="app-main"`), and `ScrollToTop` becomes the same hook on `window` for public pages. Set `history.scrollRestoration = 'manual'`. Save `scrollTop` per entry on scroll (one write per animation frame). On PUSH and on a REPLACE that changes the path: scroll to top. On a REPLACE that only changes params (filter, week): keep the position. On POP: restore, retrying on a `ResizeObserver` until the content is tall enough, for at most 2 s, and stop as soon as the user scrolls, touches or presses a key. Inner scrollers (chat lists, week list) opt in with their own `id`. |
 | Query cache | Raise `gcTime` to 30 min in `App.tsx`'s `QueryClient`, so going back renders from cache at full height and the scroll can be restored at once. `staleTime` stays 10 s: the page still refetches in the background. |
 
@@ -80,7 +80,7 @@ Not using React Router's `<ScrollRestoration>`: it needs the data router (`creat
 
 ### 1. Hooks, `BackLink`, scroll restoration
 
-Everything in [Part 1 pieces](#part-1-pieces), the `gcTime` change, the `AGENTS.md` bullet and the ADR. Fixes the scroll bug on every page at once, since `Layout` owns `<main>`. Moves no page yet, except `ClassesPage` as the first user, so the hooks are tested on a real page: `expandedClass` to `useEntryState` (or keep `localStorage`, see Q3), and the skema and ugeplan links stay plain navigations.
+Everything in [Part 1 pieces](#part-1-pieces), the `gcTime` change, the `AGENTS.md` bullet and the ADR. Fixes the scroll bug on every page at once, since `Layout` owns `<main>`. `ClassesPage` and `SchemaBuilderPage` are the first users, so the hooks are tested on a real flow before the other pages move: `expandedClass` to `useEntryState` (or keep `localStorage`, see Q3), the skema and ugeplan links stay plain navigations, and `SchemaBuilderPage`'s back link becomes `BackLink`.
 
 `navigation.spec.ts` (one file for the flow, `data-testid` only):
 
@@ -93,11 +93,11 @@ Debugskolen may not have enough classes to scroll on a laptop viewport; use a sh
 
 ### 2. Back buttons and leaving
 
-Replace the back buttons on all 14 pages from [Why](#why) with `BackLink`, each with its parent as fallback, and the after-delete `navigate` calls with `useLeave`. Remove the hand-written arrow SVGs. If task 73 part 7 has landed, the back link goes in `PageHeader`'s slot.
+Replace the back buttons on the other 8 pages with `navigate(-1)` or a fixed list link from [Why](#why) with `BackLink`, each with its parent as fallback, and the after-delete `navigate` calls with `useLeave`. Remove the hand-written arrow SVGs. The in-page back buttons wait for the history entries they go back to: "← Tilbage til versioner" moves in part 3 with `version`, the master/detail ones in part 4. If task 73 part 7 has landed, the back link goes in `PageHeader`'s slot.
 
 | Page | Fallback |
 |---|---|
-| `SchemaBuilderPage`, `WeekPlanPage`, `ClassTimeSlotsPage` | Klasser `/klasser` (ClassTimeSlots: the skema, if `schemaId`) |
+| `WeekPlanPage`, `ClassTimeSlotsPage` | Klasser `/klasser` (ClassTimeSlots: the skema, if `schemaId`) |
 | `StaffSchedulePage` | Medarbejdere `/medarbejdere` |
 | `RoomSchedulePage` | Lokaler `/lokaler` |
 | `SubstituteCoverDetailPage` | Vikardækning `/vikardaekning` |
