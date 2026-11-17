@@ -136,6 +136,7 @@ export function PersonList<T>({
               <li key={p.key} data-testid={p.testId}>
                 <button
                   id={`${panelId}-row`}
+                  data-testid="person-row-toggle"
                   type="button"
                   aria-expanded={isOpen}
                   aria-controls={panelId}

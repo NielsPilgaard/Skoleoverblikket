@@ -62,7 +62,7 @@ test.describe.serial('Staff invitation flow', () => {
     await page.goto('/medarbejdere')
     const row = page.getByTestId(`staff-row-${staff.id}`)
     await expect(row).toContainText('Inviteret', { timeout: 15_000 })
-    await row.locator('button').first().click()
+    await row.getByTestId('person-row-toggle').click()
     await expect(page.getByTestId(`staff-invite-${staff.id}`)).toBeVisible()
 
     // --- Step 4: extract invitation link from Mailpit ---
@@ -130,7 +130,7 @@ test.describe.serial('Staff invitation flow', () => {
     await page.reload()
     await expect(row).toBeVisible({ timeout: 15_000 })
     await expect(row).not.toContainText('Inviteret')
-    await row.locator('button').first().click()
+    await row.getByTestId('person-row-toggle').click()
     await expect(row).toContainText('Aktiv')
     await expect(page.getByTestId(`staff-invite-${staff.id}`)).toBeHidden()
   })
