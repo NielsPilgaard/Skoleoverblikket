@@ -3959,6 +3959,49 @@
         ]
       }
     },
+    "/api/v1/files/recent": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeekPlanService_RecentFileDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeekPlanService_RecentFileDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeekPlanService_RecentFileDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/files/presign": {
       "post": {
         "tags": [
@@ -8270,6 +8313,70 @@
         ]
       }
     },
+    "/api/v1/staff-absences/{id}/substitute/all": {
+      "put": {
+        "tags": [
+          "StaffAbsence"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignAllSubstituteRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignAllSubstituteRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignAllSubstituteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignAllSubstituteResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignAllSubstituteResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignAllSubstituteResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/staff-invitations": {
       "get": {
         "tags": [
@@ -10835,17 +10942,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_NotesDto"
+                  "$ref": "#/components/schemas/WeekPlanService_NotesDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_NotesDto"
+                  "$ref": "#/components/schemas/WeekPlanService_NotesDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_NotesDto"
+                  "$ref": "#/components/schemas/WeekPlanService_NotesDto"
                 }
               }
             }
@@ -10908,17 +11015,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_WeekPlanSlotFileDto"
+                  "$ref": "#/components/schemas/WeekPlanService_WeekPlanSlotFileDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_WeekPlanSlotFileDto"
+                  "$ref": "#/components/schemas/WeekPlanService_WeekPlanSlotFileDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WeekPlanController_WeekPlanSlotFileDto"
+                  "$ref": "#/components/schemas/WeekPlanService_WeekPlanSlotFileDto"
                 }
               }
             }
@@ -11264,6 +11371,37 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignAllSubstituteRequest": {
+        "required": [
+          "staffId"
+        ],
+        "type": "object",
+        "properties": {
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AssignAllSubstituteResponse": {
+        "required": [
+          "assigned",
+          "stillUncovered"
+        ],
+        "type": "object",
+        "properties": {
+          "assigned": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stillUncovered": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -14628,6 +14766,7 @@
       "ParentMeController_ParentStudentDto": {
         "required": [
           "classId",
+          "isEnrolledInSfo",
           "studentId",
           "studentName"
         ],
@@ -14643,6 +14782,9 @@
           "classId": {
             "type": "string",
             "format": "uuid"
+          },
+          "isEnrolledInSfo": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -14794,7 +14936,9 @@
         "required": [
           "adresseBeskyttet",
           "createdAt",
+          "email",
           "hasAccount",
+          "hasPendingInvitation",
           "id",
           "name"
         ],
@@ -14805,6 +14949,9 @@
             "format": "uuid"
           },
           "name": {
+            "type": "string"
+          },
+          "email": {
             "type": "string"
           },
           "phone": {
@@ -14830,6 +14977,9 @@
             }
           },
           "hasAccount": {
+            "type": "boolean"
+          },
+          "hasPendingInvitation": {
             "type": "boolean"
           },
           "createdAt": {
@@ -17456,16 +17606,6 @@
         },
         "additionalProperties": false
       },
-      "WeekPlanController_NotesDto": {
-        "type": "object",
-        "properties": {
-          "notes": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
       "WeekPlanController_UpdateNotesRequest": {
         "type": "object",
         "properties": {
@@ -17566,6 +17706,15 @@
           "notes": {
             "type": "string",
             "nullable": true
+          },
+          "notesUpdatedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "notesUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -17638,7 +17787,7 @@
           "files": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/WeekPlanController_WeekPlanSlotFileDto"
+              "$ref": "#/components/schemas/WeekPlanService_WeekPlanSlotFileDto"
             }
           },
           "substituteTeacherId": {
@@ -17666,7 +17815,61 @@
         },
         "additionalProperties": false
       },
-      "WeekPlanController_WeekPlanSlotFileDto": {
+      "WeekPlanService_NotesDto": {
+        "type": "object",
+        "properties": {
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "notesUpdatedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "notesUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WeekPlanService_RecentFileDto": {
+        "required": [
+          "contentType",
+          "fileName",
+          "id",
+          "lastUsedAt",
+          "sizeBytes"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "courseName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WeekPlanService_WeekPlanSlotFileDto": {
         "required": [
           "fileName",
           "id",

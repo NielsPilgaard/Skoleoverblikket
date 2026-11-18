@@ -83,6 +83,14 @@ public sealed class ParentInvitationService(
 		return (InviteResult.Invited, parent.Id);
 	}
 
+	/// <summary>Parents with an invitation not yet accepted (expired ones too). The login exists from the
+	/// moment of inviting, so this, not the login, says whether a resend is still needed.</summary>
+	public Task<HashSet<Guid>> GetPendingParentIdsAsync(CancellationToken cancellationToken) =>
+		db.ParentInvitations.AsNoTracking()
+			.Where(i => i.AcceptedAt == null)
+			.Select(i => i.ParentId)
+			.ToHashSetAsync(cancellationToken);
+
 	/// <summary>
 	/// Sends a new invitation to an existing parent, creating their login if they have none.
 	/// False when the email belongs to a login at another school.

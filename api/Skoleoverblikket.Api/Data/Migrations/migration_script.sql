@@ -2667,3 +2667,49 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261102161954_Add_WeekPlan_NotesAuthor_And_SlotFile_AttachedBy') THEN
+    ALTER TABLE "WeekPlanSlotFiles" ADD "AttachedAt" timestamp with time zone NOT NULL DEFAULT (now());
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261102161954_Add_WeekPlan_NotesAuthor_And_SlotFile_AttachedBy') THEN
+    ALTER TABLE "WeekPlanSlotFiles" ADD "AttachedBySubject" character varying(200);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261102161954_Add_WeekPlan_NotesAuthor_And_SlotFile_AttachedBy') THEN
+    ALTER TABLE "WeekPlans" ADD "NotesUpdatedAt" timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261102161954_Add_WeekPlan_NotesAuthor_And_SlotFile_AttachedBy') THEN
+    ALTER TABLE "WeekPlans" ADD "NotesUpdatedBy" character varying(200);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261102161954_Add_WeekPlan_NotesAuthor_And_SlotFile_AttachedBy') THEN
+    CREATE INDEX "IX_WeekPlanSlotFiles_TenantId_AttachedBySubject_AttachedAt" ON "WeekPlanSlotFiles" ("TenantId", "AttachedBySubject", "AttachedAt");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261102161954_Add_WeekPlan_NotesAuthor_And_SlotFile_AttachedBy') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261102161954_Add_WeekPlan_NotesAuthor_And_SlotFile_AttachedBy', '10.0.7');
+    END IF;
+END $EF$;
+COMMIT;
+

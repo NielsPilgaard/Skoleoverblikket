@@ -27,6 +27,8 @@ export interface BoardUploadOptions {
   onProgress?: (pct: number) => void
 }
 
+const UPLOAD_STALL_MS = 60_000
+
 async function presignConfirmUpload(
   file: File,
   presignUrl: string,
@@ -63,7 +65,18 @@ async function presignConfirmUpload(
     xhr.open('PUT', uploadUrl)
     xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream')
 
+    // A fixed limit would stop a big file on a slow line, so this only gives up when nothing moves.
+    let stallTimer: ReturnType<typeof setTimeout> | undefined
+    const watchForStall = () => {
+      clearTimeout(stallTimer)
+      stallTimer = setTimeout(() => {
+        xhr.abort()
+        reject(new Error('Upload til S3 gik i stå.'))
+      }, UPLOAD_STALL_MS)
+    }
+
     xhr.upload.onprogress = (e) => {
+      watchForStall()
       if (e.lengthComputable && onProgress) {
         onProgress(Math.round((e.loaded / e.total) * 90)) // reserve 10% for confirm step
       }
@@ -78,6 +91,8 @@ async function presignConfirmUpload(
     }
 
     xhr.onerror = () => reject(new Error('Netværksfejl under upload til S3.'))
+    xhr.onloadend = () => clearTimeout(stallTimer)
+    watchForStall()
     xhr.send(file)
   })
 

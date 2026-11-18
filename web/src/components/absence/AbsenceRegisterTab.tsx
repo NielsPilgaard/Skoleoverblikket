@@ -17,6 +17,7 @@ import {
   todayIso,
 } from '../../lib/absence'
 import { problemDetail } from '../../lib/problem'
+import { Select } from '../ui/select'
 
 export function CategoryBadge({
   record,
@@ -61,38 +62,34 @@ export function AbsenceRegisterTab() {
     onError: (err) => setError(problemDetail(err) ?? 'Kategorien kunne ikke ændres.'),
   })
 
-  const selectClass =
-    'px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500'
-
   return (
     <div>
       <div className="flex flex-wrap gap-2 items-center mb-4">
-        <select
+        <Select
+          label="Klasse"
+          hideLabel
+          options={[
+            { value: '', label: 'Alle klasser' },
+            ...classes.map((c) => ({ value: c.id, label: c.name })),
+          ]}
           value={classId}
-          onChange={(e) => setClassId(e.target.value)}
-          className={selectClass}
-          data-testid="absence-filter-class"
-        >
-          <option value="">Alle klasser</option>
-          {classes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
+          onChange={setClassId}
+          testId="absence-filter-class"
+        />
+        <Select
+          label="Kategori"
+          hideLabel
+          options={[
+            { value: '', label: 'Alle kategorier' },
+            ...(Object.keys(CATEGORY_LABEL) as AbsenceCategory[]).map((c) => ({
+              value: c,
+              label: CATEGORY_LABEL[c],
+            })),
+          ]}
           value={category}
-          onChange={(e) => setCategory(e.target.value as AbsenceCategory | '')}
-          className={selectClass}
-          data-testid="absence-filter-category"
-        >
-          <option value="">Alle kategorier</option>
-          {(Object.keys(CATEGORY_LABEL) as AbsenceCategory[]).map((c) => (
-            <option key={c} value={c}>
-              {CATEGORY_LABEL[c]}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => setCategory(value as AbsenceCategory | '')}
+          testId="absence-filter-category"
+        />
         {/* One unit, so the range wraps as a whole instead of leaving a lone dash behind. */}
         <div className="flex items-center gap-2">
           <DatePicker value={from} onChange={setFrom} />
@@ -131,22 +128,23 @@ export function AbsenceRegisterTab() {
               </div>
               <div className="flex items-center gap-2">
                 {r.source === 'Staff' ? (
-                  <select
+                  <Select
+                    label="Kategori"
+                    hideLabel
+                    options={[
+                      { value: 'Unauthorized', label: CATEGORY_LABEL.Unauthorized },
+                      { value: 'Illness', label: CATEGORY_LABEL.Illness },
+                    ]}
                     value={r.category}
                     disabled={changeCategory.isPending}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       changeCategory.mutate({
                         path: { id: r.id },
-                        body: { category: e.target.value as AbsenceCategory },
+                        body: { category: value as AbsenceCategory },
                       })
                     }
-                    aria-label="Kategori"
-                    data-testid={`absence-category-${r.id}`}
-                    className={`px-2 py-1 rounded-sm text-xs font-medium border-0 ${CATEGORY_BADGE[r.category]}`}
-                  >
-                    <option value="Unauthorized">{CATEGORY_LABEL.Unauthorized}</option>
-                    <option value="Illness">{CATEGORY_LABEL.Illness}</option>
-                  </select>
+                    testId={`absence-category-${r.id}`}
+                  />
                 ) : (
                   <CategoryBadge record={r} />
                 )}

@@ -29,3 +29,27 @@ export function getPlanningDate(now: Date = new Date()): Date {
   monday.setDate(now.getDate() + (day === 6 ? 2 : 1))
   return monday
 }
+
+export function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+/**
+ * The day a parent's ugeplan opens on: today until 15:00, then the next school day. Saturday and
+ * Sunday open on the coming Monday.
+ */
+export function preselectedDate(now: Date = new Date()): Date {
+  const weekday = now.getDay()
+  let add = 0
+  if (weekday === 6) add = 2
+  else if (weekday === 0) add = 1
+  else if (now.getHours() >= 15) add = weekday === 5 ? 3 : 1
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + add)
+}
+
+/** "tirsdag 3. nov" */
+export function formatDayDate(date: Date): string {
+  const weekday = date.toLocaleDateString('da-DK', { weekday: 'long' })
+  const month = date.toLocaleDateString('da-DK', { month: 'short' }).replace('.', '')
+  return `${weekday} ${date.getDate()}. ${month}`
+}

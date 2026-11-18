@@ -14,7 +14,9 @@ export const changelog: ChangelogEntry[] = [
   {
     date: '2026-11-16',
     title: 'Mere overskuelig menu',
-    changes: ['Links har fået plads under "Filer & Eksport" i menuen, så menuen er kortere og nemmere at overskue.'],
+    changes: [
+      'Links har fået plads under "Filer & Eksport" i menuen, så menuen er kortere og nemmere at overskue.',
+    ],
   },
   {
     date: '2026-10-26',

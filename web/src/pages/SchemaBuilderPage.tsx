@@ -42,6 +42,7 @@ import type {
   SlotDto,
   ConflictInfo,
 } from '../api/client'
+import { Select } from '../components/ui/select'
 
 const WEEKDAYS = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag']
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as const
@@ -119,33 +120,24 @@ function SelectField({
   'data-testid': testId,
 }: SelectFieldProps) {
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      <select
-        autoFocus={autoFocus}
-        required={required}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            e.currentTarget.form?.requestSubmit()
-          }
-        }}
-        data-testid={testId}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-      >
-        <option value="">{emptyLabel}</option>
-        {options.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </div>
+    <Select
+      label={required ? `${label} *` : label}
+      options={[
+        { value: '', label: emptyLabel },
+        ...options.map((o) => ({ value: o.id, label: o.label })),
+      ]}
+      autoFocus={autoFocus}
+      required={required}
+      value={value}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          e.currentTarget.form?.requestSubmit()
+        }
+      }}
+      onChange={onChange}
+      testId={testId}
+    />
   )
 }
 

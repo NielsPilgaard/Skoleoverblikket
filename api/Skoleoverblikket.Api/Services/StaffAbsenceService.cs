@@ -65,6 +65,13 @@ public enum StaffAbsenceDeleteResult { Deleted, NotFound, NotAllowed }
 
 public enum AbsenceSubstituteResult { Assigned, NotFound, NotAffected, CandidateNotFound, CandidateBusy }
 
+public sealed record AssignAllSubstituteRequest(Guid StaffId);
+
+/// <param name="StillUncovered">Lektioner the vikar was busy for, which still need someone.</param>
+public sealed record AssignAllSubstituteResponse(int Assigned, int StillUncovered);
+
+public enum AbsenceSubstituteAllResult { Assigned, NotFound, CandidateNotFound }
+
 /// <summary>
 /// Staff absence (a teacher or pædagog is out) and the lektioner it leaves without cover. The only
 /// writer of <see cref="StaffAbsence"/>. Vikar assignment itself is delegated to
@@ -322,13 +329,76 @@ public sealed class StaffAbsenceService(
 			return AbsenceSubstituteResult.NotAffected;
 		}
 
-		return await substitutes.AssignForLessonAsync(req.Date, req.SchemaSlotId, match.Lesson.Seat, req.StaffId, cancellationToken) switch
+		return await substitutes.AssignForLessonAsync(req.Date, req.SchemaSlotId, match.Lesson.Seat, req.StaffId, notify: true, cancellationToken) switch
 		{
 			AssignLessonResult.Assigned => AbsenceSubstituteResult.Assigned,
 			AssignLessonResult.CandidateNotFound => AbsenceSubstituteResult.CandidateNotFound,
 			AssignLessonResult.CandidateBusy => AbsenceSubstituteResult.CandidateBusy,
 			_ => AbsenceSubstituteResult.NotAffected,
 		};
+	}
+
+	/// <summary>
+	/// Puts one vikar on every lektion of the absence that has none yet, skipping those where they are
+	/// busy. Each booking takes the same lock and re-check as a single assignment, so a lektion lost to
+	/// a concurrent booking is skipped too. The vikar gets one notification, not one per lektion.
+	/// </summary>
+	public async Task<(AbsenceSubstituteAllResult Result, AssignAllSubstituteResponse? Response)> AssignSubstituteToAllAsync(
+		Guid absenceId, Guid staffId, CancellationToken cancellationToken)
+	{
+		var absence = (await LoadAsync(a => a.Id == absenceId, cancellationToken)).SingleOrDefault();
+		if (absence is null)
+		{
+			return (AbsenceSubstituteAllResult.NotFound, null);
+		}
+
+		if (!await db.Staff.AnyAsync(s => s.Id == staffId, cancellationToken))
+		{
+			return (AbsenceSubstituteAllResult.CandidateNotFound, null);
+		}
+
+		var uncovered = absence.Lessons.Where(l => l.SubstituteId is null).ToList();
+		// Pre-filter on availability so lektioner they can't take don't create empty week plans.
+		var candidates = await substitutes.GetCandidatesAsync(
+			uncovered.Select(l => new CandidateLesson(l.Date, l.Lesson.SchemaSlotId, l.Lesson.StartTime, l.Lesson.EndTime)).ToList(),
+			cancellationToken);
+
+		var assigned = new List<(DateOnly Date, Guid SchemaSlotId)>();
+		var takenByOthers = 0;
+		try
+		{
+			for (var i = 0; i < uncovered.Count; i++)
+			{
+				var lesson = uncovered[i];
+				if (!candidates[i].Any(c => c.Id == staffId))
+				{
+					continue;
+				}
+
+				var result = await substitutes.AssignForLessonAsync(
+					lesson.Date, lesson.Lesson.SchemaSlotId, lesson.Lesson.Seat, staffId, notify: false, cancellationToken,
+					onlyIfEmpty: true);
+				if (result == AssignLessonResult.Assigned)
+				{
+					assigned.Add((lesson.Date, lesson.Lesson.SchemaSlotId));
+				}
+				else if (result == AssignLessonResult.SeatTaken)
+				{
+					takenByOthers++;
+				}
+			}
+		}
+		finally
+		{
+			// A failed booking can leave its new slot tracked as Added; drop it so the notification save can't insert it.
+			db.ChangeTracker.Clear();
+			// Bookings already committed must reach the vikar even if a later one fails or the request is cancelled.
+			await substitutes.NotifyAssignedManyAsync(staffId, assigned, CancellationToken.None);
+		}
+
+		// Seats another admin covered meanwhile are covered, not still open.
+		return (AbsenceSubstituteAllResult.Assigned,
+			new AssignAllSubstituteResponse(assigned.Count, uncovered.Count - assigned.Count - takenByOthers));
 	}
 
 	/// <summary>
@@ -539,7 +609,7 @@ public sealed class StaffAbsenceService(
 		{
 			if (CurrentSubstitute(assignments, date, lesson).Id is not null)
 			{
-				await substitutes.AssignForLessonAsync(date, lesson.SchemaSlotId, lesson.Seat, null, cancellationToken);
+				await substitutes.AssignForLessonAsync(date, lesson.SchemaSlotId, lesson.Seat, null, notify: false, cancellationToken);
 			}
 		}
 	}

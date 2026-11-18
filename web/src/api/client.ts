@@ -140,6 +140,6 @@ export type {
   TimeSlotsControllerTimeSlotDto as TimeSlotDto,
   WeekPlanControllerWeekPlanDto as WeekPlanDto,
   WeekPlanControllerWeekPlanSlotDto as WeekPlanSlotDto,
-  WeekPlanControllerWeekPlanSlotFileDto as WeekPlanSlotFileDto,
+  WeekPlanServiceWeekPlanSlotFileDto as WeekPlanSlotFileDto,
   BillingControllerSubscriptionDto as SubscriptionDto,
 } from './generated/types.gen'

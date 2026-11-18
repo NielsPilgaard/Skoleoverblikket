@@ -48,12 +48,12 @@ test('a teacher who is also a parent switches with "Vis som" and back', async ({
   try {
     await page.reload()
     await expect(page.getByTestId('role-switcher')).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByTestId('role-switcher-staff')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByTestId('role-switcher-staff').getByRole('radio')).toBeChecked()
 
     await page.getByTestId('role-switcher-parent').click()
     await page.waitForURL(/\/foraeldrevisning\/skema/, { timeout: 15_000 })
     await expect(page.getByTestId('parent-schema-page')).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByTestId('role-switcher-parent')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByTestId('role-switcher-parent').getByRole('radio')).toBeChecked()
 
     await page.getByTestId('role-switcher-staff').click()
     await page.waitForURL(/\/dashboard/, { timeout: 15_000 })
@@ -117,7 +117,7 @@ test('a teacher who accepts a parent invitation lands in the parent view', async
     await page.getByTestId('invitation-contact-submit').click({ timeout: 15_000 })
     await page.waitForURL(/\/foraeldrevisning\/skema/, { timeout: 15_000 })
     await expect(page.getByTestId('parent-schema-page')).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByTestId('role-switcher-parent')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByTestId('role-switcher-parent').getByRole('radio')).toBeChecked()
   } finally {
     await api(page, 'DELETE', `/parents/${parent.id}`)
   }

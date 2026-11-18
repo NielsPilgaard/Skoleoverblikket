@@ -47,7 +47,7 @@ test.describe('CalendarPage — entry list focus on click', () => {
   })
 
   test('clicking entry in list highlights the day cell in the month grid', async ({ page }) => {
-    const entryRows = page.locator('table tbody tr')
+    const entryRows = page.getByTestId('calendar-entry-row')
     const count = await entryRows.count()
     test.skip(count === 0, 'No calendar entries — skipping highlight test')
 
@@ -58,7 +58,7 @@ test.describe('CalendarPage — entry list focus on click', () => {
   })
 
   test('highlight disappears after 8 seconds', async ({ page }) => {
-    const entryRows = page.locator('table tbody tr')
+    const entryRows = page.getByTestId('calendar-entry-row')
     const count = await entryRows.count()
     test.skip(count === 0, 'No calendar entries — skipping highlight timeout test')
 

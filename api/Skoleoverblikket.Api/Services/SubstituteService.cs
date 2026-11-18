@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Models;
 
@@ -27,7 +28,7 @@ public sealed record CandidateLesson(DateOnly Date, Guid SchemaSlotId, TimeOnly 
 
 public enum SetSubstituteResult { Saved, NotFound, SamePersonBothRoles, UnknownStaff, StaffBusy }
 
-public enum AssignLessonResult { Assigned, LessonNotFound, CandidateNotFound, CandidateBusy }
+public enum AssignLessonResult { Assigned, LessonNotFound, CandidateNotFound, CandidateBusy, SeatTaken }
 
 /// <summary>
 /// Vikar cover. A vikar is stored per lektion per week on <see cref="WeekPlanSlot"/>
@@ -207,9 +208,15 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 	/// Assigns (or with a null <paramref name="staffId"/> removes) the vikar for one seat of one
 	/// lektion on one date. The availability re-check and the write run under a PostgreSQL advisory
 	/// lock on the candidate, so two admins cannot book the same person into overlapping lektioner.
+	/// With <paramref name="notify"/> false the caller notifies the vikar itself, e.g. once for many lektioner.
+	/// With <paramref name="onlyIfEmpty"/> the seat is written only if no one holds it, checked atomically
+	/// in the UPDATE so a concurrent booking by any writer is never overwritten. If a concurrent request
+	/// creates the week plan slot first, the winner's row is used: with <paramref name="onlyIfEmpty"/> that
+	/// returns <see cref="AssignLessonResult.SeatTaken"/> when the winner holds the seat, otherwise it overwrites.
 	/// </summary>
 	public async Task<AssignLessonResult> AssignForLessonAsync(
-		DateOnly date, Guid schemaSlotId, SubstituteSeat seat, Guid? staffId, CancellationToken cancellationToken)
+		DateOnly date, Guid schemaSlotId, SubstituteSeat seat, Guid? staffId, bool notify, CancellationToken cancellationToken,
+		bool onlyIfEmpty = false)
 	{
 		var lesson = await db.SchemaSlots
 			.AsNoTracking()
@@ -247,7 +254,75 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 		}
 
 		var slot = await weekPlans.GetOrAddSlotAsync(weekPlan, schemaSlotId, cancellationToken);
+		if (db.Entry(slot).State == EntityState.Added)
+		{
+			SetSeat(slot, seat, staffId);
+			slot.UpdatedAt = DateTimeOffset.UtcNow;
+			try
+			{
+				await db.SaveChangesAsync(cancellationToken);
+				await transaction.CommitAsync(cancellationToken);
+				if (notify && staffId.HasValue)
+				{
+					await NotifyAssignedAsync(staffId.Value, schemaSlotId, date, cancellationToken);
+				}
+
+				return AssignLessonResult.Assigned;
+			}
+			catch (DbUpdateException ex) when (ex.InnerException is PostgresException
+			{
+				SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_WeekPlanSlots_WeekPlanId_SchemaSlotId",
+			})
+			{
+				// A concurrent request created the slot first. EF rolled back to its savepoint, so the
+				// transaction is still usable: continue on the winner's row like any existing slot.
+				db.Entry(slot).State = EntityState.Detached;
+				slot = await db.WeekPlanSlots
+					.FirstAsync(s => s.WeekPlanId == weekPlan.Id && s.SchemaSlotId == schemaSlotId, cancellationToken);
+			}
+		}
+
+		if (onlyIfEmpty)
+		{
+			// Postgres re-evaluates the WHERE under the row lock, so this loses cleanly to any concurrent writer.
+			var now = DateTimeOffset.UtcNow;
+			var updated = seat == SubstituteSeat.Teacher
+				? await db.WeekPlanSlots
+					.Where(s => s.Id == slot.Id && s.SubstituteTeacherId == null)
+					.ExecuteUpdateAsync(u => u.SetProperty(s => s.SubstituteTeacherId, staffId).SetProperty(s => s.UpdatedAt, now), cancellationToken)
+				: await db.WeekPlanSlots
+					.Where(s => s.Id == slot.Id && s.SubstituteAideId == null)
+					.ExecuteUpdateAsync(u => u.SetProperty(s => s.SubstituteAideId, staffId).SetProperty(s => s.UpdatedAt, now), cancellationToken);
+			if (updated == 0)
+			{
+				return AssignLessonResult.SeatTaken;
+			}
+
+			await transaction.CommitAsync(cancellationToken);
+			if (notify && staffId.HasValue)
+			{
+				await NotifyAssignedAsync(staffId.Value, schemaSlotId, date, cancellationToken);
+			}
+
+			return AssignLessonResult.Assigned;
+		}
+
 		var previous = seat == SubstituteSeat.Teacher ? slot.SubstituteTeacherId : slot.SubstituteAideId;
+		SetSeat(slot, seat, staffId);
+		slot.UpdatedAt = DateTimeOffset.UtcNow;
+		await db.SaveChangesAsync(cancellationToken);
+		await transaction.CommitAsync(cancellationToken);
+
+		if (notify && staffId.HasValue && staffId != previous)
+		{
+			await NotifyAssignedAsync(staffId.Value, schemaSlotId, date, cancellationToken);
+		}
+
+		return AssignLessonResult.Assigned;
+	}
+
+	private static void SetSeat(WeekPlanSlot slot, SubstituteSeat seat, Guid? staffId)
+	{
 		if (seat == SubstituteSeat.Teacher)
 		{
 			slot.SubstituteTeacherId = staffId;
@@ -256,17 +331,30 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 		{
 			slot.SubstituteAideId = staffId;
 		}
+	}
 
-		slot.UpdatedAt = DateTimeOffset.UtcNow;
-		await db.SaveChangesAsync(cancellationToken);
-		await transaction.CommitAsync(cancellationToken);
-
-		if (staffId.HasValue && staffId != previous)
+	/// <summary>One notification for a vikar booked into several lektioner at once, instead of one per lektion.</summary>
+	public async Task NotifyAssignedManyAsync(
+		Guid staffId, IReadOnlyList<(DateOnly Date, Guid SchemaSlotId)> lessons, CancellationToken cancellationToken)
+	{
+		if (lessons.Count <= 1)
 		{
-			await NotifyAssignedAsync(staffId.Value, schemaSlotId, date, cancellationToken);
+			foreach (var (date, schemaSlotId) in lessons)
+			{
+				await NotifyAssignedAsync(staffId, schemaSlotId, date, cancellationToken);
+			}
+
+			return;
 		}
 
-		return AssignLessonResult.Assigned;
+		var first = lessons.Min(l => l.Date);
+		var last = lessons.Max(l => l.Date);
+		var when = first == last
+			? first.ToString("dddd d. MMMM", Danish)
+			: $"{first.ToString("d. MMMM", Danish)}–{last.ToString("d. MMMM", Danish)}";
+		var body = $"Du er vikar i {lessons.Count} lektioner {when}";
+		await notifications.CreateAsync(
+			staffId, RecipientType.Staff, NotificationType.SubstituteAssigned, lessons[0].SchemaSlotId, body, cancellationToken);
 	}
 
 	/// <summary>Current vikar per (date, lektion) for the given ISO weeks — keyed by week plan.</summary>
