@@ -364,18 +364,25 @@ public sealed class StaffAbsenceService(
 			cancellationToken);
 
 		var assigned = new List<(DateOnly Date, Guid SchemaSlotId)>();
-		for (var i = 0; i < uncovered.Count; i++)
+		try
 		{
-			var lesson = uncovered[i];
-			if (candidates[i].Any(c => c.Id == staffId)
-				&& await substitutes.AssignForLessonAsync(
-					lesson.Date, lesson.Lesson.SchemaSlotId, lesson.Lesson.Seat, staffId, notify: false, cancellationToken) == AssignLessonResult.Assigned)
+			for (var i = 0; i < uncovered.Count; i++)
 			{
-				assigned.Add((lesson.Date, lesson.Lesson.SchemaSlotId));
+				var lesson = uncovered[i];
+				if (candidates[i].Any(c => c.Id == staffId)
+					&& await substitutes.AssignForLessonAsync(
+						lesson.Date, lesson.Lesson.SchemaSlotId, lesson.Lesson.Seat, staffId, notify: false, cancellationToken,
+						onlyIfEmpty: true) == AssignLessonResult.Assigned)
+				{
+					assigned.Add((lesson.Date, lesson.Lesson.SchemaSlotId));
+				}
 			}
 		}
-
-		await substitutes.NotifyAssignedManyAsync(staffId, assigned, cancellationToken);
+		finally
+		{
+			// Bookings already committed must reach the vikar even if a later one fails or the request is cancelled.
+			await substitutes.NotifyAssignedManyAsync(staffId, assigned, CancellationToken.None);
+		}
 
 		return (AbsenceSubstituteAllResult.Assigned, new AssignAllSubstituteResponse(assigned.Count, uncovered.Count - assigned.Count));
 	}

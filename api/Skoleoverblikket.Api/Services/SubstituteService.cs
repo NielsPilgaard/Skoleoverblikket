@@ -27,7 +27,7 @@ public sealed record CandidateLesson(DateOnly Date, Guid SchemaSlotId, TimeOnly 
 
 public enum SetSubstituteResult { Saved, NotFound, SamePersonBothRoles, UnknownStaff, StaffBusy }
 
-public enum AssignLessonResult { Assigned, LessonNotFound, CandidateNotFound, CandidateBusy }
+public enum AssignLessonResult { Assigned, LessonNotFound, CandidateNotFound, CandidateBusy, SeatTaken }
 
 /// <summary>
 /// Vikar cover. A vikar is stored per lektion per week on <see cref="WeekPlanSlot"/>
@@ -208,9 +208,12 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 	/// lektion on one date. The availability re-check and the write run under a PostgreSQL advisory
 	/// lock on the candidate, so two admins cannot book the same person into overlapping lektioner.
 	/// With <paramref name="notify"/> false the caller notifies the vikar itself, e.g. once for many lektioner.
+	/// With <paramref name="onlyIfEmpty"/> the seat is written only if no one holds it, checked atomically
+	/// in the UPDATE so a concurrent booking by any writer is never overwritten.
 	/// </summary>
 	public async Task<AssignLessonResult> AssignForLessonAsync(
-		DateOnly date, Guid schemaSlotId, SubstituteSeat seat, Guid? staffId, bool notify, CancellationToken cancellationToken)
+		DateOnly date, Guid schemaSlotId, SubstituteSeat seat, Guid? staffId, bool notify, CancellationToken cancellationToken,
+		bool onlyIfEmpty = false)
 	{
 		var lesson = await db.SchemaSlots
 			.AsNoTracking()
@@ -248,6 +251,31 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 		}
 
 		var slot = await weekPlans.GetOrAddSlotAsync(weekPlan, schemaSlotId, cancellationToken);
+		if (onlyIfEmpty && db.Entry(slot).State != EntityState.Added)
+		{
+			// Postgres re-evaluates the WHERE under the row lock, so this loses cleanly to any concurrent writer.
+			var now = DateTimeOffset.UtcNow;
+			var updated = seat == SubstituteSeat.Teacher
+				? await db.WeekPlanSlots
+					.Where(s => s.Id == slot.Id && s.SubstituteTeacherId == null)
+					.ExecuteUpdateAsync(u => u.SetProperty(s => s.SubstituteTeacherId, staffId).SetProperty(s => s.UpdatedAt, now), cancellationToken)
+				: await db.WeekPlanSlots
+					.Where(s => s.Id == slot.Id && s.SubstituteAideId == null)
+					.ExecuteUpdateAsync(u => u.SetProperty(s => s.SubstituteAideId, staffId).SetProperty(s => s.UpdatedAt, now), cancellationToken);
+			if (updated == 0)
+			{
+				return AssignLessonResult.SeatTaken;
+			}
+
+			await transaction.CommitAsync(cancellationToken);
+			if (notify && staffId.HasValue)
+			{
+				await NotifyAssignedAsync(staffId.Value, schemaSlotId, date, cancellationToken);
+			}
+
+			return AssignLessonResult.Assigned;
+		}
+
 		var previous = seat == SubstituteSeat.Teacher ? slot.SubstituteTeacherId : slot.SubstituteAideId;
 		if (seat == SubstituteSeat.Teacher)
 		{
