@@ -364,27 +364,41 @@ public sealed class StaffAbsenceService(
 			cancellationToken);
 
 		var assigned = new List<(DateOnly Date, Guid SchemaSlotId)>();
+		var takenByOthers = 0;
 		try
 		{
 			for (var i = 0; i < uncovered.Count; i++)
 			{
 				var lesson = uncovered[i];
-				if (candidates[i].Any(c => c.Id == staffId)
-					&& await substitutes.AssignForLessonAsync(
-						lesson.Date, lesson.Lesson.SchemaSlotId, lesson.Lesson.Seat, staffId, notify: false, cancellationToken,
-						onlyIfEmpty: true) == AssignLessonResult.Assigned)
+				if (!candidates[i].Any(c => c.Id == staffId))
+				{
+					continue;
+				}
+
+				var result = await substitutes.AssignForLessonAsync(
+					lesson.Date, lesson.Lesson.SchemaSlotId, lesson.Lesson.Seat, staffId, notify: false, cancellationToken,
+					onlyIfEmpty: true);
+				if (result == AssignLessonResult.Assigned)
 				{
 					assigned.Add((lesson.Date, lesson.Lesson.SchemaSlotId));
+				}
+				else if (result == AssignLessonResult.SeatTaken)
+				{
+					takenByOthers++;
 				}
 			}
 		}
 		finally
 		{
+			// A failed booking can leave its new slot tracked as Added; drop it so the notification save can't insert it.
+			db.ChangeTracker.Clear();
 			// Bookings already committed must reach the vikar even if a later one fails or the request is cancelled.
 			await substitutes.NotifyAssignedManyAsync(staffId, assigned, CancellationToken.None);
 		}
 
-		return (AbsenceSubstituteAllResult.Assigned, new AssignAllSubstituteResponse(assigned.Count, uncovered.Count - assigned.Count));
+		// Seats another admin covered meanwhile are covered, not still open.
+		return (AbsenceSubstituteAllResult.Assigned,
+			new AssignAllSubstituteResponse(assigned.Count, uncovered.Count - assigned.Count - takenByOthers));
 	}
 
 	/// <summary>
