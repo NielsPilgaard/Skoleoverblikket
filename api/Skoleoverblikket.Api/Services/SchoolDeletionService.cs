@@ -22,8 +22,9 @@ namespace Skoleoverblikket.Api.Services;
 /// the only writer" rule on purpose: deleting a whole school is not a feature operation, and going
 /// through 20 services would leave the wipe half done whenever one of them is skipped.
 ///
-/// Callers pin the scope to the school with <see cref="HttpTenantContext.UseBackgroundTenant"/>
-/// (see <see cref="SchoolRetentionJob"/>), so all reads go through the tenant query filter.
+/// The job pins the scope to the school with <see cref="HttpTenantContext.UseBackgroundTenant"/>
+/// (see <see cref="SchoolRetentionJob"/>). <see cref="DeleteNowAsync"/> runs in a superadmin's
+/// request instead, so the deletion itself names the school in every query.
 /// </summary>
 public sealed class SchoolDeletionService(
 	AppDbContext db,
@@ -95,7 +96,13 @@ public sealed class SchoolDeletionService(
 			return Outcome.NotDue;
 		}
 
-		return await DeleteSchoolAsync(now, cancellationToken);
+		return await DeleteSchoolAsync(
+			schoolId,
+			now,
+			locked => locked is { CanceledAt: { } c, DeletionWarningSentAt: { } w }
+				&& IsDeletionDue(c, w, now)
+				&& !SubscriptionService.HasFreeAccess(locked, now),
+			cancellationToken);
 	}
 
 	/// <summary>
@@ -107,6 +114,96 @@ public sealed class SchoolDeletionService(
 		var cutoff = (now - SchoolDeletionRecord.BackupRetention).ToUniversalTime();
 		return db.SchoolDeletionRecords.Where(r => r.DeletedAt < cutoff).ExecuteDeleteAsync(cancellationToken);
 	}
+
+	public enum DeleteNowResult
+	{
+		Deleted,
+		SchoolNotFound,
+		NameMismatch,
+		CallerBelongsToSchool,
+		StripeSubscriptionLive,
+		FreeAccessActive,
+		StorageFailed,
+		AccountsFailed,
+	}
+
+	/// <summary>
+	/// A superadmin deletes a school now instead of waiting for the retention clock, e.g. a test
+	/// school or a GDPR erasure request. Irreversible, so it refuses unless every guard passes:
+	/// the typed name matches exactly, the caller has no login in the school (so nobody deletes the
+	/// school they work in), Stripe has no live subscription that would keep billing, and no free
+	/// access was granted. The subscription guards run again under the row lock.
+	/// </summary>
+	public async Task<DeleteNowResult> DeleteNowAsync(
+		Guid schoolId, string confirmSchoolName, string callerSubject, CancellationToken cancellationToken)
+	{
+		var now = DateTimeOffset.UtcNow;
+
+		// Schools has no TenantId column to filter on; the explicit Id keeps this to one school.
+		var schoolName = await db.Schools.IgnoreQueryFilters()
+			.Where(s => s.Id == schoolId)
+			.Select(s => s.Name)
+			.FirstOrDefaultAsync(cancellationToken);
+		if (schoolName is null)
+		{
+			return DeleteNowResult.SchoolNotFound;
+		}
+
+		if (string.IsNullOrWhiteSpace(confirmSchoolName)
+			|| !string.Equals(confirmSchoolName.Trim(), schoolName.Trim(), StringComparison.Ordinal))
+		{
+			return DeleteNowResult.NameMismatch;
+		}
+
+		if (await HasLoginInSchoolAsync(schoolId, callerSubject, cancellationToken))
+		{
+			return DeleteNowResult.CallerBelongsToSchool;
+		}
+
+		var sub = await db.Subscriptions.AsNoTracking().FirstOrDefaultAsync(s => s.SchoolId == schoolId, cancellationToken);
+		if (SubscriptionRefusal(sub, now) is { } refusal)
+		{
+			return refusal;
+		}
+
+		logger.LogWarning("Superadmin {Subject} is deleting school {SchoolId} ({SchoolName}) now", callerSubject, schoolId, schoolName);
+
+		DeleteNowResult? lockedRefusal = null;
+		var outcome = await DeleteSchoolAsync(
+			schoolId,
+			now,
+			locked => (lockedRefusal = SubscriptionRefusal(locked, now)) is null,
+			cancellationToken);
+
+		return outcome switch
+		{
+			Outcome.Deleted => DeleteNowResult.Deleted,
+			Outcome.StorageFailed => DeleteNowResult.StorageFailed,
+			Outcome.AccountsFailed => DeleteNowResult.AccountsFailed,
+			Outcome.NotDue when lockedRefusal is { } r => r,
+			_ => throw new InvalidOperationException($"Unexpected deletion outcome {outcome}"),
+		};
+	}
+
+	/// <summary>
+	/// Only a school Stripe will not bill again may be deleted: canceled, or a trial without a Stripe
+	/// subscription. Free access is a superadmin's promise to the school, so it must be revoked first.
+	/// A school without a subscription row never reached Stripe.
+	/// </summary>
+	private static DeleteNowResult? SubscriptionRefusal(Subscription? sub, DateTimeOffset now) => sub switch
+	{
+		null => null,
+		{ } s when SubscriptionService.HasFreeAccess(s, now) => DeleteNowResult.FreeAccessActive,
+		{ Status: SubscriptionStatus.Canceled } => null,
+		{ Status: SubscriptionStatus.Trialing, StripeSubscriptionId: null } => null,
+		_ => DeleteNowResult.StripeSubscriptionLive,
+	};
+
+	private async Task<bool> HasLoginInSchoolAsync(Guid schoolId, string subject, CancellationToken cancellationToken) =>
+		// IgnoreQueryFilters: the caller's own tenant is irrelevant here; archived rows count too.
+		await db.Staff.IgnoreQueryFilters().AnyAsync(s => s.TenantId == schoolId && s.KeycloakSubject == subject, cancellationToken)
+		|| await db.Parents.IgnoreQueryFilters().AnyAsync(p => p.TenantId == schoolId && p.KeycloakSubject == subject, cancellationToken)
+		|| await db.BoardMembers.IgnoreQueryFilters().AnyAsync(b => b.TenantId == schoolId && b.KeycloakSubject == subject, cancellationToken);
 
 	private static bool IsDeletionDue(DateTimeOffset canceledAt, DateTimeOffset warnedAt, DateTimeOffset now) =>
 		canceledAt <= now - RetentionPeriod && warnedAt <= now - WarningNotice;
@@ -125,10 +222,14 @@ public sealed class SchoolDeletionService(
 		$"logos/{schoolId}", // Logos are "logos/{schoolId}.png" — no folder.
 	];
 
-	private async Task<Outcome> DeleteSchoolAsync(DateTimeOffset now, CancellationToken cancellationToken)
+	/// <summary>
+	/// Deletes files, login accounts and rows of <paramref name="schoolId"/>. Every query names the
+	/// school explicitly, so this works from a superadmin request as well as from the job.
+	/// <paramref name="stillAllowed"/> runs under the row lock; false returns <see cref="Outcome.NotDue"/>.
+	/// </summary>
+	private async Task<Outcome> DeleteSchoolAsync(
+		Guid schoolId, DateTimeOffset now, Func<Subscription?, bool> stillAllowed, CancellationToken cancellationToken)
 	{
-		var schoolId = tenant.TenantId;
-
 		// Lock the subscription row for the whole deletion and check again under the lock. A school
 		// that resubscribes while this runs then either wins (no deletion) or waits for the lock
 		// (Stripe webhooks touch this row) — files and logins are never deleted for a paying school.
@@ -138,11 +239,9 @@ public sealed class SchoolDeletionService(
 			.FromSqlInterpolated($"SELECT * FROM \"Subscriptions\" WHERE \"SchoolId\" = {schoolId} FOR UPDATE")
 			.AsNoTracking()
 			.FirstOrDefaultAsync(cancellationToken);
-		if (locked is not { CanceledAt: { } canceledAt, DeletionWarningSentAt: { } warnedAt }
-			|| !IsDeletionDue(canceledAt, warnedAt, now)
-			|| SubscriptionService.HasFreeAccess(locked, now))
+		if (!stillAllowed(locked))
 		{
-			logger.LogInformation("School {SchoolId} is no longer due for deletion; skipped", schoolId);
+			logger.LogInformation("School {SchoolId} may no longer be deleted; skipped", schoolId);
 			return Outcome.NotDue;
 		}
 
@@ -163,7 +262,7 @@ public sealed class SchoolDeletionService(
 		// 2. Login accounts. Same rule: the subjects are only known while the rows exist.
 		try
 		{
-			foreach (var subject in await LoginSubjectsAsync(cancellationToken))
+			foreach (var subject in await LoginSubjectsAsync(schoolId, cancellationToken))
 			{
 				await keycloak.DeleteUserIfExistsAsync(subject, cancellationToken);
 			}
@@ -203,10 +302,9 @@ public sealed class SchoolDeletionService(
 		return Outcome.Deleted;
 	}
 
-	private async Task<List<string>> LoginSubjectsAsync(CancellationToken cancellationToken)
+	private async Task<List<string>> LoginSubjectsAsync(Guid schoolId, CancellationToken cancellationToken)
 	{
 		// IgnoreQueryFilters only to include archived rows; the explicit TenantId keeps it to this school.
-		var schoolId = tenant.TenantId;
 		var staff = await db.Staff.IgnoreQueryFilters()
 			.Where(s => s.TenantId == schoolId && s.KeycloakSubject != null)
 			.Select(s => s.KeycloakSubject!).ToListAsync(cancellationToken);

@@ -23,6 +23,7 @@ import type {
 import { Modal } from '../components/Modal'
 import { useAuth } from '../auth/useAuth'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { Select, RadioCards } from '../components/ui/select'
 
 type RecipientType = 'Parent' | 'Staff'
 
@@ -302,7 +303,7 @@ function GroupComposeModal({
           type="button"
           aria-label="Luk"
           onClick={onClose}
-          className="p-1 rounded text-gray-400 hover:text-gray-600 transition-colors"
+          className="p-1 rounded-sm text-gray-400 hover:text-gray-600 transition-colors"
         >
           <svg
             aria-hidden="true"
@@ -323,98 +324,44 @@ function GroupComposeModal({
 
       {step === 'audience' && (
         <div>
-          <fieldset className="space-y-2 mb-4">
-            <legend className="text-sm font-medium text-gray-700 mb-3">Modtagere</legend>
-            {isAdmin && (
-              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                <input
-                  type="radio"
-                  name="audience"
-                  value="AllParents"
-                  checked={audience === 'AllParents'}
-                  onChange={() => handleAudienceChange('AllParents')}
-                  className="text-brand-600 focus:ring-brand-500"
-                />
-                <span className="text-sm text-gray-800">Alle forældre</span>
-              </label>
-            )}
-            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-              <input
-                type="radio"
-                name="audience"
-                value="ClassParents"
-                checked={audience === 'ClassParents'}
-                onChange={() => handleAudienceChange('ClassParents')}
-                className="text-brand-600 focus:ring-brand-500"
-              />
-              <span className="text-sm text-gray-800">Forældre i en klasse</span>
-            </label>
+          <div className="space-y-2 mb-4">
+            <RadioCards
+              label="Modtagere"
+              value={audience}
+              onChange={handleAudienceChange}
+              options={[
+                ...(isAdmin ? [{ value: 'AllParents' as const, label: 'Alle forældre' }] : []),
+                { value: 'ClassParents' as const, label: 'Forældre i en klasse' },
+                ...(isAdmin ? [{ value: 'SfoParents' as const, label: 'SFO-forældre' }] : []),
+                ...(!isParent
+                  ? [
+                      { value: 'AllStaff' as const, label: 'Alt personale' },
+                      { value: 'StaffByRole' as const, label: 'Personale (rolle)' },
+                    ]
+                  : []),
+              ]}
+            />
             {audience === 'ClassParents' && classOptions.length > 0 && (
-              <select
-                aria-label="Klasse"
+              <Select
+                label="Klasse"
+                options={classOptions.map((c) => ({ value: c.id, label: c.name }))}
                 value={classId}
-                onChange={(e) => handleClassChange(e.target.value)}
-                className="ml-8 w-[calc(100%-2rem)] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              >
-                {classOptions.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={handleClassChange}
+              />
             )}
-            {isAdmin && (
-              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                <input
-                  type="radio"
-                  name="audience"
-                  value="SfoParents"
-                  checked={audience === 'SfoParents'}
-                  onChange={() => handleAudienceChange('SfoParents')}
-                  className="text-brand-600 focus:ring-brand-500"
-                />
-                <span className="text-sm text-gray-800">SFO-forældre</span>
-              </label>
+            {audience === 'StaffByRole' && !isParent && (
+              <Select
+                label="Rolle"
+                options={[
+                  { value: 'Teacher', label: 'Lærere' },
+                  { value: 'Aide', label: 'Pædagoger' },
+                  { value: 'Substitute', label: 'Vikarer' },
+                ]}
+                value={staffRole}
+                onChange={(value) => handleRoleChange(value as StaffRole)}
+              />
             )}
-            {!isParent && (
-              <>
-                <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="audience"
-                    value="AllStaff"
-                    checked={audience === 'AllStaff'}
-                    onChange={() => handleAudienceChange('AllStaff')}
-                    className="text-brand-600 focus:ring-brand-500"
-                  />
-                  <span className="text-sm text-gray-800">Alt personale</span>
-                </label>
-                <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="audience"
-                    value="StaffByRole"
-                    checked={audience === 'StaffByRole'}
-                    onChange={() => handleAudienceChange('StaffByRole')}
-                    className="text-brand-600 focus:ring-brand-500"
-                  />
-                  <span className="text-sm text-gray-800">Personale (rolle)</span>
-                </label>
-                {audience === 'StaffByRole' && (
-                  <select
-                    aria-label="Rolle"
-                    value={staffRole}
-                    onChange={(e) => handleRoleChange(e.target.value as StaffRole)}
-                    className="ml-8 w-[calc(100%-2rem)] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  >
-                    <option value="Teacher">Lærere</option>
-                    <option value="Aide">Pædagoger</option>
-                    <option value="Substitute">Vikarer</option>
-                  </select>
-                )}
-              </>
-            )}
-          </fieldset>
+          </div>
 
           <div className="mb-5 text-sm text-gray-500">
             {previewLoading && 'Henter modtagere…'}
@@ -459,7 +406,7 @@ function GroupComposeModal({
               onChange={(e) => setSubject(e.target.value)}
               maxLength={200}
               placeholder="Emne"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
             />
           </div>
           <div className="mb-5">
@@ -473,7 +420,7 @@ function GroupComposeModal({
               rows={6}
               maxLength={10000}
               placeholder="Skriv din besked her…"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
             />
           </div>
           <div className="flex justify-end gap-3">
@@ -936,7 +883,7 @@ export default function MessagesPage() {
                 value={directorySearch}
                 onChange={(e) => handleDirectorySearch(e.target.value)}
                 placeholder="Søg…"
-                className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-md text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
               />
             </div>
           </div>
@@ -1082,7 +1029,7 @@ export default function MessagesPage() {
                     <div className="flex items-center justify-between mb-0.5">
                       <div className="flex items-center gap-1.5 min-w-0">
                         {msg.isGroup && (
-                          <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-brand-100 text-brand-700">
+                          <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-sm text-xs font-medium bg-brand-100 text-brand-700">
                             Gruppe
                           </span>
                         )}
@@ -1223,7 +1170,7 @@ export default function MessagesPage() {
                               ) : (
                                 <>
                                   <div className="flex items-center gap-1.5">
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-brand-100 text-brand-700">
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-xs font-medium bg-brand-100 text-brand-700">
                                       Gruppe
                                     </span>
                                     <p className="text-sm font-medium text-gray-900">
@@ -1360,7 +1307,7 @@ export default function MessagesPage() {
               setComposeOpen(false)
               setInReplyToId(null)
             }}
-            className="p-1 rounded text-gray-400 hover:text-gray-600 transition-colors"
+            className="p-1 rounded-sm text-gray-400 hover:text-gray-600 transition-colors"
           >
             <svg
               aria-hidden="true"
@@ -1425,7 +1372,7 @@ export default function MessagesPage() {
                 value={recipientSearch}
                 onChange={(e) => handleRecipientSearchChange(e.target.value)}
                 placeholder="Søg efter navn (min. 2 tegn)…"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
                 onFocus={() => {
                   if (recipientResults.length > 0) setShowDropdown(true)
                 }}
@@ -1475,7 +1422,7 @@ export default function MessagesPage() {
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="Emne"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
           />
         </div>
 
@@ -1489,7 +1436,7 @@ export default function MessagesPage() {
             onChange={(e) => setBody(e.target.value)}
             rows={6}
             placeholder="Skriv din besked her…"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
           />
         </div>
 

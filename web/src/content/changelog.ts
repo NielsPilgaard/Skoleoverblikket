@@ -12,13 +12,18 @@ interface ChangelogEntry {
  */
 export const changelog: ChangelogEntry[] = [
   {
+    date: '2026-11-16',
+    title: 'Mere overskuelig menu',
+    changes: [
+      'Links har fået plads under "Filer & Eksport" i menuen, så menuen er kortere og nemmere at overskue.',
+    ],
+  },
+  {
     date: '2026-10-26',
     title: 'Lærer og forælder med samme login',
     changes: [
       'En medarbejder, der også har børn på skolen, bruger nu ét login til begge dele og skifter mellem Medarbejder og Forælder under "Vis som" i menuen.',
-      'Når du bliver inviteret, vælger du selv din adgangskode på invitationssiden og er logget ind med det samme, så invitationsmailen ikke længere indeholder en midlertidig adgangskode.',
-      'E-mails til mange forældre på én gang når nu frem, selvom en enkelt e-mailadresse er forkert, og forældrene får altid besked, når ferieindmeldingen åbner, også hvis du lukker siden for hurtigt.',
-      'Forældrenes kalender viser nu, når den henter, og giver mulighed for at prøve igen, hvis den ikke kan hentes, i stedet for at se tom ud.',
+      'Når du bliver inviteret, vælger du selv din adgangskode på invitationssiden og er logget ind med det samme.',
     ],
   },
   {
@@ -27,7 +32,6 @@ export const changelog: ChangelogEntry[] = [
     changes: [
       'Under Eksporter kan I nu hente alle skolens data og uploadede filer samlet i én ZIP-fil med knappen "Hent alt".',
       'Bestyrelsesmedlemmer har fået deres egen side, Bestyrelse, under Stamdata i menuen, i stedet for at ligge i skolens indstillinger.',
-      'Hvis det ikke lykkes at fjerne et bestyrelsesmedlem eller slå Læreradgang til eller fra, får du nu en besked om det.',
     ],
   },
   {

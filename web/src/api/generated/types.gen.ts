@@ -80,6 +80,15 @@ export type AssignAbsenceSubstituteRequest = {
     staffId?: string | null;
 };
 
+export type AssignAllSubstituteRequest = {
+    staffId: string;
+};
+
+export type AssignAllSubstituteResponse = {
+    assigned: number;
+    stillUncovered: number;
+};
+
 export type AssignSubstituteRequest = {
     substituteTeacherId?: string | null;
     substituteAideId?: string | null;
@@ -963,6 +972,7 @@ export type ParentMeControllerParentStudentDto = {
     studentId: string;
     studentName: string;
     classId: string;
+    isEnrolledInSfo: boolean;
 };
 
 export type ParentMeControllerUpdateContactRequest = {
@@ -1007,12 +1017,14 @@ export type ParentsControllerParentDto = {
 export type ParentsControllerParentSummaryDto = {
     id: string;
     name: string;
+    email: string;
     phone?: string | null;
     address?: string | null;
     postalCode?: string | null;
     city?: string | null;
     students?: Array<ParentsControllerStudentRefDto>;
     hasAccount: boolean;
+    hasPendingInvitation: boolean;
     createdAt: string;
     adresseBeskyttet: boolean;
 };
@@ -1508,6 +1520,10 @@ export type SuperAdminFreeAccessControllerGrantFreeAccessRequest = {
     lastDay?: string | null;
 };
 
+export type SuperAdminSchoolDeletionControllerDeleteSchoolRequest = {
+    confirmSchoolName: string;
+};
+
 export type TenantCreatedDto = {
     id: string;
     name: string;
@@ -1692,10 +1708,6 @@ export type WeekPlanControllerHolidayDayDto = {
     title: string;
 };
 
-export type WeekPlanControllerNotesDto = {
-    notes?: string | null;
-};
-
 export type WeekPlanControllerUpdateNotesRequest = {
     notes?: string | null;
 };
@@ -1720,6 +1732,8 @@ export type WeekPlanControllerWeekPlanDto = {
     breakSlots?: Array<WeekPlanControllerBreakTimeSlotDto>;
     slots?: Array<WeekPlanControllerWeekPlanSlotDto>;
     notes?: string | null;
+    notesUpdatedBy?: string | null;
+    notesUpdatedAt?: string | null;
 };
 
 export type WeekPlanControllerWeekPlanSlotDto = {
@@ -1736,7 +1750,7 @@ export type WeekPlanControllerWeekPlanSlotDto = {
     originalCourseName?: string | null;
     description?: string | null;
     lektier?: string | null;
-    files?: Array<WeekPlanControllerWeekPlanSlotFileDto>;
+    files?: Array<WeekPlanServiceWeekPlanSlotFileDto>;
     substituteTeacherId?: string | null;
     substituteTeacherName?: string | null;
     substituteAideId?: string | null;
@@ -1744,7 +1758,22 @@ export type WeekPlanControllerWeekPlanSlotDto = {
     weekPlanId: string;
 };
 
-export type WeekPlanControllerWeekPlanSlotFileDto = {
+export type WeekPlanServiceNotesDto = {
+    notes?: string | null;
+    notesUpdatedBy?: string | null;
+    notesUpdatedAt?: string | null;
+};
+
+export type WeekPlanServiceRecentFileDto = {
+    id: string;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    courseName?: string | null;
+    lastUsedAt: string;
+};
+
+export type WeekPlanServiceWeekPlanSlotFileDto = {
     id: string;
     schoolFileId: string;
     fileName: string;
@@ -3264,6 +3293,22 @@ export type GetApiV1FilesResponses = {
 };
 
 export type GetApiV1FilesResponse = GetApiV1FilesResponses[keyof GetApiV1FilesResponses];
+
+export type GetApiV1FilesRecentData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/files/recent';
+};
+
+export type GetApiV1FilesRecentResponses = {
+    /**
+     * OK
+     */
+    200: Array<WeekPlanServiceRecentFileDto>;
+};
+
+export type GetApiV1FilesRecentResponse = GetApiV1FilesRecentResponses[keyof GetApiV1FilesRecentResponses];
 
 export type PostApiV1FilesPresignData = {
     body?: FilesControllerPresignRequest;
@@ -4858,6 +4903,24 @@ export type PutApiV1StaffAbsencesByIdSubstituteResponses = {
     200: unknown;
 };
 
+export type PutApiV1StaffAbsencesByIdSubstituteAllData = {
+    body?: AssignAllSubstituteRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/staff-absences/{id}/substitute/all';
+};
+
+export type PutApiV1StaffAbsencesByIdSubstituteAllResponses = {
+    /**
+     * OK
+     */
+    200: AssignAllSubstituteResponse;
+};
+
+export type PutApiV1StaffAbsencesByIdSubstituteAllResponse = PutApiV1StaffAbsencesByIdSubstituteAllResponses[keyof PutApiV1StaffAbsencesByIdSubstituteAllResponses];
+
 export type GetApiV1StaffInvitationsData = {
     body?: never;
     path?: never;
@@ -5364,6 +5427,24 @@ export type PutApiV1AdminTenantsBySchoolIdFreeAccessResponses = {
 
 export type PutApiV1AdminTenantsBySchoolIdFreeAccessResponse = PutApiV1AdminTenantsBySchoolIdFreeAccessResponses[keyof PutApiV1AdminTenantsBySchoolIdFreeAccessResponses];
 
+export type PostApiV1AdminTenantsBySchoolIdDeletionData = {
+    body?: SuperAdminSchoolDeletionControllerDeleteSchoolRequest;
+    path: {
+        schoolId: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/tenants/{schoolId}/deletion';
+};
+
+export type PostApiV1AdminTenantsBySchoolIdDeletionResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type PostApiV1AdminTenantsBySchoolIdDeletionResponse = PostApiV1AdminTenantsBySchoolIdDeletionResponses[keyof PostApiV1AdminTenantsBySchoolIdDeletionResponses];
+
 export type PostApiV1AdminSubProcessorNoticeData = {
     body?: SubProcessorNoticeRequest;
     path?: never;
@@ -5774,7 +5855,7 @@ export type PutApiV1ClassesByClassIdWeekPlanNotesResponses = {
     /**
      * OK
      */
-    200: WeekPlanControllerNotesDto;
+    200: WeekPlanServiceNotesDto;
 };
 
 export type PutApiV1ClassesByClassIdWeekPlanNotesResponse = PutApiV1ClassesByClassIdWeekPlanNotesResponses[keyof PutApiV1ClassesByClassIdWeekPlanNotesResponses];
@@ -5793,7 +5874,7 @@ export type PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesResponses = {
     /**
      * OK
      */
-    200: WeekPlanControllerWeekPlanSlotFileDto;
+    200: WeekPlanServiceWeekPlanSlotFileDto;
 };
 
 export type PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesResponse = PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesResponses[keyof PostApiV1ClassesByClassIdWeekPlanSlotsBySlotIdFilesResponses];

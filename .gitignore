@@ -357,6 +357,7 @@ MigrationBackup/
 *.db-shm
 *.db-wal
 .claude/settings.local.json
+.claude/skills/demo-video/
 
 # Docker environment files
 .env

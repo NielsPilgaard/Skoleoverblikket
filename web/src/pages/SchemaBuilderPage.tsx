@@ -42,6 +42,7 @@ import type {
   SlotDto,
   ConflictInfo,
 } from '../api/client'
+import { Select } from '../components/ui/select'
 
 const WEEKDAYS = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag']
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as const
@@ -119,33 +120,24 @@ function SelectField({
   'data-testid': testId,
 }: SelectFieldProps) {
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      <select
-        autoFocus={autoFocus}
-        required={required}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            e.currentTarget.form?.requestSubmit()
-          }
-        }}
-        data-testid={testId}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-      >
-        <option value="">{emptyLabel}</option>
-        {options.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </div>
+    <Select
+      label={required ? `${label} *` : label}
+      options={[
+        { value: '', label: emptyLabel },
+        ...options.map((o) => ({ value: o.id, label: o.label })),
+      ]}
+      autoFocus={autoFocus}
+      required={required}
+      value={value}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          e.currentTarget.form?.requestSubmit()
+        }
+      }}
+      onChange={onChange}
+      testId={testId}
+    />
   )
 }
 
@@ -937,7 +929,7 @@ export default function SchemaBuilderPage() {
             </svg>
           </Link>
           {isLoading ? (
-            <div className="h-5 w-36 bg-gray-200 rounded animate-pulse" />
+            <div className="h-5 w-36 bg-gray-200 rounded-sm animate-pulse" />
           ) : (
             <>
               {editingName ? (
@@ -948,7 +940,7 @@ export default function SchemaBuilderPage() {
                     onChange={(e) => setNameValue(e.target.value)}
                     onKeyDown={(e) => e.key === 'Escape' && setEditingName(false)}
                     onBlur={() => !renameMutation.isPending && setEditingName(false)}
-                    className="font-display text-base font-semibold text-gray-900 border-b border-brand-400 bg-transparent outline-none w-48 truncate"
+                    className="font-display text-base font-semibold text-gray-900 border-b border-brand-400 bg-transparent outline-hidden w-48 truncate"
                   />
                   <button
                     type="submit"
@@ -1202,7 +1194,7 @@ export default function SchemaBuilderPage() {
                 <div className="animate-pulse">
                   <div className="grid grid-cols-6 gap-2 mb-2">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="h-8 bg-gray-200 rounded" />
+                      <div key={i} className="h-8 bg-gray-200 rounded-sm" />
                     ))}
                   </div>
                   {Array.from({ length: 6 }).map((_, r) => (

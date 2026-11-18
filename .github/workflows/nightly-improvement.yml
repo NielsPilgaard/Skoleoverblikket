@@ -45,20 +45,20 @@ jobs:
           echo "area=$(( $(TZ=Europe/Copenhagen date +%-j) % 10 + 1 ))" >> "$GITHUB_OUTPUT"
           echo "date=$(TZ=Europe/Copenhagen date +%F)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: steps.check.outputs.skip != 'true'
         with:
           fetch-depth: 1
 
       - name: Setup .NET 10
         if: steps.check.outputs.skip != 'true'
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.x"
 
       - name: Setup Node.js 24
         if: steps.check.outputs.skip != 'true'
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: "npm"

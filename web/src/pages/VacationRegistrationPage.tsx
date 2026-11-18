@@ -14,6 +14,7 @@ import type {
   VacationRegistrationControllerWindowDto as WindowDto,
   VacationRegistrationGranularity,
 } from '../api/generated/types.gen'
+import { SegmentedControl } from '../components/ui/select'
 
 const QUERY_KEY = [{ _id: 'getApiV1VacationRegistration' }] as const
 
@@ -23,11 +24,11 @@ function GranularityBadge({
   granularity: VacationRegistrationGranularity | undefined
 }) {
   return granularity === 'Days' ? (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-purple-100 text-purple-800">
       Dage
     </span>
   ) : (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-blue-100 text-blue-800">
       Uger
     </span>
   )
@@ -35,11 +36,11 @@ function GranularityBadge({
 
 function OpenBadge({ isOpen }: { isOpen: boolean | undefined }) {
   return isOpen ? (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-green-100 text-green-800">
       Åben
     </span>
   ) : (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-gray-100 text-gray-600">
       Lukket
     </span>
   )
@@ -132,7 +133,7 @@ export default function VacationRegistrationPage() {
         <h1 className="font-display text-2xl font-semibold text-gray-900">Ferietilmelding</h1>
         <button
           onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
+          className="min-h-11 sm:min-h-0 px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
         >
           Opret ny
         </button>
@@ -224,28 +225,21 @@ export default function VacationRegistrationPage() {
               placeholder="f.eks. Sommerferie 2026"
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Granularitet</label>
-            <div className="flex gap-3">
-              {(['Weeks', 'Days'] as VacationRegistrationGranularity[]).map((g) => (
-                <label key={g} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="granularity"
-                    value={g}
-                    checked={form.granularity === g}
-                    onChange={() => setForm((f) => ({ ...f, granularity: g }))}
-                    className="accent-brand-600"
-                  />
-                  <span className="text-sm text-gray-700">{g === 'Weeks' ? 'Uger' : 'Dage'}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+          <SegmentedControl
+            label="Forældre vælger"
+            value={form.granularity}
+            onChange={(granularity: VacationRegistrationGranularity) =>
+              setForm((f) => ({ ...f, granularity }))
+            }
+            options={[
+              { value: 'Weeks', label: 'Uger' },
+              { value: 'Days', label: 'Dage' },
+            ]}
+          />
 
           <div className="flex gap-3">
             <div className="flex-1 min-w-0">

@@ -125,12 +125,12 @@ function AbsenceList({
               {a.affectedLessonCount === 0 ? (
                 <span className="text-xs text-gray-500">Ingen lektioner</span>
               ) : missing > 0 ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-900">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs font-medium bg-amber-100 text-amber-900">
                   <span aria-hidden>●</span> {missing}{' '}
                   {missing === 1 ? 'lektion mangler' : 'lektioner mangler'} vikar
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs font-medium bg-green-100 text-green-800">
                   <span aria-hidden>✓</span> Alle lektioner dækket
                 </span>
               )}

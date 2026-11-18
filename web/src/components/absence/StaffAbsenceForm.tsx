@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { DatePicker } from '../DatePicker'
 import { addDaysIso, todayIso } from '../../lib/absence'
+import { Select } from '../ui/select'
 
 export interface StaffAbsenceValues {
   staffId: string
@@ -81,27 +82,18 @@ export function StaffAbsenceForm({
     <form onSubmit={submit} className="space-y-4" data-testid={`${testIdPrefix}-form`}>
       {staff && (
         <div>
-          <label
-            htmlFor={`${testIdPrefix}-staff`}
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Medarbejder
-          </label>
-          <select
+          <Select
+            label="Medarbejder"
+            options={[
+              { value: '', label: 'Vælg medarbejder' },
+              ...staff.map((s) => ({ value: s.id, label: s.name })),
+            ]}
             id={`${testIdPrefix}-staff`}
             value={staffId}
-            onChange={(e) => setStaffId(e.target.value)}
             required
-            data-testid={`${testIdPrefix}-staff`}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-          >
-            <option value="">Vælg medarbejder</option>
-            {staff.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+            onChange={setStaffId}
+            testId={`${testIdPrefix}-staff`}
+          />
         </div>
       )}
       <div className="flex gap-3">
@@ -129,7 +121,7 @@ export function StaffAbsenceForm({
               checked={partial}
               onChange={(e) => setPartial(e.target.checked)}
               data-testid={`${testIdPrefix}-partial`}
-              className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              className="w-4 h-4 rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500"
             />
             Kun en del af dagen
           </label>
@@ -193,7 +185,7 @@ export function StaffAbsenceForm({
           maxLength={500}
           placeholder={reasonPlaceholder}
           data-testid={`${testIdPrefix}-reason`}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
         />
         <p className="text-xs text-gray-500 mt-1">Skriv ikke diagnoser.</p>
       </div>

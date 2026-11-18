@@ -9,6 +9,7 @@ import {
   isEntryInSchoolYear,
   CalendarGrid,
 } from '../../components/calendar/CalendarGrid'
+import { Select } from '../../components/ui/select'
 
 function currentSchoolStartYear(): number {
   const today = new Date()
@@ -54,17 +55,14 @@ export default function ParentCalendarPage() {
           Kalender {startYear}/{endYear}
         </h1>
         <div className="flex items-center gap-2 flex-wrap">
-          <select
-            value={schoolStartYear}
-            onChange={(e) => setSchoolStartYear(Number(e.target.value))}
-            className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-          >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>
-                {y}/{y + 1}
-              </option>
-            ))}
-          </select>
+          <Select
+            label="Skoleår"
+            hideLabel
+            options={yearOptions.map((y) => ({ value: String(y), label: `${y}/${y + 1}` }))}
+            value={String(schoolStartYear)}
+            onChange={(value) => setSchoolStartYear(Number(value))}
+            className="w-36"
+          />
           <button
             onClick={handleExportIcs}
             disabled={exportPending}

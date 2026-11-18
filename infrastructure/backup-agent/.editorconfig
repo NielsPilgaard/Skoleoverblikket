@@ -1,5 +1,8 @@
 [*.cs]
 
+# Matches eol=lf in .gitattributes. Unset, dotnet format writes CRLF on Windows and git shows the files as modified.
+end_of_line = lf
+
 # IDE0090: Use 'new(...)'
 dotnet_diagnostic.ide0090.severity = none
 

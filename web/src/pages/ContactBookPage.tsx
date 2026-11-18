@@ -9,6 +9,7 @@ import {
   postApiV1ContactThreadsByThreadIdRead,
   postApiV1ContactThreadsByThreadIdMessages,
 } from '../api/generated/sdk.gen'
+import { Select } from '../components/ui/select'
 
 interface ContactThreadDto {
   id: string
@@ -219,19 +220,19 @@ export default function ContactBookPage() {
         {showCompose && (
           <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
             <p className="text-xs font-medium text-gray-700">Ny samtale</p>
-            <select
+            <Select
+              label="Elev"
+              hideLabel
+              options={[
+                { value: '', label: 'Vælg elev…' },
+                ...students.map((s) => ({
+                  value: s.id,
+                  label: `${s.name ?? 'Ukendt elev'}${s.className ? ` (${s.className})` : ''}`,
+                })),
+              ]}
               value={composeStudentId}
-              onChange={(e) => setComposeStudentId(e.target.value)}
-              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-            >
-              <option value="">Vælg elev…</option>
-              {students.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name ?? 'Ukendt elev'}
-                  {s.className ? ` (${s.className})` : ''}
-                </option>
-              ))}
-            </select>
+              onChange={setComposeStudentId}
+            />
             {students.length === 0 && !studentsLoading && studentsError && (
               <p className="text-xs text-red-600">Kunne ikke indlæse elever. Prøv igen.</p>
             )}
@@ -240,7 +241,7 @@ export default function ContactBookPage() {
               onChange={(e) => setComposeBody(e.target.value)}
               rows={3}
               placeholder="Skriv din første besked…"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                   e.preventDefault()
@@ -325,7 +326,7 @@ export default function ContactBookPage() {
             <div className="px-4 py-3 bg-white border-b border-gray-200 flex items-center gap-3">
               <button
                 onClick={() => setShowMobileMessages(false)}
-                className="lg:hidden p-1 rounded text-gray-500 hover:text-gray-700"
+                className="lg:hidden p-1 rounded-sm text-gray-500 hover:text-gray-700"
                 aria-label="Tilbage"
               >
                 <svg
@@ -379,7 +380,7 @@ export default function ContactBookPage() {
                   onChange={(e) => setMessageBody(e.target.value)}
                   rows={3}
                   placeholder="Skriv en besked…"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                       e.preventDefault()

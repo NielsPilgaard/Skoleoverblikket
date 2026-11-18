@@ -28,7 +28,7 @@ jobs:
       pull-requests: write
       issues: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -66,7 +66,7 @@ jobs:
 
       - name: Setup Node.js 24
         if: steps.check.outputs.skip != 'true'
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: "npm"
@@ -93,15 +93,24 @@ jobs:
             Steps:
             1. List what shipped: `git log --since="${{ steps.check.outputs.since }}T23:59:59" --pretty="%h %s"`.
                Read `git show --stat <sha>` and the diff of any commit whose user impact is unclear.
-            2. Keep only changes a user would notice: new features, new options, clearly better screens, fixed bugs
-               users hit. Drop refactors, tests, CI, docs, dependencies, SEO, performance work users can't feel,
+            2. Keep only changes a user would notice: new features, new options, clearly better screens.
+               Drop refactors, tests, CI, docs, dependencies, SEO, performance work users can't feel,
                and anything only developers or the super admin backoffice see.
+               /nyheder is read by schools deciding whether to sign up, so it shows progress, not a bug list:
+               - Leave out bug fixes. The only exception is a fix many users would have noticed that reads as a
+                 plain improvement once you drop what was wrong (e.g. "Skemaet kan nu printes på én side").
+               - Always leave out: wrong or missing data (wrong days, duplicates, wrong dates), emails or
+                 notifications that didn't arrive, anything lost or not saved, and new error messages or
+                 "prøv igen" handling. These tell the reader the product was broken.
+               - Never describe the old behaviour. Avoid "ikke længere", "nu korrekt", "de rigtige", "fejl",
+                 "virker nu", "også når", "i stedet for at se tom ud".
                If nothing is left, stop without changing files or opening a PR.
             3. Add ONE new entry at the top of the `changelog` array in web/src/content/changelog.ts:
-               `date: '${{ steps.check.outputs.date }}'`, a short Danish title naming the biggest change, and one plain Danish sentence per
-               change. Say what the user can now do, not how it was built. No technical words (API, endpoint,
-               komponent, database, refaktor). Match the tone and length of the existing entries. At most 6 changes;
-               merge small related ones.
+               `date: '${{ steps.check.outputs.date }}'`, a short Danish title naming the biggest new thing users
+               can do (never a fix), and one plain Danish sentence per change. Say what the user can now do, not
+               how it was built. No technical words (API, endpoint, komponent, database, refaktor). Match the tone
+               and length of the existing entries. At most 6 changes; merge small related ones. Fewer, stronger
+               lines beat a long list: an entry with one good line is fine.
             4. If a change is a whole new feature area that the landing page doesn't cover, add it to `features` in
                web/src/content/features.tsx (title, one or two sentence description for Hanne, an icon in the same
                style). If a new sidebar item was added, map its route in `sidebarRouteFeatures`, using an existing

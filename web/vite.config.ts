@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { execSync } from 'child_process'
 import path from 'path'
 import fs from 'fs'
@@ -28,7 +29,7 @@ function codegenWatchPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), codegenWatchPlugin()],
+  plugins: [react(), tailwindcss(), codegenWatchPlugin()],
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),

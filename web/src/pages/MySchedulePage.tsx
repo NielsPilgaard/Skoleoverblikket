@@ -77,7 +77,7 @@ export default function MySchedulePage() {
 
       {isLoading && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse space-y-3">
-          <div className="h-5 w-48 bg-gray-200 rounded" />
+          <div className="h-5 w-48 bg-gray-200 rounded-sm" />
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-12 bg-gray-100 rounded-lg" />
           ))}

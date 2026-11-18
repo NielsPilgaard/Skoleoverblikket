@@ -23,6 +23,7 @@ import {
   todayIso,
 } from '../lib/absence'
 import { problemDetail } from '../lib/problem'
+import { SegmentedControl, WeekStepper } from '../components/ui/select'
 
 /** The two categories staff can pick. Ekstraordinær frihed only comes from an approved parent request. */
 const STAFF_CATEGORIES: AbsenceCategory[] = ['Unauthorized', 'Illness']
@@ -176,51 +177,41 @@ export default function AttendancePage() {
         Fremmøde · {data.className}
       </h1>
 
-      <div className="flex items-center justify-between mt-3 bg-white border border-gray-200 rounded-xl px-2 py-1.5">
-        <button
-          type="button"
-          onClick={() => goToDate(addDaysIso(date, -1))}
-          disabled={saving}
-          className="w-11 h-11 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100"
-          aria-label="Forrige dag"
-          data-testid="attendance-prev-day"
-        >
-          ‹
-        </button>
-        <span className="text-sm font-medium text-gray-900" data-testid="attendance-date">
-          {date === today
-            ? `I dag · ${formatLongDate(date)}`
-            : capitalizeFirst(formatLongDate(date))}
-        </span>
-        <button
-          type="button"
-          onClick={() => goToDate(addDaysIso(date, 1))}
-          disabled={date >= today || saving}
-          className="w-11 h-11 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-30"
-          aria-label="Næste dag"
-          data-testid="attendance-next-day"
-        >
-          ›
-        </button>
-      </div>
+      <WeekStepper
+        className="mt-3 bg-white border border-gray-200 rounded-xl p-2"
+        main={
+          date === today ? `I dag · ${formatLongDate(date)}` : capitalizeFirst(formatLongDate(date))
+        }
+        onPrev={() => goToDate(addDaysIso(date, -1))}
+        onNext={() => goToDate(addDaysIso(date, 1))}
+        prevLabel="Forrige dag"
+        nextLabel="Næste dag"
+        nextDisabled={date >= today}
+        onToday={date === today ? undefined : () => goToDate(today)}
+        todayLabel="Gå til i dag"
+        disabled={saving}
+        mainTestId="attendance-date"
+        prevTestId="attendance-prev-day"
+        nextTestId="attendance-next-day"
+      />
 
       {data.requiresEndOfDay && (
-        <div className="grid grid-cols-2 gap-1 mt-3 bg-gray-100 rounded-xl p-1">
-          {(['StartOfDay', 'EndOfDay'] as const).map((cp) => (
-            <button
-              key={cp}
-              type="button"
-              onClick={() => setCheckpoint(cp)}
-              disabled={saving}
-              data-testid={`attendance-checkpoint-${cp}`}
-              className={`h-11 rounded-lg text-sm font-medium transition-colors ${
-                checkpoint === cp ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'
-              }`}
-            >
-              {cp === 'StartOfDay' ? 'Morgen' : 'Dagens slutning'}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          className="mt-3"
+          label="Tidspunkt"
+          hideLabel
+          value={checkpoint}
+          onChange={setCheckpoint}
+          disabled={saving}
+          options={[
+            { value: 'StartOfDay', label: 'Morgen', testId: 'attendance-checkpoint-StartOfDay' },
+            {
+              value: 'EndOfDay',
+              label: 'Dagens slutning',
+              testId: 'attendance-checkpoint-EndOfDay',
+            },
+          ]}
+        />
       )}
 
       <p className="text-xs text-gray-500 mt-3" data-testid="attendance-check-status">

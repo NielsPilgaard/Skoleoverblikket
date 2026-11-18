@@ -1,3 +1,42 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --font-sans: Lato, sans-serif;
+  --font-display: "Playfair Display", Georgia, serif;
+
+  --color-brand-50: #f0f5f1;
+  --color-brand-100: #d9ead9;
+  --color-brand-200: #b0d4b0;
+  --color-brand-300: #7db87d;
+  --color-brand-400: #4e9a4e;
+  --color-brand-500: #2d7d2d;
+  --color-brand-600: #1f6321;
+  --color-brand-700: #174d19;
+  --color-brand-800: #113b14;
+  --color-brand-900: #0c2c0e;
+}
+
+/*
+  Tailwind v3 defaults that v4 changed, kept so the UI looks the same:
+  borders default to gray-200 (v4: currentColor), placeholders are gray-400,
+  and buttons show a pointer cursor (v4: default).
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}

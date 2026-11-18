@@ -23,6 +23,7 @@ namespace Skoleoverblikket.Api.IntegrationTests;
 /// schools untouched, resubscribing stops the clock, superadmin free access restarts or stops it,
 /// failed login-account deletion keeps the data, and
 /// a deleted school leaves one <see cref="SchoolDeletionRecord"/> until it is out of every backup.
+/// Also a superadmin deleting a school now, and every guard that refuses it.
 /// </summary>
 [ClassDataSource<ApiFactory>(Shared = SharedType.PerTestSession)]
 [NotInParallel(nameof(SchoolRetentionTests))]
@@ -341,5 +342,109 @@ public sealed class SchoolRetentionTests(ApiFactory factory)
 		await RunAsync(canceledAt + 91 * Day);
 
 		await Assert.That(await RowCountAsync(schoolId)).IsEqualTo(rows);
+	}
+
+	private HttpClient SuperAdminClient(string subject = "superadmin-subject", string roles = "superadmin")
+	{
+		var client = factory.CreateClient();
+		client.DefaultRequestHeaders.Add("X-Test-TenantId", Guid.NewGuid().ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", roles);
+		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
+		return client;
+	}
+
+	private static Task<HttpResponseMessage> DeleteNowAsync(HttpClient client, Guid schoolId, string name) =>
+		client.PostAsJsonAsync(
+			$"/api/v1/admin/tenants/{schoolId}/deletion",
+			new SuperAdminSchoolDeletionController.DeleteSchoolRequest(name));
+
+	[Test]
+	public async Task SuperAdmin_DeletesCanceledSchoolNow_AndNothingElse()
+	{
+		var (schoolId, _) = await SeedSchoolAsync();
+		var (otherSchoolId, _) = await SeedSchoolAsync();
+		await CancelAsync(schoolId);
+		var otherRows = await RowCountAsync(otherSchoolId);
+
+		using var client = SuperAdminClient();
+		var response = await DeleteNowAsync(client, schoolId, "  Retention Friskole ");
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+		await Assert.That(await RowCountAsync(schoolId)).IsEqualTo(0);
+		await Assert.That(await FileCountAsync(schoolId)).IsEqualTo(0);
+		await Assert.That((await DeletionRecordsAsync(schoolId)).Count).IsEqualTo(1);
+		await Assert.That(await RowCountAsync(otherSchoolId)).IsEqualTo(otherRows);
+		await Assert.That(await FileCountAsync(otherSchoolId)).IsEqualTo(SchoolDeletionService.StoragePrefixes(otherSchoolId).Count);
+
+		// Already gone.
+		var again = await DeleteNowAsync(client, schoolId, "Retention Friskole");
+		await Assert.That(again.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+	}
+
+	[Test]
+	public async Task SuperAdmin_DeletesTrialSchoolWithoutStripe()
+	{
+		var schoolId = Guid.NewGuid();
+		await TestDataBuilder.CreateSchoolAsync(factory.Services, schoolId, "Prøve Friskole");
+		await TestDataBuilder.CreateTrialSubscriptionAsync(factory.Services, schoolId);
+
+		using var client = SuperAdminClient();
+		var response = await DeleteNowAsync(client, schoolId, "Prøve Friskole");
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+		await Assert.That(await RowCountAsync(schoolId)).IsEqualTo(0);
+	}
+
+	[Test]
+	public async Task DeleteNow_IsRefused_UnlessEveryGuardPasses()
+	{
+		var (schoolId, _) = await SeedSchoolAsync();
+		var rows = await RowCountAsync(schoolId);
+		using var superAdmin = SuperAdminClient();
+
+		// Only a superadmin.
+		using (var admin = SuperAdminClient(roles: "admin"))
+		{
+			var response = await DeleteNowAsync(admin, schoolId, "Retention Friskole");
+			await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+		}
+
+		// Stripe still bills the school.
+		var live = await DeleteNowAsync(superAdmin, schoolId, "Retention Friskole");
+		await Assert.That(live.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+		await Assert.That(await live.Content.ReadAsStringAsync()).Contains("Stripe");
+
+		await CancelAsync(schoolId);
+
+		// The typed name must match exactly.
+		foreach (var name in new[] { "", "retention friskole", "Retention", "Retention Friskole!" })
+		{
+			var response = await DeleteNowAsync(superAdmin, schoolId, name);
+			await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest).Because($"name '{name}'");
+		}
+
+		// Free access must be revoked first.
+		await GrantFreeAccessAsync(schoolId, null);
+		var free = await DeleteNowAsync(superAdmin, schoolId, "Retention Friskole");
+		await Assert.That(free.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+		await Assert.That(await free.Content.ReadAsStringAsync()).Contains("gratis adgang");
+
+		// The superadmin cannot delete a school they have a login in.
+		var subject = $"kc-super-{schoolId:N}";
+		await TestDataBuilder.CreateStaffAsync(factory.Services, schoolId, "Niels Super", keycloakSubject: subject);
+		using (var member = SuperAdminClient(subject))
+		{
+			var response = await DeleteNowAsync(member, schoolId, "Retention Friskole");
+			await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+			await Assert.That(await response.Content.ReadAsStringAsync()).Contains("login");
+		}
+
+		// Unknown school.
+		var unknown = await DeleteNowAsync(superAdmin, Guid.NewGuid(), "Retention Friskole");
+		await Assert.That(unknown.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+
+		await Assert.That(await RowCountAsync(schoolId)).IsEqualTo(rows + 1);
+		await Assert.That(await FileCountAsync(schoolId)).IsEqualTo(SchoolDeletionService.StoragePrefixes(schoolId).Count);
+		await Assert.That(await DeletionRecordsAsync(schoolId)).IsEmpty();
 	}
 }

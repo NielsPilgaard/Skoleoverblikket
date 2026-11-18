@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import keycloak, { refreshToken } from '../../auth/keycloak'
 import { apiFetch } from '../../api/outage'
+import { Select } from '../../components/ui/select'
 
 type EmailType =
   | 'staff-invitation'
@@ -94,18 +95,12 @@ export default function BackofficeEmailPreviewPage() {
       <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">E-mailtype</label>
-            <select
+            <Select
+              label="E-mailtype"
+              options={EMAIL_TYPES.map((t) => ({ value: t.value, label: t.label }))}
               value={type}
-              onChange={(e) => setType(e.target.value as EmailType)}
-              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {EMAIL_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setType(value as EmailType)}
+            />
           </div>
 
           {(isInvitation || type === 'welcome') && (
@@ -115,7 +110,7 @@ export default function BackofficeEmailPreviewPage() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-44 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           )}
@@ -127,7 +122,7 @@ export default function BackofficeEmailPreviewPage() {
                 type="text"
                 value={school}
                 onChange={(e) => setSchool(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-44 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           )}
@@ -138,7 +133,7 @@ export default function BackofficeEmailPreviewPage() {
                 type="checkbox"
                 checked={existingAccount}
                 onChange={(e) => setExistingAccount(e.target.checked)}
-                className="rounded"
+                className="rounded-sm"
               />
               Har allerede en konto
             </label>
@@ -151,7 +146,7 @@ export default function BackofficeEmailPreviewPage() {
                 type="text"
                 value={change}
                 onChange={(e) => setChange(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-full focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           )}
@@ -163,7 +158,7 @@ export default function BackofficeEmailPreviewPage() {
                 type="text"
                 value={notificationBody}
                 onChange={(e) => setNotificationBody(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-full focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           )}

@@ -298,7 +298,7 @@ export default function PrintSchemaPage() {
       <div className="no-print fixed top-4 right-4 flex gap-2 z-50">
         <button
           onClick={() => window.print()}
-          className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 shadow transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 shadow-sm transition-colors"
         >
           <svg
             width="15"
@@ -316,7 +316,7 @@ export default function PrintSchemaPage() {
         </button>
         <button
           onClick={() => window.close()}
-          className="px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 shadow transition-colors"
+          className="px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 shadow-sm transition-colors"
         >
           Luk
         </button>

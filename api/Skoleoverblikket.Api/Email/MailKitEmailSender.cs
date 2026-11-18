@@ -41,18 +41,18 @@ public sealed class MailKitEmailSender(IOptionsMonitor<SmtpOptions> options, ILo
 		};
 		mime.Body = bodyBuilder.ToMessageBody();
 
-		using var smtp = new TolerantSmtpClient(logger);
+		using var smtp = new SmtpClient();
 
 		var tls = string.IsNullOrEmpty(_options.Username) ? SecureSocketOptions.None : SecureSocketOptions.Auto;
 
 		await smtp.ConnectAsync(_options.Host, _options.Port, tls, cancellationToken);
 
-		if (!string.IsNullOrEmpty(_options.Username) && smtp.Capabilities.HasFlag(SmtpCapabilities.Authentication))
+		if (!string.IsNullOrEmpty(_options.Username) && smtp.Capabilities.Contains(SmtpCapability.Authentication))
 		{
 			await smtp.AuthenticateAsync(_options.Username, _options.Password, cancellationToken);
 		}
 
-		await smtp.SendAsync(mime, cancellationToken);
+		await smtp.SendAsync(new TolerantSendRequest(mime, logger), cancellationToken);
 		await smtp.DisconnectAsync(quit: true, cancellationToken);
 	}
 
@@ -60,9 +60,9 @@ public sealed class MailKitEmailSender(IOptionsMonitor<SmtpOptions> options, ILo
 	/// MailKit throws when the server rejects any one recipient, which would drop a whole Bcc batch over a single
 	/// dead address. This logs and goes on; MailKit still throws if no recipient at all is accepted.
 	/// </summary>
-	private sealed class TolerantSmtpClient(ILogger logger) : SmtpClient
+	private sealed class TolerantSendRequest(MimeMessage message, ILogger logger) : SmtpSendRequest(message)
 	{
-		protected override void OnRecipientNotAccepted(MimeMessage message, MailboxAddress mailbox, SmtpResponse response) =>
-			logger.LogWarning("SMTP server rejected a recipient: {StatusCode} {Response}", response.StatusCode, response.Response);
+		public override void OnRecipientNotAccepted(MailboxAddress recipient, SmtpResponse response) =>
+			logger.LogWarning("SMTP server rejected a recipient: {StatusCode} {Response}", response.StatusCode, response.ResponseText);
 	}
 }

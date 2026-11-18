@@ -715,7 +715,7 @@ const navItemDefinitions = [
     label: 'Fravær',
     module: 'parent',
     group: 'Kontakt',
-    order: 72,
+    order: 30,
     icon: (
       <svg
         width="18"
@@ -738,7 +738,7 @@ const navItemDefinitions = [
     label: 'Kontaktbog',
     module: 'parent',
     group: 'Kontakt',
-    order: 73,
+    order: 31,
     icon: (
       <svg
         width="18"
@@ -759,7 +759,7 @@ const navItemDefinitions = [
     label: 'Klassechat',
     module: 'parent',
     group: 'Kontakt',
-    order: 73.5,
+    order: 31.5,
     icon: (
       <svg
         width="18"
@@ -781,7 +781,7 @@ const navItemDefinitions = [
     label: 'Beskeder',
     module: 'parent',
     group: 'Kontakt',
-    order: 74,
+    order: 32,
     icon: (
       <svg
         width="18"
@@ -966,6 +966,37 @@ interface SidebarProps {
 }
 
 const NAV_EXPANDED_GROUPS_KEY = 'nav-expanded-groups'
+const DEFAULT_EXPANDED_GROUPS = ['Planlægning', 'Stamdata']
+
+/** SVG contents for each group header's icon (24×24, stroked). */
+const groupIcons: Record<string, React.ReactNode> = {
+  Planlægning: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="9" y1="21" x2="9" y2="9" />
+    </>
+  ),
+  Stamdata: (
+    <>
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+    </>
+  ),
+  Kontakt: (
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+  ),
+  'Filer & Eksport': (
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+  ),
+  Bestyrelse: (
+    <>
+      <rect x="2" y="7" width="20" height="14" rx="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </>
+  ),
+}
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const { logout, userName, isAdmin, isParent, isBoard } = useAuth()
@@ -1029,7 +1060,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     } catch {
       // ignore malformed storage, fall through to default
     }
-    return new Set()
+    return new Set(DEFAULT_EXPANDED_GROUPS)
   })
 
   const activeGroup = visibleNavItems.find((item) => item.to === pathname)?.group
@@ -1084,7 +1115,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               <img
                 src={school.logoUrl}
                 alt=""
-                className="h-7 w-7 rounded object-contain shrink-0 bg-white/10"
+                className="h-7 w-7 rounded-sm object-contain shrink-0 bg-white/10"
               />
             ) : (
               <Logo variant="dark" size={28} />
@@ -1103,7 +1134,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           </div>
           <button
             onClick={onClose}
-            className="lg:hidden p-1 rounded text-brand-300 hover:text-white shrink-0"
+            aria-label="Luk menu"
+            className="lg:hidden w-11 h-11 -mr-2 flex items-center justify-center rounded-sm text-brand-300 hover:text-white shrink-0"
           >
             <svg
               width="18"
@@ -1120,7 +1152,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:var(--color-brand-700)_transparent]">
           {navBlocks.map((block) => {
             if (block.kind === 'item') {
               return (
@@ -1139,22 +1171,39 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                   onClick={() => toggleGroup(block.group)}
                   aria-expanded={!isCollapsed}
                   data-testid={`nav-group-${block.group}`}
-                  className="flex items-center justify-between w-full px-3 pt-3 pb-1 rounded-md text-xs font-semibold uppercase tracking-wider text-white/70 hover:text-white select-none hover:bg-brand-800"
+                  className="group flex items-center gap-3 w-full mt-1 px-3 py-2.5 rounded-md text-sm font-bold text-white select-none hover:bg-brand-800"
                 >
-                  {block.group}
                   <svg
-                    width="12"
-                    height="12"
+                    width="18"
+                    height="18"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className={`transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''}`}
+                    aria-hidden="true"
                   >
-                    <polyline points="6 9 12 15 18 9" />
+                    {groupIcons[block.group]}
                   </svg>
+                  {block.group}
+                  <span className="ml-auto flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-brand-200 group-hover:bg-white/20 group-hover:text-white">
+                    {isCollapsed ? 'Vis' : 'Skjul'}
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className={`transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}`}
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </span>
                 </button>
                 <div
                   className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${
@@ -1162,7 +1211,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                   }`}
                   style={{ gridTemplateRows: isCollapsed ? '0fr' : '1fr' }}
                 >
-                  <div className="overflow-hidden">
+                  <div className="overflow-hidden ml-5 pl-1.5 border-l border-white/15">
                     {block.items.map((item) => (
                       <NavItemLink key={item.to} item={item} onClose={onClose} />
                     ))}
