@@ -94,14 +94,9 @@ public sealed class AbsenceTestKit(ApiFactory factory)
 
 	public async Task RestrictClassToAsync(Guid classId, Guid staffId)
 	{
-		await using var scope = Factory.Services.CreateAsyncScope();
-		scope.ServiceProvider.GetRequiredService<HttpTenantContext>().UseBackgroundTenant(TenantId);
-		var (result, _) = await scope.ServiceProvider.GetRequiredService<ClassPermissionService>()
-			.GrantAsync(classId, staffId, CancellationToken.None);
-		if (result != ClassPermissionService.GrantResult.Granted)
-		{
-			throw new InvalidOperationException($"Could not restrict class {classId} to staff {staffId}: {result}");
-		}
+		using var admin = Client("admin", "absence-permission-admin");
+		var response = await admin.PostAsJsonAsync($"/api/v1/classes/{classId}/permissions", new { staffId });
+		response.EnsureSuccessStatusCode();
 	}
 
 	// ── Dates ────────────────────────────────────────────────────────────────────

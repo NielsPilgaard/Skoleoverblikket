@@ -378,14 +378,10 @@ export type ClassCoverageDto = {
     unexpectedGradeCategories?: Array<string>;
 };
 
-export type ClassPermissionsControllerClassPermissionDto = {
+export type ClassPermissionDto = {
     staffId: string;
     staffName: string;
     grantedAt: string;
-};
-
-export type ClassPermissionsControllerGrantPermissionRequest = {
-    staffId: string;
 };
 
 export type ClassQuarterStatsDto = {
@@ -657,6 +653,10 @@ export type FilesControllerPresignResponse = {
 
 export type FilesControllerRenameFolderRequest = {
     name: string;
+};
+
+export type GrantPermissionRequest = {
+    staffId: string;
 };
 
 export type ImportsControllerImportBoardMemberRow = {
@@ -2815,13 +2815,13 @@ export type GetApiV1ClassesByClassIdPermissionsResponses = {
     /**
      * OK
      */
-    200: Array<ClassPermissionsControllerClassPermissionDto>;
+    200: Array<ClassPermissionDto>;
 };
 
 export type GetApiV1ClassesByClassIdPermissionsResponse = GetApiV1ClassesByClassIdPermissionsResponses[keyof GetApiV1ClassesByClassIdPermissionsResponses];
 
 export type PostApiV1ClassesByClassIdPermissionsData = {
-    body?: ClassPermissionsControllerGrantPermissionRequest;
+    body?: GrantPermissionRequest;
     path: {
         classId: string;
     };
@@ -2833,7 +2833,7 @@ export type PostApiV1ClassesByClassIdPermissionsResponses = {
     /**
      * OK
      */
-    200: ClassPermissionsControllerClassPermissionDto;
+    200: ClassPermissionDto;
 };
 
 export type PostApiV1ClassesByClassIdPermissionsResponse = PostApiV1ClassesByClassIdPermissionsResponses[keyof PostApiV1ClassesByClassIdPermissionsResponses];

@@ -1,27 +1,30 @@
 using Microsoft.EntityFrameworkCore;
-using Skoleoverblikket.Api.Controllers;
+using Npgsql;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Models;
 using Skoleoverblikket.Api.Tenancy;
-using static Skoleoverblikket.Api.Controllers.ClassPermissionsController;
 
 namespace Skoleoverblikket.Api.Services;
 
+public record ClassPermissionDto(Guid StaffId, string StaffName, DateTimeOffset GrantedAt);
+
+public record GrantPermissionRequest(Guid StaffId);
+
+public enum GrantPermissionResult
+{
+	Granted,
+	ClassNotFound,
+	StaffNotFound,
+	AlreadyGranted,
+}
+
 /// <summary>
 /// The one writer of <see cref="ClassPermission"/> rows. The first row for a class switches it to restricted
-/// editing (docs/AUTHORIZATION.md); the EditClass policy reads the rows, this service only maintains them.
-/// The request and response records stay nested in <see cref="ClassPermissionsController"/> so their
-/// OpenAPI schema names, and with them the generated web client, are unchanged.
+/// editing, and removing the last row opens it to all staff again (docs/AUTHORIZATION.md). The EditClass
+/// policy reads the rows; this service only maintains them.
 /// </summary>
 public sealed class ClassPermissionService(AppDbContext db, ITenantContext tenant)
 {
-	public enum GrantResult
-	{
-		Granted,
-		NotFound,
-		AlreadyGranted,
-	}
-
 	/// <summary>Null when the class doesn't exist.</summary>
 	public async Task<List<ClassPermissionDto>?> GetForClassAsync(Guid classId, CancellationToken cancellationToken)
 	{
@@ -38,27 +41,31 @@ public sealed class ClassPermissionService(AppDbContext db, ITenantContext tenan
 			.ToListAsync(cancellationToken);
 	}
 
-	/// <summary>NotFound when the class or the staff member doesn't exist in this school.</summary>
-	public async Task<(GrantResult Result, ClassPermissionDto? Permission)> GrantAsync(
+	public async Task<(GrantPermissionResult Result, ClassPermissionDto? Permission)> GrantAsync(
 		Guid classId, Guid staffId, CancellationToken cancellationToken)
 	{
-		if (!await db.Classes.AnyAsync(c => c.Id == classId, cancellationToken))
-		{
-			return (GrantResult.NotFound, null);
-		}
-
-		var staffName = await db.Staff
-			.Where(s => s.Id == staffId)
-			.Select(s => s.Name)
+		// One round trip: no row means no class; a null name means no staff member.
+		var lookup = await db.Classes
+			.Where(c => c.Id == classId)
+			.Select(c => new
+			{
+				StaffName = db.Staff.Where(s => s.Id == staffId).Select(s => s.Name).FirstOrDefault(),
+				AlreadyGranted = db.ClassPermissions.Any(p => p.ClassId == classId && p.StaffId == staffId),
+			})
 			.FirstOrDefaultAsync(cancellationToken);
-		if (staffName is null)
+		if (lookup is null)
 		{
-			return (GrantResult.NotFound, null);
+			return (GrantPermissionResult.ClassNotFound, null);
 		}
 
-		if (await db.ClassPermissions.AnyAsync(p => p.ClassId == classId && p.StaffId == staffId, cancellationToken))
+		if (lookup.StaffName is null)
 		{
-			return (GrantResult.AlreadyGranted, null);
+			return (GrantPermissionResult.StaffNotFound, null);
+		}
+
+		if (lookup.AlreadyGranted)
+		{
+			return (GrantPermissionResult.AlreadyGranted, null);
 		}
 
 		var permission = new ClassPermission
@@ -70,9 +77,21 @@ public sealed class ClassPermissionService(AppDbContext db, ITenantContext tenan
 			GrantedAt = DateTimeOffset.UtcNow,
 		};
 		db.ClassPermissions.Add(permission);
-		await db.SaveChangesAsync(cancellationToken);
+		try
+		{
+			await db.SaveChangesAsync(cancellationToken);
+		}
+		catch (DbUpdateException ex) when (ex.InnerException is PostgresException
+		{
+			SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_ClassPermissions_TenantId_ClassId_StaffId",
+		})
+		{
+			// A concurrent request (a double click) granted the same access first.
+			db.Entry(permission).State = EntityState.Detached;
+			return (GrantPermissionResult.AlreadyGranted, null);
+		}
 
-		return (GrantResult.Granted, new ClassPermissionDto(permission.StaffId, staffName, permission.GrantedAt));
+		return (GrantPermissionResult.Granted, new ClassPermissionDto(permission.StaffId, lookup.StaffName, permission.GrantedAt));
 	}
 
 	/// <summary>False when the staff member has no permission row for the class.</summary>

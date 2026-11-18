@@ -10,9 +10,6 @@ namespace Skoleoverblikket.Api.Controllers;
 [Authorize]
 public sealed class ClassPermissionsController(ClassPermissionService classPermissions) : ControllerBase
 {
-	public record ClassPermissionDto(Guid StaffId, string StaffName, DateTimeOffset GrantedAt);
-	public record GrantPermissionRequest(Guid StaffId);
-
 	[HttpGet]
 	[Authorize(Roles = Roles.Admin)]
 	public async Task<ActionResult<List<ClassPermissionDto>>> GetAll(Guid classId, CancellationToken cancellationToken) =>
@@ -27,12 +24,20 @@ public sealed class ClassPermissionsController(ClassPermissionService classPermi
 		var (result, permission) = await classPermissions.GrantAsync(classId, req.StaffId, cancellationToken);
 		return result switch
 		{
-			ClassPermissionService.GrantResult.Granted => CreatedAtAction(nameof(GetAll), new { classId }, permission),
-			ClassPermissionService.GrantResult.AlreadyGranted => Problem(
+			GrantPermissionResult.Granted => CreatedAtAction(nameof(GetAll), new { classId }, permission),
+			GrantPermissionResult.ClassNotFound => Problem(
+				title: "Klassen findes ikke",
+				detail: "Klassen findes ikke længere. Genindlæs siden.",
+				statusCode: 404),
+			GrantPermissionResult.StaffNotFound => Problem(
+				title: "Medarbejderen findes ikke",
+				detail: "Medarbejderen findes ikke længere. Genindlæs siden.",
+				statusCode: 404),
+			GrantPermissionResult.AlreadyGranted => Problem(
 				title: "Adgang allerede tildelt",
 				detail: "Denne medarbejder har allerede adgang til klassen.",
 				statusCode: 409),
-			_ => NotFound(),
+			_ => throw new InvalidOperationException($"Unmapped {nameof(GrantPermissionResult)}: {result}"),
 		};
 	}
 
