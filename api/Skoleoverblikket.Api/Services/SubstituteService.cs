@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Models;
 
@@ -209,7 +210,9 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 	/// lock on the candidate, so two admins cannot book the same person into overlapping lektioner.
 	/// With <paramref name="notify"/> false the caller notifies the vikar itself, e.g. once for many lektioner.
 	/// With <paramref name="onlyIfEmpty"/> the seat is written only if no one holds it, checked atomically
-	/// in the UPDATE so a concurrent booking by any writer is never overwritten.
+	/// in the UPDATE so a concurrent booking by any writer is never overwritten. If a concurrent request
+	/// creates the week plan slot first, the winner's row is used: with <paramref name="onlyIfEmpty"/> that
+	/// returns <see cref="AssignLessonResult.SeatTaken"/> when the winner holds the seat, otherwise it overwrites.
 	/// </summary>
 	public async Task<AssignLessonResult> AssignForLessonAsync(
 		DateOnly date, Guid schemaSlotId, SubstituteSeat seat, Guid? staffId, bool notify, CancellationToken cancellationToken,
@@ -251,7 +254,35 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 		}
 
 		var slot = await weekPlans.GetOrAddSlotAsync(weekPlan, schemaSlotId, cancellationToken);
-		if (onlyIfEmpty && db.Entry(slot).State != EntityState.Added)
+		if (db.Entry(slot).State == EntityState.Added)
+		{
+			SetSeat(slot, seat, staffId);
+			slot.UpdatedAt = DateTimeOffset.UtcNow;
+			try
+			{
+				await db.SaveChangesAsync(cancellationToken);
+				await transaction.CommitAsync(cancellationToken);
+				if (notify && staffId.HasValue)
+				{
+					await NotifyAssignedAsync(staffId.Value, schemaSlotId, date, cancellationToken);
+				}
+
+				return AssignLessonResult.Assigned;
+			}
+			catch (DbUpdateException ex) when (ex.InnerException is PostgresException
+			{
+				SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_WeekPlanSlots_WeekPlanId_SchemaSlotId",
+			})
+			{
+				// A concurrent request created the slot first. EF rolled back to its savepoint, so the
+				// transaction is still usable: continue on the winner's row like any existing slot.
+				db.Entry(slot).State = EntityState.Detached;
+				slot = await db.WeekPlanSlots
+					.FirstAsync(s => s.WeekPlanId == weekPlan.Id && s.SchemaSlotId == schemaSlotId, cancellationToken);
+			}
+		}
+
+		if (onlyIfEmpty)
 		{
 			// Postgres re-evaluates the WHERE under the row lock, so this loses cleanly to any concurrent writer.
 			var now = DateTimeOffset.UtcNow;
@@ -277,15 +308,7 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 		}
 
 		var previous = seat == SubstituteSeat.Teacher ? slot.SubstituteTeacherId : slot.SubstituteAideId;
-		if (seat == SubstituteSeat.Teacher)
-		{
-			slot.SubstituteTeacherId = staffId;
-		}
-		else
-		{
-			slot.SubstituteAideId = staffId;
-		}
-
+		SetSeat(slot, seat, staffId);
 		slot.UpdatedAt = DateTimeOffset.UtcNow;
 		await db.SaveChangesAsync(cancellationToken);
 		await transaction.CommitAsync(cancellationToken);
@@ -296,6 +319,18 @@ public sealed class SubstituteService(AppDbContext db, WeekPlanService weekPlans
 		}
 
 		return AssignLessonResult.Assigned;
+	}
+
+	private static void SetSeat(WeekPlanSlot slot, SubstituteSeat seat, Guid? staffId)
+	{
+		if (seat == SubstituteSeat.Teacher)
+		{
+			slot.SubstituteTeacherId = staffId;
+		}
+		else
+		{
+			slot.SubstituteAideId = staffId;
+		}
 	}
 
 	/// <summary>One notification for a vikar booked into several lektioner at once, instead of one per lektion.</summary>
