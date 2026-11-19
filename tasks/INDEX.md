@@ -26,7 +26,7 @@ status: 'Active'
 
 | # | Task | Size | Owner | Depends on | Why this spot |
 |---|---|---|---|---|---|
-| 1 | [61 School roles in the API](61-school-roles-in-api.md) | M | Niels + agent | Phase A deployed | **Phase A built 2026-10-19.** Left: deploy, check every school has an `IsAdmin` staff member, then Phase B removes the Keycloak `admin` fallback and Niels deletes the realm roles. |
+| 1 | [61 School roles in the API](61-school-roles-in-api.md) | S | Niels | — | **Phase B built 2026-11-19** (branch `feat/61-phase-b`). Left: run the SQL check in the task file on prod before merging, deploy, then delete the realm roles in prod Keycloak. |
 | 2 | [54 Postgres into compose on the current VPS](54-move-vps.md) | L | Niels + agent | 60 Phase 0 + A (code done 2026-10-07) | Prod Postgres is reachable (but secure) from the internet, and RPO is 24h. No VPS move: removing an unrelated Dokploy stack frees the RAM; a bigger VPS waits until we scale. Absorbs 53 phases 4–5. Ships together with 60 Phase A, or prod has no backups after the cutover. |
 | 3 | [60 Backup agent and break-glass console](60-backup-console.md) | L | Niels | 54 (ships with the cutover) | Code for Phases 0–C is done and proven on a local stack. Left: OVH repo and ops buckets with keys, elmah.io heartbeats, turning on the `selfhosted-db` profile at the 54 cutover, one real restore through the wizard. |
 | 4 | [53 Restore drill and off-site backup](53-restore-drill.md) | M | Niels + agent | 54, 60 | Drill itself moved to 60. What's left: runbook, off-site copy of DB and files, quarterly full-rebuild drill. Losing a school's data would end the company. |
