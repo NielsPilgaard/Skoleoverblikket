@@ -16,7 +16,6 @@ namespace Skoleoverblikket.Api.Services;
 public sealed class StaffService(
 	AppDbContext db,
 	ITenantContext tenant,
-	KeycloakAdminService keycloak,
 	SchoolLoginService logins,
 	IFusionCache cache,
 	ILogger<StaffService> logger)
@@ -31,9 +30,6 @@ public sealed class StaffService(
 		NotAccepted,
 		CannotRemoveOwnAdmin,
 		LastAdmin,
-
-		/// <summary>Phase A: the Keycloak admin role couldn't be removed, so nothing changed.</summary>
-		KeycloakFailed,
 	}
 
 	public enum DeleteResult
@@ -89,18 +85,12 @@ public sealed class StaffService(
 			return (refused, null);
 		}
 
-		var wasAdmin = staff.IsAdmin;
 		staff.Name = req.Name;
 		staff.Email = req.Email;
 		staff.Phone = req.Phone;
 		staff.Role = req.Role;
 		staff.IsAdmin = req.IsAdmin;
 		await db.SaveChangesAsync(cancellationToken);
-
-		if (wasAdmin && !staff.IsAdmin && !await TryRemoveKeycloakAdminAsync(staff, cancellationToken))
-		{
-			return (ChangeResult.KeycloakFailed, null);
-		}
 
 		return (ChangeResult.Done, ToDto(staff));
 	}
@@ -131,11 +121,6 @@ public sealed class StaffService(
 
 		staff.IsAdmin = isAdmin;
 		await db.SaveChangesAsync(cancellationToken);
-
-		if (!isAdmin && !await TryRemoveKeycloakAdminAsync(staff, cancellationToken))
-		{
-			return (ChangeResult.KeycloakFailed, null);
-		}
 
 		return (ChangeResult.Done, ToDto(staff));
 	}
@@ -176,25 +161,6 @@ public sealed class StaffService(
 		return DeleteResult.Deleted;
 	}
 
-	/// <summary>
-	/// Phase A backfill (<see cref="AdminRoleBackfillJob"/>): sets IsAdmin on every staff row whose login
-	/// holds Keycloak's admin role. Returns how many rows changed.
-	/// </summary>
-	public async Task<int> BackfillAdminsAsync(IReadOnlyCollection<string> keycloakAdminSubjects, CancellationToken cancellationToken)
-	{
-		if (keycloakAdminSubjects.Count == 0)
-		{
-			return 0;
-		}
-
-		// IgnoreQueryFilters: a startup job with no tenant, fixing every school at once. It only sets a
-		// flag on rows whose own login is a Keycloak admin, and reads nothing back.
-		return await db.Staff
-			.IgnoreQueryFilters()
-			.Where(s => !s.IsAdmin && s.KeycloakSubject != null && keycloakAdminSubjects.Contains(s.KeycloakSubject))
-			.ExecuteUpdateAsync(s => s.SetProperty(x => x.IsAdmin, true), cancellationToken);
-	}
-
 	private async Task<ChangeResult?> CheckAdminChangeAsync(Staff staff, bool newIsAdmin, string? currentSubject, CancellationToken cancellationToken)
 	{
 		if (newIsAdmin)
@@ -210,31 +176,6 @@ public sealed class StaffService(
 		return await db.Staff.CountAsync(s => s.IsAdmin, cancellationToken) <= 1
 			? ChangeResult.LastAdmin
 			: null;
-	}
-
-	/// <summary>
-	/// Phase A of task 61 still reads Keycloak's admin role, so revoking admin must remove it too.
-	/// On failure IsAdmin is restored, so the database never says "not admin" while Keycloak says admin.
-	/// </summary>
-	private async Task<bool> TryRemoveKeycloakAdminAsync(Staff staff, CancellationToken cancellationToken)
-	{
-		if (staff.KeycloakSubject is null)
-		{
-			return true;
-		}
-
-		try
-		{
-			await keycloak.RemoveAdminRoleAsync(staff.KeycloakSubject, cancellationToken);
-			return true;
-		}
-		catch (KeycloakException ex)
-		{
-			logger.LogWarning(ex, "Could not remove Keycloak admin role for staff {StaffId}; restoring admin", staff.Id);
-			staff.IsAdmin = true;
-			await db.SaveChangesAsync(cancellationToken);
-			return false;
-		}
 	}
 
 	private async Task<bool> EmailTakenAsync(string? email, Guid? exceptId, CancellationToken cancellationToken) =>

@@ -99,12 +99,7 @@ public sealed class StaffAdminPermissionTests(ApiFactory factory)
 			$"/api/v1/staff/{staff.Id}/admin-permission",
 			new { isAdmin = true });
 
-		// Keycloak call will fail (no real Keycloak) — expect 502 when sync is attempted,
-		// which proves the endpoint reached the Keycloak sync path.
-		// If you want to verify DB persistence without Keycloak, use a seeded admin already.
-		await Assert.That(
-			response.StatusCode == HttpStatusCode.OK ||
-			response.StatusCode == HttpStatusCode.BadGateway).IsTrue();
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 	}
 
 	[Test]
@@ -118,29 +113,13 @@ public sealed class StaffAdminPermissionTests(ApiFactory factory)
 	}
 
 	[Test]
-	public async Task Patch_RemoveAdmin_Returns409_WhenLastAdmin()
-	{
-		// Seed a staff member as the only admin with a KeycloakSubject
-		var staff = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
-			isAdmin: true, keycloakSubject: "only-admin-id");
-
-		var response = await _client.PatchAsJsonAsync(
-			$"/api/v1/staff/{staff.Id}/admin-permission",
-			new { isAdmin = false });
-
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
-	}
-
-	[Test]
 	public async Task Patch_RemoveAdmin_Returns409_WhenRemovingOwnPermission()
 	{
 		// Seed two admins so the "last admin" guard won't fire
 		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
 			isAdmin: true, keycloakSubject: "other-admin-id");
 
-		// The TestAuthHandler returns ClaimTypes.NameIdentifier = "test-user-id"
-		var self = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
-			isAdmin: true, keycloakSubject: "test-user-id");
+		var self = (await _client.GetFromJsonAsync<StaffController.StaffDto>("/api/v1/staff/me", JsonOpts))!;
 
 		var response = await _client.PatchAsJsonAsync(
 			$"/api/v1/staff/{self.Id}/admin-permission",

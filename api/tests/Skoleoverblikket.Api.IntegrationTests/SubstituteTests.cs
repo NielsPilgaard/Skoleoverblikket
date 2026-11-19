@@ -278,9 +278,10 @@ public sealed class SubstituteTests(ApiFactory factory)
 	{
 		var timeSlot = await TestDataBuilder.CreateTimeSlotAsync(_factory.Services, _tenantId,
 			new TimeOnly(13, 0), new TimeOnly(13, 45), sortOrder: 6);
+		await TestDataBuilder.CreateParentAsync(_factory.Services, _tenantId, "parent-sub-available");
 		using var parent = _factory.CreateClient();
 		parent.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		parent.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
+		parent.DefaultRequestHeaders.Add("X-Test-Subject", "parent-sub-available");
 
 		var response = await parent.GetAsync(
 			$"/api/v1/staff/available?isoYear={TestYear}&isoWeek={TestWeek}&weekday=1&timeSlotId={timeSlot.Id}");
@@ -308,9 +309,9 @@ public sealed class SubstituteTests(ApiFactory factory)
 			new WeekPlanController.UpsertWeekPlanSlotRequest(planDto!.Slots[0].SchemaSlotId, null, null, null));
 		var slotDto = await upsertResponse.Content.ReadFromJsonAsync<WeekPlanController.WeekPlanSlotDto>(JsonOpts);
 
+		await TestDataBuilder.CreateParentAsync(_factory.Services, _tenantId, "parent-sub-substitute");
 		using var parent = _factory.CreateClient();
 		parent.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		parent.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
 		parent.DefaultRequestHeaders.Add("X-Test-Subject", "parent-sub-substitute");
 
 		var response = await parent.PutAsJsonAsync(

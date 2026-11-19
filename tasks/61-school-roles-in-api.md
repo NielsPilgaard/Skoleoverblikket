@@ -22,7 +22,17 @@ status: 'In progress'
 - **`EditClassAuthorizationHandler` keeps `Staff.IsAdmin` authoritative** for anyone with a Staff row, as before. Collapsing it onto the admin claim (D9) only holds once the claim equals `Staff.IsAdmin`, so it moves to Phase B.
 - **D5:** the "acting as board" checks in Staff, Schemas and Classes stay `IsInRole(Board)`. They gate teacher data for board members and would wrongly gate parents as "not staff". Staff-only controllers got `[Authorize(Roles = Roles.Staff)]`; ContactThreads, ContactDirectory, Messages and ClassChat got `staff,parent`.
 
-**Phase B is left:** deploy, check every school has an `IsAdmin` staff member, then remove the Keycloak `admin` reading (transformer, `RemoveAdminRoleAsync`, `AdminRoleBackfillJob`, `GetAdminRoleMemberIdsAsync`, the `realm_access` claim in `ExportLinkAuthHandler`), simplify `EditClass`/`EditWeekPlan` step 2–3, and have `TestDataBuilder.CreateSchoolAsync` create an admin Staff row so tests stop sending Keycloak `admin`. Niels then deletes the realm roles.
+**Phase B is built (2026-11-19, branch `feat/61-phase-b`).** The API no longer reads Keycloak `admin`, the backfill job and Keycloak role calls are gone, `EditClass`/`EditWeekPlan` trust the admin claim, `TestDataBuilder.CreateSchoolAsync` makes the default test subject an admin Staff row, the file browser takes `isAdmin` from `/me` instead of the Keycloak token, and the dev realm drops `admin`, `parent` and `board`. Left for Niels, in order:
+
+1. Before merging: run this on prod Postgres. It must return no rows, or those schools lose their admin on deploy.
+
+   ```sql
+   SELECT s."Id", s."Name" FROM "Schools" s
+   WHERE NOT EXISTS (SELECT 1 FROM "Staff" st WHERE st."TenantId" = s."Id" AND st."IsAdmin" AND st."KeycloakSubject" IS NOT NULL);
+   ```
+
+2. Merge and deploy, then log in on prod as an admin and check the admin pages.
+3. Delete the `admin`, `parent` and `board` realm roles in prod Keycloak.
 
 **Prod Keycloak checked (2026-10-21):** the `skoleoverblikket-admin` service account has `realm-management` `view-realm`, which the backfill's role-members lookup needs, and users can't edit `tenant_id` in the account console.
 

@@ -54,10 +54,6 @@
   "roles": {
     "realm": [
       {
-        "name": "admin",
-        "description": "School administrator — full access"
-      },
-      {
         "name": "teacher",
         "description": "Teacher — read-only access"
       },
@@ -66,16 +62,8 @@
         "description": "Pædagog / aide — read-only access"
       },
       {
-        "name": "parent",
-        "description": "Forælder — læseadgang til barnets klasse"
-      },
-      {
         "name": "superadmin",
         "description": "Platform superadmin — modul-override og administrationsadgang"
-      },
-      {
-        "name": "board",
-        "description": "Bestyrelsesmedlem — adgang til bestyrelsesmodul"
       }
     ]
   },
@@ -192,7 +180,7 @@
         }
       ],
 
-      "realmRoles": ["admin", "superadmin"],
+      "realmRoles": ["superadmin"],
 
       "attributes": {
         "tenant_id": ["11111111-1111-1111-1111-111111111111"]

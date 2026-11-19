@@ -32,10 +32,9 @@ public sealed class StaffInvitationTests(ApiFactory factory)
 	[Before(Test)]
 	public async Task SetUp()
 	{
-		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId, adminSubject: "admin-subject");
 		_adminClient = _factory.CreateClient();
 		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		_adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 		_adminClient.DefaultRequestHeaders.Add("X-Test-Subject", "admin-subject");
 	}
 
@@ -119,7 +118,6 @@ public sealed class StaffInvitationTests(ApiFactory factory)
 
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", acceptingSubject);
 
 		var request = new StaffInvitationsController.AcceptInvitationRequest(
@@ -146,7 +144,6 @@ public sealed class StaffInvitationTests(ApiFactory factory)
 
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", acceptingSubject);
 
 		var request = new StaffInvitationsController.AcceptInvitationRequest(

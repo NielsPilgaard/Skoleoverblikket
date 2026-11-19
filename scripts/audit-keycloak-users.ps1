@@ -15,8 +15,8 @@
       5. rows whose login no longer exists in Keycloak (housekeeping only)
 
     Groups 1-4 are what a leaked admin client secret could leave behind: a login with no row
-    still passes [Authorize]-only endpoints, and the Keycloak admin role still grants school
-    admin during Phase A of task 61.
+    still passes [Authorize]-only endpoints, and superadmin reads every school. The admin realm
+    role grants nothing since task 61 Phase B, but should be gone once the role is deleted.
 
     The SQL runs in a transaction that is rolled back, so it changes nothing. The file holds
     names and emails, so it is written to the temp folder by default. Delete it afterwards.
@@ -189,7 +189,7 @@ WHERE k.tenant_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM "Schools" s WHERE s."Id"::text = lower(k.tenant_id))
 ORDER BY k.created DESC;
 
-\echo '4. Logins with the Keycloak admin or superadmin role (admin still grants school admin in Phase A)'
+\echo '4. Logins with the Keycloak admin or superadmin role'
 SELECT k.email, k.realm_roles, s."Name" AS school,
        EXISTS (SELECT 1 FROM "Staff" st WHERE st."KeycloakSubject" = k.id AND st."IsAdmin") AS is_admin_in_db,
        k.id
