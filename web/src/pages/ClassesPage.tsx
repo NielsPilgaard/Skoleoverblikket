@@ -23,6 +23,7 @@ import {
 } from '../api/generated/@tanstack/react-query.gen'
 import type { ClassDto, SchemaDto, StaffDto, ClassPermissionDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { problemDetail } from '../lib/problem'
 import { DatePicker } from '../components/DatePicker'
 import { detectGradeLevel, GRADE_LEVEL_LABELS } from '../utils/gradeLevel'
 import { useAuth } from '../auth/useAuth'
@@ -534,7 +535,16 @@ function ClassPermissionsTab({ classId }: { classId: string }) {
               <span className="text-sm text-gray-800">{p.staffName}</span>
               <button
                 data-testid={`revoke-permission-${p.staffId}`}
-                onClick={() => revokeMutation.mutate({ path: { classId, staffId: p.staffId! } })}
+                onClick={() => {
+                  if (
+                    permissions.length === 1 &&
+                    !confirm(
+                      `Fjern ${p.staffName}? Det er den sidste med adgang, så alle medarbejdere kan derefter redigere klassen.`
+                    )
+                  )
+                    return
+                  revokeMutation.mutate({ path: { classId, staffId: p.staffId! } })
+                }}
                 disabled={revokeMutation.isPending}
                 className="text-xs text-red-600 hover:text-red-800 transition-colors disabled:opacity-50"
               >
@@ -574,7 +584,9 @@ function ClassPermissionsTab({ classId }: { classId: string }) {
             </button>
           </div>
           {grantMutation.isError && (
-            <p className="text-sm text-red-600">Der opstod en fejl. Prøv igen.</p>
+            <p className="text-sm text-red-600">
+              {problemDetail(grantMutation.error) ?? 'Der opstod en fejl. Prøv igen.'}
+            </p>
           )}
         </div>
       )}

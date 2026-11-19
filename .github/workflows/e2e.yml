@@ -2,7 +2,7 @@ name: E2E
 
 # Runs the full Playwright suite against the docker-compose staging stack on the runner.
 # Called from CI on pull requests (images built here from the PR's code) and from Staging
-# on main (images published by CI for that commit). The suite itself takes ~30s; most of
+# on main (images published by CI for that commit). The suite itself takes ~1 min; most of
 # the job is building or pulling images and booting Keycloak.
 
 on:
@@ -48,34 +48,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull published images
-        if: inputs.image_tag != ''
-        timeout-minutes: 15
-        run: docker compose pull api keycloak web
-
-      - uses: docker/setup-buildx-action@v4
-        if: inputs.image_tag == ''
-
-      # PRs only: one bake builds all three images in parallel. Targets, tags and caches are in
-      # the bake file. `source: .` builds the checked-out ref, not bake's default Git context.
-      - name: Build images
-        if: inputs.image_tag == ''
-        timeout-minutes: 10
-        uses: docker/bake-action@v7
-        with:
-          source: .
-          files: infrastructure/docker/docker-bake.e2e.hcl
-          load: true
-
-      # Keycloak takes ~45s to boot, so start the stack in the background and install Node
-      # dependencies meanwhile. A plain `up -d` would block too: it waits for each
-      # depends_on healthcheck before starting the next service. Background processes
-      # live until the job ends.
+      # Everything below runs in the background so Node dependencies install meanwhile.
+      # Keycloak is the slow part (~45s boot), so on PRs its image builds first and it boots
+      # while the API and web images build. Images build with the runner's default (docker
+      # driver) builder, which writes straight into the local image store: no `--load` export.
+      # `docker compose up -d --wait` then starts the rest and waits for every healthcheck.
+      # Background processes live until the job ends.
       - name: Start staging stack in the background
+        env:
+          BUILD_IMAGES: ${{ inputs.image_tag == '' }}
         run: |
-          # The step shell runs with -e, so capture the status in an `if` or a failed
-          # `up` would kill the subshell before it writes the exit file.
-          (if docker compose up -d --wait > "$RUNNER_TEMP/compose-up.log" 2>&1; then status=0; else status=$?; fi
+          build_images() {
+            bake="docker buildx bake --file infrastructure/docker/docker-bake.e2e.hcl"
+            ($bake keycloak && docker compose up -d keycloak postgres silo mailpit) &
+            early=$!
+            $bake api web || return
+            wait "$early"
+          }
+          start_stack() {
+            if [ "$BUILD_IMAGES" = true ]; then build_images; else docker compose pull api keycloak web; fi &&
+              docker compose up -d --wait
+          }
+          # The step shell runs with -e, so capture the status in an `if` or a failure would
+          # kill the subshell before it writes the exit file.
+          (if start_stack > "$RUNNER_TEMP/compose-up.log" 2>&1; then status=0; else status=$?; fi
            echo "$status" > "$RUNNER_TEMP/compose-up.tmp"
            mv "$RUNNER_TEMP/compose-up.tmp" "$RUNNER_TEMP/compose-up.exit") &
 
@@ -98,8 +94,9 @@ jobs:
         run: npx playwright install --only-shell chromium
         working-directory: web
 
+      # Covers building or pulling the images too, so it is longer than the boot alone.
       - name: Wait for staging stack
-        timeout-minutes: 5
+        timeout-minutes: 15
         run: |
           while [ ! -f "$RUNNER_TEMP/compose-up.exit" ]; do sleep 1; done
           cat "$RUNNER_TEMP/compose-up.log"

@@ -114,7 +114,7 @@ export type {
   ClassesControllerClassDto as ClassDto,
   ClassesControllerYearRollCreateEntry as YearRollCreateEntry,
   ClassesControllerYearRollRenameEntry as YearRollRenameEntry,
-  ClassPermissionsControllerClassPermissionDto as ClassPermissionDto,
+  ClassPermissionDto,
   CoursesControllerCourseDto as CourseDto,
   FilesControllerFileDto as FileDto,
   FilesControllerFolderDto as FolderDto,

@@ -2705,7 +2705,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ClassPermissionsController_ClassPermissionDto"
+                    "$ref": "#/components/schemas/ClassPermissionDto"
                   }
                 }
               },
@@ -2713,7 +2713,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ClassPermissionsController_ClassPermissionDto"
+                    "$ref": "#/components/schemas/ClassPermissionDto"
                   }
                 }
               },
@@ -2721,7 +2721,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ClassPermissionsController_ClassPermissionDto"
+                    "$ref": "#/components/schemas/ClassPermissionDto"
                   }
                 }
               }
@@ -2753,17 +2753,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ClassPermissionsController_GrantPermissionRequest"
+                "$ref": "#/components/schemas/GrantPermissionRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ClassPermissionsController_GrantPermissionRequest"
+                "$ref": "#/components/schemas/GrantPermissionRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ClassPermissionsController_GrantPermissionRequest"
+                "$ref": "#/components/schemas/GrantPermissionRequest"
               }
             }
           }
@@ -2774,17 +2774,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ClassPermissionsController_ClassPermissionDto"
+                  "$ref": "#/components/schemas/ClassPermissionDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ClassPermissionsController_ClassPermissionDto"
+                  "$ref": "#/components/schemas/ClassPermissionDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ClassPermissionsController_ClassPermissionDto"
+                  "$ref": "#/components/schemas/ClassPermissionDto"
                 }
               }
             }
@@ -12488,7 +12488,7 @@
         },
         "additionalProperties": false
       },
-      "ClassPermissionsController_ClassPermissionDto": {
+      "ClassPermissionDto": {
         "required": [
           "grantedAt",
           "staffId",
@@ -12506,19 +12506,6 @@
           "grantedAt": {
             "type": "string",
             "format": "date-time"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ClassPermissionsController_GrantPermissionRequest": {
-        "required": [
-          "staffId"
-        ],
-        "type": "object",
-        "properties": {
-          "staffId": {
-            "type": "string",
-            "format": "uuid"
           }
         },
         "additionalProperties": false
@@ -13541,6 +13528,19 @@
         "properties": {
           "name": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GrantPermissionRequest": {
+        "required": [
+          "staffId"
+        ],
+        "type": "object",
+        "properties": {
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false
