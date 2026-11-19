@@ -36,6 +36,8 @@ A login with none of these rows has no role and is refused by every endpoint tha
 
 `StaffRole` (Teacher / Aide / Substitute) is an informational field on the `Staff` model. It has no effect on authorization — it is only used for display.
 
+**Phase A of task 61 (current).** Keycloak's `admin` realm role still counts alongside `Staff.IsAdmin`, but only for a login that has a Staff row or no other school row. `AdminRoleBackfillJob` copies the Keycloak role to `Staff.IsAdmin` at startup, and revoking admin also removes the Keycloak role. Inside `EditClassAuthorizationHandler`, `Staff.IsAdmin` stays authoritative for anyone with a Staff row. Phase B stops reading the Keycloak role.
+
 ### One login, several roles
 
 A person can be staff, parent and board member at the same school with one login, for example a teacher with a child at the school. Each request acts as exactly one school role:
@@ -82,11 +84,11 @@ Revoking the **last** permission row returns the tenant to superadmin mode.
 1. Not acting as staff (a parent or board member, or staff acting as one)
    → Deny (403)
 
-2. Admin role claim (Staff.IsAdmin, acting as staff)
-   → Succeed (admin always has full access)
+2. No Staff row for this Keycloak subject AND has admin role claim
+   → Succeed (admin not enrolled as staff; Phase A only)
 
-3. No Staff row for this Keycloak subject
-   → Deny (403)
+3. Staff row found AND Staff.IsAdmin = true
+   → Succeed (admin always has full access)
 
 4. No ClassPermission rows exist for this class (class-level open mode)
    → Succeed for all authenticated staff
@@ -156,7 +158,7 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 |---|---|---|
 | `sub` | Yes | Identifies the user; matched against `KeycloakSubject` on `Staff`, `BoardMember` and `Parent` to work out the school roles |
 | `tenant_id` | Yes | Resolves the tenant; missing → 401. Only rows in this school give roles |
-| `realm_access.roles` | No | Only `superadmin` is read, by `SchoolRolesClaimsTransformer` |
+| `realm_access.roles` | No | Only `superadmin` is read (and `admin` during Phase A of task 61), by `SchoolRolesClaimsTransformer` |
 | `email` | No | Display only |
 
 ---

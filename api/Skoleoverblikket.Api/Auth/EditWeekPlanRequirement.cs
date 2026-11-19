@@ -11,8 +11,8 @@ public sealed class EditWeekPlanRequirement : IAuthorizationRequirement { }
 /// Resource: (Guid ClassId, Guid SchemaSlotId).
 /// Logic:
 ///   1. Not acting as staff → deny.
-///   2. Admin (Staff.IsAdmin, as a role claim) → full access.
-///   3. No staff row → deny.
+///   2. No staff row but admin role claim → full access (admin not enrolled as staff).
+///   3. Staff row has IsAdmin = true → full access (guards against Keycloak/DB desync).
 ///   4. No ClassPermission rows for this class → open (no restrictions set).
 ///   5. Staff has a ClassPermission row for this class → allow.
 ///   6. Staff is the Teacher or Aide on the requested SchemaSlot → allow (own lesson).
@@ -32,21 +32,29 @@ public sealed class EditWeekPlanAuthorizationHandler(AppDbContext db, ITenantCon
 			return;
 		}
 
-		// The admin claim is Staff.IsAdmin, worked out by SchoolRolesClaimsTransformer.
-		if (context.User.IsInRole(Roles.Admin))
-		{
-			context.Succeed(requirement);
-			return;
-		}
-
 		var subject = context.User.GetKeycloakSubject();
 		var staff = await db.Staff
 			.AsNoTracking()
 			.Where(s => s.KeycloakSubject == subject && s.TenantId == tenant.TenantId)
-			.Select(s => new { s.Id })
+			.Select(s => new { s.Id, s.IsAdmin })
 			.FirstOrDefaultAsync();
+
+		// Phase A of task 61: the admin claim can still come from Keycloak, so Staff.IsAdmin stays
+		// authoritative for a staff row. Phase B makes the claim equal Staff.IsAdmin; then this
+		// collapses to a single admin-claim check.
 		if (staff is null)
 		{
+			if (context.User.IsInRole(Roles.Admin))
+			{
+				context.Succeed(requirement);
+			}
+
+			return;
+		}
+
+		if (staff.IsAdmin)
+		{
+			context.Succeed(requirement);
 			return;
 		}
 

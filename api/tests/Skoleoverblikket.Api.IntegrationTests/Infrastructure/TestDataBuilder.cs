@@ -15,15 +15,7 @@ namespace Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 /// </summary>
 public static class TestDataBuilder
 {
-	/// <summary>The login a test client uses when it sends no X-Test-Subject.</summary>
-	public const string DefaultSubject = "test-user-id";
-
-	/// <summary>
-	/// A school whose admin is <paramref name="adminSubject"/>: roles come from Staff rows, so the default
-	/// test client is admin through this row. Pass null for a school with no admin login.
-	/// </summary>
-	public static async Task<School> CreateSchoolAsync(
-		IServiceProvider services, Guid tenantId, string name = "Teststole", string? adminSubject = DefaultSubject)
+	public static async Task<School> CreateSchoolAsync(IServiceProvider services, Guid tenantId, string name = "Teststole")
 	{
 		using var scope = services.CreateScope();
 		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -35,11 +27,6 @@ public static class TestDataBuilder
 		};
 		db.Schools.Add(school);
 		await db.SaveChangesAsync();
-		if (adminSubject is not null)
-		{
-			await CreateStaffAsync(services, tenantId, "Test Admin", isAdmin: true, keycloakSubject: adminSubject);
-		}
-
 		return school;
 	}
 

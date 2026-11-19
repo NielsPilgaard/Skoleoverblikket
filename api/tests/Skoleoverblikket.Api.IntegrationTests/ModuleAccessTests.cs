@@ -44,7 +44,7 @@ public sealed partial class ModuleAccessTests(ApiFactory factory)
 			services.AddSingleton<IKeycloakAdminApi>(_keycloak);
 			services.AddSingleton<IKeycloakTokenApi>(_keycloak);
 		}));
-		await TestDataBuilder.CreateSchoolAsync(_app.Services, _tenantId, adminSubject: "module-admin");
+		await TestDataBuilder.CreateSchoolAsync(_app.Services, _tenantId);
 		_admin = Client(Roles.Admin, "module-admin");
 	}
 

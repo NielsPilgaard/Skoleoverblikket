@@ -38,7 +38,7 @@ public sealed class SchoolExportTests(ApiFactory factory)
 	{
 		var schoolId = Guid.NewGuid();
 		var services = factory.Services;
-		await TestDataBuilder.CreateSchoolAsync(services, schoolId, "Eksport Friskole", adminSubject: $"export-{schoolId:N}");
+		await TestDataBuilder.CreateSchoolAsync(services, schoolId, "Eksport Friskole");
 		var admin = await TestDataBuilder.CreateStaffAsync(services, schoolId, "Hanne Kontor", isAdmin: true);
 		var teacher = await TestDataBuilder.CreateStaffAsync(services, schoolId, "Thomas Lærer");
 		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(services, schoolId, className: "3.a");

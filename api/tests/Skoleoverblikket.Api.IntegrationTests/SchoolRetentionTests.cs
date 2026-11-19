@@ -38,7 +38,7 @@ public sealed class SchoolRetentionTests(ApiFactory factory)
 		var adminEmail = $"admin-{schoolId:N}@skole.dk";
 		var services = factory.Services;
 
-		await TestDataBuilder.CreateSchoolAsync(services, schoolId, "Retention Friskole", adminSubject: null);
+		await TestDataBuilder.CreateSchoolAsync(services, schoolId, "Retention Friskole");
 		var admin = await TestDataBuilder.CreateStaffAsync(services, schoolId, "Hanne Kontor", isAdmin: true);
 		var teacher = await TestDataBuilder.CreateStaffAsync(services, schoolId, "Thomas Lærer");
 		var course = await TestDataBuilder.CreateCourseAsync(services, schoolId);
@@ -385,7 +385,7 @@ public sealed class SchoolRetentionTests(ApiFactory factory)
 	public async Task SuperAdmin_DeletesTrialSchoolWithoutStripe()
 	{
 		var schoolId = Guid.NewGuid();
-		await TestDataBuilder.CreateSchoolAsync(factory.Services, schoolId, "Prøve Friskole", adminSubject: null);
+		await TestDataBuilder.CreateSchoolAsync(factory.Services, schoolId, "Prøve Friskole");
 		await TestDataBuilder.CreateTrialSubscriptionAsync(factory.Services, schoolId);
 
 		using var client = SuperAdminClient();

@@ -21,6 +21,7 @@ public sealed class ParentModuleTests(ApiFactory factory)
 		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
 		_adminClient = _factory.CreateClient();
 		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		_adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 	}
 
 	// -- helper to insert a parent + student directly via DB --
@@ -78,7 +79,7 @@ public sealed class ParentModuleTests(ApiFactory factory)
 	{
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Subject", "ingen-skolerolle");
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "teacher");
 
 		var response = await client.GetAsync("/api/v1/parents");
 
@@ -101,7 +102,7 @@ public sealed class ParentModuleTests(ApiFactory factory)
 	{
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Subject", "ingen-skolerolle");
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "teacher");
 
 		var response = await client.GetAsync("/api/v1/students");
 
@@ -116,6 +117,7 @@ public sealed class ParentModuleTests(ApiFactory factory)
 
 		using var parentClient = _factory.CreateClient();
 		parentClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		parentClient.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
 		parentClient.DefaultRequestHeaders.Add("X-Test-Subject", parentSubject);
 
 		var response = await parentClient.GetAsync($"/api/v1/classes/{klass.Id}/schemas");
@@ -145,6 +147,7 @@ public sealed class ParentModuleTests(ApiFactory factory)
 
 		using var parentClient = _factory.CreateClient();
 		parentClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		parentClient.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
 		parentClient.DefaultRequestHeaders.Add("X-Test-Subject", parentSubject);
 
 		var response = await parentClient.GetAsync($"/api/v1/classes/{otherClass.Id}/schemas");
@@ -170,6 +173,7 @@ public sealed class ParentModuleTests(ApiFactory factory)
 
 		using var parentClient = _factory.CreateClient();
 		parentClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		parentClient.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
 		parentClient.DefaultRequestHeaders.Add("X-Test-Subject", parentSubject);
 
 		var response = await parentClient.PatchAsJsonAsync("/api/v1/parents/me/contact", new
@@ -271,6 +275,7 @@ public sealed class ParentModuleTests(ApiFactory factory)
 
 		using var parentClient = _factory.CreateClient();
 		parentClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		parentClient.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
 		parentClient.DefaultRequestHeaders.Add("X-Test-Subject", parentSubject);
 
 		return await parentClient.PatchAsJsonAsync("/api/v1/parents/me/contact", body);

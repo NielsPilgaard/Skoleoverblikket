@@ -152,6 +152,44 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 		return await tokenApi.GetPasswordTokenAsync(request, cancellationToken);
 	}
 
+	/// <summary>
+	/// Removes the Keycloak 'admin' realm role. Phase A of task 61 still reads that role, so revoking
+	/// admin in the database alone would leave the person admin. Phase B stops reading it and removes
+	/// this method. Throws <see cref="KeycloakException"/> on failure so callers can roll back.
+	/// </summary>
+	public async Task RemoveAdminRoleAsync(string keycloakUserId, CancellationToken cancellationToken)
+	{
+		try
+		{
+			var role = await adminApi.GetRoleAsync(Roles.Admin, cancellationToken);
+			await adminApi.RemoveRoleMappingsAsync(keycloakUserId, [role], cancellationToken);
+		}
+		catch (OperationCanceledException)
+		{
+			throw;
+		}
+		catch (Exception ex)
+		{
+			throw new KeycloakException($"Failed to remove 'admin' role for user {keycloakUserId}: {ex.Message}");
+		}
+	}
+
+	/// <summary>The ids of every user holding the Keycloak 'admin' realm role (Phase A backfill).</summary>
+	public async Task<IReadOnlyList<string>> GetAdminRoleMemberIdsAsync(CancellationToken cancellationToken)
+	{
+		const int pageSize = 100;
+		var ids = new List<string>();
+		for (var first = 0; ; first += pageSize)
+		{
+			var page = await adminApi.GetRoleUsersAsync(Roles.Admin, first, pageSize, cancellationToken);
+			ids.AddRange(page.Select(u => u.Id));
+			if (page.Count < pageSize)
+			{
+				return ids;
+			}
+		}
+	}
+
 	public async Task DeleteStaffUserAsync(string keycloakUserId, CancellationToken cancellationToken)
 	{
 		var response = await adminApi.DeleteUserAsync(keycloakUserId, cancellationToken);

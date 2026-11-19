@@ -35,9 +35,10 @@ public sealed class WeekPlanPermissionsTests(ApiFactory factory)
 	[Before(Test)]
 	public async Task SetUp()
 	{
-		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId, adminSubject: "admin-subject");
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
 		_adminClient = _factory.CreateClient();
 		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		_adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 		_adminClient.DefaultRequestHeaders.Add("X-Test-Subject", "admin-subject");
 	}
 
@@ -137,6 +138,7 @@ public sealed class WeekPlanPermissionsTests(ApiFactory factory)
 		// No ClassPermission rows → open class
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", teacherSubject);
 
 		var response = await client.PutAsJsonAsync(
@@ -175,6 +177,7 @@ public sealed class WeekPlanPermissionsTests(ApiFactory factory)
 
 		using var teacherClient = _factory.CreateClient();
 		teacherClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		teacherClient.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		teacherClient.DefaultRequestHeaders.Add("X-Test-Subject", teacherSubject);
 
 		var response = await teacherClient.PutAsJsonAsync(
@@ -213,6 +216,7 @@ public sealed class WeekPlanPermissionsTests(ApiFactory factory)
 
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", teacherSubject);
 
 		var response = await client.PutAsJsonAsync(
@@ -251,6 +255,7 @@ public sealed class WeekPlanPermissionsTests(ApiFactory factory)
 
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", teacherSubject);
 
 		var response = await client.PutAsJsonAsync(

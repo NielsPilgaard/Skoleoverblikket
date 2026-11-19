@@ -26,9 +26,10 @@ public sealed class ContactDirectoryTests(ApiFactory factory)
 	[Before(Test)]
 	public async Task SetUp()
 	{
-		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId, adminSubject: "kontakt-admin-subject");
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
 		_adminClient = _factory.CreateClient();
 		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		_adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 		_adminClient.DefaultRequestHeaders.Add("X-Test-Subject", "kontakt-admin-subject");
 	}
 
@@ -39,6 +40,7 @@ public sealed class ContactDirectoryTests(ApiFactory factory)
 		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Thomas Lærer", keycloakSubject: subject);
 		var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
 		return client;
 	}
@@ -47,6 +49,7 @@ public sealed class ContactDirectoryTests(ApiFactory factory)
 	{
 		var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
 		return client;
 	}

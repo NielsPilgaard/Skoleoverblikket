@@ -26,9 +26,10 @@ public sealed class ReportsTests(ApiFactory factory)
 	[Before(Test)]
 	public async Task SetUp()
 	{
-		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId, adminSubject: "reports-admin-subject");
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
 		_adminClient = _factory.CreateClient();
 		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		_adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 		_adminClient.DefaultRequestHeaders.Add("X-Test-Subject", "reports-admin-subject");
 	}
 
@@ -41,6 +42,7 @@ public sealed class ReportsTests(ApiFactory factory)
 	{
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", "nonadmin-reports");
 
 		var response = await client.GetAsync("/api/v1/reports/hours/staff.xlsx");
@@ -53,6 +55,7 @@ public sealed class ReportsTests(ApiFactory factory)
 	{
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", "nonadmin-reports-courses");
 
 		var response = await client.GetAsync("/api/v1/reports/hours/courses.xlsx");
@@ -65,6 +68,7 @@ public sealed class ReportsTests(ApiFactory factory)
 	{
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", "nonadmin-reports-schema");
 
 		var response = await client.GetAsync("/api/v1/reports/schema.xlsx");
@@ -77,6 +81,7 @@ public sealed class ReportsTests(ApiFactory factory)
 	{
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", "nonadmin-reports-uvm");
 
 		var response = await client.GetAsync("/api/v1/reports/uvm-minimumstimetal.xlsx");

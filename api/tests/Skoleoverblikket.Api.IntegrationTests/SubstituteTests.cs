@@ -280,7 +280,7 @@ public sealed class SubstituteTests(ApiFactory factory)
 			new TimeOnly(13, 0), new TimeOnly(13, 45), sortOrder: 6);
 		using var parent = _factory.CreateClient();
 		parent.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		parent.DefaultRequestHeaders.Add("X-Test-Subject", "ingen-skolerolle");
+		parent.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
 
 		var response = await parent.GetAsync(
 			$"/api/v1/staff/available?isoYear={TestYear}&isoWeek={TestWeek}&weekday=1&timeSlotId={timeSlot.Id}");
@@ -310,6 +310,7 @@ public sealed class SubstituteTests(ApiFactory factory)
 
 		using var parent = _factory.CreateClient();
 		parent.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		parent.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
 		parent.DefaultRequestHeaders.Add("X-Test-Subject", "parent-sub-substitute");
 
 		var response = await parent.PutAsJsonAsync(

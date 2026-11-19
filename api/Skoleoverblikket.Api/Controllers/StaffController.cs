@@ -129,6 +129,10 @@ public sealed class StaffController(AppDbContext db, StaffService staffService, 
 			title: "Ikke tilladt",
 			detail: "Der skal altid være mindst én administrator. Tildel administratoradgang til en anden medarbejder først.",
 			statusCode: 409),
+		StaffService.ChangeResult.KeycloakFailed => Problem(
+			title: "Keycloak-synkronisering fejlede",
+			detail: "Administratoradgangen kunne ikke fjernes. Prøv igen.",
+			statusCode: 502),
 		_ => NotFound(),
 	};
 

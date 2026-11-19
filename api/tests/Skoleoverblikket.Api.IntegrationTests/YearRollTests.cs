@@ -26,6 +26,7 @@ public sealed class YearRollTests(ApiFactory factory)
 		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
 		_adminClient = _factory.CreateClient();
 		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		_adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 	}
 
 	[Test]
@@ -124,7 +125,7 @@ public sealed class YearRollTests(ApiFactory factory)
 	{
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Subject", "ingen-skolerolle");
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 
 		var response = await client.PostAsJsonAsync("/api/v1/classes/year-roll", new
 		{

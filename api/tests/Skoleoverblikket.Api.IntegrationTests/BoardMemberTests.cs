@@ -127,7 +127,7 @@ public sealed class BoardMemberTests(ApiFactory factory)
 	{
 		using var userClient = _factory.CreateClient();
 		userClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		userClient.DefaultRequestHeaders.Add("X-Test-Subject", "ingen-skolerolle");
+		userClient.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 
 		var response = await userClient.GetAsync("/api/v1/board-members");
 
@@ -171,7 +171,7 @@ public sealed class BoardMemberTests(ApiFactory factory)
 
 		using var userClient = _factory.CreateClient();
 		userClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		userClient.DefaultRequestHeaders.Add("X-Test-Subject", "ingen-skolerolle");
+		userClient.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 
 		var response = await userClient.PatchAsJsonAsync(
 			$"/api/v1/board-members/{member.Id}/teacher-data-access",
@@ -191,6 +191,7 @@ public sealed class BoardMemberTests(ApiFactory factory)
 
 		using var boardClient = _factory.CreateClient();
 		boardClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		boardClient.DefaultRequestHeaders.Add("X-Test-Roles", "board");
 		boardClient.DefaultRequestHeaders.Add("X-Test-Subject", boardSubject);
 
 		var response = await boardClient.GetAsync("/api/v1/board-members/me");

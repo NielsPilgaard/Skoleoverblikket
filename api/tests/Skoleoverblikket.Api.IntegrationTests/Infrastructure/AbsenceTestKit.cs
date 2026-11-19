@@ -94,7 +94,7 @@ public sealed class AbsenceTestKit(ApiFactory factory)
 
 	public async Task RestrictClassToAsync(Guid classId, Guid staffId)
 	{
-		using var admin = Client("admin", TestDataBuilder.DefaultSubject);
+		using var admin = Client("admin", "absence-permission-admin");
 		var response = await admin.PostAsJsonAsync($"/api/v1/classes/{classId}/permissions", new { staffId });
 		response.EnsureSuccessStatusCode();
 	}

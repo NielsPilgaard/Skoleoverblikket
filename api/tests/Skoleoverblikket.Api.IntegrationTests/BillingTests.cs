@@ -44,9 +44,10 @@ public sealed class BillingTests(ApiFactory factory)
 	[Before(Test)]
 	public async Task SetUp()
 	{
-		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId, adminSubject: "billing-admin-subject");
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
 		_adminClient = _factory.CreateClient();
 		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		_adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 		_adminClient.DefaultRequestHeaders.Add("X-Test-Subject", "billing-admin-subject");
 	}
 
@@ -151,6 +152,7 @@ public sealed class BillingTests(ApiFactory factory)
 	{
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", "nonadmin-billing");
 
 		var response = await client.GetAsync("/api/v1/billing/subscription");
@@ -448,6 +450,7 @@ public sealed class BillingTests(ApiFactory factory)
 	{
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", "nonadmin-switch");
 
 		var response = await client.PostAsJsonAsync(

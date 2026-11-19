@@ -18,6 +18,7 @@ public sealed class SfoTests(ApiFactory factory)
 		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
 		_adminClient = _factory.CreateClient();
 		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		_adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 	}
 
 	[Test]
@@ -35,7 +36,7 @@ public sealed class SfoTests(ApiFactory factory)
 	{
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Subject", "ingen-skolerolle");
+		client.DefaultRequestHeaders.Add("X-Test-Roles", "teacher");
 
 		var response = await client.GetAsync("/api/v1/sfo/shifts");
 

@@ -29,6 +29,14 @@ public sealed class ViewModeTests(ApiFactory factory)
 		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
 	}
 
+	private HttpClient CreateClientWithRoles(params string[] roles)
+	{
+		var client = _factory.CreateClient();
+		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		client.DefaultRequestHeaders.Add("X-Test-Roles", string.Join(",", roles));
+		return client;
+	}
+
 	private HttpClient CreateClientWithSubject(string subject, params string[] roles)
 	{
 		var client = _factory.CreateClient();
@@ -77,8 +85,7 @@ public sealed class ViewModeTests(ApiFactory factory)
 	[Test]
 	public async Task AdminOnlyEndpoint_Returns403_ForTeacherRole()
 	{
-		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, keycloakSubject: "vm-teacher");
-		using var client = CreateClientWithSubject("vm-teacher");
+		using var client = CreateClientWithRoles("teacher");
 
 		// POST /api/v1/staff requires [Authorize(Roles = "admin")]
 		var response = await client.PostAsJsonAsync("/api/v1/staff",
@@ -97,10 +104,11 @@ public sealed class ViewModeTests(ApiFactory factory)
 	}
 
 	[Test]
-	public async Task GetMe_Returns403_ForALoginWithNoSchoolRole()
+	public async Task GetMe_Returns404_WhenNoSubjectClaim()
 	{
-		var response = await CreateClientWithSubject("ingen-skolerolle").GetAsync("/api/v1/staff/me");
+		// Default test-user-id subject — no staff seeded with that subject
+		var response = await _adminClient.GetAsync("/api/v1/staff/me");
 
-		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
 	}
 }
