@@ -21,7 +21,7 @@ import {
 import { uploadFile, uploadBoardFile } from '../../api/upload'
 import type { CourseDto, FolderDto } from '../../api/client'
 import type { BoardFilesControllerBoardFolderDto } from '../../api/generated/types.gen'
-import keycloak from '../../auth/keycloak'
+import { useAuth } from '../../auth/useAuth'
 import { FileIcon, FolderIcon, ChevronIcon, UploadIcon, CloseIcon } from './fileIcons'
 import { formatBytes, formatDate } from './fileHelpers'
 import { DataTable } from '../ui/list'
@@ -688,7 +688,7 @@ export function FileSystemBrowser({
   variant = 'staff',
 }: FileSystemBrowserProps) {
   const qc = useQueryClient()
-  const isAdmin = keycloak.hasRealmRole('admin')
+  const { isAdmin } = useAuth()
 
   const [filterCourseId, setFilterCourseId] = useState<string>('')
   const [showUpload, setShowUpload] = useState(false)
