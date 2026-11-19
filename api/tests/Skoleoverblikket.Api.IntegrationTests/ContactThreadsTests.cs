@@ -44,7 +44,6 @@ public sealed class ContactThreadsTests(ApiFactory factory)
 	{
 		var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
 		return client;
 	}

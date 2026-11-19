@@ -29,7 +29,9 @@ public sealed class ImportTests(ApiFactory factory)
 	[Before(Test)]
 	public async Task SetUp()
 	{
-		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId, adminSubject: null);
+		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
+			name: "Hanne Sekretær", isAdmin: true, keycloakSubject: TestDataBuilder.DefaultSubject);
 		await TestDataBuilder.CreateTrialSubscriptionAsync(_factory.Services, _tenantId);
 		_adminClient = CreateClient(_tenantId, "admin");
 	}
@@ -119,8 +121,9 @@ public sealed class ImportTests(ApiFactory factory)
 		await Assert.That(second.StaffCreated).IsEqualTo(0);
 		await Assert.That(second.StaffUpdated).IsEqualTo(1);
 
+		// Karen, Ole and the importing admin.
 		var staff = await GetStaffAsync();
-		await Assert.That(staff.Count).IsEqualTo(2);
+		await Assert.That(staff.Count).IsEqualTo(3);
 		var karen = staff.Single(s => s.Email == "karen@skole.dk");
 		await Assert.That(karen.Name).IsEqualTo("Karen Jensen");
 		await Assert.That(karen.Phone).IsEqualTo("87654321");
@@ -133,9 +136,6 @@ public sealed class ImportTests(ApiFactory factory)
 	[Test]
 	public async Task Staff_CannotRemoveTheImportingAdminsOwnAdminRights()
 	{
-		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
-			name: "Hanne Sekretær", isAdmin: true, keycloakSubject: "test-user-id");
-
 		var result = await ImportStaffAsync(
 			new ImportsController.ImportStaffRow("Hanne Sekretær", null, null, null, "nej"));
 
@@ -235,7 +235,7 @@ public sealed class ImportTests(ApiFactory factory)
 	{
 		var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", roles);
+		client.DefaultRequestHeaders.Add("X-Test-Subject", roles == "admin" ? TestDataBuilder.DefaultSubject : "ingen-skolerolle");
 		return client;
 	}
 }

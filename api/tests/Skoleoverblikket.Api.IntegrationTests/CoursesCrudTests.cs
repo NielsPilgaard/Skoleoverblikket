@@ -32,7 +32,6 @@ public sealed class CoursesCrudTests(ApiFactory factory)
 		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
 		_client = _factory.CreateClient();
 		_client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		_client.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 	}
 
 	// -------------------------------------------------------------------------
@@ -113,7 +112,7 @@ public sealed class CoursesCrudTests(ApiFactory factory)
 	public async Task Create_NonAdmin_Returns403()
 	{
 		var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/courses");
-		request.Headers.Add("X-Test-Roles", "teacher");
+		request.Headers.Add("X-Test-Subject", "ingen-skolerolle");
 		request.Content = JsonContent.Create(
 			new CoursesController.UpsertCourseRequest("Matematik", null, null, null));
 
@@ -179,7 +178,7 @@ public sealed class CoursesCrudTests(ApiFactory factory)
 		var created = await CreateCourseAsync("Musik");
 
 		var request = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/courses/{created.Id}");
-		request.Headers.Add("X-Test-Roles", "teacher");
+		request.Headers.Add("X-Test-Subject", "ingen-skolerolle");
 		request.Content = JsonContent.Create(
 			new CoursesController.UpsertCourseRequest("Musik (ændret)", null, null, null));
 
@@ -219,7 +218,7 @@ public sealed class CoursesCrudTests(ApiFactory factory)
 		var created = await CreateCourseAsync("Historie");
 
 		var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/v1/courses/{created.Id}");
-		request.Headers.Add("X-Test-Roles", "teacher");
+		request.Headers.Add("X-Test-Subject", "ingen-skolerolle");
 
 		var response = await _client.SendAsync(request);
 
@@ -249,7 +248,6 @@ public sealed class CoursesCrudTests(ApiFactory factory)
 		await TestDataBuilder.CreateSchoolAsync(_factory.Services, secondTenantId, "Anden skole");
 		using var client2 = _factory.CreateClient();
 		client2.DefaultRequestHeaders.Add("X-Test-TenantId", secondTenantId.ToString());
-		client2.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 
 		var listResponse = await client2.GetAsync("/api/v1/courses");
 		await Assert.That(listResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);

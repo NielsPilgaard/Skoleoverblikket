@@ -84,8 +84,8 @@ public sealed class CachedReadsTests(ApiFactory factory)
 		await TestDataBuilder.CreateSchoolAsync(factory.Services, otherTenantId);
 		await TestDataBuilder.CreateStaffAsync(factory.Services, otherTenantId);
 
-		using var client = CreateClient(tenantId, "admin", "cache-onboarding-admin");
-		using var otherClient = CreateClient(otherTenantId, "admin", "cache-onboarding-other-admin");
+		using var client = CreateClient(tenantId, "admin", TestDataBuilder.DefaultSubject);
+		using var otherClient = CreateClient(otherTenantId, "admin", TestDataBuilder.DefaultSubject);
 
 		var before = await client.GetFromJsonAsync<SchoolsController.OnboardingStatusDto>("/api/v1/schools/onboarding-status", JsonOpts);
 		var other = await otherClient.GetFromJsonAsync<SchoolsController.OnboardingStatusDto>("/api/v1/schools/onboarding-status", JsonOpts);

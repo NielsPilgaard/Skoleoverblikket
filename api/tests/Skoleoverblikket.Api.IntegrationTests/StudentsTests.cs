@@ -144,7 +144,6 @@ public sealed class StudentsTests(ApiFactory factory)
 	{
 		var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 		return client;
 	}
 

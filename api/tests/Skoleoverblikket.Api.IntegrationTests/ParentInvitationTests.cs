@@ -35,10 +35,9 @@ public sealed class ParentInvitationTests(ApiFactory factory)
 	[Before(Test)]
 	public async Task SetUp()
 	{
-		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId, adminSubject: "admin-subject");
 		_adminClient = _factory.CreateClient();
 		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		_adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 		_adminClient.DefaultRequestHeaders.Add("X-Test-Subject", "admin-subject");
 	}
 
@@ -125,7 +124,6 @@ public sealed class ParentInvitationTests(ApiFactory factory)
 
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", acceptingSubject);
 
 		var response = await client.PostAsync(
@@ -156,7 +154,6 @@ public sealed class ParentInvitationTests(ApiFactory factory)
 		}));
 		using var admin = app.CreateClient();
 		admin.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		admin.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 		admin.DefaultRequestHeaders.Add("X-Test-Subject", "admin-subject");
 
 		var email = $"lone-{Guid.NewGuid():N}@test.dk";
@@ -179,7 +176,6 @@ public sealed class ParentInvitationTests(ApiFactory factory)
 
 		using var parentClient = app.CreateClient();
 		parentClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		parentClient.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
 		parentClient.DefaultRequestHeaders.Add("X-Test-Subject", keycloak.SubjectFor(email));
 		var accepted = await parentClient.PostAsync(
 			$"/api/v1/parent-invitations/accept?token={token}", content: null);
@@ -196,7 +192,6 @@ public sealed class ParentInvitationTests(ApiFactory factory)
 
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "parent");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", acceptingSubject);
 
 		var response = await client.PostAsync(

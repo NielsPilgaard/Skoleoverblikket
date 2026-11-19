@@ -39,10 +39,9 @@ public sealed class BillingProrationTests(RealStripeApiFactory factory)
 	[Before(Test)]
 	public async Task SetUp()
 	{
-		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId, adminSubject: "billing-proration-admin");
 		_adminClient = _factory.CreateClient();
 		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		_adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 		_adminClient.DefaultRequestHeaders.Add("X-Test-Subject", "billing-proration-admin");
 	}
 
