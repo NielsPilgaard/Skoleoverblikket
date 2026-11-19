@@ -9,15 +9,6 @@ public interface IKeycloakAdminApi
 	[Post("/users")]
 	Task<HttpResponseMessage> CreateUserAsync([Body] CreateUserRequest request, CancellationToken cancellationToken);
 
-	[Get("/roles/{roleName}")]
-	Task<RoleRepresentation> GetRoleAsync(string roleName, CancellationToken cancellationToken);
-
-	[Get("/roles/{roleName}/users")]
-	Task<IReadOnlyList<UserRepresentation>> GetRoleUsersAsync(string roleName, [AliasAs("first")] int first, [AliasAs("max")] int max, CancellationToken cancellationToken);
-
-	[Delete("/users/{userId}/role-mappings/realm")]
-	Task RemoveRoleMappingsAsync(string userId, [Body] IReadOnlyList<RoleRepresentation> roles, CancellationToken cancellationToken);
-
 	[Put("/users/{userId}")]
 	Task<HttpResponseMessage> UpdateUserAsync(string userId, [Body] UpdateUserRequest request, CancellationToken cancellationToken);
 
@@ -36,10 +27,6 @@ public interface IKeycloakAdminApi
 	[Put("/users/{userId}/reset-password")]
 	Task<HttpResponseMessage> ResetPasswordAsync(string userId, [Body] CredentialRepresentation credential, CancellationToken cancellationToken);
 }
-
-public record RoleRepresentation(
-	[property: JsonPropertyName("id")] string Id,
-	[property: JsonPropertyName("name")] string Name);
 
 public record CreateUserRequest(
 	[property: JsonPropertyName("username")] string Username,

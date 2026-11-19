@@ -36,10 +36,9 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 	[Before(Test)]
 	public async Task SetUp()
 	{
-		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId, adminSubject: "staamaal-admin-subject");
 		_adminClient = _factory.CreateClient();
 		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		_adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 		_adminClient.DefaultRequestHeaders.Add("X-Test-Subject", "staamaal-admin-subject");
 	}
 
@@ -84,7 +83,6 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 	{
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", "nonadmin-staamaal");
 
 		var response = await client.GetAsync("/api/v1/compliance-coverage/coverage");
@@ -98,7 +96,6 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 		await TestDataBuilder.CreateBoardMemberAsync(_factory.Services, _tenantId, "board-staamaal");
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "board");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", "board-staamaal");
 
 		var response = await client.GetAsync("/api/v1/compliance-coverage/coverage");
@@ -336,8 +333,6 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 	[Test]
 	public async Task CreateSnapshot_Admin_SavesVersionThatIsListed()
 	{
-		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Hanne Sekretær", isAdmin: true, keycloakSubject: "staamaal-admin-subject");
-
 		var response = await _adminClient.PostAsJsonAsync(
 			"/api/v1/compliance-coverage/snapshots",
 			new CreateCoverageSnapshotRequest { Reason = "Før tilsynsbesøg" });
@@ -351,8 +346,6 @@ public sealed class ComplianceCoverageTests(ApiFactory factory)
 	[Test]
 	public async Task CreateSnapshot_ReasonOver500Chars_Returns400()
 	{
-		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Hanne Sekretær", isAdmin: true, keycloakSubject: "staamaal-admin-subject");
-
 		var response = await _adminClient.PostAsJsonAsync(
 			"/api/v1/compliance-coverage/snapshots",
 			new CreateCoverageSnapshotRequest { Reason = new string('A', 501) });

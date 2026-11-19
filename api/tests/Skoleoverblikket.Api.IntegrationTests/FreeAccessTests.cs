@@ -38,7 +38,6 @@ public sealed class FreeAccessTests(ApiFactory factory)
 
 		_adminClient = factory.CreateClient();
 		_adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		_adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 
 		_superAdminClient = factory.CreateClient();
 		_superAdminClient.DefaultRequestHeaders.Add("X-Test-TenantId", Guid.NewGuid().ToString());

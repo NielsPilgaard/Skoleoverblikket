@@ -187,27 +187,16 @@ public sealed class MultiRoleTests(ApiFactory factory)
 	}
 
 	[Test]
-	public async Task Backfill_CopiesTheKeycloakAdminRoleToStaff()
+	public async Task KeycloakAdminRole_GrantsNothing()
 	{
-		var subject = $"gammel-admin-{Guid.NewGuid():N}";
-		await TestDataBuilder.CreateStaffAsync(_app.Services, _tenantId, "Gammel Admin", isAdmin: false, keycloakSubject: subject);
-		_keycloak.AdminRoleMembers.Add(subject);
+		var subject = $"tidligere-admin-{Guid.NewGuid():N}";
+		await TestDataBuilder.CreateStaffAsync(_app.Services, _tenantId, "Tidligere Admin", isAdmin: false, keycloakSubject: subject);
+		var client = Client(subject);
+		client.DefaultRequestHeaders.Remove("X-Test-Roles");
+		client.DefaultRequestHeaders.Add("X-Test-Roles", Roles.Admin);
 
-		// AdminRoleBackfillJob runs when a host starts.
-		await using var restarted = WithFakeKeycloak();
-		var client = Client(restarted, subject, null, _tenantId);
-
-		var isAdmin = false;
-		for (var attempt = 0; attempt < 50 && !isAdmin; attempt++)
-		{
-			isAdmin = (await GetMeAsync(client)).IsAdmin;
-			if (!isAdmin)
-			{
-				await Task.Delay(100);
-			}
-		}
-
-		await Assert.That(isAdmin).IsTrue();
+		await Assert.That((await GetMeAsync(client)).IsAdmin).IsFalse();
+		await Assert.That((await client.GetAsync("/api/v1/board-members")).StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────────────
@@ -229,7 +218,6 @@ public sealed class MultiRoleTests(ApiFactory factory)
 	{
 		var client = app.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "default-roles");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
 		if (actingAs is not null)
 		{
