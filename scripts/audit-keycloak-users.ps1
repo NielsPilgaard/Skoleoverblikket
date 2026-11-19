@@ -189,7 +189,7 @@ WHERE k.tenant_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM "Schools" s WHERE s."Id"::text = lower(k.tenant_id))
 ORDER BY k.created DESC;
 
-\echo '4. Logins with the Keycloak admin or superadmin role (admin still grants school admin in Phase A)'
+\echo '4. Logins with the Keycloak admin or superadmin role'
 SELECT k.email, k.realm_roles, s."Name" AS school,
        EXISTS (SELECT 1 FROM "Staff" st WHERE st."KeycloakSubject" = k.id AND st."IsAdmin") AS is_admin_in_db,
        k.id

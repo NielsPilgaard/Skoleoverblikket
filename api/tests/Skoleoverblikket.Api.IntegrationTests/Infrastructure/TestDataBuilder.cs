@@ -89,6 +89,28 @@ public static class TestDataBuilder
 		return member;
 	}
 
+	/// <summary>
+	/// A parent with a login and no children. ParentInvitationService creates the login through Keycloak,
+	/// which the default <see cref="ApiFactory"/> doesn't have, so the row is added directly.
+	/// </summary>
+	public static async Task<Parent> CreateParentAsync(
+		IServiceProvider services, Guid tenantId, string keycloakSubject, string name = "Karen Forælder")
+	{
+		using var scope = services.CreateScope();
+		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+		var parent = new Parent
+		{
+			Id = Guid.NewGuid(),
+			TenantId = tenantId,
+			Name = name,
+			Email = $"{keycloakSubject}@forælder.test",
+			KeycloakSubject = keycloakSubject,
+		};
+		db.Parents.Add(parent);
+		await db.SaveChangesAsync();
+		return parent;
+	}
+
 	public static async Task<CoursesController.CourseDto> CreateCourseAsync(
 		IServiceProvider services, Guid tenantId, string name = "Dansk", SubjectCategory? category = null)
 	{

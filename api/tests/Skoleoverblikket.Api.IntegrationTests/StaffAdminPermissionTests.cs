@@ -99,12 +99,7 @@ public sealed class StaffAdminPermissionTests(ApiFactory factory)
 			$"/api/v1/staff/{staff.Id}/admin-permission",
 			new { isAdmin = true });
 
-		// Keycloak call will fail (no real Keycloak) — expect 502 when sync is attempted,
-		// which proves the endpoint reached the Keycloak sync path.
-		// If you want to verify DB persistence without Keycloak, use a seeded admin already.
-		await Assert.That(
-			response.StatusCode == HttpStatusCode.OK ||
-			response.StatusCode == HttpStatusCode.BadGateway).IsTrue();
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 	}
 
 	[Test]

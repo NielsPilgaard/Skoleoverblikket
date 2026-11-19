@@ -33,7 +33,7 @@ public sealed class ImportTests(ApiFactory factory)
 		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
 			name: "Hanne Sekretær", isAdmin: true, keycloakSubject: TestDataBuilder.DefaultSubject);
 		await TestDataBuilder.CreateTrialSubscriptionAsync(_factory.Services, _tenantId);
-		_adminClient = CreateClient(_tenantId, "admin");
+		_adminClient = CreateClient(_tenantId, TestDataBuilder.DefaultSubject);
 	}
 
 	[Test]
@@ -91,7 +91,7 @@ public sealed class ImportTests(ApiFactory factory)
 		var parent = new ImportsController.ImportParentRow("Mette Hansen", "mette@example.dk", null, null, null, null);
 		await ImportStudentsAsync(new ImportsController.ImportStudentRow("1.a", "Emma Hansen", parent, null));
 
-		var otherClient = CreateClient(otherTenantId, "admin");
+		var otherClient = CreateClient(otherTenantId, TestDataBuilder.DefaultSubject);
 		var response = await otherClient.PostAsJsonAsync("/api/v1/imports/students-and-parents",
 			new ImportsController.ImportStudentsAndParentsRequest(
 				[new ImportsController.ImportStudentRow("1.a", "Emma Hansen", parent with { Name = "Mette H." }, null)]));
@@ -195,7 +195,8 @@ public sealed class ImportTests(ApiFactory factory)
 	[Test]
 	public async Task NonAdminStaff_GetsForbidden()
 	{
-		var staffClient = CreateClient(_tenantId, "user");
+		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, keycloakSubject: "import-non-admin");
+		var staffClient = CreateClient(_tenantId, "import-non-admin");
 
 		var response = await staffClient.PostAsJsonAsync("/api/v1/imports/rooms",
 			new ImportsController.ImportRoomsRequest([new ImportsController.ImportRoomRow("Musiklokale", null, null)]));
@@ -231,11 +232,11 @@ public sealed class ImportTests(ApiFactory factory)
 	private async Task<List<StaffController.StaffDto>> GetStaffAsync() =>
 		(await _adminClient.GetFromJsonAsync<List<StaffController.StaffDto>>("/api/v1/staff", JsonOpts))!;
 
-	private HttpClient CreateClient(Guid tenantId, string roles)
+	private HttpClient CreateClient(Guid tenantId, string subject)
 	{
 		var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Subject", roles == "admin" ? TestDataBuilder.DefaultSubject : "ingen-skolerolle");
+		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
 		return client;
 	}
 }
