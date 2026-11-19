@@ -45,7 +45,6 @@ public static class ServicesExtensions
 		services.AddHostedService<AbsenceRetentionJob>();
 		services.AddHostedService<SchoolRetentionJob>();
 		services.AddHostedService<WelcomeEmailJob>();
-		services.AddHostedService<AdminRoleBackfillJob>();
 
 		services.AddOptions<ApplicationOptions>()
 			.BindConfiguration(ApplicationOptions.SectionName)

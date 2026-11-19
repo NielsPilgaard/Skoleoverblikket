@@ -238,6 +238,8 @@ public sealed class WeekPlanTests(ApiFactory factory)
 		var newer = await TestDataBuilder.CreateSchoolFileAsync(_factory.Services, _tenantId, "nyere.pdf");
 		var filesUrl = $"/api/v1/classes/{classId}/week-plan/slots/{slotId}/files";
 
+		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Rikke Lærer", keycloakSubject: "recent-user");
+		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, "Ole Lærer", keycloakSubject: "other-user");
 		_client.DefaultRequestHeaders.Add("X-Test-Subject", "recent-user");
 		await _client.PostAsJsonAsync(filesUrl, new WeekPlanController.AddFileToSlotRequest(older.Id));
 		await _client.PostAsJsonAsync(filesUrl, new WeekPlanController.AddFileToSlotRequest(newer.Id));
@@ -253,7 +255,7 @@ public sealed class WeekPlanTests(ApiFactory factory)
 
 		var otherTenant = _factory.CreateClient();
 		var otherTenantId = Guid.NewGuid();
-		await TestDataBuilder.CreateSchoolAsync(_factory.Services, otherTenantId);
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, otherTenantId, adminSubject: "recent-user");
 		otherTenant.DefaultRequestHeaders.Add("X-Test-TenantId", otherTenantId.ToString());
 		otherTenant.DefaultRequestHeaders.Add("X-Test-Subject", "recent-user");
 		var acrossTenants = await otherTenant.GetFromJsonAsync<List<WeekPlanService.RecentFileDto>>("/api/v1/files/recent", JsonOpts);

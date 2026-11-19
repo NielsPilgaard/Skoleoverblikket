@@ -31,11 +31,10 @@ public sealed class RoomScheduleTests(ApiFactory factory)
 	[Before(Test)]
 	public async Task SetUp()
 	{
-		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId, adminSubject: "room-schedule-admin");
 		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, keycloakSubject: "room-schedule-user");
 		_client = _factory.CreateClient();
 		_client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		_client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		_client.DefaultRequestHeaders.Add("X-Test-Subject", "room-schedule-user");
 	}
 
@@ -72,7 +71,6 @@ public sealed class RoomScheduleTests(ApiFactory factory)
 		// Place the schema slot in this room via the API (admin client)
 		using var adminClient = _factory.CreateClient();
 		adminClient.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		adminClient.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 		adminClient.DefaultRequestHeaders.Add("X-Test-Subject", "room-schedule-admin");
 		var upsertResp = await adminClient.PutAsJsonAsync(
 			$"/api/v1/classes/{klass.Id}/schemas/{schema.Id}/slots",

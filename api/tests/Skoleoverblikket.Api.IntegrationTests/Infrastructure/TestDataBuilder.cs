@@ -15,7 +15,15 @@ namespace Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 /// </summary>
 public static class TestDataBuilder
 {
-	public static async Task<School> CreateSchoolAsync(IServiceProvider services, Guid tenantId, string name = "Teststole")
+	/// <summary>The login a test client uses when it sends no X-Test-Subject.</summary>
+	public const string DefaultSubject = "test-user-id";
+
+	/// <summary>
+	/// A school whose admin is <paramref name="adminSubject"/>: roles come from Staff rows, so the default
+	/// test client is admin through this row. Pass null for a school with no admin login.
+	/// </summary>
+	public static async Task<School> CreateSchoolAsync(
+		IServiceProvider services, Guid tenantId, string name = "Teststole", string? adminSubject = DefaultSubject)
 	{
 		using var scope = services.CreateScope();
 		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -27,6 +35,11 @@ public static class TestDataBuilder
 		};
 		db.Schools.Add(school);
 		await db.SaveChangesAsync();
+		if (adminSubject is not null)
+		{
+			await CreateStaffAsync(services, tenantId, "Test Admin", isAdmin: true, keycloakSubject: adminSubject);
+		}
+
 		return school;
 	}
 
@@ -74,6 +87,28 @@ public static class TestDataBuilder
 		db.BoardMembers.Add(member);
 		await db.SaveChangesAsync();
 		return member;
+	}
+
+	/// <summary>
+	/// A parent with a login and no children. ParentInvitationService creates the login through Keycloak,
+	/// which the default <see cref="ApiFactory"/> doesn't have, so the row is added directly.
+	/// </summary>
+	public static async Task<Parent> CreateParentAsync(
+		IServiceProvider services, Guid tenantId, string keycloakSubject, string name = "Karen Forælder")
+	{
+		using var scope = services.CreateScope();
+		var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+		var parent = new Parent
+		{
+			Id = Guid.NewGuid(),
+			TenantId = tenantId,
+			Name = name,
+			Email = $"{keycloakSubject}@forælder.test",
+			KeycloakSubject = keycloakSubject,
+		};
+		db.Parents.Add(parent);
+		await db.SaveChangesAsync();
+		return parent;
 	}
 
 	public static async Task<CoursesController.CourseDto> CreateCourseAsync(

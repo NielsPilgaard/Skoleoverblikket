@@ -41,7 +41,6 @@ public sealed class ClassPermissionsTests(ApiFactory factory)
 	{
 		var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
 		return client;
 	}
@@ -50,7 +49,7 @@ public sealed class ClassPermissionsTests(ApiFactory factory)
 	{
 		var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
+		client.DefaultRequestHeaders.Add("X-Test-Subject", "ingen-skolerolle");
 		return client;
 	}
 
@@ -302,7 +301,6 @@ public sealed class ClassPermissionsTests(ApiFactory factory)
 
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
 
 		var response = await client.GetAsync("/api/v1/classes");
@@ -344,7 +342,6 @@ public sealed class ClassPermissionsTests(ApiFactory factory)
 
 		using var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", "user");
 		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
 
 		var response = await client.GetAsync("/api/v1/classes");

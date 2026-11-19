@@ -53,7 +53,6 @@ public sealed class InvitationPasswordTests(ApiFactory factory)
 
 		_admin = _app.CreateClient();
 		_admin.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
-		_admin.DefaultRequestHeaders.Add("X-Test-Roles", "default-roles");
 		_admin.DefaultRequestHeaders.Add("X-Test-Subject", adminSubject);
 		_anonymous = _app.CreateClient();
 	}

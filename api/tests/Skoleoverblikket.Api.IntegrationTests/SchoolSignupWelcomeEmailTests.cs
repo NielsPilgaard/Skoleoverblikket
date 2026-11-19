@@ -93,8 +93,7 @@ public sealed class SchoolSignupWelcomeEmailTests(ApiFactory factory)
 
 		var admin = factory.CreateClient();
 		admin.DefaultRequestHeaders.Add("X-Test-TenantId", created!.Id.ToString());
-		admin.DefaultRequestHeaders.Add("X-Test-Roles", "admin");
-		admin.DefaultRequestHeaders.Add("X-Test-Subject", "settings-admin");
+		admin.DefaultRequestHeaders.Add("X-Test-Subject", _keycloak.SubjectFor(email));
 		var update = await admin.PutAsJsonAsync("/api/v1/schools/settings",
 			new { name = "Velkomst Friskole", contactEmail = office });
 		await Assert.That(update.StatusCode).IsEqualTo(HttpStatusCode.OK);

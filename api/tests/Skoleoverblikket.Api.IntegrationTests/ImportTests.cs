@@ -29,9 +29,11 @@ public sealed class ImportTests(ApiFactory factory)
 	[Before(Test)]
 	public async Task SetUp()
 	{
-		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId);
+		await TestDataBuilder.CreateSchoolAsync(_factory.Services, _tenantId, adminSubject: null);
+		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
+			name: "Hanne Sekretær", isAdmin: true, keycloakSubject: TestDataBuilder.DefaultSubject);
 		await TestDataBuilder.CreateTrialSubscriptionAsync(_factory.Services, _tenantId);
-		_adminClient = CreateClient(_tenantId, "admin");
+		_adminClient = CreateClient(_tenantId, TestDataBuilder.DefaultSubject);
 	}
 
 	[Test]
@@ -89,7 +91,7 @@ public sealed class ImportTests(ApiFactory factory)
 		var parent = new ImportsController.ImportParentRow("Mette Hansen", "mette@example.dk", null, null, null, null);
 		await ImportStudentsAsync(new ImportsController.ImportStudentRow("1.a", "Emma Hansen", parent, null));
 
-		var otherClient = CreateClient(otherTenantId, "admin");
+		var otherClient = CreateClient(otherTenantId, TestDataBuilder.DefaultSubject);
 		var response = await otherClient.PostAsJsonAsync("/api/v1/imports/students-and-parents",
 			new ImportsController.ImportStudentsAndParentsRequest(
 				[new ImportsController.ImportStudentRow("1.a", "Emma Hansen", parent with { Name = "Mette H." }, null)]));
@@ -119,8 +121,9 @@ public sealed class ImportTests(ApiFactory factory)
 		await Assert.That(second.StaffCreated).IsEqualTo(0);
 		await Assert.That(second.StaffUpdated).IsEqualTo(1);
 
+		// Karen, Ole and the importing admin.
 		var staff = await GetStaffAsync();
-		await Assert.That(staff.Count).IsEqualTo(2);
+		await Assert.That(staff.Count).IsEqualTo(3);
 		var karen = staff.Single(s => s.Email == "karen@skole.dk");
 		await Assert.That(karen.Name).IsEqualTo("Karen Jensen");
 		await Assert.That(karen.Phone).IsEqualTo("87654321");
@@ -133,9 +136,6 @@ public sealed class ImportTests(ApiFactory factory)
 	[Test]
 	public async Task Staff_CannotRemoveTheImportingAdminsOwnAdminRights()
 	{
-		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId,
-			name: "Hanne Sekretær", isAdmin: true, keycloakSubject: "test-user-id");
-
 		var result = await ImportStaffAsync(
 			new ImportsController.ImportStaffRow("Hanne Sekretær", null, null, null, "nej"));
 
@@ -195,7 +195,8 @@ public sealed class ImportTests(ApiFactory factory)
 	[Test]
 	public async Task NonAdminStaff_GetsForbidden()
 	{
-		var staffClient = CreateClient(_tenantId, "user");
+		await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId, keycloakSubject: "import-non-admin");
+		var staffClient = CreateClient(_tenantId, "import-non-admin");
 
 		var response = await staffClient.PostAsJsonAsync("/api/v1/imports/rooms",
 			new ImportsController.ImportRoomsRequest([new ImportsController.ImportRoomRow("Musiklokale", null, null)]));
@@ -231,11 +232,11 @@ public sealed class ImportTests(ApiFactory factory)
 	private async Task<List<StaffController.StaffDto>> GetStaffAsync() =>
 		(await _adminClient.GetFromJsonAsync<List<StaffController.StaffDto>>("/api/v1/staff", JsonOpts))!;
 
-	private HttpClient CreateClient(Guid tenantId, string roles)
+	private HttpClient CreateClient(Guid tenantId, string subject)
 	{
 		var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", roles);
+		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
 		return client;
 	}
 }

@@ -219,7 +219,7 @@ public sealed class StatsControllerTests(ApiFactory factory)
 		await ReportAbsenceAsync(parentClient, student.Id, AbsenceCategory.ExtraordinaryLeave, dayAfter);
 		await ReportAbsenceAsync(parentClient, student.Id, AbsenceCategory.Illness, AbsenceTestKit.SickDay());
 
-		using var client = CreateClient(tenantId, "admin", "stats-admin");
+		using var client = CreateClient(tenantId, "admin", TestDataBuilder.DefaultSubject);
 		var stats = await client.GetFromJsonAsync<StatsController.DashboardStats>(
 			"/api/v1/stats/dashboard", JsonOpts);
 
@@ -259,7 +259,7 @@ public sealed class StatsControllerTests(ApiFactory factory)
 			await db.SaveChangesAsync();
 		}
 
-		using var client = CreateClient(tenantId, "admin", "stats-admin-schemas");
+		using var client = CreateClient(tenantId, "admin", TestDataBuilder.DefaultSubject);
 		var stats = await client.GetFromJsonAsync<StatsController.DashboardStats>(
 			"/api/v1/stats/dashboard", JsonOpts);
 
@@ -290,7 +290,7 @@ public sealed class StatsControllerTests(ApiFactory factory)
 
 	private async Task CreateClassWithoutSchemaAsync(Guid tenantId, string name)
 	{
-		using var admin = CreateClient(tenantId, "admin", "stats-admin-classes");
+		using var admin = CreateClient(tenantId, "admin", TestDataBuilder.DefaultSubject);
 		var response = await admin.PostAsJsonAsync("/api/v1/classes", new ClassesController.UpsertClassRequest(name, null, null));
 		response.EnsureSuccessStatusCode();
 	}
@@ -300,7 +300,7 @@ public sealed class StatsControllerTests(ApiFactory factory)
 	{
 		var tenantId = await CreateTenantAsync();
 
-		using var client = CreateClient(tenantId, "admin", "stats-admin-empty");
+		using var client = CreateClient(tenantId, "admin", TestDataBuilder.DefaultSubject);
 		var stats = await client.GetFromJsonAsync<StatsController.DashboardStats>(
 			"/api/v1/stats/dashboard", JsonOpts);
 
@@ -315,7 +315,7 @@ public sealed class StatsControllerTests(ApiFactory factory)
 		await CreateWindowAsync(tenantId, isOpen: true, deadlineInDays: 30, title: "Senere frist");
 		var earliest = await CreateWindowAsync(tenantId, isOpen: true, deadlineInDays: 7, title: "Tidligste frist");
 
-		using var client = CreateClient(tenantId, "admin", "stats-admin-window");
+		using var client = CreateClient(tenantId, "admin", TestDataBuilder.DefaultSubject);
 		var stats = await client.GetFromJsonAsync<StatsController.DashboardStats>(
 			"/api/v1/stats/dashboard", JsonOpts);
 
@@ -331,7 +331,7 @@ public sealed class StatsControllerTests(ApiFactory factory)
 		await CreateWindowAsync(tenantId, isOpen: false, deadlineInDays: 7);
 		await CreateWindowAsync(tenantId, isOpen: true, deadlineInDays: -1);
 
-		using var client = CreateClient(tenantId, "admin", "stats-admin-closed");
+		using var client = CreateClient(tenantId, "admin", TestDataBuilder.DefaultSubject);
 		var stats = await client.GetFromJsonAsync<StatsController.DashboardStats>(
 			"/api/v1/stats/dashboard", JsonOpts);
 
@@ -346,7 +346,7 @@ public sealed class StatsControllerTests(ApiFactory factory)
 		var tenantId = await CreateTenantAsync();
 		await CreateSubscriptionWithoutModulesAsync(tenantId);
 
-		using var client = CreateClient(tenantId, "admin", "stats-admin-nomodule");
+		using var client = CreateClient(tenantId, "admin", TestDataBuilder.DefaultSubject);
 		var stats = await client.GetFromJsonAsync<StatsController.DashboardStats>(
 			"/api/v1/stats/dashboard", JsonOpts);
 

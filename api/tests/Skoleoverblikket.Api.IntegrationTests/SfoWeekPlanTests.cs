@@ -137,7 +137,7 @@ public sealed class SfoWeekPlanTests(ApiFactory factory)
 	{
 		var client = _factory.CreateClient();
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", tenantId.ToString());
-		client.DefaultRequestHeaders.Add("X-Test-Roles", roles);
+		client.DefaultRequestHeaders.Add("X-Test-Subject", roles == "admin" ? TestDataBuilder.DefaultSubject : "ingen-skolerolle");
 		return client;
 	}
 

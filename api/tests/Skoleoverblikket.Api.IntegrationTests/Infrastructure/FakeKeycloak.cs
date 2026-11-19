@@ -19,9 +19,6 @@ public sealed class FakeKeycloak : IKeycloakAdminApi, IKeycloakTokenApi
 	/// <summary>Logins the API deleted.</summary>
 	public ConcurrentBag<string> DeletedUserIds { get; } = [];
 
-	/// <summary>Logins holding the Keycloak 'admin' realm role, for the Phase A backfill.</summary>
-	public ConcurrentBag<string> AdminRoleMembers { get; } = [];
-
 	/// <summary>
 	/// Registers an existing login with a password, so creating another user with this email returns 409.
 	/// Returns its subject. <paramref name="tenantId"/> is the school the login belongs to.
@@ -58,17 +55,6 @@ public sealed class FakeKeycloak : IKeycloakAdminApi, IKeycloakTokenApi
 		response.Headers.Location = new Uri($"http://keycloak.test/admin/realms/test/users/{id}");
 		return Task.FromResult(response);
 	}
-
-	public Task<RoleRepresentation> GetRoleAsync(string roleName, CancellationToken cancellationToken) =>
-		Task.FromResult(new RoleRepresentation(roleName + "-id", roleName));
-
-	public Task<IReadOnlyList<UserRepresentation>> GetRoleUsersAsync(string roleName, int first, int max, CancellationToken cancellationToken) =>
-		Task.FromResult<IReadOnlyList<UserRepresentation>>(roleName == Roles.Admin
-			? AdminRoleMembers.Skip(first).Take(max).Select(id => new UserRepresentation(id, null)).ToList()
-			: []);
-
-	public Task RemoveRoleMappingsAsync(string userId, IReadOnlyList<RoleRepresentation> roles, CancellationToken cancellationToken) =>
-		Task.CompletedTask;
 
 	public Task<HttpResponseMessage> UpdateUserAsync(string userId, UpdateUserRequest request, CancellationToken cancellationToken) =>
 		Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));

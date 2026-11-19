@@ -38,10 +38,6 @@ public enum ActingAsError
 /// <c>realm_access</c>. A person can hold several school roles; the request acts as exactly one, chosen
 /// by the <c>X-Acting-As</c> header or the default order staff, parent, board. <c>admin</c> is only
 /// kept when acting as staff. See docs/AUTHORIZATION.md, "Roles".
-/// <para>
-/// Phase A of task 61: Keycloak's <c>admin</c> role still counts alongside <c>Staff.IsAdmin</c> until
-/// <see cref="AdminRoleBackfillJob"/> has copied it to the database in production.
-/// </para>
 /// </summary>
 public sealed class SchoolRolesClaimsTransformer(
 	AppDbContext db,
@@ -107,8 +103,7 @@ public sealed class SchoolRolesClaimsTransformer(
 
 	private async Task<SchoolRoles> ResolveAsync(ClaimsPrincipal principal, string? subject, Guid? tenantId, string? actingAsHeader)
 	{
-		var tokenRoles = ReadRealmRoles(principal);
-		var isSuperAdmin = tokenRoles.Contains(Roles.SuperAdmin);
+		var isSuperAdmin = ReadRealmRoles(principal).Contains(Roles.SuperAdmin);
 		if (string.IsNullOrEmpty(subject) || tenantId is not { } schoolId)
 		{
 			return new SchoolRoles(subject, tenantId, [], null, false, isSuperAdmin, null);
@@ -134,14 +129,9 @@ public sealed class SchoolRolesClaimsTransformer(
 			return new SchoolRoles(subject, tenantId, [], null, false, isSuperAdmin, null);
 		}
 
-		// Phase A: Keycloak admin still counts, but only for someone who is staff or holds no other school
-		// role (an admin from before signup created a Staff row). A former teacher who is still a parent
-		// keeps the login but must not keep admin through a leftover Keycloak role.
-		var keycloakAdmin = tokenRoles.Contains(Roles.Admin) && (rows.Staff || (!rows.Parent && !rows.Board));
-		var isAdmin = rows.StaffAdmin || keycloakAdmin;
-
+		var isAdmin = rows.StaffAdmin;
 		var held = new List<string>();
-		if (rows.Staff || isAdmin)
+		if (rows.Staff)
 		{
 			held.Add(Roles.Staff);
 		}
