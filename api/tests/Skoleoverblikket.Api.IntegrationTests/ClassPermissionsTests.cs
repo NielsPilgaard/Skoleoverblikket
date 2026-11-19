@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Skoleoverblikket.Api.Controllers;
+using Skoleoverblikket.Api.Services;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using Skoleoverblikket.Api.Models;
 
@@ -164,7 +165,7 @@ public sealed class ClassPermissionsTests(ApiFactory factory)
 		var listResponse = await _adminClient.GetAsync($"/api/v1/classes/{klass.Id}/permissions");
 		await Assert.That(listResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-		var list = await listResponse.Content.ReadFromJsonAsync<List<ClassPermissionsController.ClassPermissionDto>>(JsonOpts);
+		var list = await listResponse.Content.ReadFromJsonAsync<List<ClassPermissionDto>>(JsonOpts);
 		await Assert.That(list!.Any(p => p.StaffId == staff.Id)).IsTrue();
 	}
 
@@ -184,6 +185,35 @@ public sealed class ClassPermissionsTests(ApiFactory factory)
 			new { staffId = staff.Id });
 
 		await Assert.That(duplicate.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+	}
+
+	[Test]
+	public async Task GrantPermission_Returns404WithDetail_ForUnknownStaff()
+	{
+		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(
+			_factory.Services, _tenantId);
+
+		var response = await _adminClient.PostAsJsonAsync(
+			$"/api/v1/classes/{klass.Id}/permissions",
+			new { staffId = Guid.NewGuid() });
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+		await Assert.That(await response.Content.ReadAsStringAsync()).Contains("Medarbejderen findes ikke");
+	}
+
+	[Test]
+	public async Task GrantPermission_ConcurrentDuplicates_GrantOnceAndConflictOtherwise()
+	{
+		var staff = await TestDataBuilder.CreateStaffAsync(_factory.Services, _tenantId);
+		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(
+			_factory.Services, _tenantId);
+
+		var responses = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => _adminClient.PostAsJsonAsync(
+			$"/api/v1/classes/{klass.Id}/permissions",
+			new { staffId = staff.Id })));
+
+		await Assert.That(responses.Count(r => r.StatusCode == HttpStatusCode.Created)).IsEqualTo(1);
+		await Assert.That(responses.Count(r => r.StatusCode == HttpStatusCode.Conflict)).IsEqualTo(4);
 	}
 
 	[Test]
