@@ -23,5 +23,9 @@ RUN mkdir /prod && for f in /realms/*.json; do \
 # runs against a new Keycloak before it ships. Keep the Aspire AppHost on the same digest.
 FROM quay.io/keycloak/keycloak:26.8.2@sha256:c68e286cacd87b942ac1939a0a1481461109d6acd3a57dc496969a319a76bbf0
 
+# The realm's "email" event listener tells users when their password or two-factor changes (task 64).
+# Only those events: by default it also mails on every failed login.
+ENV KC_SPI_EVENTS_LISTENER__EMAIL__INCLUDE_EVENTS=UPDATE_CREDENTIAL,REMOVE_CREDENTIAL
+
 COPY --from=realm /prod/ /opt/keycloak/data/import/
 COPY themes/ /opt/keycloak/themes/
