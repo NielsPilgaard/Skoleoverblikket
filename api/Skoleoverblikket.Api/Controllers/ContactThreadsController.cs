@@ -16,6 +16,7 @@ namespace Skoleoverblikket.Api.Controllers;
 public sealed class ContactThreadsController(
 	AppDbContext db,
 	ITenantContext tenantContext,
+	ContactThreadService contactThreads,
 	INotificationService notificationService,
 	ILogger<ContactThreadsController> logger) : ControllerBase
 {
@@ -46,50 +47,8 @@ public sealed class ContactThreadsController(
 	public record NotifyStaffOptionDto(Guid Id, string Name, bool IsRelevant);
 
 	[HttpGet]
-	public async Task<ActionResult<IReadOnlyList<ContactThreadDto>>> GetThreads(CancellationToken cancellationToken)
-	{
-		var sub = User.GetKeycloakSubject();
-		var isParent = User.IsInRole(Roles.Parent);
-
-		IQueryable<ContactThread> query = db.ContactThreads
-			.AsNoTracking()
-			.Include(t => t.Student)
-			.Include(t => t.Messages);
-
-		if (isParent)
-		{
-			var parent = await db.Parents
-				.AsNoTracking()
-				.FirstOrDefaultAsync(p => p.KeycloakSubject == sub, cancellationToken);
-
-			if (parent is null)
-			{
-				return Ok(Array.Empty<ContactThreadDto>());
-			}
-
-			query = query.Where(t => t.Student != null && t.Student.Parents.Any(p => p.Id == parent.Id));
-		}
-
-		var callerSenderType = isParent ? SenderType.Parent : SenderType.Staff;
-
-		var threads = await query.ToListAsync(cancellationToken);
-
-		var result = threads.Select(t =>
-		{
-			var lastMsg = t.Messages.OrderByDescending(m => m.SentAt).FirstOrDefault();
-			var unread = t.Messages.Count(m => m.ReadAt == null && m.SenderType != callerSenderType);
-			return new ContactThreadDto(
-				t.Id,
-				t.StudentId,
-				t.Student?.Name ?? string.Empty,
-				lastMsg?.Body,
-				lastMsg?.SentAt,
-				lastMsg?.SenderType,
-				unread);
-		}).ToList();
-
-		return Ok(result);
-	}
+	public async Task<ActionResult<IReadOnlyList<ContactThreadDto>>> GetThreads(CancellationToken cancellationToken) =>
+		Ok(await contactThreads.GetThreadsAsync(User.GetKeycloakSubject(), User.IsInRole(Roles.Parent), cancellationToken));
 
 	[HttpGet("{threadId:guid}/messages")]
 	public async Task<ActionResult<PagedResult<ContactMessageDto>>> GetMessages(
