@@ -707,7 +707,7 @@
     },
     {
       "id": "78412766-b9dd-4ebe-a99e-c9d645f25071",
-      "alias": "Superadmin kræver tofaktor",
+      "alias": "Superadmin requires two-factor",
       "description": "Superadmin must use an authenticator app. Forces setup when the 2FA sub-flow did not run.",
       "providerId": "basic-flow",
       "topLevel": false,
@@ -1298,10 +1298,10 @@
         },
         {
           "authenticatorFlow": true,
-          "requirement": "CONDITIONAL",
+          "requirement": "DISABLED",
           "priority": 21,
           "autheticatorFlow": true,
-          "flowAlias": "Superadmin kræver tofaktor",
+          "flowAlias": "Superadmin requires two-factor",
           "userSetupAllowed": false
         }
       ]
