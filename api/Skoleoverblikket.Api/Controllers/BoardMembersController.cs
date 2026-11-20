@@ -13,7 +13,7 @@ namespace Skoleoverblikket.Api.Controllers;
 [Route("api/v1/board-members")]
 [Authorize]
 [RequiresModule(SubscriptionModule.BoardModule)]
-public sealed class BoardMembersController(BoardMemberInvitationService boardMembers) : ControllerBase
+public sealed class BoardMembersController(BoardMemberInvitationService boardMembers, AccountService accounts) : ControllerBase
 {
 	public record BoardMemberDto(
 		Guid Id,
@@ -63,6 +63,14 @@ public sealed class BoardMembersController(BoardMemberInvitationService boardMem
 			title: "E-mailadressen bruges på en anden skole",
 			detail: "Denne e-mail bruges allerede på en anden skole. Brug en anden e-mailadresse.",
 			statusCode: StatusCodes.Status409Conflict);
+
+	/// <summary>Turns off two-factor for a board member who lost their phone and recovery codes.</summary>
+	[HttpPost("{id:guid}/reset-two-factor")]
+	[Authorize(Roles = Roles.Admin)]
+	[ProducesResponseType(StatusCodes.Status204NoContent)]
+	public async Task<IActionResult> ResetTwoFactor(Guid id, CancellationToken cancellationToken) =>
+		AccountController.ResetResponse(this, await accounts.ResetTwoFactorAsync(
+			AccountService.PersonKind.BoardMember, id, User.GetKeycloakSubject() ?? "", cancellationToken));
 
 	[HttpDelete("{id:guid}")]
 	[Authorize(Roles = Roles.Admin)]

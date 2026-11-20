@@ -123,6 +123,95 @@ public sealed class KeycloakAdminService(IKeycloakAdminApi adminApi, IKeycloakTo
 		}
 	}
 
+	/// <summary>The login's credentials (password, otp, webauthn, recovery codes), without secrets.</summary>
+	public async Task<IReadOnlyList<CredentialSummary>> GetCredentialsAsync(string keycloakUserId, CancellationToken cancellationToken)
+	{
+		try
+		{
+			return await adminApi.GetCredentialsAsync(keycloakUserId, cancellationToken);
+		}
+		catch (ApiException ex)
+		{
+			throw new KeycloakException($"Failed to read credentials of Keycloak user {keycloakUserId}: {ex.StatusCode}");
+		}
+	}
+
+	/// <summary>The login's email, or null when the login is gone.</summary>
+	public async Task<string?> GetEmailAsync(string keycloakUserId, CancellationToken cancellationToken)
+	{
+		try
+		{
+			return (await adminApi.GetUserAsync(keycloakUserId, cancellationToken)).Email;
+		}
+		catch (ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+		{
+			return null;
+		}
+		catch (ApiException ex)
+		{
+			throw new KeycloakException($"Failed to read Keycloak user {keycloakUserId}: {ex.StatusCode}");
+		}
+	}
+
+	/// <summary>The login's subject for an email, or null when there is no such login.</summary>
+	public async Task<string?> FindUserIdByEmailAsync(string email, CancellationToken cancellationToken)
+	{
+		try
+		{
+			return (await adminApi.GetUsersByEmailAsync(email, exact: true, cancellationToken)).FirstOrDefault()?.Id;
+		}
+		catch (ApiException ex)
+		{
+			throw new KeycloakException($"Failed to search Keycloak users: {ex.StatusCode}");
+		}
+	}
+
+	/// <summary>The identity provider (e.g. "microsoft") of a login made through one, or null.</summary>
+	public async Task<string?> GetExternalLoginAsync(string keycloakUserId, CancellationToken cancellationToken)
+	{
+		try
+		{
+			return (await adminApi.GetFederatedIdentitiesAsync(keycloakUserId, cancellationToken)).FirstOrDefault()?.IdentityProvider;
+		}
+		catch (ApiException ex)
+		{
+			throw new KeycloakException($"Failed to read identity providers of Keycloak user {keycloakUserId}: {ex.StatusCode}");
+		}
+	}
+
+	public async Task<bool> IsSuperAdminAsync(string keycloakUserId, CancellationToken cancellationToken)
+	{
+		try
+		{
+			return (await adminApi.GetRealmRolesAsync(keycloakUserId, cancellationToken)).Any(r => r.Name == Roles.SuperAdmin);
+		}
+		catch (ApiException ex)
+		{
+			throw new KeycloakException($"Failed to read realm roles of Keycloak user {keycloakUserId}: {ex.StatusCode}");
+		}
+	}
+
+	public async Task DeleteCredentialAsync(string keycloakUserId, string credentialId, CancellationToken cancellationToken)
+	{
+		var response = await adminApi.DeleteCredentialAsync(keycloakUserId, credentialId, cancellationToken);
+		if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NotFound)
+		{
+			var err = await response.Content.ReadAsStringAsync(cancellationToken);
+			throw new KeycloakException($"Failed to delete credential of Keycloak user {keycloakUserId}: {response.StatusCode} — {err}");
+		}
+	}
+
+	/// <summary>Ends every session of the login, so every device has to log in again.</summary>
+	public async Task LogoutEverywhereAsync(string keycloakUserId, CancellationToken cancellationToken)
+	{
+		var response = await adminApi.LogoutUserAsync(keycloakUserId, cancellationToken);
+		if (!response.IsSuccessStatusCode)
+		{
+			var err = await response.Content.ReadAsStringAsync(cancellationToken);
+			throw new KeycloakException($"Failed to log out Keycloak user {keycloakUserId}: {response.StatusCode} — {err}");
+		}
+	}
+
 	private static async Task<string> ReadCreatedUserIdAsync(HttpResponseMessage createResponse, CancellationToken cancellationToken)
 	{
 		if (!createResponse.IsSuccessStatusCode)
