@@ -97,8 +97,8 @@ Email is the login name and is matched against `Staff`/`Parent`/`BoardMember` ro
 **Built 2026-11-20** (branch `feat/64-account-security`), proven on a scratch Keycloak 26.8.2: superadmin is forced to set up the app at login, a later login asks for the code once, "Brug en anden metode" → recovery code logs in, recovery codes and "Slå tofaktor fra" render in Danish at 390px. Differences from the plan:
 
 - Recovery codes are built in on 26.8; no `--features` flag.
-- The dev realm has the superadmin sub-flow **disabled**, because dev and every e2e test log in as the Debugskolen superadmin with a password. The Keycloak image turns it on in its prod realm copy (Dockerfile `jq` step), which only matters when prod imports into an empty database. The secret check in that step skips `authenticatorConfig`, whose `Condition - credential` config has a `credentials` key.
-- The superadmin sub-flow (`Superadmin requires two-factor`) runs only when the 2FA sub-flow did not (`Condition - sub-flow executed`, `not-executed`), so a superadmin who has the app is asked once, not twice. A superadmin can't log in with a recovery code; a lost phone is reset from the Keycloak master console.
+- The dev realm has the superadmin sub-flow **disabled**, because dev and every e2e test log in as the Debugskolen superadmin with a password. The Keycloak image turns it on in its prod realm copy (Dockerfile `jq` step), which only matters when prod imports into an empty database. The secret check in that step skips only the `credentials` key of authenticator configs, where `Condition - credential` names credential types.
+- The superadmin sub-flow (`Superadmin requires two-factor`) runs only when this login did not use the app (`Condition - credential`, `otp`, not included), so a superadmin who typed an app code is asked once, not twice. A recovery code is not enough: the flow then asks for the app code, or forces app setup when there is none. A lost phone is reset from the Keycloak master console. (Changed 2026-11-21 from `Condition - sub-flow executed`, which also passed on a recovery code.)
 - 26.8 sends both `UPDATE_TOTP` and `UPDATE_CREDENTIAL` for one change, so the email listener is limited to `UPDATE_CREDENTIAL,REMOVE_CREDENTIAL` (`KC_SPI_EVENTS_LISTENER__EMAIL__INCLUDE_EVENTS` in the Dockerfile and AppHost). Without the limit it also mails on every failed login. One template per event picks the Danish wording from `credential_type`.
 - `select-authenticator.ftl` is themed in Phase 1 too: "Brug en anden metode" leads there.
 - Dev: Aspire's Keycloak keeps its database, and `--import-realm` skips an existing realm. Delete the Keycloak container and its database (or apply the checklist below locally) to get the new flow.
@@ -110,7 +110,7 @@ Email is the login name and is matched against `Staff`/`Parent`/`BoardMember` ro
 3. *Authentication → Policies → OTP policy*: Time based, SHA1, 6 digits, 30 seconds, look-around 1 (the defaults; check them).
 4. *Authentication → Required actions*: enable Configure Recovery Authentication Codes and Delete Credential. Set "Maximum age of authentication" to 300 on Update Password, Configure OTP, Configure Recovery Authentication Codes and Delete Credential.
 5. *Authentication → Flows → browser → Duplicate* as `skoleoverblikket browser`. In its "Conditional 2FA" sub-flow set Recovery Authentication Code Form to Alternative.
-6. Under its `forms` sub-flow, add sub-flow `Superadmin requires two-factor` (Conditional) with: Condition - user role (Required, role `superadmin`), Condition - sub-flow executed (Required, flow `skoleoverblikket browser Browser - Conditional 2FA`, `not-executed`), OTP Form (Required).
+6. Under its `forms` sub-flow, add sub-flow `Superadmin requires two-factor` (Conditional) with: Condition - user role (Required, role `superadmin`), Condition - credential (Required, credentials `otp`, included off), OTP Form (Required).
 7. *Action → Bind flow → Browser flow*.
 8. *Realm settings → Events → Event listeners*: add `email`.
 9. Log in as superadmin in a private window: it must ask you to set up the app. Save the codes from Min konto once it ships.
@@ -141,27 +141,29 @@ Admin reset (D4), in the owning services (`StaffService` or equivalent, plus par
 
 ### Web
 
-- [ ] `web/src/pages/AccountPage.tsx` at `/min-konto`, all roles. Sections, each a card with one sentence and one button:
+**Layout chosen 2026-11-21** from the [prototypes](https://claude.ai/artifact/4Aa4fzw2fbMo7eYn4Xgg4f): C's status box on top ("Beskyt din konto bedre" with a "Slå tofaktor til" button when off, a green checklist when on), then B's grouped settings rows (Konto, Sikkerhed, Enheder) instead of cards. The `kc_action_status` from Keycloak is caught by `keycloak.onActionUpdate` before init and read once by the page (`takeActionResult`).
+
+- [x] `web/src/pages/AccountPage.tsx` at `/min-konto`, all roles. Sections:
   - **Adgangskode**: "Skift adgangskode" → `keycloak.login({ action: 'UPDATE_PASSWORD', redirectUri: <origin>/min-konto?done=password })`.
   - **Tofaktor-login**: off → "Slå tofaktor til" (→ `CONFIGURE_TOTP`, then `CONFIGURE_RECOVERY_AUTHN_CODES` if none). On → "Til siden <date>", "Lav nye gendannelseskoder", "Slå tofaktor fra" (→ `delete_credential:<id>`, then the API cleanup below so no recovery codes are left).
   - **Enheder**: "Log ud på alle enheder" with a confirm dialog, then log out this tab too.
   - Login via Microsoft/Google (59): replace the first two sections with "Du logger ind med din Microsoft-konto".
   - Toast from `?done=` on return; Keycloak returns `kc_action_status=success|cancelled|error` on the redirect, show the matching Danish message.
-- [ ] Sidebar footer: make the user-name row a link to `/min-konto` ("Min konto"), keep "Notifikationsindstillinger" and the parent "Min profil" as they are. Map `/min-konto` → `null` in `sidebarRouteFeatures`.
-- [ ] Admin reset button in the staff, parent and board member detail views, with a confirm dialog that says what happens ("<navn> kan logge ind med kun adgangskode, og bliver logget ud alle steder").
-- [ ] Changelog `feat:` entry and a landing-page feature card update (security bullet), per AGENTS.md.
+- [x] Sidebar footer: make the user-name row a link to `/min-konto` ("Min konto"), keep "Notifikationsindstillinger" and the parent "Min profil" as they are. No `sidebarRouteFeatures` entry: footer links aren't in `SidebarRoute`.
+- [x] Admin reset button in the staff, parent and board member detail views, with a confirm dialog that says what happens ("<navn> kan logge ind med kun adgangskode, og bliver logget ud alle steder").
+- [ ] Changelog `feat:` entry and a landing-page feature card update (security bullet), per AGENTS.md. Landing: the "Data opbevares i EU" trust item now mentions tofaktor. The changelog entry comes from the `feat:` commit.
 
 ### Tests
 
-- [ ] Integration (`AccountTests.cs`): security summary for own login only; logout-everywhere calls Keycloak for own subject; admin reset works for a single-school staff member, returns 409 for a shared login, 403 for non-admin, 404 for another school's staff (tenant isolation), refuses self; email sent on reset.
-- [ ] Playwright (`account.spec.ts`), against the real Keycloak in the e2e stack: change password and log in with the new one; turn on TOTP (read the secret from the manual-key text, compute the code in the test with a small TOTP helper), log out, log in with the code, turn it off. `data-testid` on every element, including in the `.ftl` templates.
-- [ ] Manual on a real iPhone and Samsung: QR scan, numeric keypad, autofill of the code from the authenticator app. Add to [TO_VERIFY.md](TO_VERIFY.md).
+- [x] Integration (`AccountTests.cs`): security summary for own login only; logout-everywhere calls Keycloak for own subject; admin reset works for a single-school staff member, returns 409 for a shared login, 403 for non-admin, 404 for another school's staff (tenant isolation), refuses self; email sent on reset.
+- [x] Playwright (`account.spec.ts`), against the real Keycloak in the e2e stack: change password and log in with the new one; turn on TOTP (read the secret from the manual-key text, compute the code in the test with a small TOTP helper), log out, log in with the code, turn it off. `data-testid` on every element, including in the `.ftl` templates.
+- [ ] Manual on a real iPhone and Samsung: QR scan, numeric keypad, autofill of the code from the authenticator app. Add to [TO_VERIFY.md](TO_VERIFY.md). Added.
 
 ### Docs
 
-- [ ] [AUTHORIZATION.md](../docs/AUTHORIZATION.md): account endpoints, admin reset rule (single-school logins only), superadmin requires two-factor.
-- [ ] [FEATURES.md](../docs/FEATURES.md): Min konto → `AccountController` / `AccountService`.
-- [ ] DPA / security page copy (`DataProcessingAgreementPage.tsx`): mention optional two-factor and that operator access requires it.
+- [x] [AUTHORIZATION.md](../docs/AUTHORIZATION.md): account endpoints, admin reset rule (single-school logins only), superadmin requires two-factor.
+- [x] [FEATURES.md](../docs/FEATURES.md): Min konto → `AccountController` / `AccountService`.
+- [x] DPA / security page copy (`DataProcessingAgreementPage.tsx`): mention optional two-factor and that operator access requires it.
 
 ## Phase 2: passkeys
 
