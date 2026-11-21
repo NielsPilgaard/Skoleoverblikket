@@ -6,9 +6,8 @@ import { getApiV1SfoWeekPlanOptions } from '../api/generated/@tanstack/react-que
 import type { SfoWeekPlanShiftDto } from '../api/client'
 import { Markdown } from '../components/markdown/Markdown'
 import { buildTimeAxis } from '../lib/timeAxis'
+import { WEEKDAY_LABELS } from '../lib/weekdays'
 import { getISOWeek, getISOWeekYear } from '../utils/isoWeek'
-
-const WEEKDAYS = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag']
 
 export default function SfoPrintPage() {
   const [searchParams] = useSearchParams()
@@ -157,7 +156,7 @@ export default function SfoPrintPage() {
           <thead>
             <tr>
               <th className="print-th print-th-time">Tid</th>
-              {WEEKDAYS.map((d) => (
+              {WEEKDAY_LABELS.map((d) => (
                 <th key={d} className="print-th">
                   {d}
                 </th>
