@@ -79,6 +79,23 @@ export function logout(options?: Parameters<typeof keycloak.logout>[0]) {
   return keycloak.logout(options)
 }
 
+export type ActionStatus = 'success' | 'cancelled' | 'error'
+
+let actionResult: ActionStatus | null = null
+
+// init() reads kc_action_status from the redirect back from an application-initiated action
+// (Min konto), before any page mounts, so keep it until the page asks.
+keycloak.onActionUpdate = (status) => {
+  actionResult = status
+}
+
+/** The result of the Keycloak action this page load returned from, once. */
+export function takeActionResult(): ActionStatus | null {
+  const result = actionResult
+  actionResult = null
+  return result
+}
+
 // Module-level promise so init() is only ever called once,
 // even if AuthProvider mounts twice (React 18 Strict Mode).
 let initPromise: Promise<boolean> | null = null
