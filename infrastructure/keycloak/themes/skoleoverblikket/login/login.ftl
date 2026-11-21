@@ -40,6 +40,7 @@
           type="email"
           id="username"
           name="username"
+          data-testid="kc-username"
           value="${login.username!''}"
           autocomplete="email"
           autofocus
@@ -53,11 +54,12 @@
           type="password"
           id="password"
           name="password"
+          data-testid="kc-password"
           autocomplete="current-password"
         >
       </div>
 
-      <button type="submit" class="btn-primary">Log ind</button>
+      <button type="submit" class="btn-primary" data-testid="kc-login-submit">Log ind</button>
 
     </form>
 

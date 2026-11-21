@@ -830,6 +830,7 @@ export default function MessagesPage() {
           <button
             type="button"
             onClick={() => handleOpenCompose()}
+            data-testid="messages-new"
             className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors"
           >
             <svg
@@ -991,6 +992,7 @@ export default function MessagesPage() {
                     <button
                       type="button"
                       key={msg.id}
+                      data-testid="messages-inbox-row"
                       onClick={() => handleSelectInbox(msg.id)}
                       className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${selectedId === msg.id ? 'bg-brand-50' : ''}`}
                     >
@@ -1123,6 +1125,7 @@ export default function MessagesPage() {
                           <button
                             type="button"
                             onClick={handleReply}
+                            data-testid="messages-reply"
                             disabled={threadLoading}
                             className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
@@ -1196,7 +1199,7 @@ export default function MessagesPage() {
                           </div>
                         </>
                       ) : (
-                        <div className="space-y-4">
+                        <div data-testid="messages-thread" className="space-y-4">
                           {threadLoading && (
                             <p className="text-sm text-gray-400">Indlæser samtale…</p>
                           )}
@@ -1368,6 +1371,7 @@ export default function MessagesPage() {
             <div className="relative">
               <input
                 id="compose-recipient"
+                data-testid="messages-recipient-search"
                 type="text"
                 value={recipientSearch}
                 onChange={(e) => handleRecipientSearchChange(e.target.value)}
@@ -1384,6 +1388,7 @@ export default function MessagesPage() {
                     <button
                       type="button"
                       key={r.id}
+                      data-testid="messages-recipient-option"
                       onMouseDown={() => handleSelectRecipient(r)}
                       className="flex items-center gap-3 w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors"
                     >
@@ -1418,6 +1423,7 @@ export default function MessagesPage() {
           </label>
           <input
             id="compose-subject"
+            data-testid="messages-subject"
             type="text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
@@ -1432,6 +1438,7 @@ export default function MessagesPage() {
           </label>
           <textarea
             id="compose-body"
+            data-testid="messages-body"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={6}
@@ -1456,6 +1463,7 @@ export default function MessagesPage() {
           <button
             type="button"
             onClick={handleSend}
+            data-testid="messages-send"
             disabled={sending || !selectedRecipient || !subject.trim() || !body.trim()}
             className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50"
           >
