@@ -11,7 +11,7 @@ namespace Skoleoverblikket.Api.Controllers;
 [ApiController]
 [Route("api/v1/staff")]
 [Authorize(Roles = $"{Roles.Staff},{Roles.Board}")]
-public sealed class StaffController(AppDbContext db, StaffService staffService, IAuthorizationService authz) : ControllerBase
+public sealed class StaffController(AppDbContext db, StaffService staffService, AccountService accounts, IAuthorizationService authz) : ControllerBase
 {
 	public record StaffDto(Guid Id, string Name, string? Email, string? Phone, StaffRole Role, bool IsAdmin, string? KeycloakSubject);
 	public record UpsertStaffRequest(string Name, string? Email, string? Phone, StaffRole Role, bool IsAdmin = false);
@@ -97,6 +97,14 @@ public sealed class StaffController(AppDbContext db, StaffService staffService, 
 	[Authorize(Roles = Roles.Admin)]
 	public async Task<ActionResult<StaffDto>> PatchAdminPermission(Guid id, [FromBody] PatchAdminPermissionRequest req, CancellationToken cancellationToken) =>
 		ToResult(await staffService.SetAdminAsync(id, req.IsAdmin, User.GetKeycloakSubject(), cancellationToken));
+
+	/// <summary>Turns off two-factor for a staff member who lost their phone and recovery codes.</summary>
+	[HttpPost("{id:guid}/reset-two-factor")]
+	[Authorize(Roles = Roles.Admin)]
+	[ProducesResponseType(StatusCodes.Status204NoContent)]
+	public async Task<IActionResult> ResetTwoFactor(Guid id, CancellationToken cancellationToken) =>
+		AccountController.ResetResponse(this, await accounts.ResetTwoFactorAsync(
+			AccountService.PersonKind.Staff, id, User.GetKeycloakSubject() ?? "", cancellationToken));
 
 	[HttpDelete("{id:guid}")]
 	[Authorize(Roles = Roles.Admin)]

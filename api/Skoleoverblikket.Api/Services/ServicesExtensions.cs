@@ -12,6 +12,7 @@ public static class ServicesExtensions
 		services.AddScoped<StaffInvitationService>();
 		services.AddScoped<StaffService>();
 		services.AddScoped<SchoolLoginService>();
+		services.AddScoped<AccountService>();
 		services.AddScoped<ParentInvitationService>();
 		services.AddScoped<BoardMemberInvitationService>();
 		services.AddScoped<ExcelReportBuilder>();

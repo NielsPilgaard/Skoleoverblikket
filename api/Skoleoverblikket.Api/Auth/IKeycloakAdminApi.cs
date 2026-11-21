@@ -26,6 +26,20 @@ public interface IKeycloakAdminApi
 
 	[Put("/users/{userId}/reset-password")]
 	Task<HttpResponseMessage> ResetPasswordAsync(string userId, [Body] CredentialRepresentation credential, CancellationToken cancellationToken);
+
+	[Delete("/users/{userId}/credentials/{credentialId}")]
+	Task<HttpResponseMessage> DeleteCredentialAsync(string userId, string credentialId, CancellationToken cancellationToken);
+
+	/// <summary>Ends every session of the user, on every device.</summary>
+	[Post("/users/{userId}/logout")]
+	Task<HttpResponseMessage> LogoutUserAsync(string userId, CancellationToken cancellationToken);
+
+	[Get("/users/{userId}/federated-identity")]
+	Task<IReadOnlyList<FederatedIdentity>> GetFederatedIdentitiesAsync(string userId, CancellationToken cancellationToken);
+
+	/// <summary>Realm roles, including those from groups and composites.</summary>
+	[Get("/users/{userId}/role-mappings/realm/composite")]
+	Task<IReadOnlyList<RoleSummary>> GetRealmRolesAsync(string userId, CancellationToken cancellationToken);
 }
 
 public record CreateUserRequest(
@@ -47,5 +61,19 @@ public record UserRepresentation(
 	[property: JsonPropertyName("attributes")] Dictionary<string, IReadOnlyList<string>>? Attributes = null,
 	[property: JsonPropertyName("requiredActions")] IReadOnlyList<string>? RequiredActions = null);
 
+/// <summary>
+/// A credential's metadata. The admin API never returns secrets. <see cref="CreatedDate"/> is Unix
+/// milliseconds. <see cref="CredentialData"/> is a JSON string whose shape depends on the type.
+/// </summary>
 public record CredentialSummary(
-	[property: JsonPropertyName("type")] string Type);
+	[property: JsonPropertyName("type")] string Type,
+	[property: JsonPropertyName("id")] string? Id = null,
+	[property: JsonPropertyName("userLabel")] string? UserLabel = null,
+	[property: JsonPropertyName("createdDate")] long? CreatedDate = null,
+	[property: JsonPropertyName("credentialData")] string? CredentialData = null);
+
+public record FederatedIdentity(
+	[property: JsonPropertyName("identityProvider")] string IdentityProvider);
+
+public record RoleSummary(
+	[property: JsonPropertyName("name")] string Name);

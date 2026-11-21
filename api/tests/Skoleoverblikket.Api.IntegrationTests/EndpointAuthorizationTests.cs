@@ -47,6 +47,9 @@ public sealed class EndpointAuthorizationTests(ApiFactory factory)
 	[
 		// The caller's own data.
 		"GET /api/v1/me",
+		"GET /api/v1/account/security",
+		"POST /api/v1/account/logout-everywhere",
+		"POST /api/v1/account/security/cleanup-recovery-codes",
 		"GET /api/v1/modules",
 		"GET /api/v1/notifications",
 		"POST /api/v1/notifications/{id:guid}/read",
