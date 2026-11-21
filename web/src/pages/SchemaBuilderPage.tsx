@@ -43,16 +43,7 @@ import type {
   ConflictInfo,
 } from '../api/client'
 import { Select } from '../components/ui/select'
-
-const WEEKDAYS = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag']
-const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as const
-type WeekdayName = (typeof WEEKDAY_NAMES)[number]
-
-function weekdayLabel(day: string | undefined): string {
-  if (!day) return ''
-  const idx = WEEKDAY_NAMES.indexOf(day as WeekdayName)
-  return idx >= 0 ? WEEKDAYS[idx] : day
-}
+import { WEEKDAY_KEYS, WEEKDAY_LABELS, weekdayLabel } from '../lib/weekdays'
 
 const SESSION_KEY_COURSE = 'schema-last-courseId'
 const SESSION_KEY_TEACHER = 'schema-last-teacherId'
@@ -216,7 +207,7 @@ function AssignmentPanel({
       path: { classId, schemaId },
       body: {
         timeSlotId,
-        weekday: WEEKDAY_NAMES[weekday - 1],
+        weekday: WEEKDAY_KEYS[weekday - 1],
         courseId,
         teacherId,
         roomId: roomId || null,
@@ -234,7 +225,7 @@ function AssignmentPanel({
       <form onSubmit={handleSubmit}>
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold text-gray-900">
-            {WEEKDAYS[weekday - 1]}
+            {WEEKDAY_LABELS[weekday - 1]}
           </h2>
           <button
             type="button"
@@ -693,9 +684,7 @@ export default function SchemaBuilderPage() {
     for (const s of slots) {
       if (!s.timeSlotId || s.weekday === undefined) continue
       const weekdayNum =
-        typeof s.weekday === 'number'
-          ? s.weekday
-          : WEEKDAY_NAMES.indexOf(s.weekday as WeekdayName) + 1
+        typeof s.weekday === 'number' ? s.weekday : WEEKDAY_KEYS.indexOf(s.weekday) + 1
       if (!map[s.timeSlotId]) map[s.timeSlotId] = {}
       map[s.timeSlotId][weekdayNum] = s
     }
@@ -806,7 +795,7 @@ export default function SchemaBuilderPage() {
           path: { classId: classId!, schemaId: schemaId! },
           body: {
             timeSlotId: dst.timeSlotId,
-            weekday: WEEKDAY_NAMES[dst.weekday - 1],
+            weekday: WEEKDAY_KEYS[dst.weekday - 1],
             courseId: srcSlot.courseId ?? '',
             teacherId: srcSlot.teacherId ?? '',
             roomId: srcSlot.roomId ?? null,
@@ -817,7 +806,7 @@ export default function SchemaBuilderPage() {
           path: { classId: classId!, schemaId: schemaId! },
           body: {
             timeSlotId: src.timeSlotId,
-            weekday: WEEKDAY_NAMES[src.weekday - 1],
+            weekday: WEEKDAY_KEYS[src.weekday - 1],
             courseId: dstSlot.courseId ?? '',
             teacherId: dstSlot.teacherId ?? '',
             roomId: dstSlot.roomId ?? null,
@@ -834,7 +823,7 @@ export default function SchemaBuilderPage() {
                 s.timeSlotId === src.timeSlotId &&
                 (typeof s.weekday === 'number'
                   ? s.weekday
-                  : WEEKDAY_NAMES.indexOf(s.weekday as WeekdayName) + 1) === src.weekday
+                  : WEEKDAY_KEYS.indexOf(s.weekday) + 1) === src.weekday
               )
           )
         })
@@ -842,7 +831,7 @@ export default function SchemaBuilderPage() {
           path: { classId: classId!, schemaId: schemaId! },
           body: {
             timeSlotId: dst.timeSlotId,
-            weekday: WEEKDAY_NAMES[dst.weekday - 1],
+            weekday: WEEKDAY_KEYS[dst.weekday - 1],
             courseId: srcSlot.courseId ?? '',
             teacherId: srcSlot.teacherId ?? '',
             roomId: srcSlot.roomId ?? null,
@@ -1212,7 +1201,7 @@ export default function SchemaBuilderPage() {
                       {/* Header */}
                       <div className="grid grid-cols-[100px_repeat(5,1fr)] gap-2 mb-2">
                         <div />
-                        {WEEKDAYS.map((day) => (
+                        {WEEKDAY_LABELS.map((day) => (
                           <div
                             key={day}
                             className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wider py-1"
