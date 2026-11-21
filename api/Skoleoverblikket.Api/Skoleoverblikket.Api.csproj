@@ -23,7 +23,7 @@
   <ItemGroup>
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.Uris" Version="9.0.0" />
-    <PackageReference Include="AWSSDK.S3" Version="4.1.0" />
+    <PackageReference Include="AWSSDK.S3" Version="4.1.2" />
     <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="Elmah.Io.AspNetCore" Version="5.3.88" />
     <PackageReference Include="Elmah.Io.Extensions.Logging" Version="5.4.75" />
@@ -38,11 +38,11 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.4" />
     <PackageReference Include="Refit.HttpClientFactory" Version="16.4.0" />
     <PackageReference Include="Stripe.net" Version="47.4.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="11.0.1" />
-    <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.9.0" />
+    <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.10.0" />
   </ItemGroup>
 
 </Project>
