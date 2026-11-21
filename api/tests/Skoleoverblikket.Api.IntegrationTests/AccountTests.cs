@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Skoleoverblikket.Api.Auth;
+using Skoleoverblikket.Api.Email;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using static Skoleoverblikket.Api.Services.AccountService;
 
@@ -56,14 +57,17 @@ public sealed class AccountTests(ApiFactory factory)
 		var teacher = $"konto-laerer-{Guid.NewGuid():N}";
 		await TestDataBuilder.CreateStaffAsync(_app.Services, _tenantId, keycloakSubject: teacher);
 		var otpId = _keycloak.AddCredential(teacher, "otp");
+		var secondAppId = _keycloak.AddCredential(teacher, "otp");
 		_keycloak.AddCredential(teacher, "recovery-authn-codes", """{"remainingCodes":11}""");
 
 		var own = await Client(_tenantId, teacher).GetFromJsonAsync<AccountSecurityDto>("/api/v1/account/security", JsonOpts);
 		var adminsView = await _admin.GetFromJsonAsync<AccountSecurityDto>("/api/v1/account/security", JsonOpts);
 
-		await Assert.That(own!.Otp?.Id).IsEqualTo(otpId);
+		await Assert.That(own!.Otp).IsNotNull();
+		await Assert.That(own.AuthenticatorApps.Select(a => a.Id)).IsEquivalentTo([otpId, secondAppId]);
 		await Assert.That(own.RecoveryCodes?.Remaining).IsEqualTo(11);
 		await Assert.That(adminsView!.Otp).IsNull();
+		await Assert.That(adminsView.AuthenticatorApps).IsEmpty();
 		await Assert.That(adminsView.RecoveryCodes).IsNull();
 	}
 
@@ -92,9 +96,10 @@ public sealed class AccountTests(ApiFactory factory)
 	}
 
 	[Test]
-	public async Task AdminReset_RemovesTwoFactor_LogsOut_AndEmailsThePerson()
+	public async Task AdminReset_RemovesTwoFactor_LogsOut_AndEmailsTheLoginNotTheEditableRow()
 	{
-		var subject = $"konto-forælder-{Guid.NewGuid():N}";
+		var loginEmail = $"login-{Guid.NewGuid():N}@skole.test";
+		var subject = _keycloak.AddExistingUser(loginEmail, _tenantId);
 		var parent = await TestDataBuilder.CreateParentAsync(_app.Services, _tenantId, subject);
 		_keycloak.AddCredential(subject, "otp");
 		_keycloak.AddCredential(subject, "recovery-authn-codes");
@@ -104,8 +109,57 @@ public sealed class AccountTests(ApiFactory factory)
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
 		await Assert.That(_keycloak.CredentialTypesOf(subject)).IsEmpty();
 		await Assert.That(_keycloak.LoggedOutUserIds).Contains(subject);
-		var email = factory.Emails.To(parent.Email).Single();
+		var email = factory.Emails.To(loginEmail).Single();
 		await Assert.That(email.PlainTextBody!).Contains("Hanne Kontor på Friskolen");
+		await Assert.That(factory.Emails.To(parent.Email)).IsEmpty();
+	}
+
+	[Test]
+	public async Task AdminReset_OnlyRecoveryCodesLeft_RemovesThem()
+	{
+		// The app was removed but Min konto's cleanup never ran, so login still asks for a recovery code.
+		var subject = $"konto-koder-{Guid.NewGuid():N}";
+		var staff = await TestDataBuilder.CreateStaffAsync(_app.Services, _tenantId, keycloakSubject: subject);
+		_keycloak.AddCredential(subject, "recovery-authn-codes");
+
+		var response = await _admin.PostAsync($"/api/v1/staff/{staff.Id}/reset-two-factor", null);
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+		await Assert.That(_keycloak.CredentialTypesOf(subject)).IsEmpty();
+	}
+
+	[Test]
+	public async Task AdminReset_PersonWithoutLogin_SaysSo()
+	{
+		var staff = await TestDataBuilder.CreateStaffAsync(_app.Services, _tenantId);
+
+		var response = await _admin.PostAsync($"/api/v1/staff/{staff.Id}/reset-two-factor", null);
+		var problem = await response.Content.ReadFromJsonAsync<Microsoft.AspNetCore.Mvc.ProblemDetails>(JsonOpts);
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Conflict);
+		await Assert.That(problem!.Title).IsEqualTo("Personen har ikke et login endnu");
+	}
+
+	[Test]
+	public async Task AdminReset_EmailFails_StillReportsTheReset()
+	{
+		var loginEmail = $"login-{Guid.NewGuid():N}@skole.test";
+		var subject = _keycloak.AddExistingUser(loginEmail, _tenantId);
+		var staff = await TestDataBuilder.CreateStaffAsync(_app.Services, _tenantId, keycloakSubject: subject);
+		_keycloak.AddCredential(subject, "otp");
+		await using var app = _app.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+		{
+			services.RemoveAll<IEmailSender>();
+			services.AddSingleton<IEmailSender, FailingEmailSender>();
+		}));
+		var admin = app.CreateClient();
+		admin.DefaultRequestHeaders.Add("X-Test-TenantId", _tenantId.ToString());
+		admin.DefaultRequestHeaders.Add("X-Test-Subject", _adminSubject);
+
+		var response = await admin.PostAsync($"/api/v1/staff/{staff.Id}/reset-two-factor", null);
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+		await Assert.That(_keycloak.CredentialTypesOf(subject)).IsEmpty();
 	}
 
 	[Test]
@@ -215,5 +269,11 @@ public sealed class AccountTests(ApiFactory factory)
 		client.DefaultRequestHeaders.Add("X-Test-TenantId", tenantId.ToString());
 		client.DefaultRequestHeaders.Add("X-Test-Subject", subject);
 		return client;
+	}
+
+	private sealed class FailingEmailSender : IEmailSender
+	{
+		public Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default) =>
+			throw new InvalidOperationException("SMTP is down");
 	}
 }

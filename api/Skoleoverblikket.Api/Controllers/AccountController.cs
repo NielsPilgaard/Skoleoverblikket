@@ -60,6 +60,10 @@ public sealed class AccountController(AccountService accounts) : ControllerBase
 			title: "Kontoen bruges også andre steder",
 			detail: "Personen bruger samme login på en anden skole. Kontakt Skoleoverblikkets support for at nulstille tofaktor.",
 			statusCode: StatusCodes.Status409Conflict),
+		TwoFactorResetResult.NoLogin => controller.Problem(
+			title: "Personen har ikke et login endnu",
+			detail: "Personen har ikke taget imod invitationen, så der er ingen tofaktor at slå fra.",
+			statusCode: StatusCodes.Status409Conflict),
 		TwoFactorResetResult.NoTwoFactor => controller.Problem(
 			title: "Tofaktor er ikke slået til",
 			detail: "Personen logger allerede ind med kun adgangskode.",

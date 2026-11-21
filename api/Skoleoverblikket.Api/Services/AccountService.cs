@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -33,20 +34,28 @@ public sealed class AccountService(
 	/// <param name="Remaining">Unused codes, when Keycloak reports it.</param>
 	public record RecoveryCodesDto(string Id, DateTimeOffset? CreatedAt, int? Remaining);
 
-	/// <param name="Otp">The authenticator app, or null when two-factor is off.</param>
+	/// <param name="Otp">The newest authenticator app, or null when two-factor is off.</param>
+	/// <param name="AuthenticatorApps">Every authenticator app, newest first. Keycloak lets a user add a second
+	/// app, and two-factor stays on until every one is removed.</param>
 	/// <param name="ExternalLogin">The identity provider (e.g. "microsoft") when the person logs in through one.</param>
 	public record AccountSecurityDto(
 		string? Email,
 		bool HasPassword,
 		AccountCredentialDto? Otp,
+		IReadOnlyList<AccountCredentialDto> AuthenticatorApps,
 		RecoveryCodesDto? RecoveryCodes,
 		IReadOnlyList<AccountCredentialDto> Passkeys,
 		string? ExternalLogin);
+
+	public record ResetTwoFactorRequest([Required, EmailAddress, StringLength(500)] string Email);
 
 	public enum TwoFactorResetResult
 	{
 		Reset,
 		NotFound,
+
+		/// <summary>The person has no login yet (the invitation is not accepted).</summary>
+		NoLogin,
 
 		/// <summary>The login is also used at another school, or is the operator's: only the superadmin may reset it.</summary>
 		SharedLogin,
@@ -64,13 +73,14 @@ public sealed class AccountService(
 	public async Task<AccountSecurityDto> GetSecurityAsync(string subject, CancellationToken cancellationToken)
 	{
 		var credentials = await keycloak.GetCredentialsAsync(subject, cancellationToken);
-		var otp = credentials.Where(c => c.Type == Otp).OrderByDescending(c => c.CreatedDate).FirstOrDefault();
+		var apps = credentials.Where(c => c.Type == Otp).OrderByDescending(c => c.CreatedDate).Select(ToDto).ToList();
 		var codes = credentials.FirstOrDefault(c => c.Type == RecoveryCodes);
 
 		return new AccountSecurityDto(
 			Email: await keycloak.GetEmailAsync(subject, cancellationToken),
 			HasPassword: credentials.Any(c => c.Type == "password"),
-			Otp: otp is null ? null : ToDto(otp),
+			Otp: apps.FirstOrDefault(),
+			AuthenticatorApps: apps,
 			RecoveryCodes: codes is null ? null : new RecoveryCodesDto(codes.Id ?? "", CreatedAt(codes), RemainingCodes(codes)),
 			Passkeys: [.. credentials.Where(c => Passkeys.Contains(c.Type)).Select(ToDto)],
 			ExternalLogin: await keycloak.GetExternalLoginAsync(subject, cancellationToken));
@@ -108,11 +118,11 @@ public sealed class AccountService(
 		var person = kind switch
 		{
 			PersonKind.Staff => await db.Staff.Where(s => s.Id == id)
-				.Select(s => new { s.KeycloakSubject, s.Email }).FirstOrDefaultAsync(cancellationToken),
+				.Select(s => new { s.KeycloakSubject }).FirstOrDefaultAsync(cancellationToken),
 			PersonKind.Parent => await db.Parents.Where(p => p.Id == id)
-				.Select(p => new { p.KeycloakSubject, Email = (string?)p.Email }).FirstOrDefaultAsync(cancellationToken),
+				.Select(p => new { p.KeycloakSubject }).FirstOrDefaultAsync(cancellationToken),
 			PersonKind.BoardMember => await db.BoardMembers.Where(m => m.Id == id)
-				.Select(m => new { m.KeycloakSubject, Email = (string?)m.Email }).FirstOrDefaultAsync(cancellationToken),
+				.Select(m => new { m.KeycloakSubject }).FirstOrDefaultAsync(cancellationToken),
 			_ => throw new ArgumentOutOfRangeException(nameof(kind)),
 		};
 
@@ -123,7 +133,7 @@ public sealed class AccountService(
 
 		if (string.IsNullOrEmpty(person.KeycloakSubject))
 		{
-			return TwoFactorResetResult.NoTwoFactor;
+			return TwoFactorResetResult.NoLogin;
 		}
 
 		var subject = person.KeycloakSubject;
@@ -139,11 +149,11 @@ public sealed class AccountService(
 
 		var adminName = await db.Staff.Where(s => s.KeycloakSubject == adminSubject)
 			.Select(s => s.Name).FirstOrDefaultAsync(cancellationToken) ?? "en administrator";
+		// Schools has no TenantId column (its Id is the tenant), so the explicit Id keeps this to the caller's school.
 		var school = await db.Schools.IgnoreQueryFilters()
 			.Where(s => s.Id == tenant.TenantId).Select(s => s.Name).FirstOrDefaultAsync(cancellationToken) ?? "Skoleoverblikket";
 
-		var to = person.Email ?? await keycloak.GetEmailAsync(subject, cancellationToken);
-		return await ResetAsync(subject, to, $"{adminName} på {school}", cancellationToken);
+		return await ResetAsync(subject, $"{adminName} på {school}", cancellationToken);
 	}
 
 	/// <summary>The operator resets any login by its email, also one shared between schools.</summary>
@@ -161,16 +171,17 @@ public sealed class AccountService(
 			return TwoFactorResetResult.Self;
 		}
 
-		return await ResetAsync(subject, loginEmail.Trim(), "Skoleoverblikkets support", cancellationToken);
+		return await ResetAsync(subject, "Skoleoverblikkets support", cancellationToken);
 	}
 
-	private async Task<TwoFactorResetResult> ResetAsync(
-		string subject, string? to, string resetBy, CancellationToken cancellationToken)
+	private async Task<TwoFactorResetResult> ResetAsync(string subject, string resetBy, CancellationToken cancellationToken)
 	{
+		// Recovery codes alone count too: login keeps asking for one until they are gone, e.g. when the
+		// person removed the app and Min konto's cleanup never ran.
 		var secondFactors = (await keycloak.GetCredentialsAsync(subject, cancellationToken))
 			.Where(c => TwoFactorTypes.Contains(c.Type) && c.Id is not null)
 			.ToList();
-		if (!secondFactors.Any(c => c.Type != RecoveryCodes))
+		if (secondFactors.Count == 0)
 		{
 			return TwoFactorResetResult.NoTwoFactor;
 		}
@@ -182,13 +193,29 @@ public sealed class AccountService(
 
 		await keycloak.LogoutEverywhereAsync(subject, cancellationToken);
 
+		// The login's own email, not the school's row: a school admin can edit the row's email.
+		var to = await keycloak.GetEmailAsync(subject, cancellationToken);
 		if (string.IsNullOrWhiteSpace(to))
 		{
 			logger.LogWarning("Two-factor reset for Keycloak user {Subject} without an email to notify", subject);
 			return TwoFactorResetResult.Reset;
 		}
 
-		await email.SendAsync(new EmailMessage(
+		try
+		{
+			await SendResetNoticeAsync(to, resetBy, cancellationToken);
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			// The reset has happened, so report success: a retry would find no two-factor and refuse.
+			logger.LogError(ex, "Two-factor reset for Keycloak user {Subject}, but the notice email failed", subject);
+		}
+
+		return TwoFactorResetResult.Reset;
+	}
+
+	private Task SendResetNoticeAsync(string to, string resetBy, CancellationToken cancellationToken) =>
+		email.SendAsync(new EmailMessage(
 			To: to,
 			Subject: "Tofaktor er slået fra på din konto",
 			HtmlBody: EmailTemplate.Wrap("Tofaktor er slået fra", $"""
@@ -200,9 +227,6 @@ public sealed class AccountService(
 				"""),
 			PlainTextBody: $"{resetBy} har slået tofaktor fra på din konto på Skoleoverblikket. Du logger nu ind med kun din adgangskode, og du er blevet logget ud på alle enheder.\n\nDu kan slå tofaktor til igen under Min konto.\n\nHvis du ikke har bedt om det, så kontakt skolens kontor.\n"),
 			cancellationToken);
-
-		return TwoFactorResetResult.Reset;
-	}
 
 	private async Task<bool> UsedByAnotherSchoolAsync(string subject, CancellationToken cancellationToken)
 	{

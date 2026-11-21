@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Skoleoverblikket.Api.Auth;
@@ -12,11 +11,9 @@ namespace Skoleoverblikket.Api.Controllers;
 [Authorize(Roles = Roles.SuperAdmin)]
 public sealed class SuperAdminLoginsController(AccountService accounts) : ControllerBase
 {
-	public record ResetTwoFactorRequest([Required, EmailAddress, StringLength(500)] string Email);
-
 	[HttpPost("reset-two-factor")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
-	public async Task<IActionResult> ResetTwoFactor(ResetTwoFactorRequest request, CancellationToken cancellationToken) =>
+	public async Task<IActionResult> ResetTwoFactor(AccountService.ResetTwoFactorRequest request, CancellationToken cancellationToken) =>
 		AccountController.ResetResponse(this,
 			await accounts.ResetTwoFactorByEmailAsync(request.Email, User.GetKeycloakSubject() ?? "", cancellationToken));
 }
