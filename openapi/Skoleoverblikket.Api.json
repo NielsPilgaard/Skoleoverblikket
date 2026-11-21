@@ -9830,17 +9830,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SuperAdminLoginsController_ResetTwoFactorRequest"
+                "$ref": "#/components/schemas/AccountService_ResetTwoFactorRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/SuperAdminLoginsController_ResetTwoFactorRequest"
+                "$ref": "#/components/schemas/AccountService_ResetTwoFactorRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/SuperAdminLoginsController_ResetTwoFactorRequest"
+                "$ref": "#/components/schemas/AccountService_ResetTwoFactorRequest"
               }
             }
           }
@@ -11505,6 +11505,12 @@
           "otp": {
             "$ref": "#/components/schemas/AccountService_AccountCredentialDto"
           },
+          "authenticatorApps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountService_AccountCredentialDto"
+            }
+          },
           "recoveryCodes": {
             "$ref": "#/components/schemas/AccountService_RecoveryCodesDto"
           },
@@ -11539,6 +11545,18 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountService_ResetTwoFactorRequest": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -17121,18 +17139,6 @@
             "type": "string",
             "format": "date",
             "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "SuperAdminLoginsController_ResetTwoFactorRequest": {
-        "required": [
-          "email"
-        ],
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string"
           }
         },
         "additionalProperties": false

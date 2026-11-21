@@ -66,6 +66,7 @@ export type AccountServiceAccountSecurityDto = {
     email?: string | null;
     hasPassword: boolean;
     otp?: AccountServiceAccountCredentialDto;
+    authenticatorApps?: Array<AccountServiceAccountCredentialDto>;
     recoveryCodes?: AccountServiceRecoveryCodesDto;
     passkeys?: Array<AccountServiceAccountCredentialDto>;
     externalLogin?: string | null;
@@ -75,6 +76,10 @@ export type AccountServiceRecoveryCodesDto = {
     id: string;
     createdAt?: string | null;
     remaining?: number | null;
+};
+
+export type AccountServiceResetTwoFactorRequest = {
+    email: string;
 };
 
 export type AdminControllerModuleOverrideRequest = {
@@ -1539,10 +1544,6 @@ export type SubstituteSeat = 'Teacher' | 'Aide';
 
 export type SuperAdminFreeAccessControllerGrantFreeAccessRequest = {
     lastDay?: string | null;
-};
-
-export type SuperAdminLoginsControllerResetTwoFactorRequest = {
-    email: string;
 };
 
 export type SuperAdminSchoolDeletionControllerDeleteSchoolRequest = {
@@ -5555,7 +5556,7 @@ export type PutApiV1AdminTenantsBySchoolIdFreeAccessResponses = {
 export type PutApiV1AdminTenantsBySchoolIdFreeAccessResponse = PutApiV1AdminTenantsBySchoolIdFreeAccessResponses[keyof PutApiV1AdminTenantsBySchoolIdFreeAccessResponses];
 
 export type PostApiV1AdminLoginsResetTwoFactorData = {
-    body?: SuperAdminLoginsControllerResetTwoFactorRequest;
+    body?: AccountServiceResetTwoFactorRequest;
     path?: never;
     query?: never;
     url: '/api/v1/admin/logins/reset-two-factor';
