@@ -49,16 +49,21 @@ public sealed class ContactThreadService(AppDbContext db)
 			{
 				t.Id,
 				t.StudentId,
+				t.CreatedAt,
 				StudentName = t.Student != null ? t.Student.Name : string.Empty,
 				LastMessage = t.Messages
 					.OrderByDescending(m => m.SentAt)
+					.ThenByDescending(m => m.Id)
 					.Select(m => new { m.Body, m.SentAt, m.SenderType })
 					.FirstOrDefault(),
 				UnreadCount = t.Messages.Count(m => m.ReadAt == null && m.SenderType != callerSenderType),
 			})
 			.ToListAsync(cancellationToken);
 
+		// Newest activity first, so the thread with the latest reply is on top.
 		return threads
+			.OrderByDescending(t => t.LastMessage?.SentAt ?? t.CreatedAt)
+			.ThenByDescending(t => t.Id)
 			.Select(t => new ContactThreadDto(
 				t.Id,
 				t.StudentId,
