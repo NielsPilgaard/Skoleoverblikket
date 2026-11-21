@@ -71,7 +71,8 @@ export default function BoardInvitationPage() {
               title: 'Adgangskoden blev ikke gemt',
               message:
                 pw.response?.status === 400
-                  ? `Adgangskoden skal være mindst ${MIN_PASSWORD_LENGTH} tegn.`
+                  ? ((pw.error as { detail?: string }).detail ??
+                    `Adgangskoden skal være mindst ${MIN_PASSWORD_LENGTH} tegn.`)
                   : 'Linket er ugyldigt eller udløbet.',
             })
           }
@@ -189,6 +190,7 @@ export default function BoardInvitationPage() {
                     autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    maxLength={128}
                     data-testid="board-invitation-password"
                     className="w-full px-3 py-2 pr-16 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
                   />

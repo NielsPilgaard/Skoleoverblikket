@@ -217,6 +217,7 @@ export default function SignupPage() {
                 placeholder="Mindst 8 tegn"
                 required
                 minLength={8}
+                maxLength={128}
                 data-testid="signup-password"
                 className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />

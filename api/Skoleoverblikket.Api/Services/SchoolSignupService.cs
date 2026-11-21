@@ -23,10 +23,20 @@ public sealed record CreateTenantRequest(
 	[MinLength(1)]
 	string AdminLastName,
 	[Required]
-	[MinLength(8)]
+	[MinLength(PasswordRules.MinLength)]
+	[MaxLength(PasswordRules.MaxLength)]
 	string AdminPassword,
 	[Range(typeof(bool), "true", "true", ErrorMessage = "Du skal acceptere databehandleraftalen for at oprette skolen.")]
-	bool AcceptDataProcessingAgreement);
+	bool AcceptDataProcessingAgreement) : IValidatableObject
+{
+	public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+	{
+		if (PasswordRules.IsEmail(AdminPassword ?? "", AdminEmail))
+		{
+			yield return new ValidationResult(PasswordRules.IsEmailMessage, [nameof(AdminPassword)]);
+		}
+	}
+}
 
 public sealed record TenantCreatedDto(Guid Id, string Name, string AdminEmail, string AccessToken, string? RefreshToken, int ExpiresIn);
 

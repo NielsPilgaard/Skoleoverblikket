@@ -30,6 +30,10 @@ public sealed class BoardInvitationsController(BoardMemberInvitationService invi
 		return result switch
 		{
 			SetInvitationPasswordResult.Set => Ok(login),
+			SetInvitationPasswordResult.PasswordIsEmail => Problem(
+				title: "Adgangskoden kan ikke bruges",
+				detail: PasswordRules.IsEmailMessage,
+				statusCode: StatusCodes.Status400BadRequest),
 			SetInvitationPasswordResult.PasswordAlreadySet => Problem(
 				title: "Du har allerede en adgangskode",
 				detail: "Log ind med din eksisterende adgangskode.",

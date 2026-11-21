@@ -85,6 +85,23 @@ public sealed class InvitationPasswordTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task PasswordThatIsTheEmail_IsRefusedWithADanishReason_NotATryAgainLater()
+	{
+		var email = UniqueEmail("kode-er-mail");
+		await InviteTeacherAsync(email);
+		var token = factory.Emails.LastInvitationToken(email, "invitation");
+
+		var response = await SetPasswordAsync("staff-invitations", token, email.ToUpperInvariant());
+		var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(JsonOpts);
+		var tooLong = await SetPasswordAsync("staff-invitations", token, new string('x', 129));
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+		await Assert.That(problem!.Detail).IsEqualTo(PasswordRules.IsEmailMessage);
+		await Assert.That(tooLong.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+		await Assert.That(_keycloak.PasswordOf(_keycloak.SubjectFor(email))).IsNull();
+	}
+
+	[Test]
 	public async Task ResentParentInvitation_StillLetsTheParentChooseAPassword()
 	{
 		var email = UniqueEmail("mistet-mail");

@@ -244,6 +244,11 @@ public sealed class BoardMemberInvitationService(
 			return (SetInvitationPasswordResult.Invalid, null);
 		}
 
+		if (PasswordRules.IsEmail(password, invitation.Email))
+		{
+			return (SetInvitationPasswordResult.PasswordIsEmail, null);
+		}
+
 		var member = invitation.BoardMember;
 		var login = await logins.SetInviteePasswordAsync(
 			member.KeycloakSubject, member.Name, invitation.Email, invitation.TenantId, password, cancellationToken);

@@ -133,6 +133,11 @@ public sealed class StaffInvitationService(
 			return (SetInvitationPasswordResult.Invalid, null);
 		}
 
+		if (PasswordRules.IsEmail(password, invitation.Email))
+		{
+			return (SetInvitationPasswordResult.PasswordIsEmail, null);
+		}
+
 		var staff = invitation.Staff;
 		var login = await logins.SetInviteePasswordAsync(
 			staff.KeycloakSubject, staff.Name, invitation.Email, invitation.TenantId, password, cancellationToken);
