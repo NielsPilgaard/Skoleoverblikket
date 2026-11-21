@@ -708,7 +708,7 @@
     {
       "id": "78412766-b9dd-4ebe-a99e-c9d645f25071",
       "alias": "Superadmin requires two-factor",
-      "description": "Superadmin must use an authenticator app. Forces setup when the 2FA sub-flow did not run.",
+      "description": "Superadmin must use an authenticator app: asks for its code unless this login already used it (a recovery code is not enough), and forces setup when there is none.",
       "providerId": "basic-flow",
       "topLevel": false,
       "builtIn": false,
@@ -723,8 +723,8 @@
           "userSetupAllowed": false
         },
         {
-          "authenticatorConfig": "superadmin-2fa-not-run",
-          "authenticator": "conditional-sub-flow-executed",
+          "authenticatorConfig": "superadmin-otp-not-used",
+          "authenticator": "conditional-credential",
           "authenticatorFlow": false,
           "requirement": "REQUIRED",
           "priority": 1,
@@ -1345,10 +1345,10 @@
     },
     {
       "id": "ed62ffda-d9d9-4a3c-b6c9-c4cc4a248e6e",
-      "alias": "superadmin-2fa-not-run",
+      "alias": "superadmin-otp-not-used",
       "config": {
-        "flow_to_check": "skoleoverblikket browser Browser - Conditional 2FA",
-        "check_result": "not-executed"
+        "credentials": "otp",
+        "included": "false"
       }
     },
     {

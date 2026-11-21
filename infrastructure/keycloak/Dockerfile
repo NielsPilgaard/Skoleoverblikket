@@ -18,9 +18,9 @@ RUN mkdir /prod && for f in /realms/*.json; do \
               if .flowAlias == "Superadmin requires two-factor" then .requirement = "CONDITIONAL" else . end))' \
         "$f" > "/prod/$(basename "$f")"; \
     done \
-    # Fail the build if a secret or password is still there. authenticatorConfig is skipped: the
-    # "Condition - credential" config names credential types in a "credentials" key.
-    && jq -s -e '[.[] | del(.authenticatorConfig) | .. | objects | select(has("secret") or has("credentials"))] | length == 0' /prod/*.json > /dev/null
+    # Fail the build if a secret or password is still there. Only the "credentials" key of authenticator
+    # configs is skipped: "Condition - credential" names credential types there, not secrets.
+    && jq -s -e '[.[] | del(.authenticatorConfig[]?.config.credentials) | ..| objects | select(has("secret") or has("credentials"))] | length == 0' /prod/*.json > /dev/null
 
 # Pinned by digest so a moved tag cannot change Keycloak under us: 26.8 moved to 26.8.2 on 2026-11-05,
 # whose admin API audience check broke signup and invitations until the realm gave the
