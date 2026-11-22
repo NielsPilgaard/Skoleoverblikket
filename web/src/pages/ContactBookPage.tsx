@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { formatMessageTime, truncate } from '../lib/messageFormat'
 import {
   getApiV1ContactThreads,
   getApiV1ContactThreadsByThreadIdMessages,
@@ -36,22 +37,6 @@ interface PagedResult<T> {
   total: number
   page: number
   pageSize: number
-}
-
-function formatDateTime(iso: string): string {
-  const d = new Date(iso)
-  const hh = d.getHours().toString().padStart(2, '0')
-  const mm = d.getMinutes().toString().padStart(2, '0')
-  const dd = d.getDate().toString().padStart(2, '0')
-  const mo = (d.getMonth() + 1).toString().padStart(2, '0')
-  return `${hh}:${mm} ${dd}/${mo}`
-}
-
-function truncate(text: string, max: number): string {
-  if (text.length <= max) {
-    return text
-  }
-  return `${text.slice(0, max)}…`
 }
 
 export default function ContactBookPage() {
@@ -308,7 +293,7 @@ export default function ContactBookPage() {
               )}
               {thread.lastMessageSentAt && (
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {formatDateTime(thread.lastMessageSentAt)}
+                  {formatMessageTime(thread.lastMessageSentAt)}
                 </p>
               )}
             </button>
@@ -365,7 +350,9 @@ export default function ContactBookPage() {
                       )}
                       <p className="whitespace-pre-wrap">{msg.body}</p>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1 px-1">{formatDateTime(msg.sentAt)}</p>
+                    <p className="text-xs text-gray-400 mt-1 px-1">
+                      {formatMessageTime(msg.sentAt)}
+                    </p>
                   </div>
                 )
               })}

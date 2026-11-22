@@ -23,6 +23,7 @@ import type {
 import { Modal } from '../components/Modal'
 import { useAuth } from '../auth/useAuth'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { truncate } from '../lib/messageFormat'
 import { Select, RadioCards } from '../components/ui/select'
 
 type RecipientType = 'Parent' | 'Staff'
@@ -105,13 +106,6 @@ function getInitials(name: string): string {
 // Board (board members), which never participates in this messaging flow.
 function toMessageRecipientType(type: string | undefined): RecipientType {
   return type === 'Staff' ? 'Staff' : 'Parent'
-}
-
-function truncate(text: string, max: number): string {
-  if (text.length <= max) {
-    return text
-  }
-  return `${text.slice(0, max)}…`
 }
 
 interface ThreadLinkable {
