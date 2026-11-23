@@ -7,7 +7,7 @@ Production telemetry for `Skoleoverblikket.Api` goes to Grafana Cloud (`minimoed
 | `dashboards/health.json` | Service health: up/down, requests, 5xx rate, latency (cold vs warm, slow requests and their causes), endpoints table, memory |
 | `dashboards/features.json` | Feature usage: requests, errors and slowest request per product module (skema, ugeplan, vikar …) |
 | `dashboards/errors.json` | Errors & logs: exceptions, distinct error messages, warnings, startups, log volume |
-| `alert-rules.json` | Alert rules: API down, errors logged, restart loop, slow API |
+| `alert-rules.json` | Alert rules: API down, errors logged, restart loop, slow API; VPS down, disk almost full, reboot pending (host metrics from Alloy, set up by [harden.sh](../vps/harden.sh)) |
 | `build_dashboards.py` | Generates the three dashboard files |
 
 ## Changing a dashboard

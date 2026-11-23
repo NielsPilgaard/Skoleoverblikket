@@ -369,6 +369,242 @@
           "uid": "skoleoverblikket-slow-api"
         }
       ]
+    },
+    {
+      "folder": "Skoleoverblikket",
+      "interval": "1m",
+      "name": "skoleoverblikket-host",
+      "orgId": 1,
+      "rules": [
+        {
+          "annotations": {
+            "description": "Alloy on the VPS stopped reporting: the host is down, rebooting for longer than usual, or Alloy itself stopped (journalctl -u alloy). The nightly kernel reboot takes 1-2 minutes and does not trigger this.",
+            "summary": "The Skoleoverblikket VPS has sent no metrics for 5 minutes."
+          },
+          "condition": "C",
+          "data": [
+            {
+              "datasourceUid": "grafanacloud-prom",
+              "model": {
+                "expr": "sum(up{job=\"integrations/node_exporter\", service=\"skoleoverblikket\"})",
+                "instant": true,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              },
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "type": "reduce"
+              },
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        1
+                      ],
+                      "type": "lt"
+                    }
+                  }
+                ],
+                "expression": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              },
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Alerting",
+          "for": "5m",
+          "isPaused": false,
+          "labels": {
+            "service": "skoleoverblikket",
+            "severity": "critical"
+          },
+          "noDataState": "Alerting",
+          "title": "Skoleoverblikket VPS down",
+          "uid": "skoleoverblikket-host-down"
+        },
+        {
+          "annotations": {
+            "description": "Postgres, WAL and the backup drill need headroom. Check docker system df and the journal size. Never prune Docker volumes (docs/RESTORE.md).",
+            "summary": "Less than 15% disk free on {{ $labels.mountpoint }}."
+          },
+          "condition": "C",
+          "data": [
+            {
+              "datasourceUid": "grafanacloud-prom",
+              "model": {
+                "expr": "min by (instance, mountpoint) (node_filesystem_avail_bytes{job=\"integrations/node_exporter\", service=\"skoleoverblikket\", fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{job=\"integrations/node_exporter\", service=\"skoleoverblikket\", fstype=~\"ext4|xfs\"})",
+                "instant": true,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              },
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "type": "reduce"
+              },
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        0.15
+                      ],
+                      "type": "lt"
+                    }
+                  }
+                ],
+                "expression": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              },
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Alerting",
+          "for": "15m",
+          "isPaused": false,
+          "labels": {
+            "service": "skoleoverblikket",
+            "severity": "warning"
+          },
+          "noDataState": "OK",
+          "title": "Skoleoverblikket VPS disk almost full",
+          "uid": "skoleoverblikket-host-disk"
+        },
+        {
+          "annotations": {
+            "description": "unattended-upgrades should reboot at 05:30 the night after an update. Check journalctl -u unattended-upgrades and /var/log/unattended-upgrades/, then reboot in a quiet window.",
+            "summary": "A kernel or library update has waited 2 days for a reboot."
+          },
+          "condition": "C",
+          "data": [
+            {
+              "datasourceUid": "grafanacloud-prom",
+              "model": {
+                "expr": "max(node_reboot_required{job=\"integrations/node_exporter\", service=\"skoleoverblikket\"})",
+                "instant": true,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              },
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "type": "reduce"
+              },
+              "refId": "B",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            },
+            {
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        0
+                      ],
+                      "type": "gt"
+                    }
+                  }
+                ],
+                "expression": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              },
+              "refId": "C",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              }
+            }
+          ],
+          "execErrState": "Alerting",
+          "for": "48h",
+          "isPaused": false,
+          "labels": {
+            "service": "skoleoverblikket",
+            "severity": "warning"
+          },
+          "noDataState": "OK",
+          "title": "Skoleoverblikket VPS reboot pending for 2 days",
+          "uid": "skoleoverblikket-host-reboot"
+        }
+      ]
     }
   ]
 }
