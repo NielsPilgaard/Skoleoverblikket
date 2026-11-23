@@ -2,8 +2,9 @@
 # secret and localhost redirects, and the repo is public. Production imports the realm from this image
 # whenever its Keycloak database is empty (a new server, or a restore without the Keycloak database),
 # so the image gets a copy without them. Keycloak then generates the client secret on import.
-# The copy also turns on "Superadmin requires two-factor", which the dev realm leaves off so dev and
-# the e2e tests can log in as the Debugskolen superadmin with only a password (task 64).
+# The copy also turns on "Superadmin requires two-factor" in the browser and direct grant flows, which
+# the dev realm leaves off so dev, the e2e tests and seed-data.ps1 can log in as the Debugskolen
+# superadmin with only a password (task 64).
 # Dev (Aspire) and the e2e stack mount realms/ over the import folder instead.
 FROM alpine:3.24 AS realm
 RUN apk add --no-cache jq
@@ -15,7 +16,7 @@ RUN mkdir /prod && for f in /realms/*.json; do \
               | (.redirectUris // empty) |= map(select(startswith("http://localhost") | not)) \
               | (.webOrigins // empty) |= map(select(startswith("http://localhost") | not))) \
           | (.authenticationFlows // []) |= map(.authenticationExecutions |= map( \
-              if .flowAlias == "Superadmin requires two-factor" then .requirement = "CONDITIONAL" else . end))' \
+              if (.flowAlias // "" | startswith("Superadmin requires two-factor")) then .requirement = "CONDITIONAL" else . end))' \
         "$f" > "/prod/$(basename "$f")"; \
     done \
     # Fail the build if a secret or password is still there. Only the "credentials" key of authenticator

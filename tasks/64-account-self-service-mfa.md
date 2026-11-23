@@ -98,6 +98,7 @@ Email is the login name and is matched against `Staff`/`Parent`/`BoardMember` ro
 
 - Recovery codes are built in on 26.8; no `--features` flag.
 - The dev realm has the superadmin sub-flow **disabled**, because dev and every e2e test log in as the Debugskolen superadmin with a password. The Keycloak image turns it on in its prod realm copy (Dockerfile `jq` step), which only matters when prod imports into an empty database. The secret check in that step skips only the `credentials` key of authenticator configs, where `Condition - credential` names credential types.
+- The password grant (`skoleoverblikket direct grant`, used after signup and by `seed-data.ps1`) has the same rule in `Superadmin requires two-factor (direct grant)`: a superadmin must send an app code, and one without an app is refused (Keycloak answers 500, `AuthenticationFlowException`). Its normal OTP sub-flow skips superadmins, because a code works once. Proven on a scratch 26.8.2 on 2026-11-21. Off in dev like the browser sub-flow.
 - The superadmin sub-flow (`Superadmin requires two-factor`) runs only when this login did not use the app (`Condition - credential`, `otp`, not included), so a superadmin who typed an app code is asked once, not twice. A recovery code is not enough: the flow then asks for the app code, or forces app setup when there is none. A lost phone is reset from the Keycloak master console. (Changed 2026-11-21 from `Condition - sub-flow executed`, which also passed on a recovery code.)
 - 26.8 sends both `UPDATE_TOTP` and `UPDATE_CREDENTIAL` for one change, so the email listener is limited to `UPDATE_CREDENTIAL,REMOVE_CREDENTIAL` (`KC_SPI_EVENTS_LISTENER__EMAIL__INCLUDE_EVENTS` in the Dockerfile and AppHost). Without the limit it also mails on every failed login. One template per event picks the Danish wording from `credential_type`.
 - `select-authenticator.ftl` is themed in Phase 1 too: "Brug en anden metode" leads there.
@@ -112,9 +113,11 @@ Email is the login name and is matched against `Staff`/`Parent`/`BoardMember` ro
 5. *Authentication → Flows → browser → Duplicate* as `skoleoverblikket browser`. In its "Conditional 2FA" sub-flow set Recovery Authentication Code Form to Alternative.
 6. Under its `forms` sub-flow, add sub-flow `Superadmin requires two-factor` (Conditional) with: Condition - user role (Required, role `superadmin`), Condition - credential (Required, credentials `otp`, included off), OTP Form (Required).
 7. *Action → Bind flow → Browser flow*.
-8. *Realm settings → Events → Event listeners*: add `email`.
-9. Log in as superadmin in a private window: it must ask you to set up the app. Save the codes from Min konto once it ships.
-10. Tick this item.
+8. *Authentication → Flows → direct grant → Duplicate* as `skoleoverblikket direct grant`. In its "Conditional OTP" sub-flow add Condition - user role (Required, role `superadmin`, Negate output on), so a superadmin's code is not checked twice (a code works once).
+9. In the same flow add sub-flow `Superadmin requires two-factor (direct grant)` (Conditional) with: Condition - user role (Required, role `superadmin`), OTP (Required). *Action → Bind flow → Direct grant flow*. Without it, the password grant on `skoleoverblikket-web` gives a superadmin a token with only a password.
+10. *Realm settings → Events → Event listeners*: add `email`.
+11. Log in as superadmin in a private window: it must ask you to set up the app. Save the codes from Min konto once it ships.
+12. Tick this item.
 
 - [x] Realm JSON: `passwordPolicy` (D6), required actions `UPDATE_PASSWORD`, `CONFIGURE_TOTP`, `CONFIGURE_RECOVERY_AUTHN_CODES`, `delete_credential` enabled with `max_auth_age` 300 s; `otpPolicy*` = TOTP, SHA1, 6 digits, 30 s (what every authenticator app supports), `otpSupportedApplications` listing Microsoft Authenticator, Google Authenticator; `eventsListeners` += `email`, `eventsEnabled` true with a short expiry.
 - [x] Browser flow: copy the built-in `browser` flow to `skoleoverblikket browser`. Two-factor sub-flow: OTP Form and Recovery Authentication Code Form as alternatives, conditional on "user has a second factor configured". Superadmin sub-flow per D3. Set as realm `browserFlow`. Check what Keycloak 26.2's default flow already contains before copying.

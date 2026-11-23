@@ -1305,6 +1305,110 @@
           "userSetupAllowed": false
         }
       ]
+    },
+    {
+      "id": "91e91449-184c-4613-b00a-ecd1b4489990",
+      "alias": "skoleoverblikket direct grant",
+      "description": "Password grant (signup, seed script). Like the built-in flow, plus the superadmin two-factor rule.",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "direct-grant-validate-username",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "direct-grant-validate-password",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 30,
+          "autheticatorFlow": true,
+          "flowAlias": "skoleoverblikket direct grant Direct Grant - Conditional OTP",
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "DISABLED",
+          "priority": 40,
+          "autheticatorFlow": true,
+          "flowAlias": "Superadmin requires two-factor (direct grant)",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "id": "9723006f-1839-4745-a204-9e167d2ce8a8",
+      "alias": "skoleoverblikket direct grant Direct Grant - Conditional OTP",
+      "description": "Asks for the app code when the user has an app. Superadmins are left to the superadmin sub-flow, so the same code is not checked twice (a code works once).",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-configured",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorConfig": "not-superadmin-role",
+          "authenticator": "conditional-user-role",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 15,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "direct-grant-validate-otp",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "id": "d8adcfd3-0c83-4c44-b91b-9e53a877bb9e",
+      "alias": "Superadmin requires two-factor (direct grant)",
+      "description": "Superadmin must send an app code; without an app the grant is refused.",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticatorConfig": "superadmin-role",
+          "authenticator": "conditional-user-role",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 0,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "direct-grant-validate-otp",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 1,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
     }
   ],
   "authenticatorConfig": [
@@ -1358,10 +1462,18 @@
         "condUserRole": "superadmin",
         "negate": "false"
       }
+    },
+    {
+      "id": "d45e3581-18f8-41e7-a704-a23c0270d0f4",
+      "alias": "not-superadmin-role",
+      "config": {
+        "condUserRole": "superadmin",
+        "negate": "true"
+      }
     }
   ],
   "registrationFlow": "registration",
-  "directGrantFlow": "direct grant",
+  "directGrantFlow": "skoleoverblikket direct grant",
   "resetCredentialsFlow": "reset credentials",
   "clientAuthenticationFlow": "clients",
   "dockerAuthenticationFlow": "docker auth",
