@@ -107,17 +107,10 @@ Email is the login name and is matched against `Staff`/`Parent`/`BoardMember` ro
 **Prod checklist (D5 A), Niels.** In the prod admin console, realm Skoleoverblikket:
 
 1. Deploy the new Keycloak image first (it carries the themes and the email event filter).
-2. *Authentication → Policies → Password policy*: Minimum length 8, Not email, Not username, Maximum length 128.
-3. *Authentication → Policies → OTP policy*: Time based, SHA1, 6 digits, 30 seconds, look-around 1 (the defaults; check them).
-4. *Authentication → Required actions*: enable Configure Recovery Authentication Codes and Delete Credential. Set "Maximum age of authentication" to 300 on Update Password, Configure OTP, Configure Recovery Authentication Codes and Delete Credential.
-5. *Authentication → Flows → browser → Duplicate* as `skoleoverblikket browser`. In its "Conditional 2FA" sub-flow set Recovery Authentication Code Form to Alternative.
-6. Under its `forms` sub-flow, add sub-flow `Superadmin requires two-factor` (Conditional) with: Condition - user role (Required, role `superadmin`), Condition - credential (Required, credentials `otp`, included off), OTP Form (Required).
-7. *Action → Bind flow → Browser flow*.
-8. *Authentication → Flows → direct grant → Duplicate* as `skoleoverblikket direct grant`. In its "Conditional OTP" sub-flow add Condition - user role (Required, role `superadmin`, Negate output on), so a superadmin's code is not checked twice (a code works once).
-9. In the same flow add sub-flow `Superadmin requires two-factor (direct grant)` (Conditional) with: Condition - user role (Required, role `superadmin`), OTP (Required). *Action → Bind flow → Direct grant flow*. Without it, the password grant on `skoleoverblikket-web` gives a superadmin a token with only a password.
-10. *Realm settings → Events → Event listeners*: add `email`.
-11. Log in as superadmin in a private window: it must ask you to set up the app. Save the codes from Min konto once it ships.
-12. Tick this item.
+2. Open the tunnel (`ssh -L 8180:127.0.0.1:8180 ubuntu@<vps>`) and run `pwsh scripts/sync-keycloak-auth.ps1 -AdminUser <your master admin>`. It asks for your password and app code and lists what differs from the realm file: password and OTP policy, required actions and their "Maximum age of authentication", the `email` event listener, the `skoleoverblikket browser` and `skoleoverblikket direct grant` flows (with the superadmin sub-flows on) and their bindings. Nothing changes yet.
+3. If the list looks right, run it again with `-Apply`, then once more without: it must say "Everything matches the realm file".
+4. Log in as superadmin in a private window: it must ask you to set up the app. Save the codes from Min konto once it ships.
+5. Tick this item.
 
 - [x] Realm JSON: `passwordPolicy` (D6), required actions `UPDATE_PASSWORD`, `CONFIGURE_TOTP`, `CONFIGURE_RECOVERY_AUTHN_CODES`, `delete_credential` enabled with `max_auth_age` 300 s; `otpPolicy*` = TOTP, SHA1, 6 digits, 30 s (what every authenticator app supports), `otpSupportedApplications` listing Microsoft Authenticator, Google Authenticator; `eventsListeners` += `email`, `eventsEnabled` true with a short expiry.
 - [x] Browser flow: copy the built-in `browser` flow to `skoleoverblikket browser`. Two-factor sub-flow: OTP Form and Recovery Authentication Code Form as alternatives, conditional on "user has a second factor configured". Superadmin sub-flow per D3. Set as realm `browserFlow`. Check what Keycloak 26.2's default flow already contains before copying.
@@ -170,9 +163,28 @@ Admin reset (D4), in the owning services (`StaffService` or equivalent, plus par
 
 ## Phase 2: passkeys
 
-- [ ] Realm: `webauthn-register` required action, `webAuthnPolicyRpEntityName` "Skoleoverblikket", user verification "preferred", WebAuthn Authenticator as a third alternative in the two-factor sub-flow.
-- [ ] Theme: `webauthn-register.ftl`, `webauthn-authenticate.ftl`, `select-authenticator.ftl` in Danish.
-- [ ] Min konto: "Tilføj adgangsnøgle (Face ID / fingeraftryk)", list with label and date, remove each.
+**Built 2026-11-22** (same branch), picked over push approval with number matching: Microsoft and Google Authenticator push only for their own logins, and Keycloak has no push without our own app or a paid US service. A passkey is easier (Face ID, no code) and a fake login page can't use it. Proven on the dev stack with Chromium's virtual authenticator. Differences from the plan:
+
+- A passkey is a second factor next to the app, not instead of it. The first one, like the first app, goes straight on to recovery codes.
+- Our own `resources/js/passkey.js` replaces Keycloak's `webauthnRegister.js`/`webauthnAuthenticate.js`: theirs asks for the name in a browser `prompt()` and needs the import map that only the stock template has. The register page has a "Navn på enheden" field, pre-filled from the browser (iPhone, Mac, Windows-pc ...).
+- `webauthn-error.ftl` is themed too: closing the Face ID dialog lands there.
+- `delete-credential.ftl` now covers both an app and a passkey ("Fjern login-metode?").
+- The superadmin sub-flow's `Condition - credential` lists `otp` and `webauthn`, so a superadmin who used a passkey isn't asked for the app code too. One without the app is still asked to set it up: the rule is "the app, unless a passkey was used", not "a passkey is enough to start".
+
+**Prod checklist (D5 A), Niels.** After the Phase 1 list:
+
+1. Deploy the new Keycloak image (it carries the passkey pages and the Danish passkey messages).
+2. Run `pwsh scripts/sync-keycloak-auth.ps1 -AdminUser <your master admin>` as in Phase 1. The dry run must list the Webauthn policy, Webauthn Register's "Maximum age of authentication", WebAuthn Authenticator in the two-factor sub-flow and `otp` + `webauthn` in the superadmin condition.
+3. Run it with `-Apply`, then once more without: it must say "Everything matches the realm file".
+4. On your phone: Min konto → "Tilføj adgangsnøgle", log out, log in with it.
+5. Tick this item.
+
+- [x] Realm: `webauthn-register` required action with `max_auth_age` 300, `webAuthnPolicy*` (entity name "Skoleoverblikket", ES256 + RS256, user verification "preferred"), WebAuthn Authenticator as a third alternative in the two-factor sub-flow, superadmin condition per above.
+- [x] Theme: `webauthn-register.ftl`, `webauthn-authenticate.ftl`, `webauthn-error.ftl` in Danish (`select-authenticator.ftl` was done in Phase 1), `passkey.js`, Danish WebAuthn error messages.
+- [x] Min konto: "Brug Face ID eller fingeraftryk" as the first choice when tofaktor is off ("Brug en app i stedet" next to it); under Sikkerhed each passkey with its name, date and "Fjern", and "Tilføj adgangsnøgle".
+- [x] Playwright (`account.spec.ts`): add a passkey with a virtual authenticator, log out everywhere, log in with password + passkey, remove it.
+- [ ] Prod (D5 A), Niels: the Phase 2 checklist above.
+- [ ] Manual on real devices, in [TO_VERIFY.md](TO_VERIFY.md).
 - [ ] Decide after real-device testing whether passkeys may also replace the password (passwordless). Not before: Hanne on a shared office PC is the edge case.
 
 ## Phase 3: school can require two-factor for admins

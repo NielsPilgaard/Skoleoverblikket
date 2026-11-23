@@ -28,6 +28,11 @@ async function signUp(page: Page): Promise<string> {
 async function logIn(browser: Browser, email: string, password: string, otp?: string) {
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   const page = await context.newPage()
+  await logInOn(page, email, password, otp)
+  return page
+}
+
+async function logInOn(page: Page, email: string, password: string, otp?: string) {
   await page.goto('/login')
   await page.waitForURL(/localhost:8080/, { timeout: 15_000 })
   await page.getByTestId('kc-username').fill(email)
@@ -38,7 +43,6 @@ async function logIn(browser: Browser, email: string, password: string, otp?: st
     await page.getByTestId('kc-otp-submit').click()
   }
   await page.waitForURL((url) => url.port !== '8080', { timeout: 30_000 })
-  return page
 }
 
 async function backOnAccount(page: Page, notice: string) {
@@ -101,4 +105,61 @@ test('Min konto: change password, turn tofaktor on, log in with the code, turn i
   account = await logIn(browser, email, NEW_PASSWORD)
   await expect(account.getByTestId('kc-otp-input')).toHaveCount(0)
   await account.context().close()
+})
+
+test('Min konto: add a passkey, log in with it, remove it', async ({ page, browser }) => {
+  test.setTimeout(180_000)
+  const email = await signUp(page)
+
+  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  const account = await context.newPage()
+  // Chromium's virtual authenticator stands in for Face ID: it says yes to every prompt.
+  const cdp = await context.newCDPSession(account)
+  await cdp.send('WebAuthn.enable')
+  await cdp.send('WebAuthn.addVirtualAuthenticator', {
+    options: {
+      protocol: 'ctap2',
+      transport: 'internal',
+      hasResidentKey: true,
+      hasUserVerification: true,
+      isUserVerified: true,
+      automaticPresenceSimulation: true,
+    },
+  })
+
+  await logInOn(account, email, FIRST_PASSWORD)
+  await account.goto('/min-konto')
+  await account.getByTestId('account-passkey-on').click()
+  await account.getByTestId('kc-passkey-label').fill('Testtelefon')
+  await account.getByTestId('kc-passkey-register').click()
+
+  // The first second factor goes straight on to the recovery codes.
+  await expect(account.getByTestId('kc-recovery-codes')).toBeVisible({ timeout: 30_000 })
+  await account.getByTestId('kc-recovery-codes-saved').check()
+  await account.getByTestId('kc-recovery-codes-submit').click()
+  await backOnAccount(account, 'Tofaktor er slået til.')
+  await expect(account.getByTestId('account-status-on')).toBeVisible()
+  await expect(account.getByTestId('account-passkey')).toContainText('Testtelefon')
+
+  // Log out everywhere, then the login asks for the passkey after the password.
+  await account.getByTestId('account-logout-everywhere').click()
+  await account.getByTestId('account-logout-everywhere-confirm').click()
+  await account.waitForURL((url) => !url.pathname.startsWith('/min-konto'), { timeout: 30_000 })
+  await account.goto('/login')
+  await account.waitForURL(/localhost:8080/, { timeout: 15_000 })
+  await account.getByTestId('kc-username').fill(email)
+  await account.getByTestId('kc-password').fill(FIRST_PASSWORD)
+  await account.getByTestId('kc-login-submit').click()
+  await account.getByTestId('kc-passkey-login').click()
+  // Back in the app; the URL settles through a client-side redirect, so poll it.
+  await expect(account).not.toHaveURL(/localhost:8080/, { timeout: 30_000 })
+
+  // Remove it: two-factor is off again.
+  await account.goto('/min-konto')
+  await account.getByTestId('account-passkey-remove').click()
+  await expect(account.getByTestId('kc-delete-credential-label')).toHaveText('Testtelefon')
+  await account.getByTestId('kc-delete-credential-confirm').click()
+  await backOnAccount(account, 'Tofaktor er slået fra.')
+  await expect(account.getByTestId('account-status-off')).toBeVisible()
+  await context.close()
 })

@@ -12,14 +12,16 @@ import keycloak, { logout, takeActionResult } from '../auth/keycloak'
 import { Modal } from '../components/Modal'
 import { usePageTitle } from '../hooks/usePageTitle'
 
-type Done = 'password' | 'totp' | 'totp-codes' | 'codes' | 'tfa-off'
+type Done = 'password' | 'totp' | 'passkey' | 'second-codes' | 'codes' | 'app-off' | 'passkey-off'
 
 const DONE_MESSAGES: Record<Done, string> = {
   password: 'Din adgangskode er skiftet.',
-  totp: 'Tofaktor er slået til.',
-  'totp-codes': 'Tofaktor er slået til.',
+  totp: 'Godkendelses-appen er tilføjet.',
+  passkey: 'Adgangsnøglen er tilføjet.',
+  'second-codes': 'Tofaktor er slået til.',
   codes: 'Dine nye gendannelseskoder er gemt. De gamle virker ikke længere.',
-  'tfa-off': 'Tofaktor er slået fra.',
+  'app-off': 'Godkendelses-appen er fjernet.',
+  'passkey-off': 'Adgangsnøglen er fjernet.',
 }
 
 const PROVIDER_NAMES: Record<string, string> = { microsoft: 'Microsoft', google: 'Google' }
@@ -68,9 +70,13 @@ export default function AccountPage() {
     const status = takeActionResult()
     if (status === 'cancelled') return setNotice({ text: 'Intet blev ændret.' })
     if (status === 'error') return setNotice({ text: 'Noget gik galt. Prøv igen.', error: true })
-    // A new authenticator app also needs recovery codes, or a lost phone becomes a support case.
-    if (done === 'totp' && data.otp && !data.recoveryCodes) {
-      return startAction('CONFIGURE_RECOVERY_AUTHN_CODES', 'totp-codes')
+    const hasSecondFactor = !!data.otp || !!data.passkeys?.length
+    // A first app or passkey also needs recovery codes, or a lost phone becomes a support case.
+    if ((done === 'totp' || done === 'passkey') && hasSecondFactor && !data.recoveryCodes) {
+      return startAction('CONFIGURE_RECOVERY_AUTHN_CODES', 'second-codes')
+    }
+    if ((done === 'app-off' || done === 'passkey-off') && !hasSecondFactor) {
+      return setNotice({ text: 'Tofaktor er slået fra.' })
     }
     if (DONE_MESSAGES[done]) setNotice({ text: DONE_MESSAGES[done] })
   }, [data, searchParams, setSearchParams])
@@ -111,6 +117,8 @@ export default function AccountPage() {
     : null
   const otpSince = formatDate(data.otp?.createdAt)
   const remaining = data.recoveryCodes?.remaining
+  const passkeys = data.passkeys ?? []
+  const hasSecondFactor = !!data.otp || passkeys.length > 0
 
   return (
     <div className="p-4 md:p-6 max-w-xl space-y-6">
@@ -145,7 +153,7 @@ export default function AccountPage() {
             Adgangskode og tofaktor styrer du hos {external}.
           </p>
         </section>
-      ) : data.otp ? (
+      ) : hasSecondFactor ? (
         <section
           data-testid="account-status-on"
           className="rounded-xl border border-brand-200 bg-brand-50 p-5 space-y-2"
@@ -153,7 +161,12 @@ export default function AccountPage() {
           <h2 className="font-semibold text-brand-900">Din konto er godt beskyttet</h2>
           <ul className="text-sm text-brand-900 space-y-1">
             <li>✓ Adgangskode</li>
-            <li>✓ Tofaktor med app{otpSince && `, siden ${otpSince}`}</li>
+            {data.otp && <li>✓ Tofaktor med app{otpSince && `, siden ${otpSince}`}</li>}
+            {passkeys.length > 0 && (
+              <li>
+                ✓ {passkeys.length === 1 ? 'Adgangsnøgle' : `${passkeys.length} adgangsnøgler`}
+              </li>
+            )}
             {data.recoveryCodes && (
               <li>
                 ✓ Gendannelseskoder
@@ -169,17 +182,27 @@ export default function AccountPage() {
         >
           <h2 className="font-semibold text-amber-900">Beskyt din konto bedre</h2>
           <p className="text-sm text-amber-900">
-            Du logger ind med kun en adgangskode. Med tofaktor skal man også have din telefon for at
-            komme ind. Det tager 2 minutter.
+            Du logger ind med kun en adgangskode. Med tofaktor skal man også have din telefon eller
+            computer for at komme ind. Det tager 2 minutter.
           </p>
-          <button
-            type="button"
-            data-testid="account-tfa-on"
-            onClick={() => startAction('CONFIGURE_TOTP', 'totp')}
-            className="px-4 py-2 text-sm font-medium bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
-          >
-            Slå tofaktor til
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              data-testid="account-passkey-on"
+              onClick={() => startAction('webauthn-register', 'passkey')}
+              className="px-4 py-2 text-sm font-medium bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
+            >
+              Brug Face ID eller fingeraftryk
+            </button>
+            <button
+              type="button"
+              data-testid="account-tfa-on"
+              onClick={() => startAction('CONFIGURE_TOTP', 'totp')}
+              className="px-4 py-2 text-sm font-medium text-brand-800 bg-white border border-brand-200 rounded-lg hover:bg-brand-50 transition-colors"
+            >
+              Brug en app i stedet
+            </button>
+          </div>
         </section>
       )}
 
@@ -203,39 +226,60 @@ export default function AccountPage() {
             onClick={() => startAction('UPDATE_PASSWORD', 'password')}
           />
           {data.otp ? (
-            <>
-              <Row
-                testId="account-tfa-status"
-                title="Tofaktor-login"
-                detail={otpSince ? `Slået til siden ${otpSince}` : 'Slået til'}
-                badge={<Badge on>Til</Badge>}
-              />
-              <Row
-                testId="account-new-codes"
-                title="Gendannelseskoder"
-                detail={
-                  remaining != null
-                    ? `${remaining} ubrugte · lav nye`
-                    : data.recoveryCodes
-                      ? 'Lav nye'
-                      : 'Lav koder, hvis du mister telefonen'
-                }
-                onClick={() => startAction('CONFIGURE_RECOVERY_AUTHN_CODES', 'codes')}
-              />
-              <Row
-                testId="account-tfa-off"
-                title="Slå tofaktor fra"
-                danger
-                onClick={() => startAction(`delete_credential:${data.otp?.id}`, 'tfa-off')}
-              />
-            </>
+            <Row
+              testId="account-tfa-status"
+              title="Godkendelses-app"
+              detail={otpSince ? `Slået til siden ${otpSince}` : 'Slået til'}
+              remove={{
+                testId: 'account-tfa-off',
+                label: 'Fjern godkendelses-appen',
+                onClick: () => startAction(`delete_credential:${data.otp?.id}`, 'app-off'),
+              }}
+            />
           ) : (
             <Row
               testId="account-tfa-row"
-              title="Tofaktor-login"
+              title="Godkendelses-app"
               detail="Kode fra en app på telefonen, når du logger ind"
               badge={<Badge>Fra</Badge>}
               onClick={() => startAction('CONFIGURE_TOTP', 'totp')}
+            />
+          )}
+          {passkeys.map((passkey) => {
+            const added = formatDate(passkey.createdAt)
+            const name = passkey.label || 'Adgangsnøgle'
+            return (
+              <Row
+                key={passkey.id}
+                testId="account-passkey"
+                title={name}
+                detail={added ? `Adgangsnøgle · tilføjet ${added}` : 'Adgangsnøgle'}
+                remove={{
+                  testId: 'account-passkey-remove',
+                  label: `Fjern adgangsnøglen ${name}`,
+                  onClick: () => startAction(`delete_credential:${passkey.id}`, 'passkey-off'),
+                }}
+              />
+            )
+          })}
+          <Row
+            testId="account-passkey-add"
+            title={passkeys.length ? 'Tilføj endnu en adgangsnøgle' : 'Tilføj adgangsnøgle'}
+            detail="Log ind med Face ID, fingeraftryk eller enhedens kode"
+            onClick={() => startAction('webauthn-register', 'passkey')}
+          />
+          {hasSecondFactor && (
+            <Row
+              testId="account-new-codes"
+              title="Gendannelseskoder"
+              detail={
+                remaining != null
+                  ? `${remaining} ubrugte · lav nye`
+                  : data.recoveryCodes
+                    ? 'Lav nye'
+                    : 'Lav koder, hvis du mister telefonen'
+              }
+              onClick={() => startAction('CONFIGURE_RECOVERY_AUTHN_CODES', 'codes')}
             />
           )}
         </Group>
@@ -305,27 +349,37 @@ function Row({
   title,
   detail,
   badge,
-  danger,
+  remove,
   onClick,
   testId,
 }: {
   title: string
   detail?: string
   badge?: React.ReactNode
-  danger?: boolean
+  /** A "Fjern" button at the end of the row; label is its accessible name. */
+  remove?: { label: string; onClick: () => void; testId: string }
   onClick?: () => void
   testId: string
 }) {
   const content = (
     <>
       <span className="flex-1 min-w-0">
-        <span className={`block text-sm font-medium ${danger ? 'text-red-700' : 'text-gray-900'}`}>
-          {title}
-        </span>
+        <span className="block text-sm font-medium text-gray-900 break-words">{title}</span>
         {detail && <span className="block text-sm text-gray-500">{detail}</span>}
       </span>
       {badge}
-      {onClick && !danger && (
+      {remove && (
+        <button
+          type="button"
+          data-testid={remove.testId}
+          aria-label={remove.label}
+          onClick={remove.onClick}
+          className="shrink-0 px-3 py-1.5 text-sm font-medium text-red-700 rounded-lg hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-600 transition-colors"
+        >
+          Fjern
+        </button>
+      )}
+      {onClick && (
         <span aria-hidden="true" className="text-lg text-gray-400">
           ›
         </span>
@@ -348,15 +402,9 @@ function Row({
   )
 }
 
-function Badge({ on, children }: { on?: boolean; children: React.ReactNode }) {
+function Badge({ children }: { children: React.ReactNode }) {
   return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-xs font-semibold border ${
-        on
-          ? 'bg-brand-50 text-brand-700 border-brand-200'
-          : 'bg-gray-50 text-gray-500 border-gray-200'
-      }`}
-    >
+    <span className="rounded-full px-2 py-0.5 text-xs font-semibold border bg-gray-50 text-gray-500 border-gray-200">
       {children}
     </span>
   )
