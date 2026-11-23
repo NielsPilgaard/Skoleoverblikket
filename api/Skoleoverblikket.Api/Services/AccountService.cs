@@ -186,12 +186,14 @@ public sealed class AccountService(
 			return TwoFactorResetResult.NoTwoFactor;
 		}
 
+		// Log out before deleting: if a step fails, factors are still left, so a retry finishes the reset
+		// instead of finding no two-factor and refusing.
+		await keycloak.LogoutEverywhereAsync(subject, cancellationToken);
+
 		foreach (var credential in secondFactors)
 		{
 			await keycloak.DeleteCredentialAsync(subject, credential.Id!, cancellationToken);
 		}
-
-		await keycloak.LogoutEverywhereAsync(subject, cancellationToken);
 
 		// The login's own email, not the school's row: a school admin can edit the row's email.
 		var to = await keycloak.GetEmailAsync(subject, cancellationToken);
