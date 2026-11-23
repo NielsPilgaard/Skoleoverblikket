@@ -30,7 +30,7 @@
         autofocus
         dir="ltr"
         data-testid="kc-otp-input"
-        aria-invalid="<#if messagesPerField.existsError('totp')>true</#if>"
+        aria-invalid="<#if messagesPerField.existsError('totp')>true</#if>"<#if messagesPerField.existsError('totp')> aria-describedby="totp-error"</#if>
       >
       <@layout.fieldError field="totp"/>
     </div>

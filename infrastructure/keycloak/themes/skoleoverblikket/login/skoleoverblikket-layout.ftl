@@ -58,6 +58,6 @@
 
 <#macro fieldError field>
   <#if messagesPerField.existsError(field)>
-    <span class="field-error" aria-live="polite">${kcSanitize(messagesPerField.get(field))?no_esc}</span>
+    <span id="${field}-error" class="field-error" aria-live="polite">${kcSanitize(messagesPerField.get(field))?no_esc}</span>
   </#if>
 </#macro>

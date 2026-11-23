@@ -39,7 +39,7 @@
         maxlength="7"
         dir="ltr"
         data-testid="kc-totp-input"
-        aria-invalid="<#if messagesPerField.existsError('totp')>true</#if>"
+        aria-invalid="<#if messagesPerField.existsError('totp')>true</#if>"<#if messagesPerField.existsError('totp')> aria-describedby="totp-error"</#if>
       >
       <@layout.fieldError field="totp"/>
     </div>
@@ -52,7 +52,7 @@
       <div class="form-group">
         <label for="userLabel">Navn på telefonen</label>
         <input type="text" id="userLabel" name="userLabel" autocomplete="off" placeholder="Fx Min iPhone" data-testid="kc-totp-label"
-          aria-invalid="<#if messagesPerField.existsError('userLabel')>true</#if>">
+          aria-invalid="<#if messagesPerField.existsError('userLabel')>true</#if>"<#if messagesPerField.existsError('userLabel')> aria-describedby="userLabel-error"</#if>>
         <@layout.fieldError field="userLabel"/>
       </div>
     <#else>

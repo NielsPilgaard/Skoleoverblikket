@@ -18,7 +18,7 @@
         autofocus
         dir="ltr"
         data-testid="kc-recovery-code-input"
-        aria-invalid="<#if messagesPerField.existsError('recoveryCodeInput')>true</#if>"
+        aria-invalid="<#if messagesPerField.existsError('recoveryCodeInput')>true</#if>"<#if messagesPerField.existsError('recoveryCodeInput')> aria-describedby="recoveryCodeInput-error"</#if>
       >
       <@layout.fieldError field="recoveryCodeInput"/>
     </div>
