@@ -12,6 +12,17 @@ interface ChangelogEntry {
  */
 export const changelog: ChangelogEntry[] = [
   {
+    date: '2026-11-23',
+    title: 'Ny ugeplan til forældre',
+    changes: [
+      'Forældre lander på dagens ugeplan, eller næste skoledag efter kl. 15, og ser først lærerens "Generelt for ugen" og derefter et kort overblik over dagens timer, ændringer og lektier. Har man flere børn, skifter man nemt mellem dem.',
+      'Lærere behøver ikke trykke Gem i ugeplanen: teksten gemmes, mens der skrives, "Næste" går direkte til næste lektion, og "Fortryd mine ændringer" henter det gamle frem igen.',
+      'Når en fil skal vedhæftes en lektion, foreslås filer til faget og dem, du har brugt for nylig, og du kan uploade eller tage et billede direkte fra telefonen.',
+      'Alle lister, fx medarbejdere, elever, forældre, lokaler og filer, kan nu søges i, filtreres og sorteres, og på telefonen vises de som overskuelige kort.',
+      'Uger, dage og måneder bladres på samme måde overalt med ‹ Uge 45 ›, og på Ugeplan og SFO kan du hoppe direkte til en bestemt uge.',
+    ],
+  },
+  {
     date: '2026-11-16',
     title: 'Mere overskuelig menu',
     changes: [
