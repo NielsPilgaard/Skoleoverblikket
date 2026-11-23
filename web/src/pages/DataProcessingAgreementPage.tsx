@@ -121,8 +121,8 @@ export default function DataProcessingAgreementPage() {
           </Li>
           <Li>Adgangskoder gemmes kun som hash, aldrig i klartekst.</Li>
           <Li>
-            Alle brugere kan slå tofaktor til på deres login, med en godkendelses-app og
-            gendannelseskoder.
+            Alle brugere kan slå tofaktor til på deres login, med en adgangsnøgle (fx Face ID) eller
+            en godkendelses-app, og med gendannelseskoder.
           </Li>
           <Li>
             Database, uploadede filer og sikkerhedskopier opbevares i EU. Databasen
