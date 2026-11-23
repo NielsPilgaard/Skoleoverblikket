@@ -50,6 +50,7 @@ export async function parentInvitationToken(page: Page, email: string, since: nu
 
 export type ParentLogin = {
   parentId: string
+  classId: string
   parentName: string
   studentName: string
   context: BrowserContext
@@ -58,20 +59,34 @@ export type ParentLogin = {
   dispose: () => Promise<void>
 }
 
+export type ParentLoginOptions = {
+  /** Put the new student in this klasse instead of a new one. */
+  classId?: string
+  /** Fill in this phone number and tick "Tillad andre forældre at se mine kontaktoplysninger". */
+  sharePhone?: string
+}
+
 /**
- * A new klasse, student and parent, with the parent logged in through the real invitation flow
- * in their own browser. `adminPage` must be logged in as the seeded admin.
+ * A new student and parent (and klasse, unless given), with the parent logged in through the real
+ * invitation flow in their own browser. `adminPage` must be logged in as the seeded admin.
  */
-export async function createParentLogin(adminPage: Page, browser: Browser, baseURL: string): Promise<ParentLogin> {
+export async function createParentLogin(
+  adminPage: Page,
+  browser: Browser,
+  baseURL: string,
+  options: ParentLoginOptions = {}
+): Promise<ParentLogin> {
   const stamp = `${Date.now()}-${Math.floor(Math.random() * 1000)}`
   const studentName = `Elev ${stamp}`
   const parentName = `Forælder ${stamp}`
   const email = `parent-${stamp}@testskole.dk`
 
-  const klass = await api<{ id: string }>(adminPage, 'POST', '/classes', { name: `E2E ${stamp}`, gradeLevel: 4 })
+  const classId =
+    options.classId ??
+    (await api<{ id: string }>(adminPage, 'POST', '/classes', { name: `E2E ${stamp}`, gradeLevel: 4 })).id
   const student = await api<{ id: string }>(adminPage, 'POST', '/students', {
     name: studentName,
-    classId: klass.id,
+    classId,
     isEnrolledInSfo: false,
   })
   const invitedAt = Date.now() - 1_000
@@ -87,11 +102,17 @@ export async function createParentLogin(adminPage: Page, browser: Browser, baseU
   await page.goto(`/parent-invitation/${token}`)
   await page.getByTestId('invitation-password').fill('ForaelderPass123!', { timeout: 30_000 })
   await page.getByTestId('invitation-password-submit').click()
-  await page.getByTestId('invitation-contact-submit').click({ timeout: 30_000 })
+  await expect(page.getByTestId('invitation-contact-submit')).toBeVisible({ timeout: 30_000 })
+  if (options.sharePhone) {
+    await page.locator('#phone').fill(options.sharePhone)
+    await page.locator('#shareContactInfo').check()
+  }
+  await page.getByTestId('invitation-contact-submit').click()
   await page.waitForURL(/\/foraeldrevisning\/skema/, { timeout: 15_000 })
 
   return {
     parentId: parent.id,
+    classId,
     parentName,
     studentName,
     context,
