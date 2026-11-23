@@ -164,7 +164,7 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 - **Own login only.** `/api/v1/account` acts on the token's `sub` and nothing else, so it needs no school role: a login with no role can still change its password, set up tofaktor and log out everywhere. Password and tofaktor changes happen in Keycloak (application-initiated actions); the API only reads the summary, ends sessions and removes orphaned recovery codes.
 - **Admin reset of tofaktor** (`AccountService.ResetTwoFactorAsync`) removes the login's `otp`, `webauthn` and `recovery-authn-codes` credentials, logs out all its sessions and emails the person. Allowed only when the login belongs to this school alone, the same rule `SchoolLoginService` uses for deleting logins: a login also used at another school, or the operator's own, is 409, otherwise an admin at school A could weaken a login at school B. Your own login is 403. Someone at another school is 404 (query filter).
 - **Shared logins** are reset by the superadmin from the back office, by email.
-- **The superadmin must use tofaktor.** The Keycloak browser flow requires OTP for the `superadmin` realm role and makes the login set it up if missing. School logins choose for themselves.
+- **The superadmin must use tofaktor.** The Keycloak browser flow requires OTP for the `superadmin` realm role unless the login already used the app or a passkey, and makes the login set up the app if it has neither. School logins choose for themselves.
 
 ---
 

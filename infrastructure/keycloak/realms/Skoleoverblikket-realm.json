@@ -289,6 +289,20 @@
   "otpPolicyLookAheadWindow": 1,
   "otpPolicyPeriod": 30,
   "otpPolicyCodeReusable": false,
+  "webAuthnPolicyRpEntityName": "Skoleoverblikket",
+  "webAuthnPolicySignatureAlgorithms": [
+    "ES256",
+    "RS256"
+  ],
+  "webAuthnPolicyRpId": "",
+  "webAuthnPolicyAttestationConveyancePreference": "not specified",
+  "webAuthnPolicyAuthenticatorAttachment": "not specified",
+  "webAuthnPolicyRequireResidentKey": "not specified",
+  "webAuthnPolicyUserVerificationRequirement": "preferred",
+  "webAuthnPolicyCreateTimeout": 0,
+  "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
+  "webAuthnPolicyAcceptableAaguids": [],
+  "webAuthnPolicyExtraOrigins": [],
   "eventsListeners": [
     "jboss-logging",
     "email"
@@ -368,7 +382,9 @@
       "enabled": true,
       "defaultAction": false,
       "priority": 80,
-      "config": {}
+      "config": {
+        "max_auth_age": "300"
+      }
     },
     {
       "alias": "webauthn-register-passwordless",
@@ -708,7 +724,7 @@
     {
       "id": "78412766-b9dd-4ebe-a99e-c9d645f25071",
       "alias": "Superadmin requires two-factor",
-      "description": "Superadmin must use an authenticator app: asks for its code unless this login already used it (a recovery code is not enough), and forces setup when there is none.",
+      "description": "Superadmin must use an authenticator app or a passkey: asks for the app code unless this login already used one of them (a recovery code is not enough), and forces app setup when there is none.",
       "providerId": "basic-flow",
       "topLevel": false,
       "builtIn": false,
@@ -1214,7 +1230,7 @@
         {
           "authenticator": "webauthn-authenticator",
           "authenticatorFlow": false,
-          "requirement": "DISABLED",
+          "requirement": "ALTERNATIVE",
           "priority": 40,
           "autheticatorFlow": false,
           "userSetupAllowed": false
@@ -1451,7 +1467,7 @@
       "id": "ed62ffda-d9d9-4a3c-b6c9-c4cc4a248e6e",
       "alias": "superadmin-otp-not-used",
       "config": {
-        "credentials": "otp",
+        "credentials": "otp##webauthn",
         "included": "false"
       }
     },
