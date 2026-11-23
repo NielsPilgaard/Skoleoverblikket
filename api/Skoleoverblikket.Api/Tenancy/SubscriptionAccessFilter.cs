@@ -24,6 +24,8 @@ public sealed class SubscriptionAccessFilter(AppDbContext db, ITenantContext ten
 		"/api/v1/superadmin",
 		"/api/v1/admin",
 		"/api/v1/data-processing-agreement",
+		// Min konto's security actions (log out everywhere) must work whatever the billing state.
+		"/api/v1/account",
 	];
 
 	public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)

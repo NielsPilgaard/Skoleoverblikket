@@ -3,9 +3,11 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Skoleoverblikket.Api.Auth;
+using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Email;
 using Skoleoverblikket.Api.IntegrationTests.Infrastructure;
 using static Skoleoverblikket.Api.Services.AccountService;
@@ -74,6 +76,24 @@ public sealed class AccountTests(ApiFactory factory)
 	[Test]
 	public async Task LogoutEverywhere_EndsTheCallersOwnSessions()
 	{
+		var response = await _admin.PostAsync("/api/v1/account/logout-everywhere", null);
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+		await Assert.That(_keycloak.LoggedOutUserIds).IsEquivalentTo([_adminSubject]);
+	}
+
+	[Test]
+	public async Task LogoutEverywhere_WorksAfterTheSubscriptionExpired()
+	{
+		await TestDataBuilder.CreateTrialSubscriptionAsync(_app.Services, _tenantId);
+		await using (var scope = _app.Services.CreateAsyncScope())
+		{
+			// No endpoint ends a trial early, so the trial end is moved into the past directly.
+			await scope.ServiceProvider.GetRequiredService<AppDbContext>().Subscriptions
+				.Where(s => s.SchoolId == _tenantId)
+				.ExecuteUpdateAsync(s => s.SetProperty(x => x.TrialEnd, DateTimeOffset.UtcNow.AddDays(-1)));
+		}
+
 		var response = await _admin.PostAsync("/api/v1/account/logout-everywhere", null);
 
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
