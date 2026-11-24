@@ -224,7 +224,10 @@ firewall() {
 	# Allow the port sshd really listens on before turning ufw on, or a VPS with
 	# SSH on another port locks us out.
 	local ssh_ports
-	ssh_ports=$(sshd -T 2>/dev/null | awk '$1 == "port" {print $2}' | sort -un | tr '\n' ' ' || true)
+	# "listenaddress addr:port" too: a ListenAddress with its own port overrides Port, and
+	# sshd -T still prints "port 22" then.
+	ssh_ports=$(sshd -T 2>/dev/null | awk '$1 == "port" {print $2} $1 == "listenaddress" {n = split($2, a, ":"); print a[n]}' |
+		grep -xE '[0-9]+' | sort -un | tr '\n' ' ' || true)
 	[[ -n $ssh_ports ]] || die "Could not read the SSH port from 'sshd -T'. ufw left as it was."
 	for port in $ssh_ports; do
 		ufw limit "$port/tcp" comment ssh >/dev/null
@@ -333,6 +336,10 @@ install_alloy() {
 		env_changed=1
 	fi
 	chmod 600 "$env"
+	# Alloy reads the file only at start. The marker stays until Alloy has restarted, so a
+	# run that fails before that (apt, config check) still restarts it next time.
+	local pending=/var/lib/harden/alloy-restart-pending
+	((env_changed)) && install -D -m 600 /dev/null "$pending"
 
 	if [[ ! -f /etc/apt/sources.list.d/grafana.list ]]; then
 		install -d -m 755 /etc/apt/keyrings
@@ -377,6 +384,7 @@ install_alloy() {
 		SupplementaryGroups=systemd-journal
 	EOF
 	local restart=$((CHANGED || env_changed))
+	[[ -f $pending ]] && restart=1
 
 	# job/instance match Grafana Cloud's Linux integration, so its dashboards work.
 	put /etc/alloy/config.alloy <<-EOF
@@ -464,6 +472,7 @@ install_alloy() {
 	systemctl enable alloy >/dev/null 2>&1
 	if ((restart)) || ! systemctl is-active --quiet alloy; then
 		systemctl restart alloy
+		rm -f "$pending"
 	fi
 	sleep 5
 	systemctl is-active --quiet alloy || die "Alloy failed to start: journalctl -u alloy -n 50"

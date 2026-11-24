@@ -23,6 +23,8 @@
 
 ## Running the script
 
+First open a second SSH session (`ssh debian@<vps>`) and leave it open until step 1 below has worked: the session that runs the script ends with it, and the second one is your way back in if the new SSH settings lock you out.
+
 ```powershell
 scp infrastructure/vps/harden.sh debian@<vps>:
 ssh -t debian@<vps> sudo bash harden.sh
@@ -32,12 +34,12 @@ The settings are listed at the top of the script. Password login is only turned 
 
 ## After the script
 
-1. **Keep the SSH session open** and run `ssh debian@<vps>` in a new terminal. If it fails, fix it from the open session, or from the KVM console.
+1. **Test a new login** with `ssh debian@<vps>` in a new terminal while the second session is still open. If it fails, fix it from that session, or from the KVM console.
 2. **Reboot** in a quiet window if the script says one is pending: `ssh -t debian@<vps> sudo REBOOT=yes bash harden.sh`, or `sudo reboot`.
 3. **Check:**
    - The app and Keycloak log in.
    - The Dokploy panel loads, and a deploy goes through.
-   - From outside the server, only 22, 80 and 443 answer (`nmap <vps>`).
+   - From outside the server, only 22 (TCP), 80 (TCP) and 443 (TCP and UDP) answer. Plain `nmap <vps>` checks only the 1,000 most common ports, so scan all TCP ports and the common UDP ones: `nmap -Pn -p- <vps>` and `sudo nmap -Pn -sU --top-ports 200 <vps>`. If the VPS has an IPv6 address, run both again with `-6 <ipv6>`.
    - Grafana Explore shows `up{job="integrations/node_exporter", service="skoleoverblikket"}` and the server's journal in Loki.
 4. **Alert rules.** Once metrics arrive, import the `skoleoverblikket-host` group from [alert-rules.json](../grafana/alert-rules.json). Don't import it earlier: "VPS down" fires when there is no data.
 5. **Contact point.** The rules only notify through the `Skoleoverblikket` email contact point and its notification policy ([Grafana README](../grafana/README.md)).
