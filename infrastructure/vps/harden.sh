@@ -313,12 +313,17 @@ ssh_hardening() {
 #   GCLOUD_TOKEN=<access policy token with metrics:write and logs:write only>
 install_alloy() {
 	step "Alloy -> Grafana Cloud"
-	local env=/etc/alloy/grafana-cloud.env env_changed=0
+	# Alloy reads the credentials only at start. The marker is set before they are written and
+	# stays until Alloy has restarted, so a run that stops anywhere in between (write, apt,
+	# config check) still restarts it next time.
+	local env=/etc/alloy/grafana-cloud.env env_changed=0 pending=/var/lib/harden/alloy-restart-pending
 	if [[ -n $GCLOUD_ENV ]]; then
 		[[ -f $GCLOUD_ENV ]] || die "GCLOUD_ENV file $GCLOUD_ENV not found"
-		# Alloy reads it only at start, so a rotated token needs a restart (below).
+		if ! cmp -s "$GCLOUD_ENV" "$env"; then
+			install -D -m 600 /dev/null "$pending"
+			env_changed=1
+		fi
 		put "$env" 600 <"$GCLOUD_ENV"
-		env_changed=$CHANGED
 	elif [[ ! -f $env ]]; then
 		if [[ ! -t 0 ]]; then
 			note "Alloy skipped: no $env and no terminal to ask"
@@ -331,15 +336,12 @@ install_alloy() {
 		read -rp "   Loki user (number): " l_user
 		read -rsp "   Access policy token (hidden): " token
 		echo
+		install -D -m 600 /dev/null "$pending"
 		printf 'GCLOUD_PROM_URL=%s\nGCLOUD_PROM_USER=%s\nGCLOUD_LOKI_URL=%s\nGCLOUD_LOKI_USER=%s\nGCLOUD_TOKEN=%s\n' \
 			"$p_url" "$p_user" "$l_url" "$l_user" "$token" | put "$env" 600
 		env_changed=1
 	fi
 	chmod 600 "$env"
-	# Alloy reads the file only at start. The marker stays until Alloy has restarted, so a
-	# run that fails before that (apt, config check) still restarts it next time.
-	local pending=/var/lib/harden/alloy-restart-pending
-	((env_changed)) && install -D -m 600 /dev/null "$pending"
 
 	if [[ ! -f /etc/apt/sources.list.d/grafana.list ]]; then
 		install -d -m 755 /etc/apt/keyrings

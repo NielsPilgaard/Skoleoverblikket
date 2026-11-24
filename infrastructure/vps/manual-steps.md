@@ -39,7 +39,7 @@ The settings are listed at the top of the script. Password login is only turned 
 3. **Check:**
    - The app and Keycloak log in.
    - The Dokploy panel loads, and a deploy goes through.
-   - From outside the server, only 22 (TCP), 80 (TCP) and 443 (TCP and UDP) answer. Plain `nmap <vps>` checks only the 1,000 most common ports, so scan all TCP ports and the common UDP ones: `nmap -Pn -p- <vps>` and `sudo nmap -Pn -sU --top-ports 200 <vps>`. If the VPS has an IPv6 address, run both again with `-6 <ipv6>`.
+   - From outside the server, only 22 (TCP), 80 (TCP) and 443 (TCP and UDP) answer. Plain `nmap <vps>` checks only the 1,000 most common ports, so scan all TCP ports and the common UDP ones: `nmap -Pn -p- <vps>` and `sudo nmap -Pn -sU --top-ports 200 <vps>`. If the VPS has an IPv6 address, run both again with `-6 <ipv6>`. The UDP scan covers only the 200 most common UDP ports, so it can't rule out others; `-sU -p-` checks them all but takes hours.
    - Grafana Explore shows `up{job="integrations/node_exporter", service="skoleoverblikket"}` and the server's journal in Loki.
 4. **Alert rules.** Once metrics arrive, import the `skoleoverblikket-host` group from [alert-rules.json](../grafana/alert-rules.json). Don't import it earlier: "VPS down" fires when there is no data.
 5. **Contact point.** The rules only notify through the `Skoleoverblikket` email contact point and its notification policy ([Grafana README](../grafana/README.md)).
