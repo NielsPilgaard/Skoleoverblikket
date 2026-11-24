@@ -44,4 +44,6 @@ The settings are listed at the top of the script. Password login is only turned 
 
 ## Edge firewall
 
-Ports published by Docker bypass ufw. OVH's Edge Network Firewall (free, in front of the VPS) catches them: allow only 22, 80 and 443. It doesn't track connections, so it also needs rules that let replies to the server's own outgoing traffic back in (established TCP, DNS replies).
+Ports published by Docker bypass ufw. Close any the script lists (step 4 under "Before the script" covers the usual ones); that is the real fix.
+
+OVH's Edge Network Firewall (free, in front of the VPS) is an extra layer, not the boundary: it only filters IPv4 from outside OVH, not IPv6 or traffic from other OVH servers. Allow only 22, 80 and 443. It doesn't track connections, so it also needs rules that let replies to the server's own outgoing traffic back in (established TCP, DNS replies).
