@@ -4,7 +4,7 @@
 
 ## Before the script
 
-1. **Emergency access.** Log in through the OVH KVM console (OVH Control Panel → the VPS → KVM) with the `debian` user's password. If there is no password, set one with `sudo passwd debian` first. That password keeps working on the console after SSH password login is turned off, so it's the way back in if SSH breaks.
+1. **Emergency access.** Make sure you can log in through the OVH KVM console (OVH Control Panel → the VPS → KVM). It is the way back in if SSH breaks.
 2. **SSH key** on your own machine (Windows):
 
    ```powershell
@@ -16,11 +16,10 @@
    Add a second key from another device the same way, so losing one laptop doesn't lock you out. On a new VPS, paste the public key into the OVH order form instead.
 3. **Grafana Cloud token.** Grafana Cloud portal → Access Policies → a policy with only `metrics:write` and `logs:write`, scoped to the stack → create a token. From the stack's Prometheus and Loki details pages, note the push URL and user number of each. The script asks for all five values the first time.
 4. **Dokploy:**
-   - Clear **External Port** on the Keycloak database. Check first that Keycloak connects to its database inside Docker (`KEYCLOAK_DB_URL` uses the service name, not the public IP).
-   - Leave the app database's port 5435 open for now. The `migrate` job in `ci.yml` runs `psql` against it from GitHub Actions, so closing it breaks every deploy. It closes at the [task 54](../../tasks/54-move-vps.md) cutover.
-   - Give the panel a domain with HTTPS. Update the `DOKPLOY_URL` secret in the GitHub `production` environment to that domain. Only then turn on **Disable access via ip:port**, or deploys and rollbacks fail.
-   - Turn on 2FA for the Dokploy admin user.
-   - Don't turn on Dokploy's Docker cleanup. It can remove unused volumes, which would delete the spare pgdata volume and the drill volume. The script installs its own weekly prune, which never touches volumes.
+   - No database should have an **External Port**. Reach databases through an SSH tunnel instead.
+   - The panel should have a domain with HTTPS and **Disable access via ip:port** turned on. Point the `DOKPLOY_URL` secret in the GitHub `production` environment at that domain first, or deploys fail.
+   - 2FA on the Dokploy admin user.
+   - Don't turn on Dokploy's Docker cleanup. It can remove unused volumes, which would delete the spare pgdata volume and the drill volume ([RESTORE.md](../../docs/RESTORE.md)). The script installs its own weekly prune, which never touches volumes.
 
 ## Running the script
 
@@ -33,17 +32,16 @@ The settings are listed at the top of the script. Password login is only turned 
 
 ## After the script
 
-1. **Keep the SSH session open** and run `ssh debian@<vps>` in a new terminal. If it fails, fix it from the open session, or from the KVM console if that is gone.
-2. **Reboot** in a quiet window: `ssh -t debian@<vps> sudo REBOOT=yes bash harden.sh`, or `sudo reboot`. This loads the new kernel and the Docker log limits.
+1. **Keep the SSH session open** and run `ssh debian@<vps>` in a new terminal. If it fails, fix it from the open session, or from the KVM console.
+2. **Reboot** in a quiet window if the script says one is pending: `ssh -t debian@<vps> sudo REBOOT=yes bash harden.sh`, or `sudo reboot`.
 3. **Check:**
    - The app and Keycloak log in.
    - The Dokploy panel loads, and a deploy goes through.
-   - From outside the server: `nc -zv <vps> 5436` and `nc -zv <vps> 3000` fail.
+   - From outside the server, only 22, 80 and 443 answer (`nmap <vps>`).
    - Grafana Explore shows `up{job="integrations/node_exporter", service="skoleoverblikket"}` and the server's journal in Loki.
 4. **Alert rules.** Once metrics arrive, import the `skoleoverblikket-host` group from [alert-rules.json](../grafana/alert-rules.json). Don't import it earlier: "VPS down" fires when there is no data.
-5. **Contact point.** If not done yet, create the `Skoleoverblikket` email contact point and a notification policy for `service=skoleoverblikket` ([Grafana README](../grafana/README.md)). Until then, no alert is sent.
+5. **Contact point.** The rules only notify through the `Skoleoverblikket` email contact point and its notification policy ([Grafana README](../grafana/README.md)).
 
-## Later, at the task 54 cutover
+## Edge firewall
 
-- Close the app database's port 5435.
-- Add OVH's Edge Network Firewall (free, in front of the VPS), allowing only 22, 80 and 443. It is the only thing that blocks ports Docker publishes, because those bypass ufw. It doesn't track connections, so it also needs rules that let replies to the server's own outgoing traffic back in (established TCP, DNS replies).
+Ports published by Docker bypass ufw. OVH's Edge Network Firewall (free, in front of the VPS) catches them: allow only 22, 80 and 443. It doesn't track connections, so it also needs rules that let replies to the server's own outgoing traffic back in (established TCP, DNS replies).
