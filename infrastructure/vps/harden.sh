@@ -19,8 +19,9 @@
 #   GCLOUD_ENV   File with the Grafana Cloud settings (see install_alloy). Without
 #                it the script asks, or skips Alloy when there is no terminal.
 #   REBOOT       yes: reboot at the end if one is pending. Default no.
-#   SERVICE      service label on this host's metrics and logs. Default skoleoverblikket.
-#                The host alerts in infrastructure/grafana/alert-rules.json watch
+#   SERVICE      service label on this host's metrics and logs. Default: the label this
+#                script set last time (so a plain rerun never changes it), else
+#                skoleoverblikket. The host alerts in infrastructure/grafana/alert-rules.json watch
 #                service="skoleoverblikket", which only the production VPS may carry:
 #                "VPS down" adds up every host with it, so a second one would hide an
 #                outage. Any other host (test box, the other VPS during a move) uses
@@ -39,6 +40,9 @@ SWAP_SIZE=${SWAP_SIZE:-2G}
 REBOOT_TIME=${REBOOT_TIME:-05:30}
 GCLOUD_ENV=${GCLOUD_ENV:-}
 REBOOT=${REBOOT:-no}
+# Keep the label from the last run unless SERVICE is given: a plain rerun (REBOOT=yes)
+# on a second VPS must not give it the production label.
+SERVICE=${SERVICE:-$(grep -oP '^\s*labels\s*=.*\bservice = "\K[^"]+' /etc/alloy/config.alloy 2>/dev/null || true)}
 SERVICE=${SERVICE:-skoleoverblikket}
 
 TEXTFILE_DIR=/var/lib/node_exporter/textfile
