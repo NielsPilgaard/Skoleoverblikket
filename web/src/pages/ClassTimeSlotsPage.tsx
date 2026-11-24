@@ -10,7 +10,7 @@ import {
   getApiV1ClassesByClassIdSchemasBySchemaIdTimeSlotsQueryKey,
   putApiV1ClassesByClassIdSchemasBySchemaIdTimeSlotsMutation,
 } from '../api/generated/@tanstack/react-query.gen'
-import type { TimeSlotDto, ClassDto } from '../api/client'
+import type { TimeSlotDto } from '../api/client'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { TimeInput } from '../components/TimeInput'
 import { LessonDurationSlider } from '../components/LessonDurationSlider'
@@ -114,49 +114,47 @@ function validateForm(
 
 export default function ClassTimeSlotsPage() {
   usePageTitle('Lektionsstruktur')
-  const { classId, schemaId } = useParams<{ classId: string; schemaId?: string }>()
+  const { classId = '', schemaId } = useParams<{ classId: string; schemaId?: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
 
-  const { data: cls } = useQuery({
+  const { data: className } = useQuery({
     ...getApiV1ClassesOptions(),
-    select: (all) => (all ?? []).filter((c) => c.id === classId) as ClassDto[],
+    select: (all) => all.find((c) => c.id === classId)?.name,
   })
-  const className = cls?.[0]?.name
 
   const timeSlotsKey = schemaId
     ? getApiV1ClassesByClassIdSchemasBySchemaIdTimeSlotsQueryKey({
-        path: { classId: classId!, schemaId },
+        path: { classId, schemaId },
       })
-    : getApiV1ClassesByClassIdTimeSlotsQueryKey({ path: { classId: classId! } })
+    : getApiV1ClassesByClassIdTimeSlotsQueryKey({ path: { classId } })
 
   const { data: rawClassTimeSlots, isLoading: isLoadingClass } = useQuery({
-    ...getApiV1ClassesByClassIdTimeSlotsOptions({ path: { classId: classId! } }),
+    ...getApiV1ClassesByClassIdTimeSlotsOptions({ path: { classId } }),
     enabled: !!classId && !schemaId,
   })
   const { data: rawSchemaTimeSlots, isLoading: isLoadingSchema } = useQuery({
     ...getApiV1ClassesByClassIdSchemasBySchemaIdTimeSlotsOptions({
-      path: { classId: classId!, schemaId: schemaId! },
+      path: { classId, schemaId: schemaId ?? '' },
     }),
     enabled: !!classId && !!schemaId,
   })
   const isLoading = schemaId ? isLoadingSchema : isLoadingClass
   const timeSlots = useMemo(
-    () => ((schemaId ? rawSchemaTimeSlots : rawClassTimeSlots) ?? []) as TimeSlotDto[],
+    () => (schemaId ? rawSchemaTimeSlots : rawClassTimeSlots) ?? [],
     [schemaId, rawSchemaTimeSlots, rawClassTimeSlots]
   )
 
-  const isSchemaCustom = timeSlots?.some((s) => s.classId != null)
-  const isCustom = schemaId ? isSchemaCustom : isSchemaCustom
+  const isCustom = timeSlots.some((s) => s.classId != null)
 
   const resetMutation = useMutation({
     mutationFn: () => {
       if (schemaId) {
         const { mutationFn } = putApiV1ClassesByClassIdSchemasBySchemaIdTimeSlotsMutation()
-        return mutationFn!({ path: { classId: classId!, schemaId }, body: [] }, undefined as never)
+        return mutationFn!({ path: { classId, schemaId }, body: [] }, undefined as never)
       }
       const { mutationFn } = putApiV1ClassesByClassIdTimeSlotsMutation()
-      return mutationFn!({ path: { classId: classId! }, body: [] }, undefined as never)
+      return mutationFn!({ path: { classId }, body: [] }, undefined as never)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: timeSlotsKey }),
   })
@@ -172,7 +170,7 @@ export default function ClassTimeSlotsPage() {
 
   // Seed the edit form from current time slots on first load
   useEffect(() => {
-    if (!schemaId || !timeSlots || initialized) return
+    if (!schemaId || initialized) return
     if (timeSlots.length === 0) {
       setInitialized(true)
       return
@@ -218,10 +216,11 @@ export default function ClassTimeSlotsPage() {
     },
   })
 
-  const lessonSlots = timeSlots?.filter((s) => !s.isBreak) ?? []
-  const breakSlots = timeSlots?.filter((s) => s.isBreak) ?? []
+  const lessonSlots = timeSlots.filter((s) => !s.isBreak)
+  const breakSlots = timeSlots.filter((s) => s.isBreak)
 
   function handleSave() {
+    if (!schemaId) return
     const err = validateForm(dayStart, dayEnd, lessonDuration, breaks)
     if (err) {
       setSaveError(err)
@@ -234,7 +233,7 @@ export default function ClassTimeSlotsPage() {
       label: s.label ?? null,
       isBreak: s.isBreak,
     }))
-    saveMutation.mutate({ path: { classId: classId!, schemaId: schemaId! }, body: slots })
+    saveMutation.mutate({ path: { classId, schemaId }, body: slots })
   }
 
   return (
