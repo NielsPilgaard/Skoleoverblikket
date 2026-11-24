@@ -169,6 +169,7 @@ Admin reset (D4), in the owning services (`StaffService` or equivalent, plus par
 - Our own `resources/js/passkey.js` replaces Keycloak's `webauthnRegister.js`/`webauthnAuthenticate.js`: theirs asks for the name in a browser `prompt()` and needs the import map that only the stock template has. The register page has a "Navn på enheden" field, pre-filled from the browser (iPhone, Mac, Windows-pc ...).
 - `webauthn-error.ftl` is themed too: closing the Face ID dialog lands there.
 - `delete-credential.ftl` now covers both an app and a passkey ("Fjern login-metode?").
+- The password grant (`skoleoverblikket direct grant`) refuses any login with a passkey (`Refuse passkey users`: `Condition - user configured` on a passkey step, `Deny access` before it). The grant can't ask for a passkey, so without this a password alone got a token for a passkey-only account. Signup's new users and the seed script's Debugskolen admin have no passkey, so they still get a token; a login with a passkey uses the browser.
 - The superadmin sub-flow's `Condition - credential` lists `otp` and `webauthn`, so a superadmin who used a passkey isn't asked for the app code too. One without the app is still asked to set it up: the rule is "the app, unless a passkey was used", not "a passkey is enough to start".
 
 **Prod checklist (D5 A), Niels.** After the Phase 1 list:

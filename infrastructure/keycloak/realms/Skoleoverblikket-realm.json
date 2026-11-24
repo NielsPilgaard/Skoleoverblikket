@@ -1325,7 +1325,7 @@
     {
       "id": "91e91449-184c-4613-b00a-ecd1b4489990",
       "alias": "skoleoverblikket direct grant",
-      "description": "Password grant (signup, seed script). Like the built-in flow, plus the superadmin two-factor rule.",
+      "description": "Password grant (signup, seed script). Like the built-in flow, plus the superadmin two-factor rule, and it refuses users with a passkey.",
       "providerId": "basic-flow",
       "topLevel": true,
       "builtIn": false,
@@ -1349,6 +1349,14 @@
         {
           "authenticatorFlow": true,
           "requirement": "CONDITIONAL",
+          "priority": 25,
+          "autheticatorFlow": true,
+          "flowAlias": "skoleoverblikket direct grant Refuse passkey users",
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
           "priority": 30,
           "autheticatorFlow": true,
           "flowAlias": "skoleoverblikket direct grant Direct Grant - Conditional OTP",
@@ -1360,6 +1368,67 @@
           "priority": 40,
           "autheticatorFlow": true,
           "flowAlias": "Superadmin requires two-factor (direct grant)",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "id": "45c19817-9b50-45ed-a870-664732843a17",
+      "alias": "skoleoverblikket direct grant Refuse passkey users",
+      "description": "A password alone must not get past a passkey, and this grant can't ask for one. 'User configured' looks only at the passkey step (a CONDITIONAL sub-flow doesn't count), so the deny below runs for users with a passkey.",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-configured",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "autheticatorFlow": true,
+          "flowAlias": "skoleoverblikket direct grant Refuse passkey users Deny",
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "webauthn-authenticator",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 30,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "id": "25eae89d-a022-4b89-86f1-466b00f4e5f6",
+      "alias": "skoleoverblikket direct grant Refuse passkey users Deny",
+      "description": "Refuses the grant. The condition always holds here, since a password grant never uses a passkey; a sub-flow without any condition would be skipped.",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticatorConfig": "passkey-not-used",
+          "authenticator": "conditional-credential",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "deny-access-authenticator",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "autheticatorFlow": false,
           "userSetupAllowed": false
         }
       ]
@@ -1468,6 +1537,14 @@
       "alias": "superadmin-otp-not-used",
       "config": {
         "credentials": "otp##webauthn",
+        "included": "false"
+      }
+    },
+    {
+      "id": "d7b100d0-ecb2-4df3-93fb-1ae36c109465",
+      "alias": "passkey-not-used",
+      "config": {
+        "credentials": "webauthn",
         "included": "false"
       }
     },
