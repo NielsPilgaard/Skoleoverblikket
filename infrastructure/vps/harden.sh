@@ -20,9 +20,11 @@
 #                it the script asks, or skips Alloy when there is no terminal.
 #   REBOOT       yes: reboot at the end if one is pending. Default no.
 #   SERVICE      service label on this host's metrics and logs. Default skoleoverblikket.
-#                The host alerts in infrastructure/grafana/alert-rules.json select
-#                service="skoleoverblikket", so another value means no alerts for this
-#                host (fine for a test box). To alert on it, change all three rules too.
+#                The host alerts in infrastructure/grafana/alert-rules.json watch
+#                service="skoleoverblikket", which only the production VPS may carry:
+#                "VPS down" adds up every host with it, so a second one would hide an
+#                outage. Any other host (test box, the other VPS during a move) uses
+#                another value, e.g. SERVICE=skoleoverblikket-new.
 #
 # Docker-published ports bypass ufw. The script lists them at the end; close them
 # in Dokploy, not here.

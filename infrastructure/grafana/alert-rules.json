@@ -378,15 +378,15 @@
       "rules": [
         {
           "annotations": {
-            "description": "Alloy on the VPS stopped reporting: the host is down, rebooting for longer than usual, or Alloy itself stopped (journalctl -u alloy). The nightly kernel reboot takes 1-2 minutes and does not trigger this. Each host is checked on its own, so a second VPS (the old one during a move) can't hide this one. A host that stops reporting on purpose, like a wiped old VPS, keeps this firing for a day: silence its instance.",
-            "summary": "The VPS {{ $labels.instance }} has sent no metrics for 5 minutes."
+            "description": "Alloy on the VPS stopped reporting: the host is down, rebooting for longer than usual, or Alloy itself stopped (journalctl -u alloy). The nightly kernel reboot takes 1-2 minutes and does not trigger this. Only the production VPS may carry service=skoleoverblikket: during a move the other VPS runs harden.sh with another SERVICE until cutover (task 54), so it can't hide this one.",
+            "summary": "The Skoleoverblikket VPS has sent no metrics for 5 minutes."
           },
           "condition": "C",
           "data": [
             {
               "datasourceUid": "grafanacloud-prom",
               "model": {
-                "expr": "max by (instance) (up{job=\"integrations/node_exporter\", service=\"skoleoverblikket\"}) or on (instance) (max by (instance) (max_over_time(up{job=\"integrations/node_exporter\", service=\"skoleoverblikket\"}[1d])) * 0)",
+                "expr": "sum(up{job=\"integrations/node_exporter\", service=\"skoleoverblikket\"})",
                 "instant": true,
                 "intervalMs": 1000,
                 "maxDataPoints": 43200,
