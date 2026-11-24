@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Hardens a Debian VPS that runs Dokploy. Idempotent: run it again after any change.
 # Run it on a new VPS before installing Dokploy, and on existing ones as they are.
+# The steps it can't do (OVH, Dokploy, Grafana, your SSH key): manual-steps.md
 #
 #   scp infrastructure/vps/harden.sh debian@<vps>:
 #   ssh -t debian@<vps> sudo bash harden.sh
