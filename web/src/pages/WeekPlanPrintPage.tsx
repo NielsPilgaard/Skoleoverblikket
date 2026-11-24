@@ -8,9 +8,7 @@ import {
 } from '../api/generated/@tanstack/react-query.gen'
 import { getISOWeek, getISOWeekYear } from '../utils/isoWeek'
 import { Markdown } from '../components/markdown/Markdown'
-
-const WEEKDAYS = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag']
-const WEEKDAY_KEYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+import { WEEKDAY_KEYS, WEEKDAY_LABELS } from '../lib/weekdays'
 
 export default function WeekPlanPrintPage() {
   const [searchParams] = useSearchParams()
@@ -225,7 +223,7 @@ export default function WeekPlanPrintPage() {
             <thead>
               <tr>
                 <th className="print-th print-th-time">Tid</th>
-                {WEEKDAYS.map((d) => (
+                {WEEKDAY_LABELS.map((d) => (
                   <th key={d} className="print-th">
                     {d}
                   </th>

@@ -8,7 +8,8 @@ public static class KeycloakAdminExtensions
 {
 	public static IServiceCollection AddKeycloakAdmin(this IServiceCollection services)
 	{
-		var refitSettings = new RefitSettings { TransportExceptionFactory = ToKeycloakException };
+		var refitSettings = RefitSettings.ForJsonContext(KeycloakJsonContext.Default);
+		refitSettings.TransportExceptionFactory = ToKeycloakException;
 
 		services
 			.AddRefitGeneratedClient<IKeycloakTokenApi>(refitSettings)

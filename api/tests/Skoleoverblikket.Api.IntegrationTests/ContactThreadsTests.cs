@@ -274,6 +274,74 @@ public sealed class ContactThreadsTests(ApiFactory factory)
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
 	}
 
+	// ── GET /api/v1/contact-threads ──────────────────────────────────────────
+
+	[Test]
+	public async Task GetThreads_ShowsLatestMessageAndUnreadFromOtherSide_OnlyToOwnParent()
+	{
+		const string parentSubject = "ct-list-parent";
+		const string otherParentSubject = "ct-list-other-parent";
+		const string staffSubject = "ct-list-staff";
+		await TestDataBuilder.CreateStaffAsync(
+			_factory.Services, _tenantId,
+			name: "Pia Lærer", isAdmin: true, keycloakSubject: staffSubject);
+
+		var (klass, _) = await TestDataBuilder.CreateClassWithSchemaAsync(
+			_factory.Services, _tenantId, "8.a");
+		var student = await CreateStudentAsync(klass.Id, "Oscar Elev");
+		var otherStudent = await CreateStudentAsync(klass.Id, "Alma Elev");
+		await CreateParentAsync(parentSubject, student.Id, "Mette Forælder");
+		await CreateParentAsync(otherParentSubject, otherStudent.Id, "Kim Forælder");
+
+		using var parentClient = CreateParentClient(parentSubject);
+		var createResponse = await parentClient.PostAsJsonAsync("/api/v1/contact-threads", new
+		{
+			studentId = student.Id,
+			body = "Oscar er syg i dag.",
+		});
+		await Assert.That(createResponse.StatusCode).IsEqualTo(HttpStatusCode.Created);
+		var threadId = (await createResponse.Content.ReadFromJsonAsync<CreateThreadResponse>(JsonOpts))!.ThreadId;
+
+		var secondParentMessage = await parentClient.PostAsJsonAsync(
+			$"/api/v1/contact-threads/{threadId}/messages", new { body = "Han kommer i morgen." });
+		await Assert.That(secondParentMessage.StatusCode).IsEqualTo(HttpStatusCode.Created);
+
+		using var staffClient = CreateStaffClient(staffSubject, isAdmin: true);
+		var staffReply = await staffClient.PostAsJsonAsync(
+			$"/api/v1/contact-threads/{threadId}/messages", new { body = "God bedring til Oscar." });
+		await Assert.That(staffReply.StatusCode).IsEqualTo(HttpStatusCode.Created);
+
+		// The parent sees their thread, with the school's reply as latest and unread.
+		var parentThreads = await parentClient.GetFromJsonAsync<List<ContactThreadsController.ContactThreadDto>>(
+			"/api/v1/contact-threads", JsonOpts);
+		await Assert.That(parentThreads!.Count).IsEqualTo(1);
+		var parentView = parentThreads[0];
+		await Assert.That(parentView.Id).IsEqualTo(threadId);
+		await Assert.That(parentView.StudentName).IsEqualTo("Oscar Elev");
+		await Assert.That(parentView.LastMessageBody).IsEqualTo("God bedring til Oscar.");
+		await Assert.That(parentView.LastMessageSenderType).IsEqualTo(SenderType.Staff);
+		await Assert.That(parentView.UnreadCount).IsEqualTo(1);
+
+		// Staff see the same latest message, and the parent's two messages as unread.
+		var staffThreads = await staffClient.GetFromJsonAsync<List<ContactThreadsController.ContactThreadDto>>(
+			"/api/v1/contact-threads", JsonOpts);
+		var staffView = staffThreads!.Single(t => t.Id == threadId);
+		await Assert.That(staffView.LastMessageBody).IsEqualTo("God bedring til Oscar.");
+		await Assert.That(staffView.UnreadCount).IsEqualTo(2);
+
+		var markRead = await staffClient.PostAsync($"/api/v1/contact-threads/{threadId}/read", null);
+		await Assert.That(markRead.IsSuccessStatusCode).IsTrue();
+		staffThreads = await staffClient.GetFromJsonAsync<List<ContactThreadsController.ContactThreadDto>>(
+			"/api/v1/contact-threads", JsonOpts);
+		await Assert.That(staffThreads!.Single(t => t.Id == threadId).UnreadCount).IsEqualTo(0);
+
+		// A parent of another child in the same klasse does not see the thread.
+		using var otherParentClient = CreateParentClient(otherParentSubject);
+		var otherParentThreads = await otherParentClient.GetFromJsonAsync<List<ContactThreadsController.ContactThreadDto>>(
+			"/api/v1/contact-threads", JsonOpts);
+		await Assert.That(otherParentThreads!).IsEmpty();
+	}
+
 	// ── Notification failure resilience ─────────────────────────────────────
 
 	[Test]
