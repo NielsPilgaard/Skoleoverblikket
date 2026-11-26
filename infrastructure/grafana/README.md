@@ -1,14 +1,15 @@
 # Grafana dashboards and alerts
 
-Production telemetry for `Skoleoverblikket.Api` goes to Grafana Cloud (`minimoeder.grafana.net`, shared with other products) over OTLP. Everything lives in the **Skoleoverblikket** folder.
+Production telemetry for `Skoleoverblikket.Api` goes to Grafana Cloud (`minimoeder.grafana.net`, shared with other products) over OTLP. Host metrics and the journal come from Alloy on the VPS, set up by [harden.sh](../vps/harden.sh). Everything lives in the **Skoleoverblikket** folder.
 
 | File | What |
 |---|---|
 | `dashboards/health.json` | Service health: up/down, requests, 5xx rate, latency (cold vs warm, slow requests and their causes), endpoints table, memory |
 | `dashboards/features.json` | Feature usage: requests, errors and slowest request per product module (skema, ugeplan, vikar …) |
 | `dashboards/errors.json` | Errors & logs: exceptions, distinct error messages, warnings, startups, log volume |
+| `dashboards/vps.json` | VPS: one row per host (up, CPU, load, memory, swap, disk, reboot pending, uptime), CPU steal, OOM kills, disk, network, Alloy errors, host errors, SSH logins. Filter by service and host |
 | `alert-rules.json` | Alert rules: API down, errors logged, restart loop, slow API; VPS down, disk almost full, reboot pending (host metrics from Alloy, set up by [harden.sh](../vps/harden.sh)) |
-| `build_dashboards.py` | Generates the three dashboard files |
+| `build_dashboards.py` | Generates the dashboard files |
 
 ## Changing a dashboard
 
