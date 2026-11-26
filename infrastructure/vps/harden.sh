@@ -97,7 +97,7 @@ swap() {
 	step "Swap"
 	if [[ $SWAP_SIZE == 0 ]]; then
 		log "skipped"
-	elif swapon --show --noheadings | grep -q .; then
+	elif [[ -n $(swapon --show --noheadings) ]]; then
 		log "already on"
 	else
 		# Recreate a swapfile without a swap header, e.g. from a run stopped before mkswap.
@@ -297,11 +297,18 @@ ssh_hardening() {
 		rm -f /etc/ssh/sshd_config.d/00-hardening.conf
 		die "sshd config invalid, drop-in removed, nothing changed"
 	fi
-	sshd -T | grep -qx 'passwordauthentication no' || die "Another sshd setting overrides the drop-in"
-	if ((CHANGED)); then
-		systemctl reload ssh
-		note "Password login is OFF. Keep this session open and test 'ssh $ADMIN_USER@<vps>' in a new terminal."
+	# Captured first: piping sshd -T into grep -q fails under pipefail, because
+	# grep exits on the match and sshd dies of SIGPIPE writing the rest.
+	local effective
+	effective=$(sshd -T) || die "sshd -T failed"
+	if ! grep -qx 'passwordauthentication no' <<<"$effective"; then
+		rm -f /etc/ssh/sshd_config.d/00-hardening.conf
+		die "sshd still allows passwords. Set in: $(grep -rilE '^[[:space:]]*passwordauthentication' /etc/ssh/sshd_config /etc/ssh/sshd_config.d | tr '\n' ' ')Drop-in removed, nothing changed."
 	fi
+	# Reload even when the drop-in was already there: an earlier run may have
+	# written it and stopped before reloading. Open sessions stay open.
+	systemctl reload ssh
+	note "Password login is OFF. Keep this session open and test 'ssh $ADMIN_USER@<vps>' in a new terminal."
 }
 
 # Host metrics and the journal to Grafana Cloud. App logs and traces already go
