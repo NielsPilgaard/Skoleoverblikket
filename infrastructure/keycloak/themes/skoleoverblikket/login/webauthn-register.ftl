@@ -17,7 +17,7 @@
       <p class="hint">Så du kan kende den igen på Min konto.</p>
     </div>
 
-    <button type="submit" id="registerWebAuthn" class="btn-primary" data-testid="kc-passkey-register">Tilføj adgangsnøgle</button>
+    <button type="submit" id="registerWebAuthn" class="btn-primary" disabled data-testid="kc-passkey-register">Tilføj adgangsnøgle</button>
   </form>
 
   <#if !isSetRetry?has_content && isAppInitiatedAction?has_content>
@@ -30,7 +30,8 @@
     <#outputformat "JavaScript">
     import { register, guessDeviceName } from "${url.resourcesPath}/js/passkey.js";
     const form = document.getElementById('register');
-    form.elements.authenticatorLabel.value = guessDeviceName();
+    // Only a guess: keep a name typed before the module loaded.
+    if (!form.elements.authenticatorLabel.value) form.elements.authenticatorLabel.value = guessDeviceName();
     const input = {
       challenge: ${challenge?c},
       userid: ${userid?c},
@@ -52,6 +53,8 @@
       event.submitter.disabled = true;
       register(input, form);
     });
+    // Disabled until here: an earlier click would post the form without a passkey.
+    form.elements.registerWebAuthn.disabled = false;
     </#outputformat>
   </script>
 

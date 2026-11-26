@@ -12,7 +12,7 @@
     <input type="hidden" name="error">
   </form>
 
-  <button type="button" id="authenticateWebAuthnButton" class="btn-primary" autofocus data-testid="kc-passkey-login">Brug adgangsnøgle</button>
+  <button type="button" id="authenticateWebAuthnButton" class="btn-primary" autofocus disabled data-testid="kc-passkey-login">Brug adgangsnøgle</button>
 
   <script type="module">
     <#outputformat "JavaScript">
@@ -30,6 +30,9 @@
       button.disabled = true;
       authenticate(input, document.getElementById('webauth'));
     });
+    // Disabled until here: a click before the module loads would do nothing.
+    button.disabled = false;
+    button.focus();
     </#outputformat>
   </script>
 
