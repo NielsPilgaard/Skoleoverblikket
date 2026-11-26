@@ -70,6 +70,8 @@ export default function AccountPage() {
     const status = takeActionResult()
     if (status === 'cancelled') return setNotice({ text: 'Intet blev ændret.' })
     if (status === 'error') return setNotice({ text: 'Noget gik galt. Prøv igen.', error: true })
+    // No result means the URL was opened directly, not returned to from Keycloak.
+    if (status !== 'success' || !DONE_MESSAGES[done]) return
     const hasSecondFactor = !!data.otp || !!data.passkeys?.length
     // A first app or passkey also needs recovery codes, or a lost phone becomes a support case.
     if ((done === 'totp' || done === 'passkey') && hasSecondFactor && !data.recoveryCodes) {
@@ -78,7 +80,7 @@ export default function AccountPage() {
     if ((done === 'app-off' || done === 'passkey-off') && !hasSecondFactor) {
       return setNotice({ text: 'Tofaktor er slået fra.' })
     }
-    if (DONE_MESSAGES[done]) setNotice({ text: DONE_MESSAGES[done] })
+    setNotice({ text: DONE_MESSAGES[done] })
   }, [data, searchParams, setSearchParams])
 
   // Recovery codes without a second factor would still be offered at login, so remove them.
@@ -86,8 +88,10 @@ export default function AccountPage() {
   const cleanedUp = useRef(false)
   const cleanupMutate = cleanup.mutate
   useEffect(() => {
-    if (cleanedUp.current || !data) return
-    if (!data.otp && !data.passkeys?.length && data.recoveryCodes) {
+    if (!data) return
+    // A factor added later and removed again needs a new cleanup.
+    if (data.otp || data.passkeys?.length) cleanedUp.current = false
+    else if (!cleanedUp.current && data.recoveryCodes) {
       cleanedUp.current = true
       cleanupMutate({})
     }
@@ -118,6 +122,7 @@ export default function AccountPage() {
   const otpSince = formatDate(data.otp?.createdAt)
   const remaining = data.recoveryCodes?.remaining
   const passkeys = data.passkeys ?? []
+  const apps = data.authenticatorApps ?? []
   const hasSecondFactor = !!data.otp || passkeys.length > 0
 
   return (
@@ -193,6 +198,15 @@ export default function AccountPage() {
             )}
           </ul>
         </section>
+      ) : data.recoveryCodes ? (
+        // The last factor is gone, but the recovery codes still work until cleanup removes them.
+        <section
+          data-testid="account-status-cleanup"
+          className="rounded-xl border border-gray-200 bg-white p-5"
+        >
+          <h2 className="font-semibold text-gray-900">Slår tofaktor fra …</h2>
+          <p className="text-sm text-gray-600 mt-1">Dine gendannelseskoder bliver fjernet.</p>
+        </section>
       ) : (
         <section
           data-testid="account-status-off"
@@ -243,17 +257,26 @@ export default function AccountPage() {
             title={data.hasPassword ? 'Skift adgangskode' : 'Vælg en adgangskode'}
             onClick={() => startAction('UPDATE_PASSWORD', 'password')}
           />
-          {data.otp ? (
-            <Row
-              testId="account-tfa-status"
-              title="Godkendelses-app"
-              detail={otpSince ? `Slået til siden ${otpSince}` : 'Slået til'}
-              remove={{
-                testId: 'account-tfa-off',
-                label: 'Fjern godkendelses-appen',
-                onClick: () => startAction(`delete_credential:${data.otp?.id}`, 'app-off'),
-              }}
-            />
+          {apps.length ? (
+            apps.map((app) => {
+              const since = formatDate(app.createdAt)
+              const name = app.label || 'Godkendelses-app'
+              return (
+                <Row
+                  key={app.id}
+                  testId="account-tfa-status"
+                  title={name}
+                  detail={since ? `Slået til siden ${since}` : 'Slået til'}
+                  remove={{
+                    testId: 'account-tfa-off',
+                    label: app.label
+                      ? `Fjern godkendelses-appen ${app.label}`
+                      : 'Fjern godkendelses-appen',
+                    onClick: () => startAction(`delete_credential:${app.id}`, 'app-off'),
+                  }}
+                />
+              )
+            })
           ) : (
             <Row
               testId="account-tfa-row"

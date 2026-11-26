@@ -14,6 +14,8 @@ export function ResetTwoFactorDialog({ person, reset, onClose }: Props) {
   const mutation = useMutation({ mutationFn: reset })
 
   function close() {
+    // Closing can't cancel a sent reset, so stay open until the answer arrives.
+    if (mutation.isPending) return
     mutation.reset()
     onClose()
   }
@@ -55,7 +57,8 @@ export function ResetTwoFactorDialog({ person, reset, onClose }: Props) {
               <button
                 type="button"
                 onClick={close}
-                className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                disabled={mutation.isPending}
+                className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
               >
                 Annuller
               </button>
