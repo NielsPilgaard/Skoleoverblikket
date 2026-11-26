@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Hardens a Debian VPS that runs Dokploy. Idempotent: run it again after any change.
 # Run it on a new VPS before installing Dokploy, and on existing ones as they are.
+# The steps it can't do (OVH, Dokploy, Grafana, your SSH key): manual-steps.md
 #
 #   scp infrastructure/vps/harden.sh debian@<vps>:
 #   ssh -t debian@<vps> sudo bash harden.sh
@@ -18,6 +19,13 @@
 #   GCLOUD_ENV   File with the Grafana Cloud settings (see install_alloy). Without
 #                it the script asks, or skips Alloy when there is no terminal.
 #   REBOOT       yes: reboot at the end if one is pending. Default no.
+#   SERVICE      service label on this host's metrics and logs. Default: the label this
+#                script set last time (so a plain rerun never changes it), else
+#                skoleoverblikket. The host alerts in infrastructure/grafana/alert-rules.json watch
+#                service="skoleoverblikket", which only the production VPS may carry:
+#                "VPS down" adds up every host with it, so a second one would hide an
+#                outage. Any other host (test box, the other VPS during a move) uses
+#                another value, e.g. SERVICE=skoleoverblikket-new.
 #
 # Docker-published ports bypass ufw. The script lists them at the end; close them
 # in Dokploy, not here.
@@ -32,10 +40,13 @@ SWAP_SIZE=${SWAP_SIZE:-2G}
 REBOOT_TIME=${REBOOT_TIME:-05:30}
 GCLOUD_ENV=${GCLOUD_ENV:-}
 REBOOT=${REBOOT:-no}
+# Keep the label from the last run unless SERVICE is given: a plain rerun (REBOOT=yes)
+# on a second VPS must not give it the production label.
+SERVICE=${SERVICE:-$(grep -oP '^\s*labels\s*=.*\bservice = "\K[^"]+' /etc/alloy/config.alloy 2>/dev/null || true)}
+SERVICE=${SERVICE:-skoleoverblikket}
 
 TEXTFILE_DIR=/var/lib/node_exporter/textfile
 NOTES=()
-DOCKER_RESTART_PENDING=0
 
 step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
 log() { printf '   %s\n' "$*"; }
@@ -89,7 +100,13 @@ swap() {
 	elif swapon --show --noheadings | grep -q .; then
 		log "already on"
 	else
-		[[ -f /swapfile ]] || { fallocate -l "$SWAP_SIZE" /swapfile && chmod 600 /swapfile && mkswap /swapfile >/dev/null; }
+		# Recreate a swapfile without a swap header, e.g. from a run stopped before mkswap.
+		if [[ $(blkid -p -s TYPE -o value /swapfile 2>/dev/null) != swap ]]; then
+			rm -f /swapfile
+			fallocate -l "$SWAP_SIZE" /swapfile
+			chmod 600 /swapfile
+			mkswap /swapfile >/dev/null
+		fi
 		swapon /swapfile
 		grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >>/etc/fstab
 		log "$SWAP_SIZE swapfile on"
@@ -148,16 +165,29 @@ docker_logs() {
 	step "Docker log rotation"
 	local want='{"log-driver":"json-file","log-opts":{"max-size":"20m","max-file":"3"}}' merged
 	if [[ -s /etc/docker/daemon.json ]]; then
-		merged=$(jq --argjson w "$want" '. * $w' /etc/docker/daemon.json) || die "/etc/docker/daemon.json is not valid JSON"
+		# Another driver's log-opts (syslog-address, ...) would stop Docker from starting
+		# under json-file, so drop them when the driver changes.
+		merged=$(jq --argjson w "$want" 'if has("log-driver") and .["log-driver"] != $w["log-driver"] then del(.["log-opts"]) else . end | . * $w' /etc/docker/daemon.json) ||
+			die "/etc/docker/daemon.json is not valid JSON"
 	else
 		merged=$(jq . <<<"$want")
 	fi
 	# No live-restore: it conflicts with Swarm, which Dokploy uses.
 	put /etc/docker/daemon.json <<<"$merged"
-	if ((CHANGED)) && command -v docker >/dev/null; then
-		DOCKER_RESTART_PENDING=1
+	if ((CHANGED)) && docker_restart_pending; then
 		note "Docker log limits apply after Docker restarts (the reboot does it) and only to containers created after that"
 	fi
+}
+
+# Docker reads daemon.json when it starts, so a change is pending until Docker has
+# started after the file's last write. Checked each run, so a rerun still knows.
+docker_restart_pending() {
+	[[ -f /etc/docker/daemon.json ]] && systemctl is-active --quiet docker || return 1
+	local started
+	started=$(systemctl show docker.service -p ActiveEnterTimestamp --value --timestamp=unix 2>/dev/null || true)
+	started=${started#@}
+	[[ $started =~ ^[0-9]+$ ]] || return 1
+	(($(stat -c %Y /etc/docker/daemon.json) > started))
 }
 
 docker_prune() {
@@ -191,14 +221,24 @@ docker_prune() {
 
 firewall() {
 	step "ufw"
+	# Allow the port sshd really listens on before turning ufw on, or a VPS with
+	# SSH on another port locks us out.
+	local ssh_ports
+	# "listenaddress addr:port" too: a ListenAddress with its own port overrides Port, and
+	# sshd -T still prints "port 22" then.
+	ssh_ports=$(sshd -T 2>/dev/null | awk '$1 == "port" {print $2} $1 == "listenaddress" {n = split($2, a, ":"); print a[n]}' |
+		grep -xE '[0-9]+' | sort -un | tr '\n' ' ' || true)
+	[[ -n $ssh_ports ]] || die "Could not read the SSH port from 'sshd -T'. ufw left as it was."
+	for port in $ssh_ports; do
+		ufw limit "$port/tcp" comment ssh >/dev/null
+	done
 	ufw default deny incoming >/dev/null
 	ufw default allow outgoing >/dev/null
-	ufw limit 22/tcp comment ssh >/dev/null
 	ufw allow 80/tcp comment http >/dev/null
 	ufw allow 443/tcp comment https >/dev/null
 	ufw allow 443/udp comment http3 >/dev/null
 	ufw --force enable >/dev/null
-	log "deny incoming except 22 (rate-limited), 80, 443"
+	log "deny incoming except SSH ${ssh_ports% } (rate-limited), 80, 443"
 }
 
 ssh_hardening() {
@@ -273,9 +313,17 @@ ssh_hardening() {
 #   GCLOUD_TOKEN=<access policy token with metrics:write and logs:write only>
 install_alloy() {
 	step "Alloy -> Grafana Cloud"
-	local env=/etc/alloy/grafana-cloud.env
+	# Alloy reads the credentials only at start. The marker is set before they are written and
+	# stays until Alloy has restarted, so a run that stops anywhere in between (write, apt,
+	# config check) still restarts it next time.
+	local env=/etc/alloy/grafana-cloud.env env_changed=0 pending=/var/lib/harden/alloy-restart-pending
 	if [[ -n $GCLOUD_ENV ]]; then
-		install -D -m 600 "$GCLOUD_ENV" "$env"
+		[[ -f $GCLOUD_ENV ]] || die "GCLOUD_ENV file $GCLOUD_ENV not found"
+		if ! cmp -s "$GCLOUD_ENV" "$env"; then
+			install -D -m 600 /dev/null "$pending"
+			env_changed=1
+		fi
+		put "$env" 600 <"$GCLOUD_ENV"
 	elif [[ ! -f $env ]]; then
 		if [[ ! -t 0 ]]; then
 			note "Alloy skipped: no $env and no terminal to ask"
@@ -288,11 +336,10 @@ install_alloy() {
 		read -rp "   Loki user (number): " l_user
 		read -rsp "   Access policy token (hidden): " token
 		echo
-		install -d -m 755 /etc/alloy
-		umask 077
+		install -D -m 600 /dev/null "$pending"
 		printf 'GCLOUD_PROM_URL=%s\nGCLOUD_PROM_USER=%s\nGCLOUD_LOKI_URL=%s\nGCLOUD_LOKI_USER=%s\nGCLOUD_TOKEN=%s\n' \
-			"$p_url" "$p_user" "$l_url" "$l_user" "$token" >"$env"
-		umask 022
+			"$p_url" "$p_user" "$l_url" "$l_user" "$token" | put "$env" 600
+		env_changed=1
 	fi
 	chmod 600 "$env"
 
@@ -338,7 +385,8 @@ install_alloy() {
 		EnvironmentFile=$env
 		SupplementaryGroups=systemd-journal
 	EOF
-	local restart=$CHANGED
+	local restart=$((CHANGED || env_changed))
+	[[ -f $pending ]] && restart=1
 
 	# job/instance match Grafana Cloud's Linux integration, so its dashboards work.
 	put /etc/alloy/config.alloy <<-EOF
@@ -366,6 +414,10 @@ install_alloy() {
 		  rule {
 		    target_label = "job"
 		    replacement  = "integrations/node_exporter"
+		  }
+		  rule {
+		    target_label = "service"
+		    replacement  = "$SERVICE"
 		  }
 		}
 
@@ -400,7 +452,7 @@ install_alloy() {
 		loki.source.journal "host" {
 		  max_age       = "12h"
 		  relabel_rules = loki.relabel.journal.rules
-		  labels        = {job = "integrations/node_exporter", instance = constants.hostname}
+		  labels        = {job = "integrations/node_exporter", instance = constants.hostname, service = "$SERVICE"}
 		  forward_to    = [loki.write.cloud.receiver]
 		}
 
@@ -422,6 +474,7 @@ install_alloy() {
 	systemctl enable alloy >/dev/null 2>&1
 	if ((restart)) || ! systemctl is-active --quiet alloy; then
 		systemctl restart alloy
+		rm -f "$pending"
 	fi
 	sleep 5
 	systemctl is-active --quiet alloy || die "Alloy failed to start: journalctl -u alloy -n 50"
@@ -436,8 +489,11 @@ audit() {
 			grep -oE '(0\.0\.0\.0|\[::\]|\*):[0-9]+' | grep -oE '[0-9]+$' | sort -un | grep -vxE '80|443' | tr '\n' ' ' || true)
 		[[ -n $open ]] && note "Docker publishes these ports to the internet, ufw can't block them: $open"
 	fi
-	if [[ -f /run/reboot-required ]] || ((DOCKER_RESTART_PENDING)); then
-		note "Reboot pending (running kernel $(uname -r))"
+	if [[ -f /run/reboot-required ]]; then
+		note "Reboot pending: package updates (running kernel $(uname -r))"
+	fi
+	if docker_restart_pending; then
+		note "Reboot pending: Docker has not loaded /etc/docker/daemon.json yet"
 	fi
 	return 0
 }
@@ -458,7 +514,7 @@ audit
 
 step "Done"
 for n in "${NOTES[@]}"; do log "- $n"; done
-if [[ $REBOOT == yes ]] && { [[ -f /run/reboot-required ]] || ((DOCKER_RESTART_PENDING)); }; then
+if [[ $REBOOT == yes ]] && { [[ -f /run/reboot-required ]] || docker_restart_pending; }; then
 	log "Rebooting in 1 minute (shutdown -c cancels)"
 	shutdown -r +1
 fi

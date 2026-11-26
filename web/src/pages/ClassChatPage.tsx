@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { formatMessageTime, truncate } from '../lib/messageFormat'
 import { linkify } from '../utils/linkify'
 import {
   postApiV1ClassChatsByClassIdMessages,
@@ -30,15 +31,6 @@ interface PendingAttachment {
   sizeBytes: number
 }
 
-function formatDateTime(iso: string): string {
-  const d = new Date(iso)
-  const hh = d.getHours().toString().padStart(2, '0')
-  const mm = d.getMinutes().toString().padStart(2, '0')
-  const dd = d.getDate().toString().padStart(2, '0')
-  const mo = (d.getMonth() + 1).toString().padStart(2, '0')
-  return `${hh}:${mm} ${dd}/${mo}`
-}
-
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) {
     return `${bytes} B`
@@ -47,10 +39,6 @@ function formatFileSize(bytes: number): string {
     return `${Math.round(bytes / 1024)} KB`
   }
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function truncate(text: string, max: number): string {
-  return text.length <= max ? text : `${text.slice(0, max)}…`
 }
 
 function initialsOf(name: string): string {
@@ -315,7 +303,7 @@ export default function ClassChatPage() {
                 <span className="font-medium text-sm text-gray-900">{thread.className}</span>
                 {thread.lastMessageSentAt && (
                   <span className="text-xs text-gray-400">
-                    {formatDateTime(thread.lastMessageSentAt)}
+                    {formatMessageTime(thread.lastMessageSentAt)}
                   </span>
                 )}
               </div>
@@ -412,7 +400,7 @@ export default function ClassChatPage() {
                         </span>
                       )}
                       <span className="text-xs text-gray-400">
-                        {formatDateTime(message.sentAt)}
+                        {formatMessageTime(message.sentAt)}
                       </span>
                       {message.canDelete && (
                         <button

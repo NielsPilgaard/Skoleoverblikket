@@ -27,7 +27,7 @@ RUN mkdir /prod && for f in /realms/*.json; do \
 # whose admin API audience check broke signup and invitations until the realm gave the
 # skoleoverblikket-admin client the kc-admin-api scope. Dependabot proposes new digests as PRs, so e2e
 # runs against a new Keycloak before it ships. Keep the Aspire AppHost on the same digest.
-FROM quay.io/keycloak/keycloak:26.8.2@sha256:c68e286cacd87b942ac1939a0a1481461109d6acd3a57dc496969a319a76bbf0
+FROM quay.io/keycloak/keycloak:26.8.2@sha256:7e66a96e4739239070aeaf72e4c5decf0f7f682cfc725b9f7ea2b336eaba38b3
 
 # The realm's "email" event listener tells users when their password or two-factor changes (task 64).
 # Only those events: by default it also mails on every failed login.

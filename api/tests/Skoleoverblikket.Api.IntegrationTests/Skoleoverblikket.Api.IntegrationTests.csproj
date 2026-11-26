@@ -14,10 +14,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Testcontainers.Minio's latest is 4.15.0, built against a ContainerConfiguration constructor that 4.17 removed.
+         Hold Testcontainers and its PostgreSql module at 4.16.0 until Minio catches up. -->
     <PackageReference Include="Testcontainers" Version="4.16.0" />
     <PackageReference Include="Testcontainers.Minio" Version="4.15.0" />
-    <PackageReference Include="TUnit" Version="1.84.0" />
-    <PackageReference Include="TUnit.AspNetCore" Version="1.84.0" />
+    <PackageReference Include="TUnit" Version="1.87.12" />
+    <PackageReference Include="TUnit.AspNetCore" Version="1.87.12" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.15" />
 
