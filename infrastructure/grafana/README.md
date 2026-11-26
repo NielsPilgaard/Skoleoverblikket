@@ -24,6 +24,10 @@ Or push it with the Grafana MCP server (`update_dashboard` with the generated JS
 
 Small tweaks made in the Grafana UI are lost on the next import. Copy them back into the script.
 
+## Self-hosted Grafana
+
+The dashboards and `alert-rules.json` only depend on the datasource UIDs `grafanacloud-prom`, `grafanacloud-logs` and `grafanacloud-traces`. On a self-hosted Grafana, provision Prometheus, Loki and Tempo with those `uid`s, then load `dashboards/` and `alert-rules.json` with file provisioning into a folder named Skoleoverblikket. Point Alloy's `GCLOUD_*` URLs at the new Prometheus and Loki.
+
 ## Changing an alert rule
 
 Edit the rule in Grafana, then refresh `alert-rules.json` from **Alerting → Alert rules → Export** (folder Skoleoverblikket, JSON). Keep `"folder": "Skoleoverblikket"` in the group so the file also works with Grafana file provisioning.
