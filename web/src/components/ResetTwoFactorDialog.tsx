@@ -25,7 +25,7 @@ export function ResetTwoFactorDialog({ person, reset, onClose }: Props) {
       <div className="px-6 py-5 space-y-4" data-testid="reset-tfa-dialog">
         {mutation.isSuccess ? (
           <p className="text-sm text-gray-700" data-testid="reset-tfa-done">
-            Tofaktor er slået fra for {person?.name}. Vi har sendt en e-mail om det.
+            Tofaktor er slået fra for {person?.name}.
           </p>
         ) : mutation.isError ? (
           <div className="text-sm" data-testid="reset-tfa-error" role="alert">

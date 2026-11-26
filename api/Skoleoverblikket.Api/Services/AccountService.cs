@@ -195,16 +195,16 @@ public sealed class AccountService(
 			await keycloak.DeleteCredentialAsync(subject, credential.Id!, cancellationToken);
 		}
 
-		// The login's own email, not the school's row: a school admin can edit the row's email.
-		var to = await keycloak.GetEmailAsync(subject, cancellationToken);
-		if (string.IsNullOrWhiteSpace(to))
-		{
-			logger.LogWarning("Two-factor reset for Keycloak user {Subject} without an email to notify", subject);
-			return TwoFactorResetResult.Reset;
-		}
-
 		try
 		{
+			// The login's own email, not the school's row: a school admin can edit the row's email.
+			var to = await keycloak.GetEmailAsync(subject, cancellationToken);
+			if (string.IsNullOrWhiteSpace(to))
+			{
+				logger.LogWarning("Two-factor reset for Keycloak user {Subject} without an email to notify", subject);
+				return TwoFactorResetResult.Reset;
+			}
+
 			await SendResetNoticeAsync(to, resetBy, cancellationToken);
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
