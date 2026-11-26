@@ -95,20 +95,29 @@ export async function createParentLogin(
     email,
     studentIds: [student.id],
   })
-  const token = await parentInvitationToken(adminPage, email, invitedAt)
-
   const context = await browser.newContext({ baseURL, storageState: { cookies: [], origins: [] } })
-  const page = await context.newPage()
-  await page.goto(`/parent-invitation/${token}`)
-  await page.getByTestId('invitation-password').fill('ForaelderPass123!', { timeout: 30_000 })
-  await page.getByTestId('invitation-password-submit').click()
-  await expect(page.getByTestId('invitation-contact-submit')).toBeVisible({ timeout: 30_000 })
-  if (options.sharePhone) {
-    await page.locator('#phone').fill(options.sharePhone)
-    await page.locator('#shareContactInfo').check()
+  const dispose = async () => {
+    await context.close()
+    await api(adminPage, 'DELETE', `/parents/${parent.id}`)
   }
-  await page.getByTestId('invitation-contact-submit').click()
-  await page.waitForURL(/\/foraeldrevisning\/skema/, { timeout: 15_000 })
+  const page = await context.newPage()
+  try {
+    const token = await parentInvitationToken(adminPage, email, invitedAt)
+    await page.goto(`/parent-invitation/${token}`)
+    await page.getByTestId('invitation-password').fill('ForaelderPass123!', { timeout: 30_000 })
+    await page.getByTestId('invitation-password-submit').click()
+    await expect(page.getByTestId('invitation-contact-submit')).toBeVisible({ timeout: 30_000 })
+    if (options.sharePhone) {
+      await page.locator('#phone').fill(options.sharePhone)
+      await page.locator('#shareContactInfo').check()
+    }
+    await page.getByTestId('invitation-contact-submit').click()
+    await page.waitForURL(/\/foraeldrevisning\/skema/, { timeout: 15_000 })
+  } catch (error) {
+    // Callers only get `dispose` on success, so release what was created before rethrowing.
+    await dispose().catch(() => {})
+    throw error
+  }
 
   return {
     parentId: parent.id,
@@ -117,9 +126,6 @@ export async function createParentLogin(
     studentName,
     context,
     page,
-    dispose: async () => {
-      await context.close()
-      await api(adminPage, 'DELETE', `/parents/${parent.id}`)
-    },
+    dispose,
   }
 }
