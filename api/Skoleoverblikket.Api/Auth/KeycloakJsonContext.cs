@@ -13,6 +13,8 @@ namespace Skoleoverblikket.Api.Auth;
 [JsonSerializable(typeof(UserRepresentation))]
 [JsonSerializable(typeof(IReadOnlyList<UserRepresentation>))]
 [JsonSerializable(typeof(IReadOnlyList<CredentialSummary>))]
+[JsonSerializable(typeof(IReadOnlyList<FederatedIdentity>))]
+[JsonSerializable(typeof(IReadOnlyList<RoleSummary>))]
 [JsonSerializable(typeof(CredentialRepresentation))]
 [JsonSerializable(typeof(TokenResponse))]
 internal sealed partial class KeycloakJsonContext : JsonSerializerContext;

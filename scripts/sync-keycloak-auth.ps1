@@ -21,8 +21,11 @@
     Without -Apply it only prints what it would change. Run it once without, read the list, then run
     it again with -Apply. A second run should report everything as ok.
 
-    Rebuilding a flow that is in use binds Keycloak's built-in flow for a few seconds, then binds the
-    new one. A login in that moment goes through the built-in flow (password, plus the app if set up).
+    Rebuilding a flow that is in use first builds the file's flow a second time under another name
+    ("<flow> - kept during sync") and binds that, so logins get the file's rules, superadmin two-factor
+    included, while the real one is rebuilt. Keycloak's weaker built-in flow is never bound. If the
+    script stops halfway, the stand-in stays bound; run it again and it finishes the job, binds the
+    rebuilt flow and deletes the stand-in.
 
     Run it through the tunnel to the admin console (docs/DEPLOYMENT.md):
         ssh -L 8180:127.0.0.1:8180 ubuntu@<vps>
@@ -112,7 +115,7 @@ function Test-SubFlow($e) { [bool]($e.PSObject.Properties['authenticationFlow'] 
 $pending = 0
 function Report([string]$State, [string]$What, [string]$Detail = "") {
     if ($State -ne "ok") { $script:pending++ }
-    $color = @{ ok = "DarkGray"; change = "Yellow"; create = "Yellow"; rebuild = "Yellow"; register = "Yellow" }[$State]
+    $color = @{ ok = "DarkGray"; change = "Yellow"; create = "Yellow"; rebuild = "Yellow"; register = "Yellow"; delete = "Yellow" }[$State]
     $line = "  [{0,-8}] {1}" -f $State, $What
     if ($Detail) { $line += " - $Detail" }
     Write-Host $line -ForegroundColor $color
@@ -288,16 +291,19 @@ function Set-Requirement([string]$ParentAlias, [scriptblock]$Match, [string]$Req
     $row
 }
 
-function Add-Executions([string]$ParentAlias) {
-    $sorted = $flowsByAlias[$ParentAlias].authenticationExecutions | Sort-Object { [int]$_.priority }
+# Adds the file flow $FileAlias's executions to the live flow $ParentAlias. Sub-flow aliases are unique
+# per realm, so a second build of the same flow (the stand-in) names its sub-flows with $Prefix.
+function Add-Executions([string]$ParentAlias, [string]$FileAlias = $ParentAlias, [string]$Prefix = "") {
+    $sorted = $flowsByAlias[$FileAlias].authenticationExecutions | Sort-Object { [int]$_.priority }
     foreach ($e in $sorted) {
         if ($e.authenticatorFlow) {
             $sub = $flowsByAlias[$e.flowAlias]
+            $subAlias = "$Prefix$($sub.alias)"
             Invoke-Admin POST "authentication/flows/$(Enc $ParentAlias)/executions/flow" @{
-                alias = $sub.alias; description = $sub["description"]; provider = "registration-page-form"; type = $sub.providerId
+                alias = $subAlias; description = $sub["description"]; provider = "registration-page-form"; type = $sub.providerId
             } | Out-Null
-            Set-Requirement $ParentAlias { (Test-SubFlow $_) -and $_.displayName -eq $sub.alias } $e.requirement | Out-Null
-            Add-Executions $sub.alias
+            Set-Requirement $ParentAlias { (Test-SubFlow $_) -and $_.displayName -eq $subAlias } $e.requirement | Out-Null
+            Add-Executions $subAlias $sub.alias $Prefix
         }
         else {
             Invoke-Admin POST "authentication/flows/$(Enc $ParentAlias)/executions/execution" @{ provider = $e.authenticator } | Out-Null
@@ -307,11 +313,24 @@ function Add-Executions([string]$ParentAlias) {
     }
 }
 
+function New-Flow([string]$Alias, [string]$FileAlias, [string]$Prefix = "") {
+    $flow = $flowsByAlias[$FileAlias]
+    Invoke-Admin POST "authentication/flows" @{
+        alias = $Alias; description = $flow["description"]; providerId = $flow.providerId; topLevel = $true; builtIn = $false
+    } | Out-Null
+    Add-Executions $Alias $FileAlias $Prefix
+}
+
 $builtInBinding = @{
     browserFlow = "browser"; registrationFlow = "registration"; directGrantFlow = "direct grant"
     resetCredentialsFlow = "reset credentials"; clientAuthenticationFlow = "clients"
     dockerAuthenticationFlow = "docker auth"; firstBrokerLoginFlow = "first broker login"
 }
+
+# Stands in for a bound flow while it is rebuilt, so the file's rules (the superadmin two-factor ones
+# too) stay bound at every point the script can stop; the built-in flow would not keep them.
+$keepSuffix = " - kept during sync"
+$keepPrefix = "kept during sync - "
 
 Write-Host "Flows"
 $liveFlows = @(Invoke-Admin GET "authentication/flows")
@@ -326,11 +345,21 @@ foreach ($flow in $file.authenticationFlows | Where-Object { $_.topLevel -and -n
         Report rebuild $alias $difference
         if (-not $Apply) { continue }
 
-        # Keycloak won't delete a bound flow: bind its built-in one for the moment.
+        # Keycloak won't delete a bound flow: bind a stand-in for the moment. One still bound from a run
+        # that stopped halfway is kept as it is; an unbound one is built afresh.
+        $keep = "$alias$keepSuffix"
         $live = Invoke-Admin GET ""
-        $unbind = @{}
-        foreach ($key in $builtInBinding.Keys) { if ($live.$key -eq $alias) { $unbind[$key] = $builtInBinding[$key] } }
-        if ($unbind.Count) { Invoke-Admin PUT "" $unbind | Out-Null }
+        $keepFlow = @(Invoke-Admin GET "authentication/flows") | Where-Object { $_.alias -eq $keep }
+        if ($keepFlow -and -not ($builtInBinding.Keys | Where-Object { $live.$_ -eq $keep })) {
+            Invoke-Admin DELETE "authentication/flows/$($keepFlow.id)" | Out-Null
+            $keepFlow = $null
+        }
+        $rebind = @{}
+        foreach ($key in $builtInBinding.Keys) { if ($live.$key -eq $alias) { $rebind[$key] = $keep } }
+        if ($rebind.Count) {
+            if (-not $keepFlow) { New-Flow $keep $alias $keepPrefix }
+            Invoke-Admin PUT "" $rebind | Out-Null
+        }
         Invoke-Admin DELETE "authentication/flows/$($existing.id)" | Out-Null
     }
     else {
@@ -338,10 +367,7 @@ foreach ($flow in $file.authenticationFlows | Where-Object { $_.topLevel -and -n
         if (-not $Apply) { continue }
     }
 
-    Invoke-Admin POST "authentication/flows" @{
-        alias = $alias; description = $flow["description"]; providerId = $flow.providerId; topLevel = $true; builtIn = $false
-    } | Out-Null
-    Add-Executions $alias
+    New-Flow $alias $alias
 
     $difference = Find-FirstDifference $want @(Get-LiveRows $alias)
     if ($difference) { throw "Built '$alias', but it still differs from the file: $difference" }
@@ -359,6 +385,18 @@ foreach ($key in $builtInBinding.Keys | Sort-Object) {
     $bind[$key] = $file[$key]
 }
 if ($Apply -and $bind.Count) { Invoke-Admin PUT "" $bind | Out-Null }
+
+# Stand-ins bound while a flow was rebuilt. Only deleted once nothing is bound to them any more.
+$live = Invoke-Admin GET ""
+foreach ($kept in @(Invoke-Admin GET "authentication/flows") | Where-Object { $_.alias.EndsWith($keepSuffix) }) {
+    $boundTo = @($builtInBinding.Keys | Where-Object { $live.$_ -eq $kept.alias })
+    if ($boundTo.Count) {
+        if ($Apply) { throw "'$($kept.alias)' is still bound as $($boundTo -join ', '). Run the script again." }
+        continue
+    }
+    Report delete $kept.alias "left over from a rebuild"
+    if ($Apply) { Invoke-Admin DELETE "authentication/flows/$($kept.id)" | Out-Null }
+}
 
 Write-Host ""
 if ($pending -eq 0) {
