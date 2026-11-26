@@ -64,7 +64,8 @@ Each one has a pass threshold in k6. Starting targets, to adjust once we see rea
 
 - A dev-only console tool, `api/tools/LoadSeed` (references the API project, builds its service provider, sets the tenant per school). It creates entities through the owning services' create methods, the same rule as `TestDataBuilder`, so the data is valid. Going through HTTP like [seed-data.ps1](../scripts/seed-data.ps1) would also work but takes far longer for ~60k rows.
 - Deterministic (fixed random seed) so runs are comparable. Danish-looking fake names, no real people.
-- Creates Keycloak users for the logins k6 needs (all 100 staff of Storskolen, ~200 parents, admins) through the Keycloak admin API, with one shared dev password. The dev realm's `skoleoverblikket-web` client already allows direct grants, which k6 uses to get tokens.
+- Creates one Storskolen by default; `--large-schools N` creates up to 20 for scenario 6, each with its own logins.
+- Creates Keycloak users for the logins k6 needs (all 100 staff of Storskolen, ~800 distinct parents to cover the ferieindmelding peak, admins) through the Keycloak admin API, with one shared dev password. The dev realm's `skoleoverblikket-web` client already allows direct grants, which k6 uses to get tokens.
 - Refuses to run unless the connection string points at localhost and the environment is `Development`. It must not be possible to point it at prod by mistake.
 - A reset story: `scripts/nuke.ps1`, then Aspire, then the generator. Run it in its own worktree or after [72](72-dev-postgres-per-worktree.md), or it overwrites everyday dev data.
 
