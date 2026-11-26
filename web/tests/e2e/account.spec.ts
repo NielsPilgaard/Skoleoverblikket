@@ -1,10 +1,11 @@
-import { test, expect, type Browser, type Page } from '@playwright/test'
+import { test, expect, type APIRequestContext, type Browser, type Page } from '@playwright/test'
 import { totpCode } from './totp'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
 const FIRST_PASSWORD = 'TestPass123!'
 const NEW_PASSWORD = 'NytKodeord456!'
+const KEYCLOAK_BASE = process.env.KEYCLOAK_URL ?? 'http://localhost:8080'
 
 /** A school of its own, so changing the password and two-factor touches no shared login. */
 async function signUp(page: Page): Promise<string> {
@@ -43,6 +44,14 @@ async function logInOn(page: Page, email: string, password: string, otp?: string
     await page.getByTestId('kc-otp-submit').click()
   }
   await page.waitForURL((url) => url.port !== '8080', { timeout: 30_000 })
+}
+
+/** Keycloak's password grant on the web client, as signup and invitations use it. */
+async function passwordGrantStatus(request: APIRequestContext, email: string, password: string) {
+  const res = await request.post(`${KEYCLOAK_BASE}/realms/Skoleoverblikket/protocol/openid-connect/token`, {
+    form: { grant_type: 'password', client_id: 'skoleoverblikket-web', username: email, password },
+  })
+  return res.status()
 }
 
 async function backOnAccount(page: Page, notice: string) {
@@ -107,9 +116,10 @@ test('Min konto: change password, turn tofaktor on, log in with the code, turn i
   await account.context().close()
 })
 
-test('Min konto: add a passkey, log in with it, remove it', async ({ page, browser }) => {
+test('Min konto: add a passkey, log in with it, remove it', async ({ page, browser, request }) => {
   test.setTimeout(180_000)
   const email = await signUp(page)
+  expect(await passwordGrantStatus(request, email, FIRST_PASSWORD)).toBe(200)
 
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   const account = await context.newPage()
@@ -140,6 +150,8 @@ test('Min konto: add a passkey, log in with it, remove it', async ({ page, brows
   await backOnAccount(account, 'Tofaktor er slået til.')
   await expect(account.getByTestId('account-status-on')).toBeVisible()
   await expect(account.getByTestId('account-passkey')).toContainText('Testtelefon')
+  // A password grant can't check the passkey, so it is refused instead of skipping it.
+  expect(await passwordGrantStatus(request, email, FIRST_PASSWORD)).toBe(401)
 
   // Log out everywhere, then the login asks for the passkey after the password.
   await account.getByTestId('account-logout-everywhere').click()
@@ -161,5 +173,6 @@ test('Min konto: add a passkey, log in with it, remove it', async ({ page, brows
   await account.getByTestId('kc-delete-credential-confirm').click()
   await backOnAccount(account, 'Tofaktor er slået fra.')
   await expect(account.getByTestId('account-status-off')).toBeVisible()
+  expect(await passwordGrantStatus(request, email, FIRST_PASSWORD)).toBe(200)
   await context.close()
 })
