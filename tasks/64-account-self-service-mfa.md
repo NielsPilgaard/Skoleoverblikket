@@ -101,6 +101,7 @@ Email is the login name and is matched against `Staff`/`Parent`/`BoardMember` ro
 - The password grant (`skoleoverblikket direct grant`, used after signup and by `seed-data.ps1`) has the same rule in `Superadmin requires two-factor (direct grant)`: a superadmin must send an app code, and one without an app is refused (Keycloak answers 500, `AuthenticationFlowException`). Its normal OTP sub-flow skips superadmins, because a code works once. Proven on a scratch 26.8.2 on 2026-11-21. Off in dev like the browser sub-flow.
 - A password grant can't check a passkey, so `Passkey logins get no password grant` refuses it (401) for any login with a passkey of either kind, also in dev. `Condition - user configured` counts Deny access as not set up, so Deny access sits in its own always-on sub-flow (`Condition - user attribute` on an attribute nobody has, negated), and the two WebAuthn rows only feed the condition; Keycloak skips ALTERNATIVE rows next to a conditional sub-flow. Proven on local 26.8.2 on 2026-11-24.
 - The superadmin sub-flow (`Superadmin requires two-factor`) runs only when this login did not use the app (`Condition - credential`, `otp`, not included), so a superadmin who typed an app code is asked once, not twice. A recovery code is not enough: the flow then asks for the app code, or forces app setup when there is none. A lost phone is reset from the Keycloak master console. (Changed 2026-11-21 from `Condition - sub-flow executed`, which also passed on a recovery code.)
+- "Glemt adgangskode" (`skoleoverblikket reset credentials`) ends with a fresh login (`force-login: true` on `reset-credential-email`), so the new password still needs the app or passkey. It leaves out the built-in `Reset - Conditional OTP`, which removes the app and asks for a new one: with it, the reset email alone got past two-factor. A lost phone goes through recovery codes or an admin reset. Changed 2026-11-26 after review.
 - 26.8 sends both `UPDATE_TOTP` and `UPDATE_CREDENTIAL` for one change, so the email listener is limited to `UPDATE_CREDENTIAL,REMOVE_CREDENTIAL` (`KC_SPI_EVENTS_LISTENER__EMAIL__INCLUDE_EVENTS` in the Dockerfile and AppHost). Without the limit it also mails on every failed login. One template per event picks the Danish wording from `credential_type`.
 - `select-authenticator.ftl` is themed in Phase 1 too: "Brug en anden metode" leads there.
 - Dev: Aspire's Keycloak keeps its database, and `--import-realm` skips an existing realm. Delete the Keycloak container and its database (or apply the checklist below locally) to get the new flow.
@@ -108,7 +109,7 @@ Email is the login name and is matched against `Staff`/`Parent`/`BoardMember` ro
 **Prod checklist (D5 A), Niels.** In the prod admin console, realm Skoleoverblikket:
 
 1. Deploy the new Keycloak image first (it carries the themes and the email event filter).
-2. Open the tunnel (`ssh -L 8180:127.0.0.1:8180 ubuntu@<vps>`) and run `pwsh scripts/sync-keycloak-auth.ps1 -AdminUser <your master admin>`. It asks for your password and app code and lists what differs from the realm file: password and OTP policy, required actions and their "Maximum age of authentication", the `email` event listener, the `skoleoverblikket browser` and `skoleoverblikket direct grant` flows (with the superadmin sub-flows on) and their bindings. Nothing changes yet.
+2. Open the tunnel (`ssh -L 8180:127.0.0.1:8180 ubuntu@<vps>`) and run `pwsh scripts/sync-keycloak-auth.ps1 -AdminUser <your master admin>`. It asks for your password and app code and lists what differs from the realm file: password and OTP policy, required actions and their "Maximum age of authentication", the `email` event listener, the `skoleoverblikket browser`, `skoleoverblikket direct grant` and `skoleoverblikket reset credentials` flows (with the superadmin sub-flows on) and their bindings. Nothing changes yet.
 3. If the list looks right, run it again with `-Apply`, then once more without: it must say "Everything matches the realm file".
 4. Log in as superadmin in a private window: it must ask you to set up the app. Save the codes from Min konto once it ships.
 5. Tick this item.
@@ -121,7 +122,7 @@ Email is the login name and is matched against `Staff`/`Parent`/`BoardMember` ro
 
 ### API
 
-**Built 2026-11-20.** Admin reset also refuses the superadmin's login (`SharedLogin`), so a school admin at a school where the operator is staff can't weaken it. The back office reset takes the login's email: `POST /api/v1/admin/logins/reset-two-factor`. The reset email goes to the row's email, or the login's when the staff row has none.
+**Built 2026-11-20.** Admin reset also refuses the superadmin's login (`SharedLogin`), so a school admin at a school where the operator is staff can't weaken it. The back office reset takes the login's email: `POST /api/v1/admin/logins/reset-two-factor`. The reset notice goes to the login's email in Keycloak, never the row's: a school admin can edit the row's email.
 
 New `AccountService` (`Services/`) and `AccountController` at `/api/v1/account`, every role, no tenant data:
 

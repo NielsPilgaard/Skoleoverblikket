@@ -1502,9 +1502,51 @@
           "userSetupAllowed": false
         }
       ]
+    },
+    {
+      "id": "e6a67f19-3d43-46f9-997c-4831c528a704",
+      "alias": "skoleoverblikket reset credentials",
+      "description": "Forgot password. Like the built-in flow, but it ends with a fresh login, so the new password still needs the second factor, and it never removes the authenticator app (the built-in flow does, so the email alone was enough).",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "reset-credentials-choose-user",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorConfig": "force-login-after-reset",
+          "authenticator": "reset-credential-email",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "reset-password",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 30,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
     }
   ],
   "authenticatorConfig": [
+    {
+      "id": "32eb9dc1-3665-459d-98f8-3865f8e97356",
+      "alias": "force-login-after-reset",
+      "config": {
+        "force-login": "true"
+      }
+    },
     {
       "id": "ac395236-fe7f-4cdd-ac3a-4b388ef7e4cf",
       "alias": "browser-conditional-credential",
@@ -1576,7 +1618,7 @@
   ],
   "registrationFlow": "registration",
   "directGrantFlow": "skoleoverblikket direct grant",
-  "resetCredentialsFlow": "reset credentials",
+  "resetCredentialsFlow": "skoleoverblikket reset credentials",
   "clientAuthenticationFlow": "clients",
   "dockerAuthenticationFlow": "docker auth",
   "firstBrokerLoginFlow": "first broker login"
