@@ -129,6 +129,24 @@ export default function AccountPage() {
         </p>
       </div>
 
+      {cleanup.isError && (
+        <div
+          role="alert"
+          data-testid="account-cleanup-error"
+          className="rounded-lg px-4 py-3 text-sm bg-red-50 text-red-700 border border-red-200 space-y-2"
+        >
+          <p>Dine gendannelseskoder kunne ikke fjernes. De virker stadig, når du logger ind.</p>
+          <button
+            type="button"
+            onClick={() => cleanup.mutate({})}
+            disabled={cleanup.isPending}
+            className="px-3 py-1.5 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 transition-colors"
+          >
+            Prøv igen
+          </button>
+        </div>
+      )}
+
       {notice && (
         <p
           role="status"
