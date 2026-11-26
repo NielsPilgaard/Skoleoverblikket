@@ -54,7 +54,7 @@ Each one has a pass threshold in k6. Starting targets, to adjust once we see rea
 1. **Morning peak (07:45–08:15).** All 100 staff open today's schedule, vikardækning and the ugeplan. 30% of parents open the ugeplan and register fravær within 15 minutes. Mostly reads, the most common real load.
 2. **Schema building.** Hanne and two colleagues edit the schema at the same time: place, move and delete slots, each edit followed by the conflict check. One to three users, so this measures latency per edit, not throughput. Also measure with 3 overlapping schemas (current year, next year draft, a variant).
 3. **Ferieindmelding evening.** The window opens, a notification goes to all parents, and 60% respond between 19:00 and 21:00 with a peak in the first 30 minutes.
-4. **Message to all parents.** One message to ~1,300 recipients: time until the request returns, and time until the email queue is empty in Mailpit.
+4. **Message to all parents.** One message to ~1,300 recipients: time until the request returns, and time until all ~1,300 messages have arrived in Mailpit (raise Mailpit's message limit for the run).
 5. **Soak.** Scenario 1 at half load for 30 minutes. Watch memory, the Npgsql connection pool and the email queue for leaks.
 6. **Capacity (Phase 3 only).** Scenario 1 for 1, 5, 10 and 20 large schools at once on the capped stack, until a threshold fails. The answer is "one VPS carries N schools of this size".
 
@@ -67,7 +67,7 @@ Each one has a pass threshold in k6. Starting targets, to adjust once we see rea
 - Creates one Storskolen by default; `--large-schools N` creates up to 20 for scenario 6, each with its own logins.
 - Creates Keycloak users for the logins k6 needs (all 100 staff of Storskolen, ~800 distinct parents to cover the ferieindmelding peak, admins) through the Keycloak admin API, with one shared dev password. The dev realm's `skoleoverblikket-web` client already allows direct grants, which k6 uses to get tokens.
 - Refuses to run unless the connection string points at localhost and the environment is `Development`. It must not be possible to point it at prod by mistake.
-- A reset story: `scripts/nuke.ps1`, then Aspire, then the generator. Run it in its own worktree or after [72](72-dev-postgres-per-worktree.md), or it overwrites everyday dev data.
+- A reset story: remove only the load-test stack's volumes, then Aspire, then the generator. Not `scripts/nuke.ps1`: it removes every `skoleoverblikket-*` volume, including everyday dev data. Needs [72](72-dev-postgres-per-worktree.md) or its own volume names, or it overwrites everyday dev data.
 
 ### Phase 2: find slow code (Aspire)
 
@@ -78,7 +78,7 @@ Each one has a pass threshold in k6. Starting targets, to adjust once we see rea
 
 ### Phase 3: capacity (prod images, capped)
 
-- Run the prod images from `infrastructure/docker/docker-compose.prod.yml` locally, with `cpus` and `mem_limit` set to the prod VPS (and Postgres's real `shared_buffers`, not the dev 128 MB).
+- Run the prod images from `infrastructure/docker/docker-compose.prod.yml` locally, with `cpus` and `mem_limit` set to the prod VPS (and Postgres's real `shared_buffers`, not the dev 128 MB). Use an override file that points `Keycloak__Authority`, email and every other external service at local containers, so nothing reaches production.
 - Run scenario 6. Record where it breaks first: API CPU, Postgres, connection pool, Keycloak token endpoint or RAM.
 - Keycloak is part of the load: every login is a token request. Check that the morning peak doesn't hit it harder than the API.
 
