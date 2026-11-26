@@ -303,6 +303,7 @@ export default function SignupPage() {
               pending
             }
             className="w-full py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            data-testid="signup-submit"
           >
             {pending ? 'Opretter skole…' : 'Opret skole'}
           </button>

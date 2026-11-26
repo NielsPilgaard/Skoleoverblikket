@@ -16,7 +16,7 @@ async function signUp(page: Page): Promise<string> {
   await page.getByTestId('signup-email').fill(email)
   await page.getByTestId('signup-password').fill(FIRST_PASSWORD)
   await page.getByTestId('signup-accept-dpa').check()
-  await page.getByRole('button', { name: 'Opret skole' }).click()
+  await page.getByTestId('signup-submit').click()
   await expect(page).toHaveURL(/\/setup/, { timeout: 15_000 })
   return email
 }
