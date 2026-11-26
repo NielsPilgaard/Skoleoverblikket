@@ -1,4 +1,4 @@
-#Requires -Version 7
+#Requires -Version 7.1
 <#
 .SYNOPSIS
     Brings the live realm's login settings in line with the realm file, so they aren't clicked by hand.
@@ -258,7 +258,7 @@ function Find-FirstDifference($want, $have) {
     for ($i = 0; $i -lt [Math]::Max($want.Count, $have.Count); $i++) {
         $w = if ($i -lt $want.Count) { $want[$i] } else { $null }
         $h = if ($i -lt $have.Count) { $have[$i] } else { $null }
-        if ((Format-Row $w) -ne (Format-Row $h)) { return "row $($i + 1): live '$((Format-Row $h).Trim())', file '$((Format-Row $w).Trim())'" }
+        if ((Format-Row $w) -cne (Format-Row $h)) { return "row $($i + 1): live '$((Format-Row $h).Trim())', file '$((Format-Row $w).Trim())'" }
     }
     $null
 }
@@ -359,7 +359,12 @@ if ($Apply) {
         $keys = @($builtInBinding.Keys | Where-Object { $live.$_ -eq $alias })
         if (-not $rebuild[$alias] -or -not $keys.Count) { continue }
         $backup = "$alias sync backup"
-        if (-not ($liveFlows | Where-Object { $_.alias -eq $backup })) {
+        # A backup still bound from a failed run is what's active, so keep it. An unbound one left by an
+        # interrupted run may hold an older policy: replace it with a copy of what is live now.
+        $existingBackup = $liveFlows | Where-Object { $_.alias -eq $backup }
+        $backupBound = @($builtInBinding.Keys | Where-Object { $live.$_ -eq $backup }).Count -gt 0
+        if (-not $backupBound) {
+            if ($existingBackup) { Invoke-Admin DELETE "authentication/flows/$($existingBackup.id)" | Out-Null }
             Invoke-Admin POST "authentication/flows/$(Enc $alias)/copy" @{ newName = $backup } | Out-Null
         }
         foreach ($key in $keys) { $backupBinding[$key] = $backup }
