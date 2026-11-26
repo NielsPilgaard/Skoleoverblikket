@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Skoleoverblikket.Api.Auth;
-using Skoleoverblikket.Api.Data;
 using Skoleoverblikket.Api.Models;
 using Skoleoverblikket.Api.Services;
 
@@ -11,7 +9,7 @@ namespace Skoleoverblikket.Api.Controllers;
 [ApiController]
 [Route("api/v1/staff")]
 [Authorize(Roles = $"{Roles.Staff},{Roles.Board}")]
-public sealed class StaffController(AppDbContext db, StaffService staffService, IAuthorizationService authz) : ControllerBase
+public sealed class StaffController(StaffService staffService, IAuthorizationService authz) : ControllerBase
 {
 	public record StaffDto(Guid Id, string Name, string? Email, string? Phone, StaffRole Role, bool IsAdmin, string? KeycloakSubject);
 	public record UpsertStaffRequest(string Name, string? Email, string? Phone, StaffRole Role, bool IsAdmin = false);
@@ -29,12 +27,7 @@ public sealed class StaffController(AppDbContext db, StaffService staffService, 
 			}
 		}
 
-		var staff = await db.Staff
-			.AsNoTracking()
-			.OrderBy(s => s.Name)
-			.Select(s => new StaffDto(s.Id, s.Name, s.Email, s.Phone, s.Role, s.IsAdmin, s.KeycloakSubject))
-			.ToListAsync(cancellationToken);
-		return Ok(staff);
+		return Ok(await staffService.GetAllAsync(cancellationToken));
 	}
 
 	[HttpGet("me")]
@@ -47,15 +40,9 @@ public sealed class StaffController(AppDbContext db, StaffService staffService, 
 			return Unauthorized();
 		}
 
-		var staff = await db.Staff
-			.AsNoTracking()
-			.Where(s => s.KeycloakSubject == subject)
-			.Select(s => new StaffDto(s.Id, s.Name, s.Email, s.Phone, s.Role, s.IsAdmin, s.KeycloakSubject))
-			.FirstOrDefaultAsync(cancellationToken);
-
-		return staff is null
-			? NotFound()
-			: Ok(staff);
+		return await staffService.GetBySubjectAsync(subject, cancellationToken) is { } staff
+			? Ok(staff)
+			: NotFound();
 	}
 
 	[HttpGet("{id:guid}")]
@@ -70,15 +57,9 @@ public sealed class StaffController(AppDbContext db, StaffService staffService, 
 			}
 		}
 
-		var staff = await db.Staff
-							.AsNoTracking()
-							.Where(s => s.Id == id)
-							.Select(s => new StaffDto(s.Id, s.Name, s.Email, s.Phone, s.Role, s.IsAdmin, s.KeycloakSubject))
-							.FirstOrDefaultAsync(cancellationToken);
-
-		return staff is null
-				   ? NotFound()
-				   : Ok(staff);
+		return await staffService.GetByIdAsync(id, cancellationToken) is { } staff
+			? Ok(staff)
+			: NotFound();
 	}
 
 	[HttpPost]
