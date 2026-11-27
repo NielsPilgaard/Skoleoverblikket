@@ -45,7 +45,11 @@ public sealed class CalendarController(AppDbContext db, ITenantContext tenant) :
 
 		foreach (var entry in rawEntries)
 		{
-			result.Add(entry);
+			if (!IsBaseOccurrenceExcluded(entry))
+			{
+				result.Add(entry);
+			}
+
 			if (entry.RecurrenceRule is not null)
 			{
 				var expansionEnd = entry.RecurrenceEnd ?? entry.StartDate.AddYears(2);
@@ -213,6 +217,19 @@ public sealed class CalendarController(AppDbContext db, ITenantContext tenant) :
 		return File(bytes, "text/calendar; charset=utf-8");
 	}
 
+	// True when a recurring entry's first occurrence has been deleted on its own ("Kun denne begivenhed").
+	// ExpandRecurrence only returns the later occurrences, so callers that add the base entry must check this.
+	internal static bool IsBaseOccurrenceExcluded(CalendarEntryDto entry) =>
+		entry.RecurrenceRule is not null && ParseExcludedDates(entry.ExcludedDates).Contains(entry.StartDate);
+
+	private static HashSet<DateOnly> ParseExcludedDates(string? excludedDates) =>
+		excludedDates?
+			.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+			.Select(d => DateOnly.TryParse(d, out var pd) ? pd : (DateOnly?)null)
+			.Where(d => d.HasValue)
+			.Select(d => d!.Value)
+			.ToHashSet() ?? [];
+
 	// Expands a recurring entry into additional occurrences after its base occurrence.
 	// Returns only the extra occurrences (not the original). Each occurrence keeps the same Id.
 	internal static List<CalendarEntryDto> ExpandRecurrencePublic(
@@ -260,12 +277,7 @@ public sealed class CalendarController(AppDbContext db, ITenantContext tenant) :
 
 		var duration = entry.EndDate.DayNumber - entry.StartDate.DayNumber;
 
-		var excluded = entry.ExcludedDates?
-			.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-			.Select(d => DateOnly.TryParse(d, out var pd) ? pd : (DateOnly?)null)
-			.Where(d => d.HasValue)
-			.Select(d => d!.Value)
-			.ToHashSet() ?? [];
+		var excluded = ParseExcludedDates(entry.ExcludedDates);
 
 		// Each occurrence is computed from the start date, not the previous occurrence, so a monthly
 		// event on the 31st clamps to Feb 28 once and returns to the 31st in March instead of drifting.
