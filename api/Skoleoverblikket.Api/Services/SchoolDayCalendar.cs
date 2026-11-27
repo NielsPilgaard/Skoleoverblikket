@@ -76,7 +76,12 @@ public sealed class SchoolDayCalendar
 				entry.Id, entry.Type, entry.Title, entry.StartDate, entry.EndDate,
 				entry.RecurrenceRule, entry.RecurrenceEnd, entry.ExcludedDates);
 
-			var occurrences = new List<(DateOnly Start, DateOnly End)> { (entry.StartDate, entry.EndDate) };
+			var occurrences = new List<(DateOnly Start, DateOnly End)>();
+			if (!CalendarController.IsBaseOccurrenceExcluded(dto))
+			{
+				occurrences.Add((entry.StartDate, entry.EndDate));
+			}
+
 			if (entry.RecurrenceRule is not null)
 			{
 				var expansionEnd = entry.RecurrenceEnd ?? to;

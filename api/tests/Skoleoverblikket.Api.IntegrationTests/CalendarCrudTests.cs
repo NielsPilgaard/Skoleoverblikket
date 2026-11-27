@@ -219,6 +219,34 @@ public sealed class CalendarCrudTests(ApiFactory factory)
 	}
 
 	[Test]
+	public async Task DeleteOccurrence_OfFirstOccurrence_HidesItFromListAndExport()
+	{
+		var request = new CalendarController.CreateCalendarEntryRequest(
+			"Personalemøde", CalendarEntryType.Begivenhed,
+			new DateOnly(2026, 3, 2), new DateOnly(2026, 3, 2),
+			"FREQ=WEEKLY", new DateOnly(2026, 3, 16));
+		var createResponse = await _client.PostAsJsonAsync("/api/v1/calendar", request);
+		createResponse.EnsureSuccessStatusCode();
+		var created = await createResponse.Content.ReadFromJsonAsync<CalendarController.CalendarEntryDto>(JsonOpts);
+
+		var deleteResponse = await _client.DeleteAsync($"/api/v1/calendar/{created!.Id}/occurrences/2026-03-02");
+		await Assert.That(deleteResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
+
+		var response = await _client.GetAsync("/api/v1/calendar");
+		var entries = await response.Content.ReadFromJsonAsync<List<CalendarController.CalendarEntryDto>>(JsonOpts);
+		var dates = entries!.Select(e => e.StartDate).ToList();
+		await Assert.That(dates).IsEquivalentTo(new List<DateOnly>
+		{
+			new(2026, 3, 9),
+			new(2026, 3, 16),
+		});
+
+		var ics = await _client.GetStringAsync("/api/v1/calendar/export.ics");
+		await Assert.That(ics).DoesNotContain("DTSTART;VALUE=DATE:20260302");
+		await Assert.That(ics).Contains("DTSTART;VALUE=DATE:20260309");
+	}
+
+	[Test]
 	public async Task TenantIsolation_EntryNotVisibleToOtherTenant()
 	{
 		// Create entry for default tenant
