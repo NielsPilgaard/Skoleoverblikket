@@ -1,6 +1,7 @@
-# Weekly update PRs, grouped per ecosystem so there are a few PRs a week, not dozens.
-# Security updates (a known vulnerability) are opened right away, outside this schedule, once
-# "Dependabot security updates" is on in the repo settings.
+# Security updates only. open-pull-requests-limit: 0 turns off routine version-update PRs;
+# security updates (a known vulnerability) still open right away, grouped into one PR per ecosystem.
+# Needs "Dependabot security updates" on in the repo settings (it is).
+# The ignore rules below also apply to security updates.
 version: 2
 updates:
   - package-ecosystem: nuget
@@ -12,10 +13,11 @@ updates:
       - /infrastructure/backup-agent
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
     groups:
       nuget:
+        applies-to: security-updates
         patterns: ["*"]
-        update-types: [minor, patch]
     ignore:
       # Billing may move off Stripe (tasks/62-stripe-to-alunta.md); don't chase Stripe.net majors meanwhile.
       - dependency-name: Stripe.net
@@ -36,10 +38,11 @@ updates:
     directory: /web
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
     groups:
       npm:
+        applies-to: security-updates
         patterns: ["*"]
-        update-types: [minor, patch]
 
   - package-ecosystem: docker
     directories:
@@ -50,8 +53,10 @@ updates:
       - /infrastructure/postgres
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
     groups:
       docker:
+        applies-to: security-updates
         patterns: ["*"]
     ignore:
       # A new .NET major needs the projects retargeted (TargetFramework, packages) in the same PR;
@@ -65,6 +70,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
     groups:
       actions:
+        applies-to: security-updates
         patterns: ["*"]
