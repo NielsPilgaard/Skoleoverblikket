@@ -16,7 +16,12 @@ public static class IcsBuilder
 
 		foreach (var entry in entries)
 		{
-			var occurrences = new List<(DateOnly Start, DateOnly End)> { (entry.StartDate, entry.EndDate) };
+			var occurrences = new List<(DateOnly Start, DateOnly End)>();
+			if (!CalendarController.IsBaseOccurrenceExcluded(entry))
+			{
+				occurrences.Add((entry.StartDate, entry.EndDate));
+			}
+
 			if (entry.RecurrenceRule is not null)
 			{
 				var expansionEnd = entry.RecurrenceEnd ?? entry.StartDate.AddYears(2);

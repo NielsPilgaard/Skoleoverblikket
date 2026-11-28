@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Skoleoverblikket.Api.Auth;
 using Skoleoverblikket.Api.Controllers;
@@ -10,7 +11,7 @@ using static Skoleoverblikket.Api.Controllers.StaffController;
 namespace Skoleoverblikket.Api.Services;
 
 /// <summary>
-/// Staff members: create, edit, admin access and delete. Admin is <see cref="Staff.IsAdmin"/>; the API
+/// Staff members: list, look up, create, edit, admin access and delete. Admin is <see cref="Staff.IsAdmin"/>; the API
 /// reads it on every request (SchoolRolesClaimsTransformer), so there's no Keycloak role to grant.
 /// </summary>
 public sealed class StaffService(
@@ -39,6 +40,25 @@ public sealed class StaffService(
 		Self,
 		HasLessons,
 	}
+
+	public Task<List<StaffDto>> GetAllAsync(CancellationToken cancellationToken) =>
+		db.Staff.AsNoTracking()
+			.OrderBy(s => s.Name)
+			.Select(ToDtoExpression)
+			.ToListAsync(cancellationToken);
+
+	public Task<StaffDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+		db.Staff.AsNoTracking()
+			.Where(s => s.Id == id)
+			.Select(ToDtoExpression)
+			.FirstOrDefaultAsync(cancellationToken);
+
+	/// <summary>The staff member a login belongs to at this school, or null.</summary>
+	public Task<StaffDto?> GetBySubjectAsync(string subject, CancellationToken cancellationToken) =>
+		db.Staff.AsNoTracking()
+			.Where(s => s.KeycloakSubject == subject)
+			.Select(ToDtoExpression)
+			.FirstOrDefaultAsync(cancellationToken);
 
 	/// <summary>Null when another staff member already has the email.</summary>
 	public async Task<StaffDto?> CreateAsync(UpsertStaffRequest req, CancellationToken cancellationToken)
@@ -182,5 +202,8 @@ public sealed class StaffService(
 		!string.IsNullOrWhiteSpace(email)
 		&& await db.Staff.AnyAsync(s => s.Id != exceptId && s.Email == email, cancellationToken);
 
-	private static StaffDto ToDto(Staff s) => new(s.Id, s.Name, s.Email, s.Phone, s.Role, s.IsAdmin, s.KeycloakSubject);
+	private static readonly Expression<Func<Staff, StaffDto>> ToDtoExpression =
+		s => new StaffDto(s.Id, s.Name, s.Email, s.Phone, s.Role, s.IsAdmin, s.KeycloakSubject);
+
+	private static readonly Func<Staff, StaffDto> ToDto = ToDtoExpression.Compile();
 }
