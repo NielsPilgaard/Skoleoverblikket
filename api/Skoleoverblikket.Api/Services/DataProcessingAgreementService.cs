@@ -39,7 +39,7 @@ public sealed class DataProcessingAgreementService(
 	ILogger<DataProcessingAgreementService> logger)
 {
 	/// <summary>Must match the version shown on DataProcessingAgreementPage.tsx.</summary>
-	public const string CurrentVersion = "1.0";
+	public const string CurrentVersion = "1.1";
 
 	/// <summary>The agreement promises schools this much notice before a new sub-processor is used.</summary>
 	public static readonly TimeSpan SubProcessorNotice = TimeSpan.FromDays(30);

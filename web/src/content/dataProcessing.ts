@@ -8,8 +8,8 @@
  * Changing SUB_PROCESSORS: send the 30-day notice from the backoffice first, then update the list
  * on the date given in the notice.
  */
-export const DPA_VERSION = '1.0'
-export const DPA_UPDATED = 'oktober 2026'
+export const DPA_VERSION = '1.1'
+export const DPA_UPDATED = 'november 2026'
 
 /** Days of notice schools get before a new sub-processor is used. */
 export const SUB_PROCESSOR_NOTICE_DAYS = 30

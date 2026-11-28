@@ -18,7 +18,7 @@ test('signup creates a school and redirects to setup wizard', async ({ page }) =
   await page.getByTestId('signup-password').fill('TestPass123!')
   await page.getByTestId('signup-accept-dpa').check()
 
-  await page.getByRole('button', { name: 'Opret skole' }).click()
+  await page.getByTestId('signup-submit').click()
 
   // Should land on the setup wizard — wait up to 15 s for the redirect + Keycloak init
   await expect(page).toHaveURL(/\/setup/, { timeout: 15_000 })
@@ -40,7 +40,7 @@ test('signup shows error when submitting duplicate email', async ({ page }) => {
   await page.getByTestId('signup-password').fill('TestPass123!')
   await page.getByTestId('signup-accept-dpa').check()
 
-  await page.getByRole('button', { name: 'Opret skole' }).click()
+  await page.getByTestId('signup-submit').click()
 
   // Should stay on /signup and say the email is taken — never reuse the existing account
   await expect(page).toHaveURL('/signup', { timeout: 10_000 })
@@ -58,7 +58,7 @@ test('signup requires accepting the databehandleraftale', async ({ page }) => {
   await page.getByTestId('signup-email').fill(uniqueEmail())
   await page.getByTestId('signup-password').fill('TestPass123!')
 
-  const submit = page.getByRole('button', { name: 'Opret skole' })
+  const submit = page.getByTestId('signup-submit')
   await expect(submit).toBeDisabled()
 
   await page.getByTestId('signup-accept-dpa').check()

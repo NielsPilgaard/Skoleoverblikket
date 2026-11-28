@@ -54,6 +54,7 @@ const ParentSchemaPage = lazy(() => import('./pages/parent/ParentSchemaPage'))
 const ParentCalendarPage = lazy(() => import('./pages/parent/ParentCalendarPage'))
 const ParentWeekPlanPage = lazy(() => import('./pages/parent/ParentWeekPlanPage'))
 const ParentProfilePage = lazy(() => import('./pages/parent/ParentProfilePage'))
+const AccountPage = lazy(() => import('./pages/AccountPage'))
 const BackofficeLayout = lazy(() => import('./pages/backoffice/BackofficeLayout'))
 const BackofficeTenantsPage = lazy(() => import('./pages/backoffice/BackofficeTenantsPage'))
 const BackofficeTenantDetailPage = lazy(
@@ -420,6 +421,7 @@ export default function App() {
                       </ParentRoute>
                     }
                   />
+                  <Route path="min-konto" element={<AccountPage />} />
                   <Route
                     path="indstillinger/notifikationer"
                     element={<NotificationPreferencesPage />}

@@ -352,6 +352,7 @@ export default function ParentContactBookPage() {
           {threads.map((thread) => (
             <button
               key={thread.id}
+              data-testid="parent-contact-thread-row"
               onClick={() => handleSelectThread(thread.id)}
               className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${selectedThreadId === thread.id ? 'bg-brand-50' : ''}`}
             >
@@ -411,7 +412,10 @@ export default function ParentContactBookPage() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            <div
+              data-testid="parent-contact-conversation"
+              className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
+            >
               {messages.map((msg) => {
                 const isOwn = msg.senderType === 'Parent'
                 return (
@@ -459,6 +463,7 @@ export default function ParentContactBookPage() {
                   onChange={(e) => setMessageBody(e.target.value)}
                   rows={3}
                   placeholder="Skriv en besked…"
+                  data-testid="parent-contact-composer"
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -469,6 +474,7 @@ export default function ParentContactBookPage() {
                 />
                 <button
                   onClick={handleSend}
+                  data-testid="parent-contact-send"
                   disabled={sendMessageMutation.isPending || !messageBody.trim()}
                   className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50 shrink-0"
                 >
@@ -491,6 +497,7 @@ export default function ParentContactBookPage() {
                 onChange={(e) => setNewMessageBody(e.target.value)}
                 rows={3}
                 placeholder="Skriv din første besked til læreren…"
+                data-testid="parent-contact-new-body"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
               />
               {validStudents.length === 1 && (
@@ -510,6 +517,7 @@ export default function ParentContactBookPage() {
               )}
               <button
                 onClick={handleStartNewThread}
+                data-testid="parent-contact-start"
                 disabled={createThreadMutation.isPending || !newMessageBody.trim()}
                 className="w-full px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50"
               >

@@ -41,6 +41,7 @@
           type="password"
           id="password-new"
           name="password-new"
+          data-testid="kc-password-new"
           autocomplete="new-password"
           autofocus
         >
@@ -52,11 +53,12 @@
           type="password"
           id="password-confirm"
           name="password-confirm"
+          data-testid="kc-password-confirm"
           autocomplete="new-password"
         >
       </div>
 
-      <button type="submit" class="btn-primary">Gem adgangskode</button>
+      <button type="submit" class="btn-primary" data-testid="kc-password-submit">Gem adgangskode</button>
 
     </form>
 

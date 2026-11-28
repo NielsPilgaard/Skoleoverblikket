@@ -215,7 +215,8 @@ export default function InvitationAcceptPage() {
       if (!res.ok) {
         setPasswordError(
           res.status === 400
-            ? `Adgangskoden skal være mindst ${MIN_PASSWORD_LENGTH} tegn.`
+            ? (((await res.json().catch(() => ({}))) as { detail?: string }).detail ??
+                `Adgangskoden skal være mindst ${MIN_PASSWORD_LENGTH} tegn.`)
             : 'Der opstod en fejl. Prøv igen.'
         )
         return
@@ -583,6 +584,7 @@ export default function InvitationAcceptPage() {
                       autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      maxLength={128}
                       data-testid="invitation-password"
                       className="w-full px-3 py-2 pr-16 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
                     />

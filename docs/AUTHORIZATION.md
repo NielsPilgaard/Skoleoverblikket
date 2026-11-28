@@ -159,6 +159,13 @@ HasQueryFilter(e => e.TenantId == tenantContext.TenantId)
 | `realm_access.roles` | No | Only `superadmin` is read, by `SchoolRolesClaimsTransformer` |
 | `email` | No | Display only |
 
+### Account security (Min konto)
+
+- **Own login only.** `/api/v1/account` acts on the token's `sub` and nothing else, so it needs no school role: a login with no role can still change its password, set up tofaktor and log out everywhere. Password and tofaktor changes happen in Keycloak (application-initiated actions); the API only reads the summary, ends sessions and removes orphaned recovery codes.
+- **Admin reset of tofaktor** (`AccountService.ResetTwoFactorAsync`) removes the login's `otp`, `webauthn` and `recovery-authn-codes` credentials, logs out all its sessions and emails the person. Allowed only when the login belongs to this school alone, the same rule `SchoolLoginService` uses for deleting logins: a login also used at another school, or the operator's own, is 409, otherwise an admin at school A could weaken a login at school B. Your own login is 403. Someone at another school is 404 (query filter).
+- **Shared logins** are reset by the superadmin from the back office, by email.
+- **The superadmin must use tofaktor.** The Keycloak browser flow requires OTP for the `superadmin` realm role unless the login already used the app or a passkey, and makes the login set up the app if it has neither. School logins choose for themselves.
+
 ---
 
 ## Endpoint authorization summary
@@ -196,6 +203,9 @@ A bare `[Authorize]` admits any login: parents, board members and logins with no
 | `GET /api/v1/external-links` | `[Authorize]` | Links for the acting role: staff and board by audience, parents also by their children's classes (`ExternalLinkService`). No role → empty list |
 | `GET /api/v1/external-links/all`, `POST/PUT/DELETE`, `PUT order` | `[Authorize(Roles = "admin")]` | Basis, not module-gated |
 | `GET /api/v1/exports/school.zip`, `POST school.zip/link` | `[Authorize(Roles = "admin")]` | |
+| `GET /api/v1/account/security`, `POST logout-everywhere`, `POST security/cleanup-recovery-codes` | `[Authorize]` | The caller's own login only, see [Account security](#account-security-min-konto) |
+| `POST /api/v1/{staff,parents,board-members}/{id}/reset-two-factor` | `[Authorize(Roles = "admin")]` | Single-school logins only (409 otherwise), never your own (403). Parents and board members also need their module |
+| `POST /api/v1/admin/logins/reset-two-factor` | `[Authorize(Roles = "superadmin")]` | Back office, by email, for shared logins |
 | `GET {staff,parent,board}-invitations/preview`, `POST …/password` | `[AllowAnonymous]` | The invitation token is the credential. `password` only sets a login's first password (409 otherwise) |
 | `GET /api/v1/exports/school.zip/download?token=…` | `ExportLink` scheme, admin | The only endpoint not authenticated by a Keycloak JWT. The token comes from `POST school.zip/link`, carries the admin's tenant and subject (data protection, signed and encrypted), lasts one minute and works once (`ExportLinkAuthHandler`) |
 

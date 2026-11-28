@@ -217,6 +217,7 @@ export default function SignupPage() {
                 placeholder="Mindst 8 tegn"
                 required
                 minLength={8}
+                maxLength={128}
                 data-testid="signup-password"
                 className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
@@ -302,6 +303,7 @@ export default function SignupPage() {
               pending
             }
             className="w-full py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            data-testid="signup-submit"
           >
             {pending ? 'Opretter skole…' : 'Opret skole'}
           </button>

@@ -38,6 +38,8 @@ var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26
                       .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD",
                                        builder.AddParameter("keycloak-admin-password", secret: true))
                       .WithEnvironment("KC_DB", "postgres")
+                      // Same as infrastructure/keycloak/Dockerfile: security emails only for credential changes.
+                      .WithEnvironment("KC_SPI_EVENTS_LISTENER__EMAIL__INCLUDE_EVENTS", "UPDATE_CREDENTIAL,REMOVE_CREDENTIAL")
                       .WithEnvironment("KC_DB_USERNAME", pgUsername)
                       .WithEnvironment("KC_DB_PASSWORD", pgPassword)
                       .WithEnvironment("KC_DB_URL",

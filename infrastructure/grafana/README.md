@@ -1,14 +1,15 @@
 # Grafana dashboards and alerts
 
-Production telemetry for `Skoleoverblikket.Api` goes to Grafana Cloud (`minimoeder.grafana.net`, shared with other products) over OTLP. Everything lives in the **Skoleoverblikket** folder.
+Production telemetry for `Skoleoverblikket.Api` goes to Grafana Cloud (`minimoeder.grafana.net`, shared with other products) over OTLP. Host metrics and the journal come from Alloy on the VPS, set up by [harden.sh](../vps/harden.sh). Everything lives in the **Skoleoverblikket** folder.
 
 | File | What |
 |---|---|
 | `dashboards/health.json` | Service health: up/down, requests, 5xx rate, latency (cold vs warm, slow requests and their causes), endpoints table, memory |
 | `dashboards/features.json` | Feature usage: requests, errors and slowest request per product module (skema, ugeplan, vikar …) |
 | `dashboards/errors.json` | Errors & logs: exceptions, distinct error messages, warnings, startups, log volume |
+| `dashboards/vps.json` | VPS: one row per host (up, CPU, load, memory, swap, disk, reboot pending, uptime), CPU steal, OOM kills, disk, network, Alloy errors, host errors, SSH logins. Filter by service and host |
 | `alert-rules.json` | Alert rules: API down, errors logged, restart loop, slow API; VPS down, disk almost full, reboot pending (host metrics from Alloy, set up by [harden.sh](../vps/harden.sh)) |
-| `build_dashboards.py` | Generates the three dashboard files |
+| `build_dashboards.py` | Generates the dashboard files |
 
 ## Changing a dashboard
 
@@ -23,6 +24,10 @@ Import the changed file in Grafana: **Dashboards → New → Import**, paste the
 Or push it with the Grafana MCP server (`update_dashboard` with the generated JSON, folder `skoleoverblikket`, overwrite).
 
 Small tweaks made in the Grafana UI are lost on the next import. Copy them back into the script.
+
+## Self-hosted Grafana
+
+The dashboards and `alert-rules.json` only depend on the datasource UIDs `grafanacloud-prom`, `grafanacloud-logs` and `grafanacloud-traces`. On a self-hosted Grafana, provision Prometheus, Loki and Tempo with those `uid`s, then load `dashboards/` and `alert-rules.json` with file provisioning into a folder named Skoleoverblikket. Point Alloy's `GCLOUD_*` URLs at the new Prometheus and Loki. Alloy only ships host metrics and the journal: the API sends its own metrics, logs and traces to `OTEL_EXPORTER_OTLP_ENDPOINT`, so also run an OTLP receiver that forwards to Prometheus, Loki and Tempo (for example Alloy's `otelcol.receiver.otlp`) and point `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_EXPORTER_OTLP_HEADERS` at it. Without that, the API panels and alerts stay empty.
 
 ## Changing an alert rule
 

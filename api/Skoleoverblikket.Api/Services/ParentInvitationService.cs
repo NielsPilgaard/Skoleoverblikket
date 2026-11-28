@@ -233,6 +233,11 @@ public sealed class ParentInvitationService(
 			return (SetInvitationPasswordResult.Invalid, null);
 		}
 
+		if (PasswordRules.IsEmail(password, invitation.Email))
+		{
+			return (SetInvitationPasswordResult.PasswordIsEmail, null);
+		}
+
 		var parent = invitation.Parent;
 		var login = await logins.SetInviteePasswordAsync(
 			parent.KeycloakSubject, parent.Name, invitation.Email, invitation.TenantId, password, cancellationToken);

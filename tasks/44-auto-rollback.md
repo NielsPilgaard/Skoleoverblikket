@@ -34,6 +34,8 @@ status: 'In progress'
 
 Done 2026-10-26: Pingpuffin (§8), smoke school in prod, `default` ruleset requires a pull request.
 
+Verified 2026-11-28: 1 and 3 are done (smoke and elmah.io secrets set; `default` requires `CI result` and `Migration review`). Every Staging run deploys and watches, and `/api/health` answers 200. 2 done (Niels confirmed 2026-11-28). Not done as far as Actions shows: 4 (the rollback step has never run in the last 100 Staging runs).
+
 ## TL;DR
 
 After `deploy.mjs` deploys, the same CD job watches prod for 15 minutes. `deploy.mjs` first records the tag that was running. Watch fails → if no migration changed between that tag and this sha, redeploy it; either way the run goes red. Applies to **all** deploys, not just AI ones. Also: `main` ruleset, `/api/health` readiness endpoint (Xabaril health-check packages), elmah.io deployment per deploy (version = sha), smoke school, Pingpuffin for 24/7 uptime. Everything runs in public-repo Actions — €0.

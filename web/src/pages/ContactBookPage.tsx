@@ -275,13 +275,17 @@ export default function ContactBookPage() {
           {threads.map((thread) => (
             <button
               key={thread.id}
+              data-testid="contact-thread-row"
               onClick={() => handleSelectThread(thread.id)}
               className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${selectedThreadId === thread.id ? 'bg-brand-50' : ''}`}
             >
               <div className="flex items-center justify-between mb-0.5">
                 <span className="font-medium text-sm text-gray-900">{thread.studentName}</span>
                 {thread.unreadCount > 0 && (
-                  <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-brand-600 text-white text-xs font-semibold">
+                  <span
+                    data-testid="contact-thread-unread"
+                    className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-brand-600 text-white text-xs font-semibold"
+                  >
                     {thread.unreadCount}
                   </span>
                 )}
@@ -334,7 +338,10 @@ export default function ContactBookPage() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            <div
+              data-testid="contact-conversation"
+              className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
+            >
               {messages.map((msg) => {
                 const isOwn = msg.senderType === 'Staff'
                 return (
@@ -367,6 +374,7 @@ export default function ContactBookPage() {
                   onChange={(e) => setMessageBody(e.target.value)}
                   rows={3}
                   placeholder="Skriv en besked…"
+                  data-testid="contact-composer"
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500 resize-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -377,6 +385,7 @@ export default function ContactBookPage() {
                 />
                 <button
                   onClick={handleSend}
+                  data-testid="contact-send"
                   disabled={sendMessageMutation.isPending || !messageBody.trim()}
                   className="px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50 shrink-0"
                 >

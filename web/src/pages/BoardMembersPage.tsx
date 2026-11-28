@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Modal } from '../components/Modal'
+import { ResetTwoFactorDialog } from '../components/ResetTwoFactorDialog'
 import ModuleInactiveNotice from '../components/ModuleInactiveNotice'
 import { MailIcon } from '../components/ui/icons'
 import { PersonList } from '../components/ui/list'
@@ -10,6 +11,7 @@ import {
   deleteApiV1BoardMembersByIdMutation,
   patchApiV1BoardMembersByIdTeacherDataAccessMutation,
   postApiV1BoardMembersInviteMutation,
+  postApiV1BoardMembersByIdResetTwoFactorMutation,
 } from '../api/generated/@tanstack/react-query.gen'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { useSubscription } from '../hooks/useSubscription'
@@ -24,6 +26,7 @@ export default function BoardMembersPage() {
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [inviting, setInviting] = useState(false)
   const [rowError, setRowError] = useState<string | null>(null)
+  const [resettingMember, setResettingMember] = useState<{ id: string; name: string } | null>(null)
 
   const { data: members, isLoading, isError, error } = useQuery(getApiV1BoardMembersOptions())
 
@@ -180,6 +183,15 @@ export default function BoardMembersPage() {
             </label>
           ),
           actions: [
+            ...(member.hasAccount && hasBoardModule
+              ? [
+                  {
+                    label: 'Nulstil tofaktor',
+                    testId: 'board-member-reset-tfa',
+                    onClick: () => setResettingMember({ id: member.id!, name: member.name }),
+                  },
+                ]
+              : []),
             {
               label: 'Fjern fra bestyrelsen',
               variant: 'danger',
@@ -192,6 +204,12 @@ export default function BoardMembersPage() {
             },
           ],
         })}
+      />
+
+      <ResetTwoFactorDialog
+        person={resettingMember}
+        reset={postApiV1BoardMembersByIdResetTwoFactorMutation().mutationFn}
+        onClose={() => setResettingMember(null)}
       />
 
       <Modal

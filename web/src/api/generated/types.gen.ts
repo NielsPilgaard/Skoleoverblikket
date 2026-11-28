@@ -56,6 +56,32 @@ export type AcceptDataProcessingAgreementRequest = {
     version: string;
 };
 
+export type AccountServiceAccountCredentialDto = {
+    id: string;
+    createdAt?: string | null;
+    label?: string | null;
+};
+
+export type AccountServiceAccountSecurityDto = {
+    email?: string | null;
+    hasPassword: boolean;
+    otp?: AccountServiceAccountCredentialDto;
+    authenticatorApps?: Array<AccountServiceAccountCredentialDto>;
+    recoveryCodes?: AccountServiceRecoveryCodesDto;
+    passkeys?: Array<AccountServiceAccountCredentialDto>;
+    externalLogin?: string | null;
+};
+
+export type AccountServiceRecoveryCodesDto = {
+    id: string;
+    createdAt?: string | null;
+    remaining?: number | null;
+};
+
+export type AccountServiceResetTwoFactorRequest = {
+    email: string;
+};
+
 export type AdminControllerModuleOverrideRequest = {
     module: SubscriptionModule;
 };
@@ -1978,6 +2004,54 @@ export type GetApiV1AbsenceFlaggedExportResponses = {
     200: unknown;
 };
 
+export type GetApiV1AccountSecurityData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/account/security';
+};
+
+export type GetApiV1AccountSecurityResponses = {
+    /**
+     * OK
+     */
+    200: AccountServiceAccountSecurityDto;
+};
+
+export type GetApiV1AccountSecurityResponse = GetApiV1AccountSecurityResponses[keyof GetApiV1AccountSecurityResponses];
+
+export type PostApiV1AccountLogoutEverywhereData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/account/logout-everywhere';
+};
+
+export type PostApiV1AccountLogoutEverywhereResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type PostApiV1AccountLogoutEverywhereResponse = PostApiV1AccountLogoutEverywhereResponses[keyof PostApiV1AccountLogoutEverywhereResponses];
+
+export type PostApiV1AccountSecurityCleanupRecoveryCodesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/account/security/cleanup-recovery-codes';
+};
+
+export type PostApiV1AccountSecurityCleanupRecoveryCodesResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type PostApiV1AccountSecurityCleanupRecoveryCodesResponse = PostApiV1AccountSecurityCleanupRecoveryCodesResponses[keyof PostApiV1AccountSecurityCleanupRecoveryCodesResponses];
+
 export type PostApiV1AdminTenantsBySchoolIdModulesData = {
     body?: AdminControllerModuleOverrideRequest;
     path: {
@@ -2427,6 +2501,24 @@ export type PostApiV1BoardMembersInviteResponses = {
 };
 
 export type PostApiV1BoardMembersInviteResponse = PostApiV1BoardMembersInviteResponses[keyof PostApiV1BoardMembersInviteResponses];
+
+export type PostApiV1BoardMembersByIdResetTwoFactorData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/board-members/{id}/reset-two-factor';
+};
+
+export type PostApiV1BoardMembersByIdResetTwoFactorResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type PostApiV1BoardMembersByIdResetTwoFactorResponse = PostApiV1BoardMembersByIdResetTwoFactorResponses[keyof PostApiV1BoardMembersByIdResetTwoFactorResponses];
 
 export type PatchApiV1BoardMembersByIdTeacherDataAccessData = {
     body?: BoardMembersControllerToggleTeacherDataRequest;
@@ -3902,6 +3994,24 @@ export type PostApiV1ParentsInviteResponses = {
 
 export type PostApiV1ParentsInviteResponse = PostApiV1ParentsInviteResponses[keyof PostApiV1ParentsInviteResponses];
 
+export type PostApiV1ParentsByIdResetTwoFactorData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/parents/{id}/reset-two-factor';
+};
+
+export type PostApiV1ParentsByIdResetTwoFactorResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type PostApiV1ParentsByIdResetTwoFactorResponse = PostApiV1ParentsByIdResetTwoFactorResponses[keyof PostApiV1ParentsByIdResetTwoFactorResponses];
+
 export type DeleteApiV1ParentsByIdStudentsByStudentIdData = {
     body?: never;
     path: {
@@ -4788,6 +4898,24 @@ export type PatchApiV1StaffByIdAdminPermissionResponses = {
 
 export type PatchApiV1StaffByIdAdminPermissionResponse = PatchApiV1StaffByIdAdminPermissionResponses[keyof PatchApiV1StaffByIdAdminPermissionResponses];
 
+export type PostApiV1StaffByIdResetTwoFactorData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/staff/{id}/reset-two-factor';
+};
+
+export type PostApiV1StaffByIdResetTwoFactorResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type PostApiV1StaffByIdResetTwoFactorResponse = PostApiV1StaffByIdResetTwoFactorResponses[keyof PostApiV1StaffByIdResetTwoFactorResponses];
+
 export type GetApiV1StaffAbsencesData = {
     body?: never;
     path?: never;
@@ -5426,6 +5554,22 @@ export type PutApiV1AdminTenantsBySchoolIdFreeAccessResponses = {
 };
 
 export type PutApiV1AdminTenantsBySchoolIdFreeAccessResponse = PutApiV1AdminTenantsBySchoolIdFreeAccessResponses[keyof PutApiV1AdminTenantsBySchoolIdFreeAccessResponses];
+
+export type PostApiV1AdminLoginsResetTwoFactorData = {
+    body?: AccountServiceResetTwoFactorRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/logins/reset-two-factor';
+};
+
+export type PostApiV1AdminLoginsResetTwoFactorResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type PostApiV1AdminLoginsResetTwoFactorResponse = PostApiV1AdminLoginsResetTwoFactorResponses[keyof PostApiV1AdminLoginsResetTwoFactorResponses];
 
 export type PostApiV1AdminTenantsBySchoolIdDeletionData = {
     body?: SuperAdminSchoolDeletionControllerDeleteSchoolRequest;

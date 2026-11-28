@@ -25,8 +25,11 @@ def nid():
     return _id
 
 
-def tgt(expr, legend="", ref="A", instant=False):
+def tgt(expr, legend="", ref="A", instant=False, fmt=None):
     t = {"datasource": PROM, "refId": ref, "expr": expr, "legendFormat": legend}
+    # "table" turns labels into columns and names values "Value #<ref>", which merge/organize need.
+    if fmt:
+        t["format"] = fmt
     if instant:
         t["instant"] = True
         t["range"] = False
@@ -515,7 +518,163 @@ E += [
 errors = dashboard("skoleoverblikket-errors", "Skoleoverblikket – Errors & logs",
                    "Exceptions, error/warning logs, deploys and log volume for Skoleoverblikket.Api.", E)
 
-for name, d in [("health", health), ("features", features), ("errors", errors)]:
+# ================================================================ VPS
+# Host metrics and the journal, shipped by Alloy (infrastructure/vps/harden.sh). job/instance follow
+# Grafana's Linux integration; service is "skoleoverblikket" on the production VPS only.
+_id = 0
+V = []
+y = 0
+HOST = 'job="integrations/node_exporter", service=~"$service", instance=~"$instance"'
+DISK = 'fstype=~"ext4|xfs"'
+
+
+def m(metric, extra=""):
+    return f"{metric}{{{HOST}{', ' + extra if extra else ''}}}"
+
+
+def jsel(extra=""):
+    return "{" + HOST + (", " + extra if extra else "") + "}"
+
+
+IDLE = m("node_cpu_seconds_total", 'mode="idle"')
+IOWAIT_STEAL = m("node_cpu_seconds_total", 'mode=~"iowait|steal"')
+DISK_IO = m("node_disk_io_time_seconds_total", 'device!~"loop.*|sr.*"')
+CORES = f"count by (instance) ({IDLE})"
+PCT = [{"color": "green", "value": None}, {"color": "orange", "value": 0.8}, {"color": "red", "value": 0.9}]
+
+
+def pct_cell(steps=PCT):
+    return [{"id": "unit", "value": "percentunit"}, {"id": "decimals", "value": 0},
+            {"id": "custom.cellOptions", "value": {"type": "color-text"}},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": steps}}]
+
+
+def var(name, query, label):
+    return {"name": name, "label": label, "type": "query", "datasource": PROM, "definition": query,
+            "query": {"query": query, "refId": name}, "refresh": 2, "includeAll": True, "multi": True,
+            "current": {"text": "All", "value": "$__all"}, "sort": 1}
+
+
+V.append(row("Hosts (now)", y)); y += 1
+V.append(table("Hosts", [
+    # 0 = seen in the last day but not reporting now (down, or Alloy can't ship).
+    tgt(f'max by (instance) ({m("up")}) or max by (instance) (last_over_time({m("up")}[1d])) * 0', ref="A", instant=True, fmt="table"),
+    tgt(f'1 - avg by (instance) (rate({IDLE}[5m]))', ref="B", instant=True, fmt="table"),
+    tgt(f'max by (instance) ({m("node_load5")}) / {CORES}', ref="C", instant=True, fmt="table"),
+    tgt(f'1 - max by (instance) ({m("node_memory_MemAvailable_bytes")}) / max by (instance) ({m("node_memory_MemTotal_bytes")})', ref="D", instant=True, fmt="table"),
+    tgt(f'1 - max by (instance) ({m("node_memory_SwapFree_bytes")}) / max by (instance) ({m("node_memory_SwapTotal_bytes")} > 0)', ref="E", instant=True, fmt="table"),
+    tgt(f'1 - min by (instance) ({m("node_filesystem_avail_bytes", DISK)} / {m("node_filesystem_size_bytes", DISK)})', ref="F", instant=True, fmt="table"),
+    tgt(f'max by (instance) ({m("node_reboot_required")})', ref="G", instant=True, fmt="table"),
+    tgt(f'time() - max by (instance) ({m("node_boot_time_seconds")})', ref="H", instant=True, fmt="table"),
+], 0, y, h=5,
+    desc="One row per host. DOWN = reported in the last day but not now: the VPS is down or Alloy can't reach Grafana "
+         "(check Alloy errors below). Load is per CPU core; above 1 means work is queuing.",
+    transformations=[
+        {"id": "merge", "options": {}},
+        {"id": "organize", "options": {"excludeByName": {"Time": True},
+                                       "renameByName": {"instance": "Host", "Value #A": "Status", "Value #B": "CPU",
+                                                        "Value #C": "Load 5m / core", "Value #D": "Memory",
+                                                        "Value #E": "Swap", "Value #F": "Fullest disk",
+                                                        "Value #G": "Reboot pending", "Value #H": "Uptime"}}},
+    ],
+    overrides=[
+        {"matcher": {"id": "byName", "options": "Status"}, "properties": [
+            {"id": "mappings", "value": [{"type": "value", "options": {
+                "1": {"text": "UP", "color": "green"}, "0": {"text": "DOWN", "color": "red"}}}]},
+            {"id": "custom.cellOptions", "value": {"type": "color-background"}}]},
+        {"matcher": {"id": "byRegexp", "options": "CPU|Memory|Fullest disk"}, "properties": pct_cell()},
+        {"matcher": {"id": "byName", "options": "Swap"}, "properties": pct_cell(
+            [{"color": "green", "value": None}, {"color": "orange", "value": 0.25}, {"color": "red", "value": 0.75}])},
+        {"matcher": {"id": "byName", "options": "Load 5m / core"}, "properties": [
+            {"id": "decimals", "value": 2}, {"id": "custom.cellOptions", "value": {"type": "color-text"}},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [
+                {"color": "green", "value": None}, {"color": "orange", "value": 1}, {"color": "red", "value": 2}]}}]},
+        {"matcher": {"id": "byName", "options": "Reboot pending"}, "properties": [
+            {"id": "mappings", "value": [{"type": "value", "options": {
+                "1": {"text": "yes", "color": "orange"}, "0": {"text": "no", "color": "green"}}}]},
+            {"id": "custom.cellOptions", "value": {"type": "color-text"}}]},
+        {"matcher": {"id": "byName", "options": "Uptime"}, "properties": [{"id": "unit", "value": "s"}, {"id": "decimals", "value": 0}]},
+    ]))
+y += 5
+
+V.append(row("CPU and memory", y)); y += 1
+V += [
+    ts("CPU", [
+        tgt(f'1 - avg by (instance) (rate({IDLE}[$__rate_interval]))', "{{instance}} used", "A"),
+        tgt(f'avg by (instance, mode) (rate({IOWAIT_STEAL}[$__rate_interval]))', "{{instance}} {{mode}}", "B"),
+    ], 0, y, w=12, unit="percentunit", fill=0,
+       desc="Share of all cores. iowait = waiting on disk. steal = other tenants on the OVH host taking our CPU; "
+            "steady steal means the VPS plan is oversold, not that our code is slow."),
+    ts("Load per core", [
+        tgt(f'max by (instance) ({m("node_load1")}) / {CORES}', "{{instance}} 1m", "A"),
+        tgt(f'max by (instance) ({m("node_load5")}) / {CORES}', "{{instance}} 5m", "B"),
+    ], 12, y, w=12, fill=0, desc="Runnable plus disk-waiting processes per core. Short spikes during builds and deploys are normal; "
+                                 "a 5m value above 1 for long means the host is too small."),
+]
+y += 8
+V += [
+    ts("Memory", [
+        tgt(f'max by (instance) ({m("node_memory_MemTotal_bytes")} - {m("node_memory_MemAvailable_bytes")})', "{{instance}} used", "A"),
+        tgt(f'max by (instance) ({m("node_memory_SwapTotal_bytes")} - {m("node_memory_SwapFree_bytes")})', "{{instance}} swap used", "B"),
+        tgt(f'max by (instance) ({m("node_memory_MemTotal_bytes")})', "{{instance}} total", "C"),
+    ], 0, y, w=12, unit="bytes", fill=0,
+       desc="Used = total minus available (page cache doesn't count). Swap is a safety net for builds (swappiness 10); "
+            "swap that keeps growing means the host needs more RAM.",
+       overrides=[{"matcher": {"id": "byRegexp", "options": ".* total"},
+                   "properties": [{"id": "custom.lineStyle", "value": {"fill": "dash", "dash": [10, 10]}},
+                                  {"id": "color", "value": {"mode": "fixed", "fixedColor": "text"}}]}]),
+    ts("OOM kills", [tgt(f'sum by (instance) (increase({m("node_vmstat_oom_kill")}[$__rate_interval]))', "{{instance}}")],
+       12, y, w=12, draw="bars", desc="The kernel killed a process for lack of memory. Usually a build or a container without a "
+                                       "memory limit. Find the victim in 'Host errors' below."),
+]
+y += 8
+
+V.append(row("Disk and network", y)); y += 1
+V += [
+    ts("Disk used", [tgt(f'1 - {m("node_filesystem_avail_bytes", DISK)} / {m("node_filesystem_size_bytes", DISK)}',
+                         "{{instance}} {{mountpoint}}")],
+       0, y, w=8, unit="percentunit", fill=0,
+       desc="Docker images, build cache and Postgres WAL live here. The weekly prune (Sun 06:30) should give a saw-tooth; "
+            "a steady climb is logs or volumes. The 'disk almost full' alert fires before it runs out."),
+    ts("Disk busy", [tgt(f'rate({DISK_IO}[$__rate_interval])',
+                         "{{instance}} {{device}}")],
+       8, y, w=8, unit="percentunit", fill=0, desc="Share of time the disk was handling I/O. Near 100% for long = disk-bound."),
+    ts("Network", [
+        tgt(f'sum by (instance) (rate({m("node_network_receive_bytes_total")}[$__rate_interval]))', "{{instance}} in", "A"),
+        tgt(f'sum by (instance) (rate({m("node_network_transmit_bytes_total")}[$__rate_interval]))', "{{instance}} out", "B"),
+    ], 16, y, w=8, unit="Bps", fill=0, desc="Physical interfaces only (Docker bridges and veths are excluded in Alloy)."),
+]
+y += 8
+
+V.append(row("Journal", y)); y += 1
+V += [
+    ts("Journal lines by level", [loki(f"sum by (level) (count_over_time({jsel()} [$__interval]))", legend="{{level}}")],
+       0, y, w=12, h=8, draw="bars", stack=True,
+       overrides=[{"matcher": {"id": "byName", "options": k}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": v}}]}
+                  for k, v in {"error": "red", "crit": "dark-red", "warning": "orange", "notice": "blue", "info": "green"}.items()]),
+    logs_panel("Alloy errors (metrics or logs not reaching Grafana)",
+               jsel('unit="alloy.service"') + ' |~ "level=(error|warn)"', 12, y, w=12, h=8,
+               desc="401 = wrong token or user number in /etc/alloy/grafana-cloud.env. While Loki rejects logs, these lines "
+                    "can't arrive either: then the Hosts table shows DOWN or the metrics stop."),
+]
+y += 8
+V += [
+    logs_panel("Host errors", jsel('level=~"emerg|alert|crit|err|error"'), 0, y, w=12, h=10,
+               desc="Journal lines with priority err or worse: OOM kills, failed units, disk errors."),
+    logs_panel("SSH logins and failures", jsel('unit="ssh.service"') + ' |~ "Accepted|Failed|Invalid user"', 12, y, w=12, h=10,
+               desc="Every 'Accepted publickey' should be you. Failed attempts from the internet are normal noise; "
+                    "ufw rate-limits them and password login is off."),
+]
+
+vps = dashboard("skoleoverblikket-vps", "Skoleoverblikket – VPS",
+                "Host health per VPS: CPU, memory, disk, network, reboot pending and the journal, from Alloy.", V)
+vps["tags"] = ["skoleoverblikket", "vps"]
+vps["templating"] = {"list": [
+    var("service", 'label_values(up{job="integrations/node_exporter"}, service)', "Service"),
+    var("instance", 'label_values(up{job="integrations/node_exporter", service=~"$service"}, instance)', "Host"),
+]}
+
+for name, d in [("health", health), ("features", features), ("errors", errors), ("vps", vps)]:
     with open(os.path.join(OUT, f"{name}.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(d, f, ensure_ascii=False, indent=2)
         f.write("\n")

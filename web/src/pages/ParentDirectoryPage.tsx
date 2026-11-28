@@ -92,6 +92,7 @@ export default function ParentDirectoryPage() {
         empty={<p>Ingen forældre at vise.</p>}
         toPerson={(g) => ({
           key: g.studentId,
+          testId: 'contact-directory-row',
           name: g.studentName,
           subtitle: g.parents.map((p) => p.name).join(' og '),
           content: (

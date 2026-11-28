@@ -1364,14 +1364,27 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           )}
           <RoleSwitcher />
           {userName && (
-            <div className="flex items-center gap-2 px-3 py-2">
+            <NavLink
+              to="/min-konto"
+              onClick={onClose}
+              data-testid="nav-link-min-konto"
+              title="Min konto"
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
+                  isActive ? 'bg-brand-600' : 'hover:bg-brand-800'
+                }`
+              }
+            >
               <div className="flex items-center justify-center h-6 w-6 rounded-full bg-brand-600 shrink-0">
                 <span className="text-xs font-semibold text-white leading-none">
                   {userName.charAt(0).toUpperCase()}
                 </span>
               </div>
-              <span className="text-xs text-brand-300 truncate">{userName}</span>
-            </div>
+              <span className="min-w-0">
+                <span className="block text-xs text-brand-300 truncate">{userName}</span>
+                <span className="block text-xs font-semibold text-white">Min konto</span>
+              </span>
+            </NavLink>
           )}
           <button
             onClick={logout}

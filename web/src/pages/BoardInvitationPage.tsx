@@ -27,6 +27,7 @@ export default function BoardInvitationPage() {
   const [loading, setLoading] = useState(true)
   const [accepting, setAccepting] = useState(false)
   const [error, setError] = useState<{ title: string; message: string } | null>(null)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
   const [accepted, setAccepted] = useState(false)
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -58,6 +59,7 @@ export default function BoardInvitationPage() {
     if (!token || !preview) return
     setAccepting(true)
     setError(null)
+    setPasswordError(null)
     try {
       // A new invitee chooses their password first; the API logs them in.
       let login: { accessToken: string; refreshToken?: string | null } | undefined
@@ -66,13 +68,16 @@ export default function BoardInvitationPage() {
         if (pw.error) {
           if (pw.response?.status === 409) {
             setPreview({ ...preview, needsPassword: false })
+          } else if (pw.response?.status === 400) {
+            // Keep the form so the invitee can pick another password.
+            setPasswordError(
+              (pw.error as { detail?: string }).detail ??
+                `Adgangskoden skal være mindst ${MIN_PASSWORD_LENGTH} tegn.`
+            )
           } else {
             setError({
               title: 'Adgangskoden blev ikke gemt',
-              message:
-                pw.response?.status === 400
-                  ? `Adgangskoden skal være mindst ${MIN_PASSWORD_LENGTH} tegn.`
-                  : 'Linket er ugyldigt eller udløbet.',
+              message: 'Linket er ugyldigt eller udløbet.',
             })
           }
           return
@@ -189,6 +194,7 @@ export default function BoardInvitationPage() {
                     autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    maxLength={128}
                     data-testid="board-invitation-password"
                     className="w-full px-3 py-2 pr-16 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand-500"
                   />
@@ -203,6 +209,15 @@ export default function BoardInvitationPage() {
                 <p className="mt-1 text-xs text-gray-500">
                   Mindst {MIN_PASSWORD_LENGTH} tegn. Du bruger den, når du logger ind.
                 </p>
+                {passwordError && (
+                  <p
+                    role="alert"
+                    data-testid="board-invitation-password-error"
+                    className="mt-1 text-sm text-red-600"
+                  >
+                    {passwordError}
+                  </p>
+                )}
               </div>
             )}
             <button

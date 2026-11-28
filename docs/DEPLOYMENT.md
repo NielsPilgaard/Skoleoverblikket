@@ -103,7 +103,16 @@ docker exec -it $(docker ps -qf label=com.docker.compose.service=keycloak) \
 
 ## Keycloak realm changes
 
-Keycloak imports `infrastructure/keycloak/realms/Skoleoverblikket-realm.json` only when the realm doesn't exist yet. A change to realm settings in that file reaches a fresh database, not production. Apply it by hand on the server, with the `admin` user (`KEYCLOAK_ADMIN_PASSWORD`). `kcadm.sh` asks for the password:
+Keycloak imports `infrastructure/keycloak/realms/Skoleoverblikket-realm.json` only when the realm doesn't exist yet. A change to realm settings in that file reaches a fresh database, not production.
+
+Login settings (password, OTP and WebAuthn policy, required actions, event listeners, our own authentication flows and their bindings) are synced by a script, through the tunnel above. It only lists the differences until you add `-Apply`:
+
+```bash
+pwsh scripts/sync-keycloak-auth.ps1 -AdminUser <your master admin>
+pwsh scripts/sync-keycloak-auth.ps1 -AdminUser <your master admin> -Apply
+```
+
+Anything else, apply by hand on the server, with the `admin` user (`KEYCLOAK_ADMIN_PASSWORD`). `kcadm.sh` asks for the password:
 
 ```bash
 docker exec -it <keycloak container> /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user admin

@@ -338,7 +338,7 @@ export default function LandingPage() {
               </svg>
             }
             title="Data opbevares i EU"
-            description="Alle data gemmes på EU-baserede servere i overensstemmelse med GDPR."
+            description="Alle data gemmes på EU-baserede servere efter GDPR, og alle kan slå tofaktor til på deres login."
           />
           <TrustItem
             icon={

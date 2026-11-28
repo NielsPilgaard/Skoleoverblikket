@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Modal } from '../components/Modal'
+import { ResetTwoFactorDialog } from '../components/ResetTwoFactorDialog'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -8,6 +9,7 @@ import {
   postApiV1StaffMutation,
   putApiV1StaffByIdMutation,
   deleteApiV1StaffByIdMutation,
+  postApiV1StaffByIdResetTwoFactorMutation,
   getApiV1StaffInvitationsOptions,
   getApiV1StaffInvitationsQueryKey,
   getApiV1StaffInvitationsByStaffByStaffIdOptions,
@@ -413,6 +415,7 @@ export default function StaffPage() {
   const refetch = () => void staffQuery.refetch()
 
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [resettingStaff, setResettingStaff] = useState<{ id: string; name: string } | null>(null)
 
   const deleteMutation = useMutation({
     mutationFn: deleteApiV1StaffByIdMutation().mutationFn,
@@ -567,6 +570,15 @@ export default function StaffPage() {
           actions.push(
             { label: 'Rediger', onClick: () => setEditingStaff(s) },
             { label: 'Se skema', onClick: () => navigate(`/medarbejdere/${s.id}/skema`) },
+            ...(!invitationsUnknown && hasLoggedIn(s, invite) && !isSelf
+              ? [
+                  {
+                    label: 'Nulstil tofaktor',
+                    testId: `staff-reset-tfa-${s.id}`,
+                    onClick: () => setResettingStaff({ id: s.id ?? '', name: s.name }),
+                  },
+                ]
+              : []),
             {
               label: 'Slet',
               variant: 'danger',
@@ -621,6 +633,11 @@ export default function StaffPage() {
           currentUserKeycloakSubject={currentUserKeycloakSubject}
         />
       )}
+      <ResetTwoFactorDialog
+        person={resettingStaff}
+        reset={postApiV1StaffByIdResetTwoFactorMutation().mutationFn}
+        onClose={() => setResettingStaff(null)}
+      />
       {invitingStaff && (
         <InviteModal
           staff={invitingStaff}

@@ -17,6 +17,7 @@ namespace Skoleoverblikket.Api.Controllers;
 public sealed class ParentsController(
 	AppDbContext db,
 	ParentInvitationService invitationService,
+	AccountService accounts,
 	ILogger<ParentsController> logger) : ControllerBase
 {
 	public record ParentSummaryDto(Guid Id, string Name, string Email, string? Phone, string? Address, string? PostalCode, string? City, IReadOnlyList<StudentRefDto> Students, bool HasAccount, bool HasPendingInvitation, DateTimeOffset CreatedAt, bool AdresseBeskyttet);
@@ -101,6 +102,13 @@ public sealed class ParentsController(
 
 		return CreatedAtAction(nameof(GetById), new { id = withStudents.Id }, ToDto(withStudents, coParent: null));
 	}
+
+	/// <summary>Turns off two-factor for a parent who lost their phone and recovery codes.</summary>
+	[HttpPost("{id:guid}/reset-two-factor")]
+	[ProducesResponseType(StatusCodes.Status204NoContent)]
+	public async Task<IActionResult> ResetTwoFactor(Guid id, CancellationToken cancellationToken) =>
+		AccountController.ResetResponse(this, await accounts.ResetTwoFactorAsync(
+			AccountService.PersonKind.Parent, id, User.GetKeycloakSubject() ?? "", cancellationToken));
 
 	[HttpDelete("{id:guid}")]
 	public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken) =>

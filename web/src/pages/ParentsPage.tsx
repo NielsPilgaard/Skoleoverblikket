@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Modal } from '../components/Modal'
+import { ResetTwoFactorDialog } from '../components/ResetTwoFactorDialog'
 import ModuleInactiveNotice from '../components/ModuleInactiveNotice'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -7,6 +8,7 @@ import {
   getApiV1ParentsQueryKey,
   postApiV1ParentsInviteMutation,
   deleteApiV1ParentsByIdMutation,
+  postApiV1ParentsByIdResetTwoFactorMutation,
   postApiV1ParentInvitationsByParentIdResendMutation,
   patchApiV1ParentsByIdContactMutation,
   getApiV1StudentsOptions,
@@ -371,6 +373,7 @@ export default function ParentsPage() {
   const qc = useQueryClient()
   const [showInvite, setShowInvite] = useState(false)
   const [editingParent, setEditingParent] = useState<ParentSummaryDto | null>(null)
+  const [resettingParent, setResettingParent] = useState<{ id: string; name: string } | null>(null)
   const [resendResult, setResendResult] = useState<{ ok: boolean; text: string } | null>(null)
   const { hasParentModule, isSuccess: modulesLoaded } = useSubscription()
 
@@ -529,6 +532,15 @@ export default function ParentsPage() {
               ...(hasParentModule
                 ? [{ label: 'Rediger kontaktoplysninger', onClick: () => setEditingParent(p) }]
                 : []),
+              ...(p.hasAccount && hasParentModule
+                ? [
+                    {
+                      label: 'Nulstil tofaktor',
+                      testId: `parent-reset-tfa-${p.id}`,
+                      onClick: () => setResettingParent({ id: p.id!, name: p.name }),
+                    },
+                  ]
+                : []),
               {
                 label: 'Slet',
                 variant: 'danger' as const,
@@ -540,6 +552,12 @@ export default function ParentsPage() {
             ],
           }
         }}
+      />
+
+      <ResetTwoFactorDialog
+        person={resettingParent}
+        reset={postApiV1ParentsByIdResetTwoFactorMutation().mutationFn}
+        onClose={() => setResettingParent(null)}
       />
 
       {showInvite && students && (

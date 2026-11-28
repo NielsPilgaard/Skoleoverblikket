@@ -26,4 +26,21 @@ public sealed class SchoolSignupTests(ApiFactory factory)
 		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadGateway);
 		await Assert.That(problem!.Title).IsEqualTo("Kunne ikke oprette brugerkonto");
 	}
+
+	[Test]
+	public async Task PasswordThatIsTheEmail_IsAFieldError_BeforeKeycloakIsCalled()
+	{
+		var email = $"kode-er-mail-{Guid.NewGuid():N}@skole.dk";
+		var response = await factory.CreateClient().PostAsJsonAsync("/api/v1/tenants", new CreateTenantRequest(
+			Name: "Kodeord Friskole",
+			AdminEmail: email,
+			AdminFirstName: "Hanne",
+			AdminLastName: "Kontor",
+			AdminPassword: email,
+			AcceptDataProcessingAgreement: true));
+		var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+
+		await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+		await Assert.That(problem!.Errors["AdminPassword"]).Contains(PasswordRules.IsEmailMessage);
+	}
 }

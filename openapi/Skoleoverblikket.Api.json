@@ -490,6 +490,74 @@
         ]
       }
     },
+    "/api/v1/account/security": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountService_AccountSecurityDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountService_AccountSecurityDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountService_AccountSecurityDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/account/logout-everywhere": {
+      "post": {
+        "tags": [
+          "Account"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/account/security/cleanup-recovery-codes": {
+      "post": {
+        "tags": [
+          "Account"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/admin/tenants/{schoolId}/modules": {
       "post": {
         "tags": [
@@ -1631,6 +1699,34 @@
                 }
               }
             }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/board-members/{id}/reset-two-factor": {
+      "post": {
+        "tags": [
+          "BoardMembers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
           }
         },
         "security": [
@@ -5581,6 +5677,34 @@
         ]
       }
     },
+    "/api/v1/parents/{id}/reset-two-factor": {
+      "post": {
+        "tags": [
+          "Parents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/parents/{id}/students/{studentId}": {
       "post": {
         "tags": [
@@ -8012,6 +8136,34 @@
         ]
       }
     },
+    "/api/v1/staff/{id}/reset-two-factor": {
+      "post": {
+        "tags": [
+          "Staff"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/staff-absences": {
       "post": {
         "tags": [
@@ -9669,6 +9821,42 @@
         ]
       }
     },
+    "/api/v1/admin/logins/reset-two-factor": {
+      "post": {
+        "tags": [
+          "SuperAdminLogins"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountService_ResetTwoFactorRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountService_ResetTwoFactorRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountService_ResetTwoFactorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/v1/admin/tenants/{schoolId}/deletion": {
       "post": {
         "tags": [
@@ -11275,6 +11463,99 @@
         "type": "object",
         "properties": {
           "version": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountService_AccountCredentialDto": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountService_AccountSecurityDto": {
+        "required": [
+          "hasPassword"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasPassword": {
+            "type": "boolean"
+          },
+          "otp": {
+            "$ref": "#/components/schemas/AccountService_AccountCredentialDto"
+          },
+          "authenticatorApps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountService_AccountCredentialDto"
+            }
+          },
+          "recoveryCodes": {
+            "$ref": "#/components/schemas/AccountService_RecoveryCodesDto"
+          },
+          "passkeys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountService_AccountCredentialDto"
+            }
+          },
+          "externalLogin": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountService_RecoveryCodesDto": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "remaining": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountService_ResetTwoFactorRequest": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
             "type": "string"
           }
         },
@@ -17909,6 +18190,9 @@
       "name": "Absence"
     },
     {
+      "name": "Account"
+    },
+    {
       "name": "Admin"
     },
     {
@@ -18045,6 +18329,9 @@
     },
     {
       "name": "SuperAdminFreeAccess"
+    },
+    {
+      "name": "SuperAdminLogins"
     },
     {
       "name": "SuperAdminSchoolDeletion"
