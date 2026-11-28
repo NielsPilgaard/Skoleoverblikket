@@ -142,6 +142,7 @@
           "refId": "A",
           "expr": "max by (instance) (up{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\"}) or max by (instance) (last_over_time(up{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\"}[1d])) * 0",
           "legendFormat": "",
+          "format": "table",
           "instant": true,
           "range": false
         },
@@ -153,6 +154,7 @@
           "refId": "B",
           "expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\", mode=\"idle\"}[5m]))",
           "legendFormat": "",
+          "format": "table",
           "instant": true,
           "range": false
         },
@@ -164,6 +166,7 @@
           "refId": "C",
           "expr": "max by (instance) (node_load5{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\"}) / count by (instance) (node_cpu_seconds_total{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\", mode=\"idle\"})",
           "legendFormat": "",
+          "format": "table",
           "instant": true,
           "range": false
         },
@@ -175,6 +178,7 @@
           "refId": "D",
           "expr": "1 - max by (instance) (node_memory_MemAvailable_bytes{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\"}) / max by (instance) (node_memory_MemTotal_bytes{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\"})",
           "legendFormat": "",
+          "format": "table",
           "instant": true,
           "range": false
         },
@@ -186,6 +190,7 @@
           "refId": "E",
           "expr": "1 - max by (instance) (node_memory_SwapFree_bytes{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\"}) / max by (instance) (node_memory_SwapTotal_bytes{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\"} > 0)",
           "legendFormat": "",
+          "format": "table",
           "instant": true,
           "range": false
         },
@@ -197,6 +202,7 @@
           "refId": "F",
           "expr": "1 - min by (instance) (node_filesystem_avail_bytes{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\", fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\", fstype=~\"ext4|xfs\"})",
           "legendFormat": "",
+          "format": "table",
           "instant": true,
           "range": false
         },
@@ -208,6 +214,7 @@
           "refId": "G",
           "expr": "max by (instance) (node_reboot_required{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\"})",
           "legendFormat": "",
+          "format": "table",
           "instant": true,
           "range": false
         },
@@ -219,6 +226,7 @@
           "refId": "H",
           "expr": "time() - max by (instance) (node_boot_time_seconds{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\"})",
           "legendFormat": "",
+          "format": "table",
           "instant": true,
           "range": false
         }
@@ -761,7 +769,7 @@
             "uid": "grafanacloud-prom"
           },
           "refId": "A",
-          "expr": "sum by (instance) (increase(node_vmstat_oom_kill{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\"}[$__interval]))",
+          "expr": "sum by (instance) (increase(node_vmstat_oom_kill{job=\"integrations/node_exporter\", service=~\"$service\", instance=~\"$instance\"}[$__rate_interval]))",
           "legendFormat": "{{instance}}",
           "range": true
         }

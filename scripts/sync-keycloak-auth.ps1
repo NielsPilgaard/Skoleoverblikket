@@ -141,6 +141,18 @@ foreach ($key in $policyKeys) {
         $realmUpdate[$key] = $want
     }
 }
+# Keycloak rebuilds a whole OTP or WebAuthn policy from a PUT and skips it without otpPolicyType or the
+# WebAuthn entity name, so send each changed group whole: the live values with the file's on top.
+function Get-PolicyGroup([string]$key) {
+    foreach ($prefix in "webAuthnPolicyPasswordless", "webAuthnPolicy", "otpPolicy") { if ($key.StartsWith($prefix)) { return $prefix } }
+    $key
+}
+foreach ($group in @($realmUpdate.Keys | ForEach-Object { Get-PolicyGroup $_ } | Sort-Object -Unique)) {
+    foreach ($p in $live.PSObject.Properties) {
+        if ((Get-PolicyGroup $p.Name) -eq $group -and -not $realmUpdate.ContainsKey($p.Name)) { $realmUpdate[$p.Name] = $p.Value }
+    }
+    foreach ($key in $policyKeys) { if ((Get-PolicyGroup $key) -eq $group) { $realmUpdate[$key] = $file[$key] } }
+}
 if ($Apply -and $realmUpdate.Count) { Invoke-Admin PUT "" $realmUpdate | Out-Null }
 
 # ── Required actions ────────────────────────────────────────────────────────────

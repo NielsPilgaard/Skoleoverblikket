@@ -27,7 +27,7 @@ Small tweaks made in the Grafana UI are lost on the next import. Copy them back 
 
 ## Self-hosted Grafana
 
-The dashboards and `alert-rules.json` only depend on the datasource UIDs `grafanacloud-prom`, `grafanacloud-logs` and `grafanacloud-traces`. On a self-hosted Grafana, provision Prometheus, Loki and Tempo with those `uid`s, then load `dashboards/` and `alert-rules.json` with file provisioning into a folder named Skoleoverblikket. Point Alloy's `GCLOUD_*` URLs at the new Prometheus and Loki.
+The dashboards and `alert-rules.json` only depend on the datasource UIDs `grafanacloud-prom`, `grafanacloud-logs` and `grafanacloud-traces`. On a self-hosted Grafana, provision Prometheus, Loki and Tempo with those `uid`s, then load `dashboards/` and `alert-rules.json` with file provisioning into a folder named Skoleoverblikket. Point Alloy's `GCLOUD_*` URLs at the new Prometheus and Loki. Alloy only ships host metrics and the journal: the API sends its own metrics, logs and traces to `OTEL_EXPORTER_OTLP_ENDPOINT`, so also run an OTLP receiver that forwards to Prometheus, Loki and Tempo (for example Alloy's `otelcol.receiver.otlp`) and point `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_EXPORTER_OTLP_HEADERS` at it. Without that, the API panels and alerts stay empty.
 
 ## Changing an alert rule
 

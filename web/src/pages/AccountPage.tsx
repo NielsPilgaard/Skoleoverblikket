@@ -58,6 +58,10 @@ export default function AccountPage() {
     ...postApiV1AccountLogoutEverywhereMutation(),
     onSuccess: () => logout({ redirectUri: window.location.origin }),
   })
+  // Once sent, the logout goes through, so the dialog can't be dismissed while it runs.
+  const closeLogout = () => {
+    if (!logoutEverywhere.isPending) setConfirmLogout(false)
+  }
 
   // Read the result of the Keycloak page we came back from, once per return.
   const handledReturn = useRef(false)
@@ -335,12 +339,7 @@ export default function AccountPage() {
         />
       </Group>
 
-      <Modal
-        isOpen={confirmLogout}
-        onClose={() => setConfirmLogout(false)}
-        title="Log ud på alle enheder?"
-        size="sm"
-      >
+      <Modal isOpen={confirmLogout} onClose={closeLogout} title="Log ud på alle enheder?" size="sm">
         <div className="px-6 py-5 space-y-4">
           <p className="text-sm text-gray-600">
             Du bliver logget ud på alle telefoner og computere, også denne. Du skal logge ind igen
@@ -352,8 +351,9 @@ export default function AccountPage() {
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={() => setConfirmLogout(false)}
-              className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={logoutEverywhere.isPending}
+              onClick={closeLogout}
+              className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
               Annuller
             </button>

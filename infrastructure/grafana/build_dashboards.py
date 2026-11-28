@@ -25,8 +25,11 @@ def nid():
     return _id
 
 
-def tgt(expr, legend="", ref="A", instant=False):
+def tgt(expr, legend="", ref="A", instant=False, fmt=None):
     t = {"datasource": PROM, "refId": ref, "expr": expr, "legendFormat": legend}
+    # "table" turns labels into columns and names values "Value #<ref>", which merge/organize need.
+    if fmt:
+        t["format"] = fmt
     if instant:
         t["instant"] = True
         t["range"] = False
@@ -555,14 +558,14 @@ def var(name, query, label):
 V.append(row("Hosts (now)", y)); y += 1
 V.append(table("Hosts", [
     # 0 = seen in the last day but not reporting now (down, or Alloy can't ship).
-    tgt(f'max by (instance) ({m("up")}) or max by (instance) (last_over_time({m("up")}[1d])) * 0', ref="A", instant=True),
-    tgt(f'1 - avg by (instance) (rate({IDLE}[5m]))', ref="B", instant=True),
-    tgt(f'max by (instance) ({m("node_load5")}) / {CORES}', ref="C", instant=True),
-    tgt(f'1 - max by (instance) ({m("node_memory_MemAvailable_bytes")}) / max by (instance) ({m("node_memory_MemTotal_bytes")})', ref="D", instant=True),
-    tgt(f'1 - max by (instance) ({m("node_memory_SwapFree_bytes")}) / max by (instance) ({m("node_memory_SwapTotal_bytes")} > 0)', ref="E", instant=True),
-    tgt(f'1 - min by (instance) ({m("node_filesystem_avail_bytes", DISK)} / {m("node_filesystem_size_bytes", DISK)})', ref="F", instant=True),
-    tgt(f'max by (instance) ({m("node_reboot_required")})', ref="G", instant=True),
-    tgt(f'time() - max by (instance) ({m("node_boot_time_seconds")})', ref="H", instant=True),
+    tgt(f'max by (instance) ({m("up")}) or max by (instance) (last_over_time({m("up")}[1d])) * 0', ref="A", instant=True, fmt="table"),
+    tgt(f'1 - avg by (instance) (rate({IDLE}[5m]))', ref="B", instant=True, fmt="table"),
+    tgt(f'max by (instance) ({m("node_load5")}) / {CORES}', ref="C", instant=True, fmt="table"),
+    tgt(f'1 - max by (instance) ({m("node_memory_MemAvailable_bytes")}) / max by (instance) ({m("node_memory_MemTotal_bytes")})', ref="D", instant=True, fmt="table"),
+    tgt(f'1 - max by (instance) ({m("node_memory_SwapFree_bytes")}) / max by (instance) ({m("node_memory_SwapTotal_bytes")} > 0)', ref="E", instant=True, fmt="table"),
+    tgt(f'1 - min by (instance) ({m("node_filesystem_avail_bytes", DISK)} / {m("node_filesystem_size_bytes", DISK)})', ref="F", instant=True, fmt="table"),
+    tgt(f'max by (instance) ({m("node_reboot_required")})', ref="G", instant=True, fmt="table"),
+    tgt(f'time() - max by (instance) ({m("node_boot_time_seconds")})', ref="H", instant=True, fmt="table"),
 ], 0, y, h=5,
     desc="One row per host. DOWN = reported in the last day but not now: the VPS is down or Alloy can't reach Grafana "
          "(check Alloy errors below). Load is per CPU core; above 1 means work is queuing.",
@@ -620,7 +623,7 @@ V += [
        overrides=[{"matcher": {"id": "byRegexp", "options": ".* total"},
                    "properties": [{"id": "custom.lineStyle", "value": {"fill": "dash", "dash": [10, 10]}},
                                   {"id": "color", "value": {"mode": "fixed", "fixedColor": "text"}}]}]),
-    ts("OOM kills", [tgt(f'sum by (instance) (increase({m("node_vmstat_oom_kill")}[$__interval]))', "{{instance}}")],
+    ts("OOM kills", [tgt(f'sum by (instance) (increase({m("node_vmstat_oom_kill")}[$__rate_interval]))', "{{instance}}")],
        12, y, w=12, draw="bars", desc="The kernel killed a process for lack of memory. Usually a build or a container without a "
                                        "memory limit. Find the victim in 'Host errors' below."),
 ]

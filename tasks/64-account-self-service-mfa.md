@@ -176,7 +176,7 @@ Admin reset (D4), in the owning services (`StaffService` or equivalent, plus par
 **Prod checklist (D5 A), Niels.** After the Phase 1 list:
 
 1. Deploy the new Keycloak image (it carries the passkey pages and the Danish passkey messages).
-2. Run `pwsh scripts/sync-keycloak-auth.ps1 -AdminUser <your master admin>` as in Phase 1. The dry run must list the Webauthn policy, Webauthn Register's "Maximum age of authentication", WebAuthn Authenticator in the two-factor sub-flow and `otp` + `webauthn` in the superadmin condition.
+2. Run `pwsh scripts/sync-keycloak-auth.ps1 -AdminUser <your master admin>` as in Phase 1. The dry run must list the Webauthn policy, Webauthn Register's "Maximum age of authentication", WebAuthn Authenticator in the two-factor sub-flow and `otp` + `webauthn` in the superadmin condition, unless Phase 1's `-Apply` already ran with this realm file: then it says "Everything matches the realm file" and step 3 is done.
 3. Run it with `-Apply`, then once more without: it must say "Everything matches the realm file".
 4. On your phone: Min konto → "Tilføj adgangsnøgle", log out, log in with it.
 5. Tick this item.
